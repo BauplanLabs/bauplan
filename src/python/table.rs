@@ -14,80 +14,6 @@ use crate::{
 
 use super::bauplan::Client;
 
-/// A field in a table schema.
-#[pyclass(name = "TableField", module = "bauplan")]
-pub(crate) struct PyTableField(TableField);
-
-#[pymethods]
-impl PyTableField {
-    #[getter]
-    fn id(&self) -> i32 {
-        self.0.id
-    }
-
-    #[getter]
-    fn name(&self) -> &str {
-        &self.0.name
-    }
-
-    #[getter]
-    fn required(&self) -> bool {
-        self.0.required
-    }
-
-    #[getter]
-    fn r#type(&self) -> &str {
-        &self.0.r#type
-    }
-}
-
-/// A table in the lake, with full metadata.
-#[pyclass(name = "TableWithMetadata", module = "bauplan")]
-pub(crate) struct PyTableWithMetadata(pub TableWithMetadata);
-
-#[pymethods]
-impl PyTableWithMetadata {
-    #[getter]
-    fn id(&self) -> String {
-        self.0.id.to_string()
-    }
-
-    #[getter]
-    fn name(&self) -> &str {
-        &self.0.name
-    }
-
-    #[getter]
-    fn namespace(&self) -> &str {
-        &self.0.namespace
-    }
-
-    #[getter]
-    fn records(&self) -> Option<u64> {
-        self.0.records
-    }
-
-    #[getter]
-    fn size(&self) -> Option<u64> {
-        self.0.size
-    }
-
-    #[getter]
-    fn last_updated_at(&self) -> chrono::DateTime<chrono::Utc> {
-        self.0.last_updated_at.into()
-    }
-
-    #[getter]
-    fn fields(&self) -> Vec<PyTableField> {
-        self.0.fields.iter().cloned().map(PyTableField).collect()
-    }
-
-    #[getter]
-    fn snapshots(&self) -> Option<u32> {
-        self.0.snapshots
-    }
-}
-
 #[pymethods]
 impl Client {
     /// Create a table from an S3 location.
@@ -482,15 +408,14 @@ impl Client {
         table: &str,
         r#ref: &str,
         namespace: Option<&str>,
-    ) -> PyResult<PyTableWithMetadata> {
+    ) -> PyResult<TableWithMetadata> {
         let req = GetTable {
             name: table,
             at_ref: Some(r#ref),
             namespace,
         };
 
-        let resp = self.roundtrip(req).map(PyTableWithMetadata)?;
-        Ok(resp)
+        self.roundtrip(req)
     }
 
     /// Check if a table exists.

@@ -67,9 +67,8 @@ impl Profile {
     /// ~/.config/bauplan.yaml). If no configuration file is present, then the
     /// configuration will be loaded solely from the environment.
     ///
-    /// If the name is left unspecified but `BAUPLAN_PROFILE` is set, that will
-    /// be used to select the profile. Otherwise the profile `default` will be
-    /// used.
+    /// If `BAUPLAN_PROFILE` is set, that will be used to select the profile.
+    /// Otherwise the profile `default` will be used.
     ///
     /// The following environment variables can override the corresponding
     /// values in the config file:

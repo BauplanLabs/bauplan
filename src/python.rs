@@ -37,8 +37,8 @@ mod bauplan {
         m.add_class::<refs::PyBranch>()?;
         m.add_class::<refs::PyTag>()?;
         m.add_class::<refs::PyDetachedRef>()?;
-        m.add_class::<table::PyTableWithMetadata>()?;
-        m.add_class::<table::PyTableField>()?;
+        m.add_class::<crate::table::TableWithMetadata>()?;
+        m.add_class::<crate::table::TableField>()?;
         Ok(())
     }
 

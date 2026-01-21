@@ -29,6 +29,10 @@ pub struct GetTable<'a> {
 
 /// A field in a table schema.
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(name = "TableField", module = "bauplan", get_all)
+)]
 pub struct TableField {
     /// The field ID.
     pub id: i32,
@@ -42,6 +46,10 @@ pub struct TableField {
 
 /// A table in the lake.
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(name = "TableWithMetadata", module = "bauplan", get_all)
+)]
 pub struct TableWithMetadata {
     /// The table ID.
     pub id: Uuid,

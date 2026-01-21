@@ -18,7 +18,7 @@ path = "src/main.rs"
 
 [features]
 default = []
-python = ["dep:pyo3", "dep:chrono", "pyo3/chrono"]
+python = ["dep:pyo3", "dep:chrono", "pyo3/chrono", "pyo3/uuid"]
 
 [dependencies]
 anyhow = "1"
