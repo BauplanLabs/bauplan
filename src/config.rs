@@ -77,18 +77,32 @@ impl Profile {
     /// |-------------------------|----------------|
     /// | `BAUPLAN_API_KEY`       | `api_key`      |
     /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
-    pub fn from_env(name: Option<&str>) -> Result<Self, Error> {
-        let name = name
-            .map(|s| s.to_owned())
-            .or_else(|| env::var("BAUPLAN_PROFILE").ok())
-            .unwrap_or("default".to_owned());
+    pub fn from_default_env() -> Result<Self, Error> {
+        if let Ok(s) = env::var("BAUPLAN_PROFILE") {
+            Self::from_env(&s)
+        } else {
+            Self::from_env("default")
+        }
+    }
 
+    /// Load the given profile from the Bauplan configuration file (usually
+    /// ~/.config/bauplan.yaml). If no configuration file is present, then the
+    /// configuration will be loaded solely from the environment.
+    ///
+    /// The following environment variables can override the corresponding
+    /// values in the config file:
+    ///
+    /// | Environment Variable    | Config Value   |
+    /// |-------------------------|----------------|
+    /// | `BAUPLAN_API_KEY`       | `api_key`      |
+    /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
+    pub fn from_env(name: &str) -> Result<Self, Error> {
         let file = find_config()?;
         let ConfigProfile {
             api_endpoint,
             api_key,
             active_branch,
-        } = read_profile(&file, &name).unwrap_or_default();
+        } = read_profile(&file, name).unwrap_or_default();
 
         let api_endpoint = api_endpoint
             .or_else(|| env::var("BAUPLAN_API_ENDPOINT").ok())
@@ -103,7 +117,7 @@ impl Profile {
         }
 
         Ok(Self {
-            name,
+            name: name.to_owned(),
             active_branch,
             api_endpoint,
             api_key,

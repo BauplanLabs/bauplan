@@ -120,7 +120,13 @@ pub(crate) struct Cli {
 }
 
 pub(crate) fn run(args: Args) -> anyhow::Result<()> {
-    let profile = Profile::from_env(args.global.profile.as_deref())?.with_ua_product("bauplan-cli");
+    let profile = if let Some(name) = args.global.profile.as_deref() {
+        Profile::from_env(name)
+    } else {
+        Profile::from_default_env()
+    };
+
+    let profile = profile?.with_ua_product("bauplan-cli");
 
     // Allows error responses to be parsed.
     let mut cfg = ureq::config::Config::builder().http_status_as_error(false);

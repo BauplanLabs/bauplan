@@ -14,7 +14,7 @@
 //! use bauplan::{ApiRequest, ApiResponse, Profile, table::GetTable};
 //!
 //! # fn main() -> anyhow::Result<()> {
-//! let profile = Profile::from_env(None)?;
+//! let profile = Profile::from_default_env()?;
 //!
 //! let req = GetTable {
 //!     name: "taxi_fhvhv",
@@ -45,7 +45,7 @@
 //!
 //! # #[tokio::main]
 //! # async fn main() -> anyhow::Result<()> {
-//! let profile = Profile::from_env(None)?;
+//! let profile = Profile::from_default_env()?;
 //! let client = reqwest::Client::new();
 //!
 //! let req = GetTable {

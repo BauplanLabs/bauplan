@@ -155,8 +155,10 @@ mod bauplan {
         ) -> PyResult<Self> {
             let profile = if let Some(p) = config_file_path {
                 Profile::read(&File::open(p)?, profile)
+            } else if let Some(name) = profile {
+                Profile::from_env(name)
             } else {
-                Profile::from_env(profile)
+                Profile::from_default_env()
             };
 
             let mut profile = profile
