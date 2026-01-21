@@ -1,0 +1,46 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message CodeSnapshotRunRequest {
+  JobRequestCommon job_request_common = 1;
+
+  bytes zip_file = 2;
+
+  optional string ref = 3;
+  optional string namespace = 4;
+  JobRequestOptionalBool dry_run = 5;
+  string transaction = 6;
+  string strict = 7;
+  string cache = 8;
+  string preview = 9;
+
+  string project_id = 10;
+  string project_name = 13;
+  repeated Parameter parameters = 11;
+  optional string public_key = 12;
+}
+
+message CodeSnapshotRunResponse {
+  JobResponseCommon job_response_common = 1;
+
+  string snapshot_id = 2;
+  string snapshot_uri = 3;
+
+  string ref = 4;
+  string namespace = 5;
+
+  bool dry_run = 6;
+  string transaction = 7;
+  string strict = 8;
+  string cache = 9;
+  string preview = 10;
+  string user_branch_prefix = 11;
+
+  string project_id = 12;
+  string project_name = 16;
+  repeated Parameter parameters = 13;
+  optional string public_key = 14;
+  string dag_ascii = 15;
+}

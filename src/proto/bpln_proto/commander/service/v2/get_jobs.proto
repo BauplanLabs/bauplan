@@ -1,0 +1,43 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+message GetJobsRequest {
+  // job UUID filter (treat as whitelist)
+  repeated string job_ids = 1;
+
+  // NOTE: consider changing default to true
+  // allow all users for org (default false)
+  bool all_users = 2;
+
+  // username filter (treat as whitelist)
+  repeated string filter_users = 3;
+
+  // Enum-based filters for job type and status (treat as equality filter)
+  JobKind filter_kind = 4; // DEPRECATED
+  JobStateType filter_status = 5; // DEPRECATED
+
+  // [Start, Stop] time intervals for filtering:
+  //  - job created time (created_after, created_before)
+  google.protobuf.Timestamp filter_created_after = 6;
+  google.protobuf.Timestamp filter_created_before = 7;
+
+  repeated JobKind filter_kinds = 8;
+  repeated JobStateType filter_statuses = 9;
+
+  // Number of records to return (max 500)
+  int32 max_records = 10;
+
+  // Pagination token from previous request
+  string pagination_token = 11;
+}
+
+message GetJobsResponse {
+  // List of jobs matching request filters
+  repeated JobInfo jobs = 1;
+
+  // Pagination token for next request (if more results available)
+  string pagination_token = 2;
+}

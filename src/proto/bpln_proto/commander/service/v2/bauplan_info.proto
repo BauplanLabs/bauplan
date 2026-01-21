@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package bpln_proto.commander.service.v2;
+
+message GetBauplanInfoRequest {
+  string api_key = 1;
+}
+
+message RunnerNodeInfo {
+  string public_key = 1;
+  string hostname = 2;
+  reserved 3;
+}
+
+message OrganizationInfo {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  optional string default_parameter_secret_key = 4;
+  optional string default_parameter_secret_public_key = 5;
+}
+
+message UserInfo {
+  string id = 1;
+  string username = 2;
+  string first_name = 3;
+  string last_name = 4;
+}
+
+message GetBauplanInfoResponse {
+  repeated RunnerNodeInfo runners = 1;
+  string user = 2;
+  string client_version = 3;
+  string server_version = 4;
+
+  optional OrganizationInfo organization_info = 5;
+  optional UserInfo user_info = 6;
+}

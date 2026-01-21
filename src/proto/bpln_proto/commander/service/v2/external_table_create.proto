@@ -1,0 +1,36 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message ExternalTableCreateRequest {
+  JobRequestCommon job_request_common = 1;
+
+  optional string branch_name = 2;
+  string table_name = 3;
+  optional string namespace = 4;
+
+  oneof input_source {
+    // Support passing a list of URIs for files to create the external table from
+    SearchUris input_files = 5;
+
+    // keep this as oneof ine case we want to create other input sources in the future
+    // or we if want to support creating a table from metadata as a commander endpoint
+  }
+
+  // whether or not to delete and recreate the table if it already exists
+  bool overwrite = 6;
+}
+
+message SearchUris {
+  repeated string uris = 1;
+}
+
+message ExternalTableCreateResponse {
+  JobResponseCommon job_response_common = 1;
+
+  string branch_name = 2;
+  string table_name = 3;
+  string namespace = 4;
+  string user_branch_prefix = 5;
+}

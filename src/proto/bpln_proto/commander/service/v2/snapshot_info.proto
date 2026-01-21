@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package bpln_proto.commander.service.v2;
+
+import "google/protobuf/timestamp.proto";
+
+message GetSnapshotInfoRequest {
+  string snapshot_sha = 1;
+}
+
+message GetSnapshotInfoResponse {
+  SnapshotInfo snapshot_info = 1;
+}
+
+message SnapshotInfo {
+  bytes snapshot_zip = 1;
+  google.protobuf.Timestamp created_at = 2;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "runner_comm.proto";
+import "runner_events.proto";
+
+message SubscribeRunnerResponse {
+  RunnerAction action = 1;
+}
+
+message SubscribeRunnerRequest {
+  string job_id = 1;
+  optional RunnerEvent runner_event = 2;
+}

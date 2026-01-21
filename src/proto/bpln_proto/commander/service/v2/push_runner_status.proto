@@ -1,0 +1,130 @@
+syntax = "proto3";
+
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+import "google/protobuf/timestamp.proto";
+
+message PushRunnerStatusRequest {
+  RunnerStatus runner_status = 1;
+}
+
+message PushRunnerStatusResponse {}
+
+message RunnerStatus {
+  repeated JobStatusV2 job_statuses = 1;
+}
+
+message JobStatusV2 {
+  string job_id = 1;
+  google.protobuf.Timestamp started_at = 2;
+  google.protobuf.Timestamp last_state_update = 3;
+  JobState job_state = 4;
+  repeated TaskStatus task_infos = 5;
+  google.protobuf.Timestamp ended_at = 6;
+}
+
+message JobState {
+  JobStateType state = 1;
+  google.protobuf.Timestamp since = 2;
+  oneof details {
+    JobNotStartedDetails not_started = 3;
+    JobRunningDetails running = 4;
+    JobCompleteDetails complete = 5;
+    JobAbortDetails abort = 6;
+    JobFailDetails fail = 7;
+    JobOtherDetails other = 8;
+  }
+}
+
+message JobNotStartedDetails {}
+message JobRunningDetails {}
+message JobCompleteDetails {}
+
+message JobAbortDetails {
+  enum Reason {
+    REASON_UNSPECIFIED = 0;
+    REASON_USER_CANCELLED = 1;
+    REASON_RUNNER_SHUTDOWN = 2;
+    REASON_TIMEOUT = 3;
+  }
+  Reason reason = 1;
+}
+
+message JobFailDetails {
+  string error_message = 1;
+}
+
+message JobOtherDetails {}
+
+message TaskStatus {
+  string task_id = 1;
+  TaskState task_state = 2;
+  TaskDetailed task_details = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp ended_at = 5;
+
+  // This is the task description as specified inside the physical plan
+  string task_description = 6;
+}
+
+message TaskState {
+  TaskStateType state = 1;
+  google.protobuf.Timestamp since = 2;
+  oneof details {
+    TaskNotStartedDetails not_started = 3;
+    TaskRunningDetails running = 4;
+    TaskCompleteDetails complete = 5;
+    TaskAbortDetails abort = 6;
+    TaskFailDetails fail = 7;
+    TaskOtherDetails other = 8;
+  }
+}
+
+message TaskNotStartedDetails {}
+message TaskRunningDetails {}
+message TaskCompleteDetails {}
+
+message TaskAbortDetails {
+  enum Reason {
+    REASON_UNSPECIFIED = 0;
+    REASON_CANCELLED = 1;
+    REASON_RUNNER_SHUTDOWN = 2;
+    REASON_TIMEOUT = 3;
+  }
+  Reason reason = 1;
+}
+
+message TaskFailDetails {
+  string error_message = 1;
+}
+
+message TaskOtherDetails {
+  string message = 1;
+}
+
+message TaskDetailed {
+  oneof detail {
+    ModelFlightServe model_flight_serve = 1;
+    ModelRead model_read = 2;
+    ModelWrite model_write = 3;
+    DataLakeCheckout data_lake_checkout = 4;
+    TableCreatePlan table_create_plan = 5;
+    TableCreatePlanApply table_create_plan_apply = 6;
+    BranchMerge branch_merge = 7;
+    UserSQLModelRun user_sql_model_run = 8;
+    UserPythonModelRun user_python_model_run = 9;
+    TableDataImport table_data_import = 10;
+  }
+}
+
+message ModelFlightServe {}
+message ModelRead {}
+message ModelWrite {}
+message DataLakeCheckout {}
+message TableCreatePlan {}
+message TableCreatePlanApply {}
+message BranchMerge {}
+message UserSQLModelRun {}
+message UserPythonModelRun {}
+message TableDataImport {}

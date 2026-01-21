@@ -1,0 +1,14 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message TableCreatePlanApplyRequest {
+  JobRequestCommon job_request_common = 1;
+
+  string plan_yaml = 2;
+}
+
+message TableCreatePlanApplyResponse {
+  JobResponseCommon job_response_common = 1;
+}

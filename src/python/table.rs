@@ -1,0 +1,707 @@
+//! Table operations.
+
+#![allow(unused_imports)]
+
+use pyo3::prelude::*;
+use std::collections::{BTreeMap, HashMap};
+
+use crate::{
+    ApiRequest, CatalogRef,
+    api::table::{TableField, TableWithMetadata},
+    commit::CommitOptions,
+    table::{GetTable, RevertTable},
+};
+
+use super::bauplan::Client;
+
+/// A field in a table schema.
+#[pyclass(name = "TableField", module = "bauplan")]
+pub(crate) struct PyTableField(TableField);
+
+#[pymethods]
+impl PyTableField {
+    #[getter]
+    fn id(&self) -> i32 {
+        self.0.id
+    }
+
+    #[getter]
+    fn name(&self) -> &str {
+        &self.0.name
+    }
+
+    #[getter]
+    fn required(&self) -> bool {
+        self.0.required
+    }
+
+    #[getter]
+    fn r#type(&self) -> &str {
+        &self.0.r#type
+    }
+}
+
+/// A table in the lake, with full metadata.
+#[pyclass(name = "TableWithMetadata", module = "bauplan")]
+pub(crate) struct PyTableWithMetadata(pub TableWithMetadata);
+
+#[pymethods]
+impl PyTableWithMetadata {
+    #[getter]
+    fn id(&self) -> String {
+        self.0.id.to_string()
+    }
+
+    #[getter]
+    fn name(&self) -> &str {
+        &self.0.name
+    }
+
+    #[getter]
+    fn namespace(&self) -> &str {
+        &self.0.namespace
+    }
+
+    #[getter]
+    fn records(&self) -> Option<u64> {
+        self.0.records
+    }
+
+    #[getter]
+    fn size(&self) -> Option<u64> {
+        self.0.size
+    }
+
+    #[getter]
+    fn last_updated_at(&self) -> chrono::DateTime<chrono::Utc> {
+        self.0.last_updated_at.into()
+    }
+
+    #[getter]
+    fn fields(&self) -> Vec<PyTableField> {
+        self.0.fields.iter().cloned().map(PyTableField).collect()
+    }
+
+    #[getter]
+    fn snapshots(&self) -> Option<u32> {
+        self.0.snapshots
+    }
+}
+
+#[pymethods]
+impl Client {
+    /// Create a table from an S3 location.
+    ///
+    /// This operation will attempt to create a table based of schemas of N
+    /// parquet files found by a given search uri. This is a two step operation using
+    /// `plan_table_creation ` and  `apply_table_creation_plan`.
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// table = client.create_table(
+    ///     table='my_table_name',
+    ///     search_uri='s3://path/to/my/files/*.parquet',
+    ///     branch='my_branch_name',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The table which will be created.
+    ///     search_uri: The location of the files to scan for schema.
+    ///     branch: The branch name in which to create the table in.
+    ///     namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
+    ///     partitioned_by: Optional argument specifying the table partitioning.
+    ///     replace: Replace the table if it already exists.
+    ///     debug: Whether to enable or disable debug mode for the query.
+    ///     args: dict of arbitrary args to pass to the backend.
+    ///     priority: Optional job priority (1-10, where 10 is highest priority).
+    ///     verbose: Whether to enable or disable verbose mode.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    /// Returns:
+    ///     Table
+    ///
+    /// Raises:
+    ///     TableCreatePlanStatusError: if the table creation plan fails.
+    ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
+    #[pyo3(signature = (table, search_uri, branch=None, namespace=None, partitioned_by=None, replace=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn create_table(
+        &mut self,
+        table: &str,
+        search_uri: &str,
+        branch: Option<&str>,
+        namespace: Option<&str>,
+        partitioned_by: Option<&str>,
+        replace: Option<bool>,
+        debug: Option<bool>,
+        args: Option<std::collections::HashMap<String, String>>,
+        priority: Option<i64>,
+        verbose: Option<bool>,
+        client_timeout: Option<i64>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            table,
+            search_uri,
+            branch,
+            namespace,
+            partitioned_by,
+            replace,
+            debug,
+            args,
+            priority,
+            verbose,
+            client_timeout,
+        );
+        todo!("create_table")
+    }
+
+    /// Create a table import plan from an S3 location.
+    ///
+    /// This operation will attempt to create a table based of schemas of N
+    /// parquet files found by a given search uri. A YAML file containing the
+    /// schema and plan is returns and if there are no conflicts, it is
+    /// automatically applied.
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// plan_state = client.plan_table_creation(
+    ///     table='my_table_name',
+    ///     search_uri='s3://path/to/my/files/*.parquet',
+    ///     branch='my_branch_name',
+    /// )
+    /// if plan_state.error:
+    ///     plan_error_action(...)
+    /// success_action(plan_state.plan)
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The table which will be created.
+    ///     search_uri: The location of the files to scan for schema.
+    ///     branch: The branch name in which to create the table in.
+    ///     namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
+    ///     partitioned_by: Optional argument specifying the table partitioning.
+    ///     replace: Replace the table if it already exists.
+    ///     debug: Whether to enable or disable debug mode.
+    ///     args: dict of arbitrary args to pass to the backend.
+    ///     priority: Optional job priority (1-10, where 10 is highest priority).
+    ///     verbose: Whether to enable or disable verbose mode.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///
+    /// Returns:
+    ///     The plan state.
+    ///
+    /// Raises:
+    ///     TableCreatePlanStatusError: if the table creation plan fails.
+    #[pyo3(signature = (table, search_uri, branch=None, namespace=None, partitioned_by=None, replace=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn plan_table_creation(
+        &mut self,
+        table: &str,
+        search_uri: &str,
+        branch: Option<&str>,
+        namespace: Option<&str>,
+        partitioned_by: Option<&str>,
+        replace: Option<bool>,
+        debug: Option<bool>,
+        args: Option<std::collections::HashMap<String, String>>,
+        priority: Option<i64>,
+        verbose: Option<bool>,
+        client_timeout: Option<i64>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            table,
+            search_uri,
+            branch,
+            namespace,
+            partitioned_by,
+            replace,
+            debug,
+            args,
+            priority,
+            verbose,
+            client_timeout,
+        );
+        todo!("plan_table_creation")
+    }
+
+    /// Apply a plan for creating a table. It is done automaticaly during th
+    /// table plan creation if no schema conflicts exist. Otherwise, if schema
+    /// conflicts exist, then this function is used to apply them after the
+    /// schema conflicts are resolved. Most common schema conflict is a two
+    /// parquet files with the same column name but different datatype
+    ///
+    /// Parameters:
+    ///     plan: The plan to apply.
+    ///     debug: Whether to enable or disable debug mode for the query.
+    ///     args: dict of arbitrary args to pass to the backend.
+    ///     priority: Optional job priority (1-10, where 10 is highest priority).
+    ///     verbose: Whether to enable or disable verbose mode.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    /// Returns:
+    ///     The plan state.
+    ///
+    /// Raises:
+    ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
+    #[pyo3(signature = (plan, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    fn apply_table_creation_plan(
+        &mut self,
+        plan: Py<PyAny>,
+        debug: Option<bool>,
+        args: Option<std::collections::HashMap<String, String>>,
+        priority: Option<i64>,
+        verbose: Option<bool>,
+        client_timeout: Option<i64>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (plan, debug, args, priority, verbose, client_timeout);
+        todo!("apply_table_creation_plan")
+    }
+
+    /// Imports data into an already existing table.
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// plan_state = client.import_data(
+    ///     table='my_table_name',
+    ///     search_uri='s3://path/to/my/files/*.parquet',
+    ///     branch='my_branch_name',
+    /// )
+    /// if plan_state.error:
+    ///     plan_error_action(...)
+    /// success_action(plan_state.plan)
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: Previously created table in into which data will be imported.
+    ///     search_uri: Uri which to scan for files to import.
+    ///     branch: Branch in which to import the table.
+    ///     namespace: Namespace of the table. If not specified, namespace will be infered from table name or default settings.
+    ///     continue_on_error: Do not fail the import even if 1 data import fails.
+    ///     import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
+    ///     best_effort: Don't fail if schema of table does not match.
+    ///     preview: Whether to enable or disable preview mode for the import.
+    ///     debug: Whether to enable or disable debug mode for the import.
+    ///     args: dict of arbitrary args to pass to the backend.
+    ///     priority: Optional job priority (1-10, where 10 is highest priority).
+    ///     verbose: Whether to enable or disable verbose mode.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
+    /// Returns:
+    ///     A `bauplan.state.TableDataImportState` object.
+    #[pyo3(signature = (table, search_uri, branch=None, namespace=None, continue_on_error=None, import_duplicate_files=None, best_effort=None, preview=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None, detach=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn import_data(
+        &mut self,
+        table: &str,
+        search_uri: &str,
+        branch: Option<&str>,
+        namespace: Option<&str>,
+        continue_on_error: Option<bool>,
+        import_duplicate_files: Option<bool>,
+        best_effort: Option<bool>,
+        preview: Option<&str>,
+        debug: Option<bool>,
+        args: Option<std::collections::HashMap<String, String>>,
+        priority: Option<i64>,
+        verbose: Option<bool>,
+        client_timeout: Option<i64>,
+        detach: Option<bool>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            table,
+            search_uri,
+            branch,
+            namespace,
+            continue_on_error,
+            import_duplicate_files,
+            best_effort,
+            preview,
+            debug,
+            args,
+            priority,
+            verbose,
+            client_timeout,
+            detach,
+        );
+        todo!("import_data")
+    }
+
+    /// Creates an external table from S3 files.
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// # Create from S3 files
+    /// state = client.create_external_table_from_parquet(
+    ///     table='my_external_table',
+    ///     search_patterns=['s3://path1/to/my/files/*.parquet', 's3://path2/to/my/file/f1.parquet'],
+    ///     branch='my_branch_name',
+    /// )
+    ///
+    /// if state.error:
+    ///     handle_error(state.error)
+    /// else:
+    ///     print(f"External table created: {state.ctx.table_name}")
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The name of the external table to create.
+    ///     search_patterns: List of search_patterns for files to create the external table from. Must resolve to parquet files
+    ///     branch: Branch in which to create the table.
+    ///     namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
+    ///     overwrite: Whether to delete and recreate the table if it already exists.
+    ///     debug: Whether to enable or disable debug mode for the operation.
+    ///     args: dict of arbitrary args to pass to the backend.
+    ///     priority: Optional job priority (1-10, where 10 is highest priority).
+    ///     verbose: Whether to enable or disable verbose mode.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
+    ///
+    /// Returns:
+    ///     The external table create state.
+    #[pyo3(signature = (table, search_patterns, branch=None, namespace=None, overwrite=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None, detach=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn create_external_table_from_parquet(
+        &mut self,
+        table: &str,
+        search_patterns: Vec<String>,
+        branch: Option<&str>,
+        namespace: Option<&str>,
+        overwrite: Option<bool>,
+        debug: Option<bool>,
+        args: Option<std::collections::HashMap<String, String>>,
+        priority: Option<i64>,
+        verbose: Option<bool>,
+        client_timeout: Option<i64>,
+        detach: Option<bool>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            table,
+            search_patterns,
+            branch,
+            namespace,
+            overwrite,
+            debug,
+            args,
+            priority,
+            verbose,
+            client_timeout,
+            detach,
+        );
+        todo!("create_external_table_from_parquet")
+    }
+
+    /// Get the tables and views in the target branch.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// for table in client.get_tables('my_branch_name'):
+    ///     ...
+    /// ```
+    ///
+    /// Parameters:
+    ///     ref: The ref or branch to get the tables from.
+    ///     filter_by_name: Optional, the table name to filter by.
+    ///     filter_by_namespace: Optional, the namespace to get filtered tables from.
+    ///     namespace: DEPRECATED: Optional, the namespace to get filtered tables from.
+    ///     include_raw: Whether or not to include the raw metadata.json object as a nested dict.
+    ///     limit: Optional, max number of tables to get.
+    /// Returns:
+    ///     A `bauplan.schema.GetTablesResponse` object.
+    #[pyo3(signature = (ref_, filter_by_name=None, filter_by_namespace=None, namespace=None, include_raw=None, limit=None))]
+    fn get_tables(
+        &mut self,
+        ref_: &str,
+        filter_by_name: Option<&str>,
+        filter_by_namespace: Option<&str>,
+        namespace: Option<&str>,
+        include_raw: Option<bool>,
+        limit: Option<i64>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            ref_,
+            filter_by_name,
+            filter_by_namespace,
+            namespace,
+            include_raw,
+            limit,
+        );
+        todo!("get_tables")
+    }
+
+    /// Get the table data and metadata for a table in the target branch.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch fixture:my_namespace
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// # get the fields and metadata for a table
+    /// table = client.get_table(
+    ///     table='titanic',
+    ///     ref='my_ref_or_branch_name',
+    ///     namespace='bauplan',
+    /// )
+    ///
+    /// # You can get the total number of rows this way.
+    /// num_records = table.records
+    ///
+    /// # Or access the schema.
+    /// for c in table.fields:
+    ///     ...
+    /// ```
+    ///
+    /// Parameters:
+    ///     ref: The ref, branch name or tag name to get the table from.
+    ///     table: The table to retrieve.
+    ///     namespace: The namespace of the table to retrieve.
+    /// Returns:
+    ///     a `bauplan.schema.TableWithMetadata` object
+    ///
+    /// Raises:
+    ///     RefNotFoundError: if the ref does not exist.
+    ///     NamespaceNotFoundError: if the namespace does not exist.
+    ///     NamespaceConflictsError: if conflicting namespaces names are specified.
+    ///     TableNotFoundError: if the table does not exist.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (table, r#ref, namespace=None))]
+    fn get_table(
+        &mut self,
+        table: &str,
+        r#ref: &str,
+        namespace: Option<&str>,
+    ) -> PyResult<PyTableWithMetadata> {
+        let req = GetTable {
+            name: table,
+            at_ref: Some(r#ref),
+            namespace,
+        };
+
+        let resp = self.roundtrip(req).map(PyTableWithMetadata)?;
+        Ok(resp)
+    }
+
+    /// Check if a table exists.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// assert client.has_table(
+    ///     table='titanic',
+    ///     ref='my_ref_or_branch_name',
+    ///     namespace='bauplan',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     ref: The ref, branch name or tag name to get the table from.
+    ///     table: The table to retrieve.
+    ///     namespace: The namespace of the table to check.
+    /// Returns:
+    ///     A boolean for if the table exists.
+    ///
+    /// Raises:
+    ///     RefNotFoundError: if the ref does not exist.
+    ///     NamespaceNotFoundError: if the namespace does not exist.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (table, ref_, namespace=None))]
+    fn has_table(&mut self, table: &str, ref_: &str, namespace: Option<&str>) -> PyResult<bool> {
+        let _ = (table, ref_, namespace);
+        todo!("has_table")
+    }
+
+    /// Drop a table.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// assert client.delete_table(
+    ///     table='my_table_name',
+    ///     branch='my_branch_name',
+    ///     namespace='my_namespace',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The table to delete.
+    ///     branch: The branch on which the table is stored.
+    ///     namespace: The namespace of the table to delete.
+    ///     commit_body: Optional, the commit body message to attach to the commit.
+    ///     commit_properties: Optional, a list of properties to attach to the commit.
+    ///     if_exists: If set to `True`, the table will not raise an error if it does not exist.
+    /// Returns:
+    ///     The deleted `bauplan.schema.Table` object.
+    ///
+    /// Raises:
+    ///     DeleteTableForbiddenError: if the user does not have access to delete the table.
+    ///     BranchNotFoundError: if the branch does not exist.
+    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
+    ///     BranchHeadChangedError: if the branch head hash has changed.
+    ///     TableNotFoundError: if the table does not exist.
+    ///     NamespaceConflictsError: if conflicting namespaces names are specified.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (table, branch, namespace=None, if_exists=None, commit_body=None, commit_properties=None, properties=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn delete_table(
+        &mut self,
+        table: &str,
+        branch: &str,
+        namespace: Option<&str>,
+        if_exists: Option<bool>,
+        commit_body: Option<&str>,
+        commit_properties: Option<std::collections::HashMap<String, String>>,
+        properties: Option<std::collections::HashMap<String, String>>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            table,
+            branch,
+            namespace,
+            if_exists,
+            commit_body,
+            commit_properties,
+            properties,
+        );
+        todo!("delete_table")
+    }
+
+    /// Create an external table from an Iceberg metadata.json file.
+    ///
+    /// This operation creates an external table by pointing to an existing Iceberg table's
+    /// metadata.json file. This is useful for importing external Iceberg tables into Bauplan
+    /// without copying the data.
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// # Create an external table from metadata
+    /// result = client.create_external_table_from_metadata(
+    ///     table='my_external_table',
+    ///     metadata_json_uri='s3://my-bucket/path/to/metadata/00001-abc123.metadata.json',
+    ///     namespace='my_namespace',
+    ///     branch='my_branch_name',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The name of the table to create.
+    ///     metadata_json_uri: The S3 URI pointing to the Iceberg table's metadata.json file.
+    ///     namespace: The namespace for the table (required).
+    ///     branch: The branch name in which to create the table. Defaults to '-' if not specified.
+    ///     overwrite: Whether to overwrite an existing table with the same name (default: False).
+    ///
+    /// Returns:
+    ///     TableWithMetadata: The registered table with full metadata.
+    ///
+    /// Raises:
+    ///     ValueError: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
+    ///     BranchNotFoundError: if the branch does not exist.
+    ///     NamespaceNotFoundError: if the namespace does not exist.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     InvalidDataError: if the metadata location is within the warehouse directory.
+    ///     UpdateConflictError: if a table with the same name already exists and overwrite=False.
+    ///     BauplanError: for other API errors during registration or retrieval.
+    #[pyo3(signature = (table, metadata_json_uri, namespace=None, branch=None, overwrite=None))]
+    fn create_external_table_from_metadata(
+        &mut self,
+        table: &str,
+        metadata_json_uri: &str,
+        namespace: Option<&str>,
+        branch: Option<&str>,
+        overwrite: Option<bool>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (table, metadata_json_uri, namespace, branch, overwrite);
+        todo!("create_external_table_from_metadata")
+    }
+
+    /// Revert a table to a previous state.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// assert client.revert_table(
+    ///     table='my_table_name',
+    ///     namespace='my_namespace',
+    ///     source_ref='my_ref_or_branch_name',
+    ///     into_branch='main',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The table to revert.
+    ///     namespace: The namespace of the table to revert.
+    ///     source_ref: The name of the source ref; either a branch like "main" or ref like "main@[sha]".
+    ///     into_branch: The name of the target branch where the table will be reverted.
+    ///     replace: Optional, whether to replace the table if it already exists.
+    ///     commit_body: Optional, the commit body message to attach to the operation.
+    ///     commit_properties: Optional, a list of properties to attach to the operation.
+    /// Returns:
+    ///     The `bauplan.schema.Branch` where the revert was made.
+    ///
+    /// Raises:
+    ///     RevertTableForbiddenError: if the user does not have access to revert the table.
+    ///     RefNotFoundError: if the ref does not exist.
+    ///     BranchNotFoundError: if the destination branch does not exist.
+    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
+    ///     BranchHeadChangedError: if the branch head hash has changed.
+    ///     MergeConflictError: if the merge operation results in a conflict.
+    ///     NamespaceConflictsError: if conflicting namespaces names are specified.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (table, source_ref, into_branch, namespace=None, replace=None, commit_body=None, commit_properties=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn revert_table(
+        &mut self,
+        table: &str,
+        source_ref: &str,
+        into_branch: &str,
+        namespace: Option<&str>,
+        replace: Option<bool>,
+        commit_body: Option<&str>,
+        commit_properties: Option<BTreeMap<String, String>>,
+    ) -> PyResult<CatalogRef> {
+        let commit_properties = commit_properties.unwrap_or_default();
+        let properties = commit_properties
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        let req = RevertTable {
+            name: table,
+            source_ref,
+            into_branch,
+            namespace,
+            replace: replace.unwrap_or_default(),
+            commit: CommitOptions {
+                body: commit_body,
+                properties,
+            },
+        };
+
+        let resp = self.roundtrip(req)?;
+        Ok(resp)
+    }
+}

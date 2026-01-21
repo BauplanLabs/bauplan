@@ -1,0 +1,25 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message QueryRunRequest {
+  JobRequestCommon job_request_common = 1;
+
+  optional string ref = 2;
+  string sql_query = 3;
+  string cache = 4;
+
+  optional string namespace = 5;
+}
+
+message QueryRunResponse {
+  JobResponseCommon job_response_common = 1;
+
+  string sql_query = 2;
+
+  string ref = 3;
+  string namespace = 4;
+
+  string cache = 5;
+}

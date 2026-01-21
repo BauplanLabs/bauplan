@@ -1,0 +1,255 @@
+//! Branch operations.
+
+#![allow(unused_imports)]
+
+use pyo3::prelude::*;
+use std::collections::HashMap;
+
+use super::bauplan::Client;
+
+#[pymethods]
+impl Client {
+    /// Get the available data branches in the Bauplan catalog.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// for branch in client.get_branches():
+    ///     ...
+    /// ```
+    ///
+    /// Parameters:
+    ///     name: Filter the branches by name.
+    ///     user: Filter the branches by user.
+    ///     limit: Optional, max number of branches to get.
+    /// Returns:
+    ///     A `bauplan.schema.GetBranchesResponse` object.
+    #[pyo3(signature = (name=None, user=None, limit=None))]
+    fn get_branches(
+        &mut self,
+        name: Option<&str>,
+        user: Option<&str>,
+        limit: Option<i64>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (name, user, limit);
+        todo!("get_branches")
+    }
+
+    /// Get the branch.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// # retrieve only the tables as tuples of (name, kind)
+    /// branch = client.get_branch('my_branch_name')
+    /// ```
+    ///
+    /// Parameters:
+    ///     branch: The name of the branch to retrieve.
+    /// Returns:
+    ///     A `Branch` object.
+    ///
+    /// Raises:
+    ///     BranchNotFoundError: if the branch does not exist.
+    ///     NotABranchRefError: if the object is not a branch.
+    ///     ForbiddenError: if the user does not have access to the branch.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (branch))]
+    fn get_branch(&mut self, branch: &str) -> PyResult<Py<PyAny>> {
+        let _ = branch;
+        todo!("get_branch")
+    }
+
+    /// Check if a branch exists.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// if client.has_branch('my_branch_name')
+    ///     # do something
+    /// ```
+    ///
+    /// Parameters:
+    ///     branch: The name of the branch to check.
+    /// Returns:
+    ///     A boolean for if the branch exists.
+    ///
+    /// Raises:
+    ///     NotABranchRefError: if the object is not a branch.
+    ///     ForbiddenError: if the user does not have access to the branch.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (branch))]
+    fn has_branch(&mut self, branch: &str) -> PyResult<bool> {
+        let _ = branch;
+        todo!("has_branch")
+    }
+
+    /// Create a new branch at a given ref.
+    /// The branch name should follow the convention of `username.branch_name`,
+    /// otherwise non-admin users won't be able to complete the operation.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    ///
+    /// client = bauplan.Client()
+    /// username = client.info().user.username
+    ///
+    /// branch = client.create_branch(
+    ///     branch = username+'.feature_branch',
+    ///     from_ref = 'branch_name@hash',
+    ///     if_not_exists = True,
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     branch: The name of the new branch.
+    ///     from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
+    ///     if_not_exists: If set to `True`, the branch will not be created if it already exists.
+    /// Returns:
+    ///     The created branch object.
+    ///
+    /// Raises:
+    ///     CreateBranchForbiddenError: if the user does not have access to create the branch.
+    ///     BranchExistsError: if the branch already exists.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (branch, from_ref, if_not_exists=None))]
+    fn create_branch(
+        &mut self,
+        branch: &str,
+        from_ref: &str,
+        if_not_exists: Option<bool>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (branch, from_ref, if_not_exists);
+        todo!("create_branch")
+    }
+
+    /// Rename an existing branch.
+    /// The branch name should follow the convention of "username.branch_name",
+    /// otherwise non-admin users won't be able to complete the operation.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// assert client.rename_branch(
+    ///     branch='username.old_name',
+    ///     new_branch='username.new_name',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     branch: The name of the branch to rename.
+    ///     new_branch: The name of the new branch.
+    /// Returns:
+    ///     The renamed `Branch` object.
+    ///
+    /// Raises:
+    ///     `RenameBranchForbiddenError`: if the user does not have access to create the branch.
+    ///     `UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
+    #[pyo3(signature = (branch, new_branch))]
+    fn rename_branch(&mut self, branch: &str, new_branch: &str) -> PyResult<Py<PyAny>> {
+        let _ = (branch, new_branch);
+        todo!("rename_branch")
+    }
+
+    /// Merge one branch into another.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// assert client.merge_branch(
+    ///     source_ref='my_ref_or_branch_name',
+    ///     into_branch='main',
+    /// )
+    /// ```
+    ///
+    /// Parameters:
+    ///     source_ref: The name of the merge source; either a branch like "main" or ref like "main@[sha]".
+    ///     into_branch: The name of the merge target.
+    ///     commit_message: Optional, the commit message.
+    ///     commit_body: Optional, the commit body.
+    ///     commit_properties: Optional, a list of properties to attach to the merge.
+    /// Returns:
+    ///     the `Branch` where the merge was made.
+    ///
+    /// Raises:
+    ///     MergeForbiddenError: if the user does not have access to merge the branch.
+    ///     BranchNotFoundError: if the destination branch does not exist.
+    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
+    ///     MergeConflictError: if the merge operation results in a conflict.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (source_ref, into_branch, commit_message=None, commit_body=None, commit_properties=None, message=None, properties=None))]
+    #[allow(clippy::too_many_arguments)]
+    fn merge_branch(
+        &mut self,
+        source_ref: &str,
+        into_branch: &str,
+        commit_message: Option<&str>,
+        commit_body: Option<&str>,
+        commit_properties: Option<std::collections::HashMap<String, String>>,
+        message: Option<&str>,
+        properties: Option<std::collections::HashMap<String, String>>,
+    ) -> PyResult<Py<PyAny>> {
+        let _ = (
+            source_ref,
+            into_branch,
+            commit_message,
+            commit_body,
+            commit_properties,
+            message,
+            properties,
+        );
+        todo!("merge_branch")
+    }
+
+    /// Delete a branch.
+    ///
+    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// if client.delete_branch('my_branch_name')
+    ///     #do something
+    /// ```
+    ///
+    /// Parameters:
+    ///     branch: The name of the branch to delete.
+    ///     if_exists: If set to `True`, the branch will not raise an error if it does not exist.
+    /// Returns:
+    ///     A boolean for if the branch was deleted.
+    ///
+    /// Raises:
+    ///     DeleteBranchForbiddenError: if the user does not have access to delete the branch.
+    ///     BranchNotFoundError: if the branch does not exist.
+    ///     BranchHeadChangedError: if the branch head hash has changed.
+    ///     UnauthorizedError: if the user's credentials are invalid.
+    ///     ValueError: if one or more parameters are invalid.
+    #[pyo3(signature = (branch, if_exists=None))]
+    fn delete_branch(&mut self, branch: &str, if_exists: Option<bool>) -> PyResult<bool> {
+        let _ = (branch, if_exists);
+        todo!("delete_branch")
+    }
+}

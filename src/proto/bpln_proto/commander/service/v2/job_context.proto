@@ -1,0 +1,91 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "runner_events.proto";
+
+// A Ref corresponds to any bauplan commit. `hash` is optional because obtaining its value may be
+// deferred (assigned by, or accessed from, "the system")
+message BauplanRef {
+  string name = 1;
+  optional string hash = 2;
+
+  enum RefType {
+    // Explicit value for a ref type not yet specified
+    REF_TYPE_UNSPECIFIED = 0;
+
+    // A catch-all type for a ref
+    REF_TYPE_COMMIT = 1;
+
+    // A ref that is used as a branch
+    REF_TYPE_BRANCH = 2;
+
+    // A transient ref that is merged when a job is successful and is maintained on failure
+    REF_TYPE_TRANSACTION_BRANCH = 3;
+  }
+}
+
+// A DAG Node corresponds to a bauplan Model (python function or query)
+message ModelNode {
+  string model_id = 1;
+  string model_name = 2;
+}
+
+// A DAG Edge corresponds to a dependency of a bauplan Model,
+// identifying a Model (destination) with its input data (source Model)
+message ModelEdge {
+  // source_id will be unset for leaf nodes
+  optional string source_id = 1;
+  string destination_id = 2;
+}
+
+message JobContext {
+  string job_id = 1;
+
+  // Project information for Job
+  optional string project_id = 2;
+  optional string project_name = 3;
+
+  // Source Ref for the job (and optionally its branch alias)
+  optional string ref = 4;
+  optional string branch = 5;
+
+  // Transactional branch for the job
+  optional BauplanRef transaction_branch = 8;
+
+  // Data for CodeSnapshot
+  optional bytes code_snapshot = 6;
+
+  // DAG nodes and their edges; they should be 1-1 (equal cardinality)
+  // If a model (ModelNode) is a leaf model (S3Scan),
+  // it has a corresponding DAGEdge with an unset source_id
+  repeated ModelNode models = 9;
+  repeated ModelEdge model_deps = 10;
+
+  // Logs for Job
+  repeated RunnerEvent job_events = 7;
+}
+
+message JobError {
+  string job_id = 1;
+  string error_msg = 2;
+  uint32 error_code = 3;
+  string error_type = 4;
+}
+
+message GetJobContextRequest {
+  // Allow for querying many jobs to reduce round trips
+  repeated string job_ids = 1;
+  int64 start = 2;
+  int64 end = 3;
+  int64 limit = 4;
+  bool include_logs = 5;
+  bool include_snapshot = 6;
+}
+
+message GetJobContextResponse {
+  // A JobContext for each successfully found Job
+  repeated JobContext job_contexts = 1;
+
+  // Collect many errors to reduce round trips
+  repeated JobError errors = 2;
+}

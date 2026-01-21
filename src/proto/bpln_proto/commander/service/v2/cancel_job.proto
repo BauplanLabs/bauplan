@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message CancelJobRequest {
+  JobId job_id = 1;
+}
+
+message CancelJobResponse {
+  enum CancelStatus {
+    CANCEL_STATUS_UNSPECIFIED = 0;
+    CANCEL_STATUS_SUCCESS = 1;
+    CANCEL_STATUS_FAILURE = 2;
+  }
+  CancelStatus status = 1;
+  string message = 2;
+}

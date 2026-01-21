@@ -1,0 +1,29 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message TableCreatePlanRequest {
+  JobRequestCommon job_request_common = 1;
+
+  optional string branch_name = 2;
+  string table_name = 3;
+  optional string namespace = 4;
+
+  string search_string = 5;
+  bool table_replace = 6;
+  optional string table_partitioned_by = 7;
+}
+
+message TableCreatePlanResponse {
+  JobResponseCommon job_response_common = 1;
+
+  string branch_name = 2;
+  string table_name = 3;
+  string namespace = 4;
+
+  string search_string = 5;
+  bool table_replace = 6;
+  string user_branch_prefix = 7;
+  optional string table_partitioned_by = 8;
+}

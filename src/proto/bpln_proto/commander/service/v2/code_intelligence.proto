@@ -1,0 +1,14 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+message CodeIntelligenceError {
+  string type = 1;
+  string message = 2;
+  repeated string traceback = 3;
+}
+
+message CodeIntelligenceResponseMetadata {
+  int32 status_code = 1;
+  string response_id = 2;
+  int64 response_ts = 3;
+}

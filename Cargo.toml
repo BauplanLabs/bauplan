@@ -1,0 +1,53 @@
+[package]
+name = "bauplan"
+version = "0.1.0"
+edition = "2024"
+authors = ["Colin Marc <colin.marc@bauplanlabs.com>"]
+description = "The client SDK and CLI for Bauplan"
+homepage = "docs.bauplanlabs.com"
+repository = "https://github.com/bauplanlabs/bauplan"
+license = "Apache-2.0 OR MIT"
+
+[lib]
+name = "bauplan"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "bauplan"
+path = "src/main.rs"
+
+[features]
+default = []
+python = ["dep:pyo3", "dep:chrono", "pyo3/chrono"]
+
+[dependencies]
+anyhow = "1"
+chrono = { version = "0.4", optional = true }
+clap = { version = "4", features = ["derive"] }
+env_logger = "0.11"
+futures-io = "0.3.31"
+http = "1"
+log = "0.4"
+prost = "0.14"
+prost-types = "0.14"
+pyo3 = { version = "0.27", optional = true, features = ["multiple-pymethods"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+tabwriter = "1"
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tonic = { version = "0.14", features = ["tls-native-roots"] }
+tonic-prost = "0.14"
+ureq = "3"
+uuid = { version = "1", features = ["serde"] }
+yansi = "1"
+
+[build-dependencies]
+anyhow = "1"
+tonic-prost-build = "0.14"
+
+[dev-dependencies]
+http-body-util = "0.1"
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

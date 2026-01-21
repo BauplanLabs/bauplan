@@ -1,0 +1,44 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "bauplan_info.proto";
+import "cancel_job.proto";
+import "code_snapshot_re_run.proto";
+import "code_snapshot_run.proto";
+import "external_table_create.proto";
+import "get_jobs.proto";
+import "get_logs.proto";
+import "job_context.proto";
+import "push_runner_status.proto";
+import "query_run.proto";
+import "snapshot_info.proto";
+import "subscribe_logs.proto";
+import "subscribe_runner.proto";
+import "table_create_plan.proto";
+import "table_create_plan_apply.proto";
+import "table_data_import.proto";
+
+service V2CommanderService {
+  rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {}
+  rpc GetLogs(GetLogsRequest) returns (GetLogsResponse) {}
+  rpc GetJobContext(GetJobContextRequest) returns (GetJobContextResponse) {}
+
+  rpc TableCreatePlan(TableCreatePlanRequest) returns (TableCreatePlanResponse) {}
+  rpc TableCreatePlanApply(TableCreatePlanApplyRequest) returns (TableCreatePlanApplyResponse) {}
+  rpc TableDataImport(TableDataImportRequest) returns (TableDataImportResponse) {}
+  rpc ExternalTableCreate(ExternalTableCreateRequest) returns (ExternalTableCreateResponse) {}
+
+  rpc CodeSnapshotRun(CodeSnapshotRunRequest) returns (CodeSnapshotRunResponse) {}
+  rpc CodeSnapshotReRun(CodeSnapshotReRunRequest) returns (CodeSnapshotReRunResponse) {}
+
+  rpc QueryRun(QueryRunRequest) returns (QueryRunResponse) {}
+
+  rpc PushRunnerStatus(PushRunnerStatusRequest) returns (PushRunnerStatusResponse) {}
+
+  // FROM V1
+  rpc CancelJob(CancelJobRequest) returns (CancelJobResponse) {}
+  rpc SubscribeLogs(SubscribeLogsRequest) returns (stream SubscribeLogsResponse) {}
+  rpc SubscribeRunner(stream SubscribeRunnerRequest) returns (stream SubscribeRunnerResponse) {}
+  rpc GetSnapshotInfo(GetSnapshotInfoRequest) returns (GetSnapshotInfoResponse) {}
+  rpc GetBauplanInfo(GetBauplanInfoRequest) returns (GetBauplanInfoResponse) {}
+}

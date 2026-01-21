@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message RunnerJobRequest {
+  reserved 4, 7, 5, 3, 1, 2, 6, 8, 10, 12, 13, 14, 15, 16, 17, 11;
+  reserved "steps", "physical_plan_id", "detach", "status", "scheduled_runner_id", "scheduling_error", "user", "created_at", "finished_at", "read_branch", "write_branch", "tags", "args";
+  optional bytes physical_plan_v2 = 9;
+  int32 priority = 18;
+}
+
+message RunnerAction {
+  enum Action {
+    ACTION_UNSPECIFIED = 0;
+    ACTION_START = 1;
+    ACTION_CANCEL = 2;
+    ACTION_UPLOAD = 3;
+    ACTION_QUERY = 4;
+    ACTION_GLOBAL_LIVELINESS_HEARTBEAT = 5;
+  }
+  JobId job_id = 1;
+  Action action = 2;
+  optional RunnerJobRequest runner_job_request = 3;
+  string trace_id = 4;
+  string parent_span_id = 5;
+  map<string, string> job_args = 6;
+}

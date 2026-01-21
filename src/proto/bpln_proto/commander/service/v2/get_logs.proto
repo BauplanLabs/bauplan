@@ -1,0 +1,17 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "runner_events.proto";
+
+message GetLogsRequest {
+  string job_id = 1;
+  int64 start = 2;
+  int64 end = 3;
+  int64 limit = 4;
+}
+
+message GetLogsResponse {
+  reserved 2;
+  reserved "job";
+  repeated RunnerEvent events = 1;
+}

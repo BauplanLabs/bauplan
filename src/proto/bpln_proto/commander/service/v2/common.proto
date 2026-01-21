@@ -1,0 +1,152 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "google/protobuf/timestamp.proto";
+
+// Goal here is to denote a common structure whose fields are always necessary
+// when fulfilling a request which involves getting a physical plan
+enum JobRequestOptionalBool {
+  JOB_REQUEST_OPTIONAL_BOOL_UNSPECIFIED = 0;
+  JOB_REQUEST_OPTIONAL_BOOL_TRUE = 1;
+  JOB_REQUEST_OPTIONAL_BOOL_FALSE = 2;
+}
+
+message JobRequestCommon {
+  string module_version = 1;
+  string hostname = 2;
+  map<string, string> args = 3;
+  JobRequestOptionalBool debug = 4;
+
+  // intended to be a value between [1,10]
+  optional int32 priority = 5;
+}
+
+message JobResponseCommon {
+  string job_id = 1;
+  bool debug = 2;
+  map<string, string> args = 3;
+  string username = 4;
+  repeated PlannerLog logs = 5;
+}
+
+message PlannerLogGenericContext {}
+
+message PlannerLogFileContext {
+  string path = 1;
+  optional int64 line = 2;
+}
+
+message PlannerLog {
+  enum LogLevel {
+    LOG_LEVEL_UNSPECIFIED = 0;
+    LOG_LEVEL_ERROR = 1;
+    LOG_LEVEL_WARNING = 2;
+    LOG_LEVEL_DEBUG = 3;
+    LOG_LEVEL_INFO = 4;
+    LOG_LEVEL_TRACE = 5;
+  }
+
+  LogLevel level = 1;
+  string message = 2;
+
+  oneof context {
+    PlannerLogGenericContext generic = 3;
+    PlannerLogFileContext file = 4;
+  }
+}
+
+// TODO: consider renaming this to something generic, as this seems to be specific to `bauplan run`
+// but is used else where
+message TriggerRunOpts {
+  bool cache = 1;
+}
+
+// JobInfo is used for JobStore
+// Probably will revisit this soon (nathanleclaire 11/5/2024)
+message JobInfo {
+  reserved 5, 6;
+  string id = 1;
+  string human_readable_status = 2;
+  string kind = 3;
+  string user = 4;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp started_at = 12;
+  google.protobuf.Timestamp finished_at = 8;
+  string runner = 9;
+  JobStateType status = 10;
+  JobKind kind_type = 11;
+}
+
+// LEGACY: DO NOT ADD NEW FIELDS HERE. REFACTOR NEEDED
+message JobId {
+  string id = 1;
+  string snapshot_uri = 2;
+  optional string dag_graphviz = 3;
+  optional string dag_ascii = 4;
+  string scheduled_runner_id = 5;
+}
+
+message IntParameterValue {
+  optional int64 value = 1;
+}
+message FloatParameterValue {
+  optional double value = 1;
+}
+message BoolParameterValue {
+  optional bool value = 1;
+}
+message StrParameterValue {
+  optional string value = 1;
+}
+message SecretParameterValue {
+  optional string value = 1;
+  optional string key = 2;
+}
+message VaultParameterValue {
+  optional string value = 1;
+}
+
+message Parameter {
+  string name = 1;
+
+  oneof value {
+    IntParameterValue int_value = 2;
+    FloatParameterValue float_value = 3;
+    BoolParameterValue bool_value = 4;
+    StrParameterValue str_value = 5;
+    SecretParameterValue secret_value = 6;
+    VaultParameterValue vault_value = 7;
+  }
+}
+
+// This is based on code_intelligence.PhysicalPlanKind
+enum JobKind {
+  JOB_KIND_UNSPECIFIED = 0;
+  JOB_KIND_CODE_SNAPSHOT_RUN = 1;
+  JOB_KIND_QUERY_RUN = 2;
+  JOB_KIND_IMPORT_PLAN_CREATE = 3;
+  JOB_KIND_IMPORT_PLAN_APPLY = 4;
+  JOB_KIND_TABLE_PLAN_CREATE = 5;
+  JOB_KIND_TABLE_PLAN_CREATE_APPLY = 6;
+  JOB_KIND_TABLE_DATA_IMPORT = 7;
+}
+
+enum JobStateType {
+  JOB_STATE_TYPE_UNSPECIFIED = 0;
+  JOB_STATE_TYPE_NOT_STARTED = 1;
+  JOB_STATE_TYPE_RUNNING = 2;
+  JOB_STATE_TYPE_COMPLETE = 3;
+  JOB_STATE_TYPE_ABORT = 4;
+  JOB_STATE_TYPE_FAIL = 5;
+  JOB_STATE_TYPE_OTHER = 6;
+}
+
+enum TaskStateType {
+  TASK_STATE_TYPE_UNSPECIFIED = 0;
+  TASK_STATE_TYPE_NOT_STARTED = 1;
+  TASK_STATE_TYPE_RUNNING = 2;
+  TASK_STATE_TYPE_COMPLETE = 3;
+  TASK_STATE_TYPE_ABORT = 4;
+  TASK_STATE_TYPE_FAIL = 5;
+  TASK_STATE_TYPE_OTHER = 6;
+}

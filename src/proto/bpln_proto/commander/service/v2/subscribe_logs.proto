@@ -1,0 +1,17 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "runner_events.proto";
+
+message SubscribeLogsRequest {
+  string job_id = 1;
+}
+
+// TODO(nathanleclaire/vlad): The events pushed by SubscribeRunnerRequest should
+// be decoupled from the events received by SubscribeLogsResponse. (i.e., the end
+// facing user client should not receive the exact same thing sent by the runner)
+// They are done the same to port the v1 protobufs to v2 for now.
+message SubscribeLogsResponse {
+  string job_id = 1;
+  optional RunnerEvent runner_event = 2;
+}

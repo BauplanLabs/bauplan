@@ -1,0 +1,257 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "google/protobuf/timestamp.proto";
+
+message TaskMetadata {
+  enum TaskLevel {
+    TASK_LEVEL_UNSPECIFIED = 0;
+    TASK_LEVEL_DAG = 1;
+    TASK_LEVEL_SYSTEM = 2;
+  }
+  TaskLevel level = 1;
+  string human_readable_task_type = 2;
+  string task_type = 3;
+  optional string function_name = 4;
+  optional int32 line_number = 5;
+  optional string file_name = 6;
+  optional string model_name = 7;
+}
+
+message JobCompleteEvent {
+  oneof outcome {
+    JobSuccess success = 1;
+    JobFailure failure = 2;
+    JobCancellation cancellation = 3;
+    JobTimeout timeout = 4;
+    JobRejected rejected = 6;
+    JobHeartbeatFailure heartbeat_failure = 7;
+  }
+  string job_id = 5;
+}
+
+enum Component {
+  COMPONENT_UNSPECIFIED = 0;
+  COMPONENT_RUNNER = 1;
+  COMPONENT_RUNTIME = 2;
+}
+
+message JobSuccess {
+  string msg = 1;
+}
+
+message JobRejected {
+  string reason = 1;
+}
+
+message JobHeartbeatFailure {}
+
+message JobFailure {
+  enum ErrorCode {
+    // Treat unspecified as something went wrong with the actual execution
+    // orchestration of a job
+    ERROR_CODE_UNSPECIFIED = 0;
+
+    // Sent when the failure is due a user error. It can be used to know when
+    // to provide more information to the user.
+    ERROR_CODE_RUNTIME_TASK_USER_ERROR = 1;
+
+    // This is specific to a runtime task failure. If it is unspecified, it
+    // means something wrong happend on scheduler/executor side and should be
+    // treated as different than a runtime task failure
+    ERROR_CODE_RUNTIME_INTERNAL_ERROR = 2;
+  }
+
+  Component component = 1;
+  string error_message = 2;
+
+  reserved 3;
+  // This is optional and may be an empty string
+  optional string stack_trace = 4;
+
+  ErrorCode error_code = 5;
+}
+
+message JobCancellation {
+  string reason = 1;
+}
+
+message JobTimeout {
+  string msg = 1;
+}
+
+//===============================================================
+//===============================================================
+//===============================================================
+
+message TaskStartEvent {
+  TaskMetadata task_metadata = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string task_id = 3;
+  string task_name = 4;
+}
+
+message TaskCompleteEvent {
+  oneof outcome {
+    TaskSuccess success = 1;
+    TaskFailure failure = 2;
+    TaskCancelled cancel = 3;
+    TaskTimeout timeout = 4;
+    TaskSkipped skipped = 5;
+  }
+  TaskMetadata task_metadata = 6;
+  google.protobuf.Timestamp timestamp = 7;
+  string task_id = 8;
+  string task_name = 9;
+}
+
+message TaskSuccess {
+  string message = 1;
+  repeated RuntimeTablePreview runtime_table_preview = 2;
+}
+
+message RuntimeTablePreview {
+  repeated RuntimeTableColumnInfo columns = 1;
+  string table_name = 2;
+}
+
+message RuntimeTableColumnInfo {
+  string column_name = 1;
+  string column_type = 2;
+  repeated string values = 3;
+}
+
+message TaskSkipped {}
+
+message TaskFailure {
+  Component component = 1;
+  string error_message = 2;
+  int32 error_code = 3;
+
+  // This is optional and may be an empty string
+  optional string stack_trace = 4;
+  bool is_fatal = 5;
+}
+
+message TaskCancelled {
+  string reason = 1;
+}
+
+message TaskTimeout {
+  string message = 1;
+}
+
+message FlightServerStartEvent {
+  enum ServerAccessMethod {
+    SERVER_ACCESS_METHOD_UNSPECIFIED = 0;
+    SERVER_ACCESS_METHOD_PRIVATE_LINK = 1;
+    SERVER_ACCESS_METHOD_PUBLIC_INTERNET = 2;
+  }
+
+  string endpoint = 1;
+  string job_id = 2;
+  string task_id = 3;
+  int32 num_rows = 4;
+  bool use_tls = 5;
+  ServerAccessMethod connection_method = 6;
+  string magic_token = 7;
+}
+
+message RuntimeLogEvent {
+  enum LogLevel {
+    LOG_LEVEL_UNSPECIFIED = 0;
+    LOG_LEVEL_ERROR = 1;
+    LOG_LEVEL_WARNING = 2;
+    LOG_LEVEL_DEBUG = 3;
+    LOG_LEVEL_INFO = 4;
+    LOG_LEVEL_TRACE = 5;
+  }
+  enum OutputStream {
+    OUTPUT_STREAM_UNSPECIFIED = 0;
+    OUTPUT_STREAM_STDOUT = 1;
+    OUTPUT_STREAM_STDERR = 2;
+  }
+  enum LogType {
+    LOG_TYPE_UNSPECIFIED = 0;
+    LOG_TYPE_SYSTEM = 1;
+    LOG_TYPE_USER = 2;
+  }
+
+  LogLevel level = 1;
+  OutputStream output_stream = 2;
+  LogType type = 3;
+  int64 emit_timestamp_ns = 4;
+  string msg = 5;
+  TaskMetadata task_metadata = 6;
+  string job_id = 7;
+}
+
+message RuntimeLogMsg {
+  string level = 1;
+  string message = 2;
+}
+
+message TableCreatePlanDoneEvent {
+  TaskMetadata task_metadata = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string task_id = 3;
+  string task_name = 4;
+
+  string plan_as_yaml = 5;
+  bool success = 6;
+  string error_message = 7;
+
+  repeated string files_to_be_imported = 8;
+  bool can_auto_apply = 9;
+}
+
+message TableCreatePlanApplyDoneEvent {
+  TaskMetadata task_metadata = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string task_id = 3;
+  string task_name = 4;
+
+  bool success = 5;
+  string error_message = 6;
+}
+
+message ImportPlanCreatedEvent {
+  TaskMetadata task_metadata = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string task_id = 3;
+  string task_name = 4;
+
+  string plan_as_yaml = 5;
+  bool success = 6;
+  string error_message = 7;
+}
+
+message ApplyPlanDoneEvent {
+  TaskMetadata task_metadata = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  string task_id = 3;
+  string task_name = 4;
+
+  bool success = 5;
+  string error_message = 6;
+}
+
+message GlobalLivelinessHeartbeat {}
+
+message RunnerEvent {
+  oneof event {
+    TaskStartEvent task_start = 1;
+    TaskCompleteEvent task_completion = 2;
+    JobCompleteEvent job_completion = 3;
+    RuntimeLogEvent runtime_user_log = 4;
+    FlightServerStartEvent flight_server_start = 5;
+
+    ImportPlanCreatedEvent import_plan_created = 6;
+    ApplyPlanDoneEvent apply_plan_done = 7;
+
+    TableCreatePlanDoneEvent table_create_plan_done_event = 8;
+    TableCreatePlanApplyDoneEvent table_create_plan_apply_done_event = 9;
+
+    GlobalLivelinessHeartbeat global_liveliness_heartbeat = 10;
+  }
+}

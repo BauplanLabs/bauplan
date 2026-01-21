@@ -1,0 +1,36 @@
+syntax = "proto3";
+package bpln_proto.commander.service.v2;
+
+import "common.proto";
+
+message TableDataImportRequest {
+  JobRequestCommon job_request_common = 1;
+
+  optional string branch_name = 2;
+  string table_name = 3;
+  optional string namespace = 4;
+
+  string search_string = 5;
+  bool import_duplicate_files = 6;
+  bool best_effort = 7;
+  bool continue_on_error = 8;
+  optional string transformation_query = 9;
+
+  string preview = 10;
+}
+
+message TableDataImportResponse {
+  JobResponseCommon job_response_common = 1;
+
+  string branch_name = 2;
+  string table_name = 3;
+  string namespace = 4;
+
+  string search_string = 5;
+  bool import_duplicate_files = 6;
+  bool best_effort = 7;
+  bool continue_on_error = 8;
+  optional string transformation_query = 9;
+  string preview = 10;
+  string user_branch_prefix = 11;
+}
