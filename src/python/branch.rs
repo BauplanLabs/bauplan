@@ -5,7 +5,7 @@
 use pyo3::prelude::*;
 use std::collections::HashMap;
 
-use super::bauplan::Client;
+use super::Client;
 
 #[pymethods]
 impl Client {

@@ -25,7 +25,7 @@ pub(crate) struct TagLsArgs {
     pub name: Option<String>,
     /// Limit the number of tags to show
     #[arg(long)]
-    pub limit: Option<i64>,
+    pub limit: Option<usize>,
 }
 
 #[derive(Debug, clap::Args)]

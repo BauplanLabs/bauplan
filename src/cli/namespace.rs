@@ -23,7 +23,7 @@ pub(crate) struct NamespaceLsArgs {
     pub r#ref: Option<String>,
     /// Limit the number of namespaces to show
     #[arg(long)]
-    pub limit: Option<i64>,
+    pub limit: Option<usize>,
     /// Namespace
     pub namespace: String,
 }

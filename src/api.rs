@@ -1,17 +1,18 @@
 use std::{fmt::Display, io::Read};
 
-use http::uri::{InvalidUri, PathAndQuery};
 use serde::{Deserialize, Serialize};
 
 use crate::Profile;
 
 pub mod commit;
 mod error;
+mod paginate;
 pub mod table;
 
 pub use error::*;
+pub use paginate::*;
 
-/// A ref returned by the catalog API.
+/// A ref returned by the API.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CatalogRef {
@@ -48,38 +49,64 @@ impl Display for CatalogRef {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(untagged)]
-enum RawApiResponse<T> {
-    Error { error: RawApiError },
-    Data { data: T, r#ref: CatalogRef },
+struct RawMetadata {
+    pagination_token: Option<String>,
 }
 
-/// Implemented by types that can be send as requests to the Bauplan API.
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum RawApiResponse<T> {
+    Error {
+        error: RawApiError,
+    },
+    Data {
+        data: T,
+        r#ref: CatalogRef,
+        metadata: RawMetadata,
+    },
+}
+
+/// Implemented by types that can be sent as requests to the Bauplan API.
 pub trait ApiRequest: Sized {
     /// The corresponding response type.
     type Response: ApiResponse;
 
     /// The path that the request should take.
-    fn path_and_query(&self) -> Result<PathAndQuery, InvalidUri>;
+    fn path(&self) -> String;
 
     /// The method to use.
     fn method(&self) -> http::Method {
         http::Method::GET
     }
 
-    /// Create the request body.
-    fn into_body(self) -> Option<impl Serialize> {
-        None::<()>
+    /// The serializable request body.
+    fn body(&self) -> Option<impl Serialize> {
+        None::<&()>
+    }
+
+    /// The serializable query string.
+    fn query(&self) -> Option<impl Serialize> {
+        None::<&()>
     }
 
     /// Consume the request and return an [http::Request] suitable for passing
     /// to your favorite HTTP client.
     fn into_request(self, profile: &Profile) -> Result<http::Request<String>, http::Error> {
         let method = self.method();
-        let pq = self.path_and_query()?;
-        let body = self.into_body();
+        let mut path = self.path();
         let mut parts = profile.api_endpoint.clone().into_parts();
-        parts.path_and_query = Some(pq);
+
+        if let Some(qs) = self.query() {
+            path.push('?');
+
+            // SAFETY: query strings should only be valid UTF-8.
+            unsafe {
+                serde_qs::to_writer(&qs, &mut path.as_mut_vec())
+                    .expect("query string serialization should be infallible");
+            }
+        }
+
+        parts.path_and_query = Some(path.parse()?);
 
         let uri = http::Uri::from_parts(parts).unwrap();
         let req = http::Request::builder()
@@ -91,14 +118,27 @@ pub trait ApiRequest: Sized {
             )
             .header(http::header::USER_AGENT, &profile.user_agent);
 
-        if let Some(body) = body.as_ref() {
+        if let Some(body) = self.body() {
             let body_str =
-                serde_json::to_string(body).expect("JSON serialization should be infallible");
+                serde_json::to_string(&body).expect("JSON serialization should be infallible");
             req.header(http::header::CONTENT_TYPE, "application/json")
                 .header(http::header::CONTENT_LENGTH, body_str.len())
                 .body(body_str)
         } else {
             req.body("".to_string())
+        }
+    }
+
+    /// Add a pagination token to the request.
+    fn paginate(
+        self,
+        pagination_token: Option<&str>,
+        limit: Option<usize>,
+    ) -> PaginatedRequest<'_, Self> {
+        PaginatedRequest {
+            base: self,
+            pagination_token,
+            limit,
         }
     }
 }
@@ -119,16 +159,16 @@ pub trait ApiResponse: Sized {
 
 /// A private trait for types that deserialize json from the `data` field of
 /// the generic response.
-trait DataResponse: for<'de> Deserialize<'de> {}
+pub(crate) trait DataResponse: for<'de> Deserialize<'de> {}
 
 impl<T: DataResponse> ApiResponse for T {
     fn from_response_parts(
         parts: http::response::Parts,
         body: impl Read,
     ) -> Result<Self, ApiError> {
-        let raw: RawApiResponse<Self> = serde_json::from_reader(body).map_err(|_| {
-            // todo log::error
-            ApiError::Other(parts.status)
+        let raw: RawApiResponse<Self> = serde_json::from_reader(body).map_err(|e| {
+            log::error!("Failed to parse API response: {e:#?}");
+            ApiError::InvalidResponse(parts.status, e)
         })?;
 
         match raw {
@@ -138,6 +178,7 @@ impl<T: DataResponse> ApiResponse for T {
     }
 }
 
+// For API methods that just return a ref and no data.
 impl ApiResponse for CatalogRef {
     fn from_response_parts(
         parts: http::response::Parts,
@@ -146,7 +187,7 @@ impl ApiResponse for CatalogRef {
         let raw: RawApiResponse<serde_json::Value> =
             serde_json::from_reader(body).map_err(|e| {
                 log::error!("Failed to parse API response: {e:#?}");
-                ApiError::Other(parts.status)
+                ApiError::InvalidResponse(parts.status, e)
             })?;
 
         match raw {

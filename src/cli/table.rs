@@ -3,7 +3,7 @@ use std::io::{Write as _, stdout};
 use bauplan::{commit::CommitOptions, table::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, KeyValue, Output, kv_to_map};
+use crate::cli::{Cli, KeyValue, Output, Priority, kv_to_map};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableArgs {
@@ -43,7 +43,7 @@ pub(crate) struct TableLsArgs {
     pub r#ref: Option<String>,
     /// Limit the number of tables to show
     #[arg(long)]
-    pub limit: Option<i64>,
+    pub limit: Option<usize>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -95,7 +95,7 @@ pub(crate) struct TableCreateArgs {
     pub arg: Vec<String>,
     /// Set the job priority (1-10, where 10 is highest priority)
     #[arg(long)]
-    pub priority: Option<i64>,
+    pub priority: Priority,
 }
 
 #[derive(Debug, clap::Args)]
@@ -136,7 +136,7 @@ pub(crate) struct TableCreatePlanApplyArgs {
     pub arg: Vec<String>,
     /// Set the job priority (1-10, where 10 is highest priority)
     #[arg(long)]
-    pub priority: Option<i64>,
+    pub priority: Priority,
 }
 
 #[derive(Debug, clap::Args)]
@@ -167,7 +167,7 @@ pub(crate) struct TableCreateExternalArgs {
     pub arg: Vec<String>,
     /// Set the job priority (1-10, where 10 is highest priority) (only for parquet mode)
     #[arg(long)]
-    pub priority: Option<i64>,
+    pub priority: Priority,
 }
 
 #[derive(Debug, clap::Args)]
@@ -201,7 +201,7 @@ pub(crate) struct TableImportArgs {
     pub arg: Vec<String>,
     /// Set the job priority (1-10, where 10 is highest priority)
     #[arg(long)]
-    pub priority: Option<i64>,
+    pub priority: Priority,
 }
 
 #[derive(Debug, clap::Args)]
@@ -227,9 +227,9 @@ pub(crate) struct TableRevertArgs {
 
 pub(crate) fn handle(cli: &Cli, args: TableArgs) -> anyhow::Result<()> {
     match args.command {
-        TableCommand::Ls(_) => todo!(),
+        TableCommand::Ls(args) => list_tables(cli, args),
         TableCommand::Get(args) => get_table(cli, args),
-        TableCommand::Rm(_) => todo!(),
+        TableCommand::Rm(args) => delete_table(cli, args),
         TableCommand::Create(_) => todo!(),
         TableCommand::CreatePlan(_) => todo!(),
         TableCommand::CreatePlanApply(_) => todo!(),
@@ -239,10 +239,50 @@ pub(crate) fn handle(cli: &Cli, args: TableArgs) -> anyhow::Result<()> {
     }
 }
 
+fn list_tables(
+    cli: &Cli,
+    TableLsArgs {
+        namespace,
+        r#ref,
+        limit,
+    }: TableLsArgs,
+) -> anyhow::Result<()> {
+    let req = GetTables {
+        at_ref: r#ref.as_deref().unwrap_or("main"),
+        filter_by_name: None,
+        filter_by_namespace: namespace.as_deref(),
+    };
+
+    let tables = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+
+    match cli.global.output.unwrap_or_default() {
+        Output::Json => {
+            let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
+            serde_json::to_writer(stdout(), &all_tables)?;
+        }
+        Output::Tty => {
+            let mut tw = TabWriter::new(stdout());
+            writeln!(&mut tw, "NAMESPACE\tNAME\tKIND")?;
+            for table in tables {
+                let table = table?;
+                writeln!(
+                    &mut tw,
+                    "{}\t{}\t{}",
+                    table.namespace, table.name, table.kind
+                )?;
+            }
+
+            tw.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
 fn get_table(cli: &Cli, TableGetArgs { r#ref, table_name }: TableGetArgs) -> anyhow::Result<()> {
     let req = GetTable {
         name: &table_name,
-        at_ref: r#ref.as_deref(),
+        at_ref: r#ref.as_deref().unwrap_or("main"),
         namespace: None,
     };
 
@@ -266,6 +306,49 @@ fn get_table(cli: &Cli, TableGetArgs { r#ref, table_name }: TableGetArgs) -> any
 
             tw.flush()?;
         }
+    }
+
+    Ok(())
+}
+
+fn delete_table(
+    cli: &Cli,
+    TableRmArgs {
+        branch,
+        commit_body,
+        if_exists,
+        table_name,
+    }: TableRmArgs,
+) -> anyhow::Result<()> {
+    let req = DeleteTable {
+        name: &table_name,
+        branch: branch.as_deref().unwrap_or("main"),
+        namespace: None,
+        commit: CommitOptions {
+            body: commit_body.as_deref(),
+            properties: Default::default(),
+        },
+    };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(r) => {
+            log::debug!("Created ref {r}");
+            log::info!("Table {table_name} deleted");
+        }
+        Err(e)
+            if if_exists
+                && matches!(
+                    e.downcast_ref(),
+                    Some(bauplan::ApiError::ErrorResponse {
+                        kind: bauplan::ApiErrorKind::TableNotFound,
+                        ..
+                    })
+                ) =>
+        {
+            log::info!("Table {table_name} does not exist");
+        }
+        Err(e) => return Err(e),
     }
 
     Ok(())

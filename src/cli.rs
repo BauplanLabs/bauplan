@@ -49,6 +49,23 @@ pub(crate) enum Output {
     Tty,
 }
 
+/// A priority for a job, from 1-10, where 10 is the highest.
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub(crate) struct Priority(u32);
+
+impl FromStr for Priority {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let priority = s.parse::<u32>()?;
+        if !(1..=10).contains(&priority) {
+            bail!("Invalid priority: {}", s);
+        }
+
+        Ok(Priority(priority))
+    }
+}
+
 /// key=value string pairs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct KeyValue(String, String);
@@ -72,10 +89,10 @@ fn kv_to_map(kv: &[KeyValue]) -> BTreeMap<&str, &str> {
 #[derive(Debug, clap::Args)]
 pub(crate) struct GlobalArgs {
     /// Name of the profile to use
-    #[arg(long, global = true)]
+    #[arg(long, short = 'P', global = true)]
     pub profile: Option<String>,
     /// Output format (options: tty, json)
-    #[arg(long, global = true)]
+    #[arg(long, short = 'O', global = true)]
     pub output: Option<Output>,
     /// Timeout (in seconds) for client operations. (-1 = no timeout, default is command specific)
     #[arg(long, global = true)]

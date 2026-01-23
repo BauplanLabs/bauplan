@@ -18,7 +18,7 @@
 //!
 //! let req = GetTable {
 //!     name: "taxi_fhvhv",
-//!     at_ref: Some("main"),
+//!     at_ref: "main",
 //!     namespace: Some("bauplan"),
 //! };
 //!
@@ -50,7 +50,7 @@
 //!
 //! let req = GetTable {
 //!     name: "bauplan.taxi_fhvhv",
-//!     at_ref: Some("main"),
+//!     at_ref: "main",
 //!     namespace: None,
 //! };
 //!

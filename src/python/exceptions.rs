@@ -4,7 +4,10 @@ use pyo3::PyTypeInfo;
 use pyo3::exceptions::PyException;
 use pyo3::prelude::*;
 
-use crate::api::{ApiError, ApiErrorKind};
+use crate::{
+    api::{ApiError, ApiErrorKind},
+    python::ClientError,
+};
 
 #[pymodule(submodule)]
 pub mod exceptions {
@@ -167,23 +170,127 @@ impl BauplanHTTPError {
     }
 }
 
-impl From<&ApiError> for BauplanHTTPError {
-    fn from(err: &ApiError) -> Self {
+impl From<ClientError> for PyErr {
+    fn from(err: ClientError) -> Self {
         match err {
-            ApiError::ErrorResponse {
-                status,
-                kind,
-                message,
-            } => Self {
-                code: status.as_u16(),
-                r#type: kind.to_string(),
-                message: message.clone().unwrap_or_default(),
+            ClientError::Api(api_error) => match api_error {
+                ApiError::ErrorResponse {
+                    status,
+                    kind,
+                    message,
+                } => {
+                    let parent = BauplanHTTPError {
+                        code: status.into(),
+                        r#type: kind.to_string(),
+                        message: message.clone().unwrap_or_default(),
+                    };
+
+                    match kind {
+                        ApiErrorKind::BranchExists => parent.into_err::<BranchExistsError>(),
+                        ApiErrorKind::BranchHeadChanged => {
+                            parent.into_err::<BranchHeadChangedError>()
+                        }
+                        ApiErrorKind::BranchNotFound => parent.into_err::<BranchNotFoundError>(),
+                        ApiErrorKind::CreateBranchForbidden => {
+                            parent.into_err::<CreateBranchForbiddenError>()
+                        }
+                        ApiErrorKind::CreateNamespaceForbidden => {
+                            parent.into_err::<CreateNamespaceForbiddenError>()
+                        }
+                        ApiErrorKind::CreateTagForbidden => {
+                            parent.into_err::<CreateTagForbiddenError>()
+                        }
+                        ApiErrorKind::DeleteBranchForbidden => {
+                            parent.into_err::<DeleteBranchForbiddenError>()
+                        }
+                        ApiErrorKind::DeleteNamespaceForbidden => {
+                            parent.into_err::<DeleteNamespaceForbiddenError>()
+                        }
+                        ApiErrorKind::DeleteTableForbidden => {
+                            parent.into_err::<DeleteTableForbiddenError>()
+                        }
+                        ApiErrorKind::DeleteTagForbidden => {
+                            parent.into_err::<DeleteTagForbiddenError>()
+                        }
+                        ApiErrorKind::InvalidRef => parent.into_err::<InvalidRefError>(),
+                        ApiErrorKind::MergeConflict => parent.into_err::<MergeConflictError>(),
+                        ApiErrorKind::MergeForbidden => parent.into_err::<MergeForbiddenError>(),
+                        ApiErrorKind::NamespaceUnresolved => {
+                            parent.into_err::<NamespaceUnresolvedError>()
+                        }
+                        ApiErrorKind::NamespaceExists => parent.into_err::<NamespaceExistsError>(),
+                        ApiErrorKind::NamespaceIsNotEmpty => {
+                            parent.into_err::<NamespaceIsNotEmptyError>()
+                        }
+                        ApiErrorKind::NamespaceNotFound => {
+                            parent.into_err::<NamespaceNotFoundError>()
+                        }
+                        ApiErrorKind::NotABranchRef => parent.into_err::<NotABranchRefError>(),
+                        ApiErrorKind::NotATagRef => parent.into_err::<NotATagRefError>(),
+                        ApiErrorKind::NotAWriteBranchRef => {
+                            parent.into_err::<NotAWriteBranchRefError>()
+                        }
+                        ApiErrorKind::RefNotFound => parent.into_err::<RefNotFoundError>(),
+                        ApiErrorKind::RenameBranchForbidden => {
+                            parent.into_err::<RenameBranchForbiddenError>()
+                        }
+                        ApiErrorKind::RenameTagForbidden => {
+                            parent.into_err::<RenameTagForbiddenError>()
+                        }
+                        ApiErrorKind::RevertDestinationTableExists => {
+                            parent.into_err::<RevertDestinationTableExistsError>()
+                        }
+                        ApiErrorKind::RevertIdenticalTable => {
+                            parent.into_err::<RevertIdenticalTableError>()
+                        }
+                        ApiErrorKind::RevertTableForbidden => {
+                            parent.into_err::<RevertTableForbiddenError>()
+                        }
+                        ApiErrorKind::SameRef => parent.into_err::<SameRefError>(),
+                        ApiErrorKind::TableNotFound => parent.into_err::<TableNotFoundError>(),
+                        ApiErrorKind::TagExists => parent.into_err::<TagExistsError>(),
+                        ApiErrorKind::TagNotFound => parent.into_err::<TagNotFoundError>(),
+                        ApiErrorKind::Unknown(_) => match parent.code {
+                            400 => parent.into_err::<InvalidDataError>(),
+                            401 => parent.into_err::<UnauthorizedError>(),
+                            403 => parent.into_err::<AccessDeniedError>(),
+                            404 => parent.into_err::<ResourceNotFoundError>(),
+                            405 => parent.into_err::<ApiRouteError>(),
+                            409 => parent.into_err::<UpdateConflictError>(),
+                            429 => parent.into_err::<TooManyRequestsError>(),
+                            500 => parent.into_err::<InternalError>(),
+                            502 => parent.into_err::<BadGatewayError>(),
+                            503 => parent.into_err::<ServiceUnavailableError>(),
+                            504 => parent.into_err::<GatewayTimeoutError>(),
+                            _ => parent.into_err::<BauplanHTTPError>(),
+                        },
+                    }
+                }
+                ApiError::Other(status) => {
+                    let parent = BauplanHTTPError {
+                        code: status.into(),
+                        r#type: String::new(),
+                        message: status.to_string(),
+                    };
+
+                    match parent.code {
+                        400 => parent.into_err::<InvalidDataError>(),
+                        401 => parent.into_err::<UnauthorizedError>(),
+                        403 => parent.into_err::<AccessDeniedError>(),
+                        404 => parent.into_err::<ResourceNotFoundError>(),
+                        405 => parent.into_err::<ApiRouteError>(),
+                        409 => parent.into_err::<UpdateConflictError>(),
+                        429 => parent.into_err::<TooManyRequestsError>(),
+                        500 => parent.into_err::<InternalError>(),
+                        502 => parent.into_err::<BadGatewayError>(),
+                        503 => parent.into_err::<ServiceUnavailableError>(),
+                        504 => parent.into_err::<GatewayTimeoutError>(),
+                        _ => parent.into_err::<BauplanHTTPError>(),
+                    }
+                }
+                ApiError::InvalidResponse(_, _) => BauplanError::new_err(api_error.to_string()),
             },
-            ApiError::Other(status) => Self {
-                code: status.as_u16(),
-                r#type: String::new(),
-                message: status.to_string(),
-            },
+            _ => BauplanError::new_err(err.to_string()),
         }
     }
 }
@@ -324,90 +431,3 @@ pyo3::create_exception!(bauplan.exceptions, JobError, BauplanError);
 pyo3::create_exception!(bauplan.exceptions, BauplanQueryError, JobError);
 pyo3::create_exception!(bauplan.exceptions, NoResultsFoundError, BauplanError);
 pyo3::create_exception!(bauplan.exceptions, InvalidPlanError, BauplanError);
-
-impl From<ApiError> for PyErr {
-    fn from(err: ApiError) -> PyErr {
-        let parent = BauplanHTTPError::from(&err);
-
-        match &err {
-            ApiError::ErrorResponse { kind, .. } => match kind {
-                ApiErrorKind::BranchExists => parent.into_err::<BranchExistsError>(),
-                ApiErrorKind::BranchHeadChanged => parent.into_err::<BranchHeadChangedError>(),
-                ApiErrorKind::BranchNotFound => parent.into_err::<BranchNotFoundError>(),
-                ApiErrorKind::CreateBranchForbidden => {
-                    parent.into_err::<CreateBranchForbiddenError>()
-                }
-                ApiErrorKind::CreateNamespaceForbidden => {
-                    parent.into_err::<CreateNamespaceForbiddenError>()
-                }
-                ApiErrorKind::CreateTagForbidden => parent.into_err::<CreateTagForbiddenError>(),
-                ApiErrorKind::DeleteBranchForbidden => {
-                    parent.into_err::<DeleteBranchForbiddenError>()
-                }
-                ApiErrorKind::DeleteNamespaceForbidden => {
-                    parent.into_err::<DeleteNamespaceForbiddenError>()
-                }
-                ApiErrorKind::DeleteTableForbidden => {
-                    parent.into_err::<DeleteTableForbiddenError>()
-                }
-                ApiErrorKind::DeleteTagForbidden => parent.into_err::<DeleteTagForbiddenError>(),
-                ApiErrorKind::InvalidRef => parent.into_err::<InvalidRefError>(),
-                ApiErrorKind::MergeConflict => parent.into_err::<MergeConflictError>(),
-                ApiErrorKind::MergeForbidden => parent.into_err::<MergeForbiddenError>(),
-                ApiErrorKind::NamespaceUnresolved => parent.into_err::<NamespaceUnresolvedError>(),
-                ApiErrorKind::NamespaceExists => parent.into_err::<NamespaceExistsError>(),
-                ApiErrorKind::NamespaceIsNotEmpty => parent.into_err::<NamespaceIsNotEmptyError>(),
-                ApiErrorKind::NamespaceNotFound => parent.into_err::<NamespaceNotFoundError>(),
-                ApiErrorKind::NotABranchRef => parent.into_err::<NotABranchRefError>(),
-                ApiErrorKind::NotATagRef => parent.into_err::<NotATagRefError>(),
-                ApiErrorKind::NotAWriteBranchRef => parent.into_err::<NotAWriteBranchRefError>(),
-                ApiErrorKind::RefNotFound => parent.into_err::<RefNotFoundError>(),
-                ApiErrorKind::RenameBranchForbidden => {
-                    parent.into_err::<RenameBranchForbiddenError>()
-                }
-                ApiErrorKind::RenameTagForbidden => parent.into_err::<RenameTagForbiddenError>(),
-                ApiErrorKind::RevertDestinationTableExists => {
-                    parent.into_err::<RevertDestinationTableExistsError>()
-                }
-                ApiErrorKind::RevertIdenticalTable => {
-                    parent.into_err::<RevertIdenticalTableError>()
-                }
-                ApiErrorKind::RevertTableForbidden => {
-                    parent.into_err::<RevertTableForbiddenError>()
-                }
-                ApiErrorKind::SameRef => parent.into_err::<SameRefError>(),
-                ApiErrorKind::TableNotFound => parent.into_err::<TableNotFoundError>(),
-                ApiErrorKind::TagExists => parent.into_err::<TagExistsError>(),
-                ApiErrorKind::TagNotFound => parent.into_err::<TagNotFoundError>(),
-                ApiErrorKind::Unknown(_) => match parent.code {
-                    400 => parent.into_err::<InvalidDataError>(),
-                    401 => parent.into_err::<UnauthorizedError>(),
-                    403 => parent.into_err::<AccessDeniedError>(),
-                    404 => parent.into_err::<ResourceNotFoundError>(),
-                    405 => parent.into_err::<ApiRouteError>(),
-                    409 => parent.into_err::<UpdateConflictError>(),
-                    429 => parent.into_err::<TooManyRequestsError>(),
-                    500 => parent.into_err::<InternalError>(),
-                    502 => parent.into_err::<BadGatewayError>(),
-                    503 => parent.into_err::<ServiceUnavailableError>(),
-                    504 => parent.into_err::<GatewayTimeoutError>(),
-                    _ => parent.into_err::<BauplanHTTPError>(),
-                },
-            },
-            ApiError::Other(_) => match parent.code {
-                400 => parent.into_err::<InvalidDataError>(),
-                401 => parent.into_err::<UnauthorizedError>(),
-                403 => parent.into_err::<AccessDeniedError>(),
-                404 => parent.into_err::<ResourceNotFoundError>(),
-                405 => parent.into_err::<ApiRouteError>(),
-                409 => parent.into_err::<UpdateConflictError>(),
-                429 => parent.into_err::<TooManyRequestsError>(),
-                500 => parent.into_err::<InternalError>(),
-                502 => parent.into_err::<BadGatewayError>(),
-                503 => parent.into_err::<ServiceUnavailableError>(),
-                504 => parent.into_err::<GatewayTimeoutError>(),
-                _ => parent.into_err::<BauplanHTTPError>(),
-            },
-        }
-    }
-}

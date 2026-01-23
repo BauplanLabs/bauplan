@@ -10,7 +10,7 @@ use crate::{
     python::exceptions::BauplanError,
 };
 
-use super::bauplan::Client;
+use super::Client;
 
 #[pyclass(name = "RunnerNodeInfo", module = "bauplan")]
 #[derive(Debug, Clone)]

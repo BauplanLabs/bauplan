@@ -6,13 +6,15 @@ use pyo3::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 
 use crate::{
-    ApiRequest, CatalogRef,
+    ApiError, ApiErrorKind, ApiRequest, ApiResponse, CatalogRef,
     api::table::{TableField, TableWithMetadata},
     commit::CommitOptions,
-    table::{GetTable, RevertTable},
+    paginate,
+    python::{ClientError, paginate::PyPaginator},
+    table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
 
-use super::bauplan::Client;
+use super::Client;
 
 #[pymethods]
 impl Client {
@@ -339,30 +341,29 @@ impl Client {
     ///     ref: The ref or branch to get the tables from.
     ///     filter_by_name: Optional, the table name to filter by.
     ///     filter_by_namespace: Optional, the namespace to get filtered tables from.
-    ///     namespace: DEPRECATED: Optional, the namespace to get filtered tables from.
-    ///     include_raw: Whether or not to include the raw metadata.json object as a nested dict.
     ///     limit: Optional, max number of tables to get.
     /// Returns:
-    ///     A `bauplan.schema.GetTablesResponse` object.
-    #[pyo3(signature = (ref_, filter_by_name=None, filter_by_namespace=None, namespace=None, include_raw=None, limit=None))]
+    ///     An iterator over `TableWithMetadata` objects.
+    #[pyo3(signature = (r#ref, filter_by_name=None, filter_by_namespace=None, limit=None))]
     fn get_tables(
-        &mut self,
-        ref_: &str,
-        filter_by_name: Option<&str>,
-        filter_by_namespace: Option<&str>,
-        namespace: Option<&str>,
-        include_raw: Option<bool>,
-        limit: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            ref_,
-            filter_by_name,
-            filter_by_namespace,
-            namespace,
-            include_raw,
-            limit,
-        );
-        todo!("get_tables")
+        &self,
+        r#ref: String,
+        filter_by_name: Option<String>,
+        filter_by_namespace: Option<String>,
+        limit: Option<usize>,
+    ) -> PyResult<PyPaginator> {
+        let profile = self.profile.clone();
+        let agent = self.agent.clone();
+        PyPaginator::new(limit, move |token, limit| {
+            let req = GetTables {
+                at_ref: &r#ref,
+                filter_by_name: filter_by_name.as_deref(),
+                filter_by_namespace: filter_by_namespace.as_deref(),
+            }
+            .paginate(token, limit);
+
+            Ok(super::roundtrip(req, &profile, &agent)?)
+        })
     }
 
     /// Get the table data and metadata for a table in the target branch.
@@ -411,11 +412,11 @@ impl Client {
     ) -> PyResult<TableWithMetadata> {
         let req = GetTable {
             name: table,
-            at_ref: Some(r#ref),
+            at_ref: r#ref,
             namespace,
         };
 
-        self.roundtrip(req)
+        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
     }
 
     /// Check if a table exists.
@@ -445,10 +446,19 @@ impl Client {
     ///     NamespaceNotFoundError: if the namespace does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (table, ref_, namespace=None))]
-    fn has_table(&mut self, table: &str, ref_: &str, namespace: Option<&str>) -> PyResult<bool> {
-        let _ = (table, ref_, namespace);
-        todo!("has_table")
+    #[pyo3(signature = (table, r#ref, namespace=None))]
+    fn has_table(&mut self, table: &str, r#ref: &str, namespace: Option<&str>) -> PyResult<bool> {
+        let req = GetTable {
+            name: table,
+            at_ref: r#ref,
+            namespace,
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(_) => Ok(true),
+            Err(e) if e.is_api_err(ApiErrorKind::TableNotFound) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Drop a table.
@@ -485,28 +495,40 @@ impl Client {
     ///     NamespaceConflictsError: if conflicting namespaces names are specified.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (table, branch, namespace=None, if_exists=None, commit_body=None, commit_properties=None, properties=None))]
+    #[pyo3(signature = (table, branch, namespace=None, if_exists=false, commit_body=None, commit_properties=None))]
     #[allow(clippy::too_many_arguments)]
     fn delete_table(
         &mut self,
         table: &str,
         branch: &str,
         namespace: Option<&str>,
-        if_exists: Option<bool>,
+        if_exists: bool,
         commit_body: Option<&str>,
-        commit_properties: Option<std::collections::HashMap<String, String>>,
-        properties: Option<std::collections::HashMap<String, String>>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            table,
+        commit_properties: Option<BTreeMap<String, String>>,
+    ) -> PyResult<CatalogRef> {
+        let commit_properties = commit_properties.unwrap_or_default();
+        let properties = commit_properties
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        let req = DeleteTable {
+            name: table,
             branch,
             namespace,
-            if_exists,
-            commit_body,
-            commit_properties,
-            properties,
-        );
-        todo!("delete_table")
+            commit: CommitOptions {
+                body: commit_body,
+                properties,
+            },
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(r) => Ok(r),
+            Err(e) if e.is_api_err(ApiErrorKind::TableNotFound) && if_exists => {
+                todo!() // need context_ref
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Create an external table from an Iceberg metadata.json file.
@@ -626,7 +648,7 @@ impl Client {
             },
         };
 
-        let resp = self.roundtrip(req)?;
+        let resp = super::roundtrip(req, &self.profile, &self.agent)?;
         Ok(resp)
     }
 }

@@ -3,7 +3,7 @@ use std::str::FromStr as _;
 use serde::Deserialize;
 
 /// An error response from the API.
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApiError {
     /// The API responded with an application-level error code.
     ErrorResponse {
@@ -16,6 +16,8 @@ pub enum ApiError {
     },
     /// The API response did not contain a code, but the HTTP status was non-200.
     Other(http::StatusCode),
+    /// The API response was invalid.
+    InvalidResponse(http::StatusCode, serde_json::Error),
 }
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,6 +30,9 @@ impl std::fmt::Display for ApiError {
             }
             ApiError::Other(status) => {
                 write!(f, "{status}")?;
+            }
+            ApiError::InvalidResponse(status, e) => {
+                write!(f, "Invalid response: {e} ({status})")?;
             }
         }
 

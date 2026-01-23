@@ -39,7 +39,7 @@ pub(crate) struct BranchLsArgs {
     pub user: Option<String>,
     /// Limit the number of branches to show
     #[arg(long)]
-    pub limit: Option<i64>,
+    pub limit: Option<usize>,
     /// Branch name
     pub branch_name: Option<String>,
 }
