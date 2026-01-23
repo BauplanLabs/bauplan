@@ -272,27 +272,11 @@ where
 }
 
 #[cfg(all(test, feature = "_integration_tests"))]
-mod tests {
+mod test {
     use assert_matches::assert_matches;
 
     use super::*;
-    use crate::{ApiError, ApiErrorKind, ApiResponse, Profile};
-
-    fn roundtrip<T: ApiRequest>(req: T) -> Result<T::Response, ApiError> {
-        let agent = ureq::Agent::new_with_config(
-            ureq::config::Config::builder()
-                .http_status_as_error(false)
-                .build(),
-        );
-
-        let profile = Profile::from_default_env()
-            .expect("Failed to load test profile. Did you forget to set BAUPLAN_PROFILE?");
-        let req = req
-            .into_request(&profile)
-            .expect("Failed to create request");
-        let resp = agent.run(req).expect("HTTP Error");
-        T::Response::from_response(resp.map(ureq::Body::into_reader))
-    }
+    use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip};
 
     #[test]
     fn get_table() -> anyhow::Result<()> {

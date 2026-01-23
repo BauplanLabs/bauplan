@@ -1,4 +1,9 @@
-use crate::cli::Cli;
+use std::io::{Write as _, stdout};
+
+use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
+use tabwriter::TabWriter;
+
+use crate::cli::{Cli, Output, is_api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceArgs {
@@ -14,7 +19,7 @@ pub(crate) enum NamespaceCommand {
     /// Create a new namespace
     Create(NamespaceCreateArgs),
     /// Drop a namespace from the data catalog
-    #[clap(alias = "delete")]
+    #[clap(aliases = ["delete", "drop"])]
     Rm(NamespaceRmArgs),
 }
 
@@ -26,8 +31,8 @@ pub(crate) struct NamespaceLsArgs {
     /// Limit the number of namespaces to show
     #[arg(long)]
     pub limit: Option<usize>,
-    /// Namespace
-    pub namespace: String,
+    /// Filter namespaces by name
+    pub namespace: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -35,7 +40,7 @@ pub(crate) struct NamespaceCreateArgs {
     /// Branch to create the namespace in; it defaults to the active branch
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Optinal commit body to append to the commit message
+    /// Optional commit body to append to the commit message
     #[arg(long)]
     pub commit_body: Option<String>,
     /// Do not fail if the namespace already exists
@@ -50,7 +55,7 @@ pub(crate) struct NamespaceRmArgs {
     /// Branch to delete the namespace from; it defaults to the active branch
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Optinal commit body to append to the commit message
+    /// Optional commit body to append to the commit message
     #[arg(long)]
     pub commit_body: Option<String>,
     /// Do not fail if the namespace does not exist
@@ -60,10 +65,125 @@ pub(crate) struct NamespaceRmArgs {
     pub namespace: String,
 }
 
-pub(crate) fn handle(_cli: &Cli, _args: NamespaceArgs) -> anyhow::Result<()> {
-    match _args.command {
-        NamespaceCommand::Ls(_) => todo!(),
-        NamespaceCommand::Create(_) => todo!(),
-        NamespaceCommand::Rm(_) => todo!(),
+pub(crate) fn handle(cli: &Cli, args: NamespaceArgs) -> anyhow::Result<()> {
+    match args.command {
+        NamespaceCommand::Ls(args) => list_namespaces(cli, args),
+        NamespaceCommand::Create(args) => create_namespace(cli, args),
+        NamespaceCommand::Rm(args) => delete_namespace(cli, args),
     }
+}
+
+fn list_namespaces(
+    cli: &Cli,
+    NamespaceLsArgs {
+        r#ref,
+        limit,
+        namespace,
+    }: NamespaceLsArgs,
+) -> anyhow::Result<()> {
+    let at_ref = r#ref
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let req = GetNamespaces {
+        at_ref,
+        filter_by_name: namespace.as_deref(),
+    };
+
+    let namespaces = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+
+    match cli.global.output.unwrap_or_default() {
+        Output::Json => {
+            let all_namespaces = namespaces.collect::<anyhow::Result<Vec<_>>>()?;
+            serde_json::to_writer(stdout(), &all_namespaces)?;
+        }
+        Output::Tty => {
+            let mut tw = TabWriter::new(stdout());
+            writeln!(&mut tw, "NAME\tKIND")?;
+            for ns in namespaces {
+                let ns = ns?;
+                writeln!(&mut tw, "{}\tNAMESPACE", ns.name)?;
+            }
+
+            tw.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
+fn create_namespace(
+    cli: &Cli,
+    NamespaceCreateArgs {
+        branch,
+        commit_body,
+        if_not_exists,
+        namespace,
+    }: NamespaceCreateArgs,
+) -> anyhow::Result<()> {
+    let branch = branch
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let req = CreateNamespace {
+        name: &namespace,
+        branch,
+        commit: CommitOptions {
+            body: commit_body.as_deref(),
+            properties: Default::default(),
+        },
+    };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(ns) => {
+            log::info!("Namespace {} created", ns.name);
+        }
+        Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceExists) => {
+            log::info!("Namespace {namespace} already exists");
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(())
+}
+
+fn delete_namespace(
+    cli: &Cli,
+    NamespaceRmArgs {
+        branch,
+        commit_body,
+        if_exists,
+        namespace,
+    }: NamespaceRmArgs,
+) -> anyhow::Result<()> {
+    let branch = branch
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let req = DeleteNamespace {
+        name: &namespace,
+        branch,
+        commit: CommitOptions {
+            body: commit_body.as_deref(),
+            properties: Default::default(),
+        },
+    };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(r) => {
+            log::debug!("Created ref {r}");
+            log::info!("Namespace {namespace} deleted");
+        }
+        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceNotFound) => {
+            log::info!("Namespace {namespace} does not exist");
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(())
 }

@@ -6,8 +6,12 @@ use crate::Profile;
 
 pub mod commit;
 mod error;
+pub mod namespace;
 mod paginate;
 pub mod table;
+
+#[cfg(all(test, feature = "_integration_tests"))]
+pub(crate) mod testutil;
 
 pub use error::*;
 pub use paginate::*;

@@ -1,9 +1,14 @@
 //! Namespace operations.
 
-#![allow(unused_imports)]
-
 use pyo3::prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+
+use crate::{
+    ApiErrorKind, ApiRequest, CatalogRef,
+    commit::CommitOptions,
+    namespace::{CreateNamespace, DeleteNamespace, GetNamespace, GetNamespaces, Namespace},
+    python::paginate::PyPaginator,
+};
 
 use super::Client;
 
@@ -33,15 +38,24 @@ impl Client {
     ///
     /// Yields:
     ///     A Namespace object.
-    #[pyo3(signature = (ref_, filter_by_name=None, limit=None))]
+    #[pyo3(signature = (r#ref, filter_by_name=None, limit=None))]
     fn get_namespaces(
-        &mut self,
-        ref_: &str,
-        filter_by_name: Option<&str>,
-        limit: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (ref_, filter_by_name, limit);
-        todo!("get_namespaces")
+        &self,
+        r#ref: String,
+        filter_by_name: Option<String>,
+        limit: Option<usize>,
+    ) -> PyResult<PyPaginator> {
+        let profile = self.profile.clone();
+        let agent = self.agent.clone();
+        PyPaginator::new(limit, move |token, limit| {
+            let req = GetNamespaces {
+                at_ref: &r#ref,
+                filter_by_name: filter_by_name.as_deref(),
+            }
+            .paginate(token, limit);
+
+            Ok(super::roundtrip(req, &profile, &agent)?)
+        })
     }
 
     /// Get a namespace.
@@ -69,10 +83,14 @@ impl Client {
     ///     RefNotFoundError: if the ref does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, ref_))]
-    fn get_namespace(&mut self, namespace: &str, ref_: &str) -> PyResult<Py<PyAny>> {
-        let _ = (namespace, ref_);
-        todo!("get_namespace")
+    #[pyo3(signature = (namespace, r#ref))]
+    fn get_namespace(&mut self, namespace: &str, r#ref: &str) -> PyResult<Namespace> {
+        let req = GetNamespace {
+            name: namespace,
+            at_ref: r#ref,
+        };
+
+        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
     }
 
     /// Create a new namespace at a given branch.
@@ -86,7 +104,6 @@ impl Client {
     /// assert client.create_namespace(
     ///     namespace='my_namespace_name',
     ///     branch='my_branch_name',
-    ///     properties={'k1': 'v1', 'k2': 'v2'},
     ///     if_not_exists=True,
     /// )
     /// ```
@@ -108,25 +125,42 @@ impl Client {
     ///     NamespaceExistsError: if the namespace already exists.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, branch, commit_body=None, commit_properties=None, if_not_exists=None, properties=None))]
+    #[pyo3(signature = (namespace, branch, commit_body=None, commit_properties=None, if_not_exists=false))]
     fn create_namespace(
         &mut self,
         namespace: &str,
         branch: &str,
         commit_body: Option<&str>,
-        commit_properties: Option<std::collections::HashMap<String, String>>,
-        if_not_exists: Option<bool>,
-        properties: Option<std::collections::HashMap<String, String>>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            namespace,
+        commit_properties: Option<BTreeMap<String, String>>,
+        if_not_exists: bool,
+    ) -> PyResult<Namespace> {
+        let commit_properties = commit_properties.unwrap_or_default();
+        let properties = commit_properties
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        let req = CreateNamespace {
+            name: namespace,
             branch,
-            commit_body,
-            commit_properties,
-            if_not_exists,
-            properties,
-        );
-        todo!("create_namespace")
+            commit: CommitOptions {
+                body: commit_body,
+                properties,
+            },
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(ns) => Ok(ns),
+            Err(e) if e.is_api_err(ApiErrorKind::NamespaceExists) && if_not_exists => {
+                // Return the existing namespace.
+                let req = GetNamespace {
+                    name: namespace,
+                    at_ref: branch,
+                };
+                Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Delete a namespace.
@@ -148,12 +182,12 @@ impl Client {
     ///     branch: The name of the branch to delete the namespace from.
     ///     commit_body: Optional, the commit body to attach to the operation.
     ///     commit_properties: Optional, a list of properties to attach to the commit.
-    ///     if_exists: If set to `True`, the namespace will not be deleted if it does not exist.
+    ///     if_exists: If set to `True`, the namespace will not raise an error if it does not exist.
     /// Returns:
     ///     A `bauplan.schema.Branch` object pointing to head.
     ///
     /// Raises:
-    ///     DeleteBranchForbiddenError: if the user does not have access to delete the branch.
+    ///     DeleteNamespaceForbiddenError: if the user does not have access to delete the namespace.
     ///     BranchNotFoundError: if the branch does not exist.
     ///     NotAWriteBranchError: if the destination branch is not a writable ref.
     ///     BranchHeadChangedError: if the branch head hash has changed.
@@ -161,25 +195,37 @@ impl Client {
     ///     NamespaceIsNotEmptyError: if the namespace is not empty.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, branch, if_exists=None, commit_body=None, commit_properties=None, properties=None))]
+    #[pyo3(signature = (namespace, branch, if_exists=false, commit_body=None, commit_properties=None))]
     fn delete_namespace(
         &mut self,
         namespace: &str,
         branch: &str,
-        if_exists: Option<bool>,
+        if_exists: bool,
         commit_body: Option<&str>,
-        commit_properties: Option<std::collections::HashMap<String, String>>,
-        properties: Option<std::collections::HashMap<String, String>>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            namespace,
+        commit_properties: Option<BTreeMap<String, String>>,
+    ) -> PyResult<CatalogRef> {
+        let commit_properties = commit_properties.unwrap_or_default();
+        let properties = commit_properties
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        let req = DeleteNamespace {
+            name: namespace,
             branch,
-            if_exists,
-            commit_body,
-            commit_properties,
-            properties,
-        );
-        todo!("delete_namespace")
+            commit: CommitOptions {
+                body: commit_body,
+                properties,
+            },
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(r) => Ok(r),
+            Err(e) if e.is_api_err(ApiErrorKind::NamespaceNotFound) && if_exists => {
+                todo!("context_ref")
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Check if a namespace exists.
@@ -207,9 +253,17 @@ impl Client {
     ///     RefNotFoundError: if the ref does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, ref_))]
-    fn has_namespace(&mut self, namespace: &str, ref_: &str) -> PyResult<bool> {
-        let _ = (namespace, ref_);
-        todo!("has_namespace")
+    #[pyo3(signature = (namespace, r#ref))]
+    fn has_namespace(&mut self, namespace: &str, r#ref: &str) -> PyResult<bool> {
+        let req = GetNamespace {
+            name: namespace,
+            at_ref: r#ref,
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(_) => Ok(true),
+            Err(e) if e.is_api_err(ApiErrorKind::NamespaceNotFound) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 }

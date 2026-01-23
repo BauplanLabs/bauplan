@@ -209,6 +209,7 @@ mod bauplan {
         m.add_class::<refs::PyBranch>()?;
         m.add_class::<refs::PyTag>()?;
         m.add_class::<refs::PyDetachedRef>()?;
+        m.add_class::<crate::namespace::Namespace>()?;
         m.add_class::<crate::table::TableKind>()?;
         m.add_class::<crate::table::TableWithMetadata>()?;
         m.add_class::<crate::table::TableField>()?;
