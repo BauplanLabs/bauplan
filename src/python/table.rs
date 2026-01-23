@@ -10,7 +10,11 @@ use crate::{
     api::table::{TableField, TableWithMetadata},
     commit::CommitOptions,
     paginate,
-    python::{ClientError, paginate::PyPaginator},
+    python::{
+        ClientError,
+        paginate::PyPaginator,
+        refs::{BranchArg, RefArg, TableArg},
+    },
     table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
 
@@ -347,11 +351,12 @@ impl Client {
     #[pyo3(signature = (r#ref, filter_by_name=None, filter_by_namespace=None, limit=None))]
     fn get_tables(
         &self,
-        r#ref: String,
+        r#ref: RefArg,
         filter_by_name: Option<String>,
         filter_by_namespace: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
+        let r#ref = r#ref.0;
         let profile = self.profile.clone();
         let agent = self.agent.clone();
         PyPaginator::new(limit, move |token, limit| {
@@ -406,13 +411,13 @@ impl Client {
     #[pyo3(signature = (table, r#ref, namespace=None))]
     fn get_table(
         &mut self,
-        table: &str,
-        r#ref: &str,
+        table: TableArg,
+        r#ref: RefArg,
         namespace: Option<&str>,
     ) -> PyResult<TableWithMetadata> {
         let req = GetTable {
-            name: table,
-            at_ref: r#ref,
+            name: &table.0,
+            at_ref: &r#ref.0,
             namespace,
         };
 
@@ -447,10 +452,15 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (table, r#ref, namespace=None))]
-    fn has_table(&mut self, table: &str, r#ref: &str, namespace: Option<&str>) -> PyResult<bool> {
+    fn has_table(
+        &mut self,
+        table: TableArg,
+        r#ref: RefArg,
+        namespace: Option<&str>,
+    ) -> PyResult<bool> {
         let req = GetTable {
-            name: table,
-            at_ref: r#ref,
+            name: &table.0,
+            at_ref: &r#ref.0,
             namespace,
         };
 
@@ -499,8 +509,8 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn delete_table(
         &mut self,
-        table: &str,
-        branch: &str,
+        table: TableArg,
+        branch: BranchArg,
         namespace: Option<&str>,
         if_exists: bool,
         commit_body: Option<&str>,
@@ -513,8 +523,8 @@ impl Client {
             .collect();
 
         let req = DeleteTable {
-            name: table,
-            branch,
+            name: &table.0,
+            branch: &branch.0,
             namespace,
             commit: CommitOptions {
                 body: commit_body,
@@ -622,9 +632,9 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn revert_table(
         &mut self,
-        table: &str,
-        source_ref: &str,
-        into_branch: &str,
+        table: TableArg,
+        source_ref: RefArg,
+        into_branch: BranchArg,
         namespace: Option<&str>,
         replace: Option<bool>,
         commit_body: Option<&str>,
@@ -637,9 +647,9 @@ impl Client {
             .collect();
 
         let req = RevertTable {
-            name: table,
-            source_ref,
-            into_branch,
+            name: &table.0,
+            source_ref: &source_ref.0,
+            into_branch: &into_branch.0,
             namespace,
             replace: replace.unwrap_or_default(),
             commit: CommitOptions {

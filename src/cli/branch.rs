@@ -1,4 +1,9 @@
-use crate::cli::Cli;
+use std::io::{Write as _, stdout};
+
+use bauplan::{ApiErrorKind, branch::*};
+use tabwriter::TabWriter;
+
+use crate::cli::{Cli, Output, is_api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchArgs {
@@ -69,9 +74,6 @@ pub(crate) struct BranchRmArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchGetArgs {
-    /// Filter by namespace
-    #[arg(short, long)]
-    pub namespace: Option<String>,
     /// Branch name
     pub branch_name: String,
 }
@@ -95,7 +97,7 @@ pub(crate) struct BranchDiffArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchMergeArgs {
-    /// Optinal commit message
+    /// Optional commit message
     #[arg(long)]
     pub commit_message: Option<String>,
     /// Branch name
@@ -110,15 +112,171 @@ pub(crate) struct BranchRenameArgs {
     pub new_branch_name: String,
 }
 
-pub(crate) fn handle(_cli: &Cli, _args: BranchArgs) -> anyhow::Result<()> {
-    match _args.command {
-        BranchCommand::Ls(_) => todo!(),
-        BranchCommand::Create(_) => todo!(),
-        BranchCommand::Rm(_) => todo!(),
-        BranchCommand::Get(_) => todo!(),
+pub(crate) fn handle(cli: &Cli, args: BranchArgs) -> anyhow::Result<()> {
+    match args.command {
+        BranchCommand::Ls(args) => list_branches(cli, args),
+        BranchCommand::Create(args) => create_branch(cli, args),
+        BranchCommand::Rm(args) => delete_branch(cli, args),
+        BranchCommand::Get(args) => get_branch(cli, args),
         BranchCommand::Checkout(_) => todo!(),
         BranchCommand::Diff(_) => todo!(),
-        BranchCommand::Merge(_) => todo!(),
-        BranchCommand::Rename(_) => todo!(),
+        BranchCommand::Merge(args) => merge_branch(cli, args),
+        BranchCommand::Rename(args) => rename_branch(cli, args),
     }
+}
+
+fn list_branches(
+    cli: &Cli,
+    BranchLsArgs {
+        all_zones: _,
+        name,
+        user,
+        limit,
+        branch_name,
+    }: BranchLsArgs,
+) -> anyhow::Result<()> {
+    // The branch_name positional arg acts as a name filter.
+    let filter_by_name = name.as_deref().or(branch_name.as_deref());
+
+    let req = GetBranches {
+        filter_by_name,
+        filter_by_user: user.as_deref(),
+    };
+
+    let branches = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+
+    match cli.global.output.unwrap_or_default() {
+        Output::Json => {
+            let all_branches = branches.collect::<anyhow::Result<Vec<_>>>()?;
+            serde_json::to_writer(stdout(), &all_branches)?;
+        }
+        Output::Tty => {
+            let mut tw = TabWriter::new(stdout());
+            writeln!(&mut tw, "NAME\tZONE\tHASH")?;
+            for branch in branches {
+                let branch = branch?;
+                let zone = branch.name.split('.').next().unwrap_or("");
+                writeln!(&mut tw, "{}\t{}\t{}", branch.name, zone, branch.hash)?;
+            }
+
+            tw.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
+fn get_branch(cli: &Cli, BranchGetArgs { branch_name }: BranchGetArgs) -> anyhow::Result<()> {
+    let req = GetBranch { name: &branch_name };
+
+    let branch = super::roundtrip(cli, req)?;
+
+    match cli.global.output.unwrap_or_default() {
+        Output::Json => {
+            serde_json::to_writer(stdout(), &branch)?;
+        }
+        Output::Tty => {
+            println!("Name: {}", branch.name);
+            println!("Hash: {}", branch.hash);
+        }
+    }
+
+    Ok(())
+}
+
+fn create_branch(
+    cli: &Cli,
+    BranchCreateArgs {
+        from_ref,
+        if_not_exists,
+        branch_name,
+    }: BranchCreateArgs,
+) -> anyhow::Result<()> {
+    let from_ref = from_ref
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let req = CreateBranch {
+        name: &branch_name,
+        from_ref,
+    };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(branch) => {
+            log::info!("Branch {} created at {}", branch.name, branch.hash);
+        }
+        Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::BranchExists) => {
+            log::info!("Branch {branch_name} already exists");
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(())
+}
+
+fn delete_branch(
+    cli: &Cli,
+    BranchRmArgs {
+        if_exists,
+        branch_name,
+    }: BranchRmArgs,
+) -> anyhow::Result<()> {
+    let req = DeleteBranch { name: &branch_name };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(branch) => {
+            log::info!("Branch {} deleted", branch.name);
+        }
+        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::BranchNotFound) => {
+            log::info!("Branch {branch_name} does not exist");
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(())
+}
+
+fn merge_branch(
+    cli: &Cli,
+    BranchMergeArgs {
+        commit_message,
+        branch_name,
+    }: BranchMergeArgs,
+) -> anyhow::Result<()> {
+    let into_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
+
+    let req = MergeBranch {
+        source_ref: &branch_name,
+        into_branch,
+        commit: MergeCommitOptions {
+            commit_message: commit_message.as_deref(),
+            ..Default::default()
+        },
+    };
+
+    let r = super::roundtrip(cli, req)?;
+    log::info!("Merged {branch_name} into {r}");
+
+    Ok(())
+}
+
+fn rename_branch(
+    cli: &Cli,
+    BranchRenameArgs {
+        branch_name,
+        new_branch_name,
+    }: BranchRenameArgs,
+) -> anyhow::Result<()> {
+    let req = RenameBranch {
+        name: &branch_name,
+        new_name: &new_branch_name,
+    };
+
+    let branch = super::roundtrip(cli, req)?;
+    log::info!("Branch renamed to {}", branch.name);
+
+    Ok(())
 }

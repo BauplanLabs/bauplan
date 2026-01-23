@@ -255,4 +255,86 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn create_and_delete_namespace() -> anyhow::Result<()> {
+        use crate::api::testutil::{TestBranch, test_name};
+
+        let branch = TestBranch::new("test_ns")?;
+        let ns_name = test_name("test_namespace");
+
+        // Create the namespace.
+        let req = CreateNamespace {
+            name: &ns_name,
+            branch: &branch.name,
+            commit: Default::default(),
+        };
+        let created = roundtrip(req)?;
+        assert_eq!(created.name, ns_name);
+
+        // Verify it exists.
+        let req = GetNamespace {
+            name: &ns_name,
+            at_ref: &branch.name,
+        };
+        let fetched = roundtrip(req)?;
+        assert_eq!(fetched.name, ns_name);
+
+        // Delete it.
+        let req = DeleteNamespace {
+            name: &ns_name,
+            branch: &branch.name,
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        // Verify it's gone.
+        let req = GetNamespace {
+            name: &ns_name,
+            at_ref: &branch.name,
+        };
+        let result = roundtrip(req);
+        assert_matches!(
+            result,
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::NamespaceNotFound,
+                ..
+            })
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn create_namespace_already_exists() -> anyhow::Result<()> {
+        use crate::api::testutil::{TestBranch, test_name};
+
+        let branch = TestBranch::new("test_ns_exists")?;
+        let ns_name = test_name("test_namespace");
+
+        // Create the namespace.
+        let req = CreateNamespace {
+            name: &ns_name,
+            branch: &branch.name,
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        // Try to create it again.
+        let req = CreateNamespace {
+            name: &ns_name,
+            branch: &branch.name,
+            commit: Default::default(),
+        };
+        let result = roundtrip(req);
+        assert_matches!(
+            result,
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::NamespaceExists,
+                ..
+            })
+        );
+
+        Ok(())
+    }
 }

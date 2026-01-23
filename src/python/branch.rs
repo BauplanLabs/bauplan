@@ -1,9 +1,19 @@
 //! Branch operations.
 
-#![allow(unused_imports)]
-
 use pyo3::prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
+
+use crate::{
+    ApiErrorKind, ApiRequest,
+    branch::{
+        CreateBranch, DeleteBranch, GetBranch, GetBranches, MergeBranch, MergeCommitOptions,
+        RenameBranch,
+    },
+    python::{
+        paginate::PyPaginator,
+        refs::{BranchArg, PyBranch, RefArg},
+    },
+};
 
 use super::Client;
 
@@ -26,16 +36,25 @@ impl Client {
     ///     user: Filter the branches by user.
     ///     limit: Optional, max number of branches to get.
     /// Returns:
-    ///     A `bauplan.schema.GetBranchesResponse` object.
+    ///     An iterator over `Branch` objects.
     #[pyo3(signature = (name=None, user=None, limit=None))]
     fn get_branches(
-        &mut self,
-        name: Option<&str>,
-        user: Option<&str>,
-        limit: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (name, user, limit);
-        todo!("get_branches")
+        &self,
+        name: Option<String>,
+        user: Option<String>,
+        limit: Option<usize>,
+    ) -> PyResult<PyPaginator> {
+        let profile = self.profile.clone();
+        let agent = self.agent.clone();
+        PyPaginator::new(limit, move |token, limit| {
+            let req = GetBranches {
+                filter_by_name: name.as_deref(),
+                filter_by_user: user.as_deref(),
+            }
+            .paginate(token, limit);
+
+            Ok(super::roundtrip(req, &profile, &agent)?)
+        })
     }
 
     /// Get the branch.
@@ -62,9 +81,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (branch))]
-    fn get_branch(&mut self, branch: &str) -> PyResult<Py<PyAny>> {
-        let _ = branch;
-        todo!("get_branch")
+    fn get_branch(&mut self, branch: BranchArg) -> PyResult<PyBranch> {
+        let req = GetBranch { name: &branch.0 };
+        let b = super::roundtrip(req, &self.profile, &self.agent)?;
+        Ok(PyBranch::new(b.name, b.hash))
     }
 
     /// Check if a branch exists.
@@ -90,9 +110,14 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (branch))]
-    fn has_branch(&mut self, branch: &str) -> PyResult<bool> {
-        let _ = branch;
-        todo!("has_branch")
+    fn has_branch(&mut self, branch: BranchArg) -> PyResult<bool> {
+        let req = GetBranch { name: &branch.0 };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(_) => Ok(true),
+            Err(e) if e.is_api_err(ApiErrorKind::BranchNotFound) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Create a new branch at a given ref.
@@ -126,15 +151,25 @@ impl Client {
     ///     BranchExistsError: if the branch already exists.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (branch, from_ref, if_not_exists=None))]
+    #[pyo3(signature = (branch, from_ref, if_not_exists=false))]
     fn create_branch(
         &mut self,
-        branch: &str,
-        from_ref: &str,
-        if_not_exists: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (branch, from_ref, if_not_exists);
-        todo!("create_branch")
+        branch: BranchArg,
+        from_ref: RefArg,
+        if_not_exists: bool,
+    ) -> PyResult<PyBranch> {
+        let req = CreateBranch {
+            name: &branch.0,
+            from_ref: &from_ref.0,
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(b) => Ok(PyBranch::new(b.name, b.hash)),
+            Err(e) if e.is_api_err(ApiErrorKind::BranchExists) && if_not_exists => {
+                todo!("context_ref")
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Rename an existing branch.
@@ -164,9 +199,14 @@ impl Client {
     ///     `UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (branch, new_branch))]
-    fn rename_branch(&mut self, branch: &str, new_branch: &str) -> PyResult<Py<PyAny>> {
-        let _ = (branch, new_branch);
-        todo!("rename_branch")
+    fn rename_branch(&mut self, branch: BranchArg, new_branch: BranchArg) -> PyResult<PyBranch> {
+        let req = RenameBranch {
+            name: &branch.0,
+            new_name: &new_branch.0,
+        };
+
+        let b = super::roundtrip(req, &self.profile, &self.agent)?;
+        Ok(PyBranch::new(b.name, b.hash))
     }
 
     /// Merge one branch into another.
@@ -199,28 +239,32 @@ impl Client {
     ///     MergeConflictError: if the merge operation results in a conflict.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (source_ref, into_branch, commit_message=None, commit_body=None, commit_properties=None, message=None, properties=None))]
-    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (source_ref, into_branch, commit_message=None, commit_body=None, commit_properties=None))]
     fn merge_branch(
         &mut self,
-        source_ref: &str,
-        into_branch: &str,
+        source_ref: RefArg,
+        into_branch: BranchArg,
         commit_message: Option<&str>,
         commit_body: Option<&str>,
-        commit_properties: Option<std::collections::HashMap<String, String>>,
-        message: Option<&str>,
-        properties: Option<std::collections::HashMap<String, String>>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            source_ref,
-            into_branch,
-            commit_message,
-            commit_body,
-            commit_properties,
-            message,
-            properties,
-        );
-        todo!("merge_branch")
+        commit_properties: Option<BTreeMap<String, String>>,
+    ) -> PyResult<crate::CatalogRef> {
+        let commit_properties = commit_properties.unwrap_or_default();
+        let properties = commit_properties
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+
+        let req = MergeBranch {
+            source_ref: &source_ref.0,
+            into_branch: &into_branch.0,
+            commit: MergeCommitOptions {
+                commit_message,
+                commit_body,
+                commit_properties: properties,
+            },
+        };
+
+        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
     }
 
     /// Delete a branch.
@@ -247,9 +291,14 @@ impl Client {
     ///     BranchHeadChangedError: if the branch head hash has changed.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (branch, if_exists=None))]
-    fn delete_branch(&mut self, branch: &str, if_exists: Option<bool>) -> PyResult<bool> {
-        let _ = (branch, if_exists);
-        todo!("delete_branch")
+    #[pyo3(signature = (branch, if_exists=false))]
+    fn delete_branch(&mut self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
+        let req = DeleteBranch { name: &branch.0 };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(_) => Ok(true),
+            Err(e) if e.is_api_err(ApiErrorKind::BranchNotFound) && if_exists => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 }

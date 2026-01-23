@@ -288,7 +288,7 @@ impl From<ClientError> for PyErr {
                         _ => parent.into_err::<BauplanHTTPError>(),
                     }
                 }
-                ApiError::InvalidResponse(_, _) => BauplanError::new_err(api_error.to_string()),
+                ApiError::InvalidResponse(_) => BauplanError::new_err(api_error.to_string()),
             },
             _ => BauplanError::new_err(err.to_string()),
         }

@@ -92,7 +92,7 @@ where
     ) -> Result<Self, ApiError> {
         let raw: RawApiResponse<Vec<T>> = serde_json::from_reader(body).map_err(|e| {
             log::error!("Failed to parse API response: {e:#?}");
-            ApiError::InvalidResponse(parts.status, e)
+            ApiError::InvalidResponse(parts.status)
         })?;
 
         match raw {

@@ -422,4 +422,46 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn delete_table() -> anyhow::Result<()> {
+        use crate::api::testutil::TestBranch;
+
+        let branch = TestBranch::new("test_table_delete")?;
+
+        // The branch is a copy of main, so it already has the titanic table.
+        let req = GetTable {
+            name: "titanic",
+            at_ref: &branch.name,
+            namespace: Some("bauplan"),
+        };
+        let table = roundtrip(req)?;
+        assert_eq!(table.name, "titanic");
+
+        // Delete it.
+        let req = DeleteTable {
+            name: "titanic",
+            branch: &branch.name,
+            namespace: Some("bauplan"),
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        // Verify it's gone.
+        let req = GetTable {
+            name: "titanic",
+            at_ref: &branch.name,
+            namespace: Some("bauplan"),
+        };
+        let result = roundtrip(req);
+        assert_matches!(
+            result,
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::TableNotFound,
+                ..
+            })
+        );
+
+        Ok(())
+    }
 }

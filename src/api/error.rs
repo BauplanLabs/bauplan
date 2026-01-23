@@ -17,7 +17,7 @@ pub enum ApiError {
     /// The API response did not contain a code, but the HTTP status was non-200.
     Other(http::StatusCode),
     /// The API response was invalid.
-    InvalidResponse(http::StatusCode, serde_json::Error),
+    InvalidResponse(http::StatusCode),
 }
 impl std::fmt::Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -31,8 +31,8 @@ impl std::fmt::Display for ApiError {
             ApiError::Other(status) => {
                 write!(f, "{status}")?;
             }
-            ApiError::InvalidResponse(status, e) => {
-                write!(f, "Invalid response: {e} ({status})")?;
+            ApiError::InvalidResponse(status) => {
+                write!(f, "Invalid response ({status})")?;
             }
         }
 

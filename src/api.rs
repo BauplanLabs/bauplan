@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::Profile;
 
+pub mod branch;
 pub mod commit;
 mod error;
 pub mod namespace;
@@ -65,7 +66,8 @@ enum RawApiResponse<T> {
     },
     Data {
         data: T,
-        r#ref: CatalogRef,
+        #[serde(default)]
+        r#ref: Option<CatalogRef>,
         metadata: RawMetadata,
     },
 }
@@ -172,7 +174,7 @@ impl<T: DataResponse> ApiResponse for T {
     ) -> Result<Self, ApiError> {
         let raw: RawApiResponse<Self> = serde_json::from_reader(body).map_err(|e| {
             log::error!("Failed to parse API response: {e:#?}");
-            ApiError::InvalidResponse(parts.status, e)
+            ApiError::InvalidResponse(parts.status)
         })?;
 
         match raw {
@@ -191,11 +193,14 @@ impl ApiResponse for CatalogRef {
         let raw: RawApiResponse<serde_json::Value> =
             serde_json::from_reader(body).map_err(|e| {
                 log::error!("Failed to parse API response: {e:#?}");
-                ApiError::InvalidResponse(parts.status, e)
+                ApiError::InvalidResponse(parts.status)
             })?;
 
         match raw {
-            RawApiResponse::Data { r#ref, .. } => Ok(r#ref),
+            RawApiResponse::Data { r#ref: Some(r), .. } => Ok(r),
+            RawApiResponse::Data { r#ref: None, .. } => {
+                Err(ApiError::InvalidResponse(parts.status))
+            }
             RawApiResponse::Error { error } => Err(ApiError::from_raw(parts.status, error)),
         }
     }

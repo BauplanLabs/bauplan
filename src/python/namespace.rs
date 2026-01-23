@@ -8,6 +8,7 @@ use crate::{
     commit::CommitOptions,
     namespace::{CreateNamespace, DeleteNamespace, GetNamespace, GetNamespaces, Namespace},
     python::paginate::PyPaginator,
+    python::refs::{BranchArg, NamespaceArg, RefArg},
 };
 
 use super::Client;
@@ -41,10 +42,11 @@ impl Client {
     #[pyo3(signature = (r#ref, filter_by_name=None, limit=None))]
     fn get_namespaces(
         &self,
-        r#ref: String,
+        r#ref: RefArg,
         filter_by_name: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
+        let r#ref = r#ref.0;
         let profile = self.profile.clone();
         let agent = self.agent.clone();
         PyPaginator::new(limit, move |token, limit| {
@@ -84,10 +86,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (namespace, r#ref))]
-    fn get_namespace(&mut self, namespace: &str, r#ref: &str) -> PyResult<Namespace> {
+    fn get_namespace(&mut self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<Namespace> {
         let req = GetNamespace {
-            name: namespace,
-            at_ref: r#ref,
+            name: &namespace.0,
+            at_ref: &r#ref.0,
         };
 
         Ok(super::roundtrip(req, &self.profile, &self.agent)?)
@@ -128,12 +130,14 @@ impl Client {
     #[pyo3(signature = (namespace, branch, commit_body=None, commit_properties=None, if_not_exists=false))]
     fn create_namespace(
         &mut self,
-        namespace: &str,
-        branch: &str,
+        namespace: NamespaceArg,
+        branch: BranchArg,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
         if_not_exists: bool,
     ) -> PyResult<Namespace> {
+        let namespace = &namespace.0;
+        let branch = &branch.0;
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -198,12 +202,14 @@ impl Client {
     #[pyo3(signature = (namespace, branch, if_exists=false, commit_body=None, commit_properties=None))]
     fn delete_namespace(
         &mut self,
-        namespace: &str,
-        branch: &str,
+        namespace: NamespaceArg,
+        branch: BranchArg,
         if_exists: bool,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
     ) -> PyResult<CatalogRef> {
+        let namespace = &namespace.0;
+        let branch = &branch.0;
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -254,10 +260,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (namespace, r#ref))]
-    fn has_namespace(&mut self, namespace: &str, r#ref: &str) -> PyResult<bool> {
+    fn has_namespace(&mut self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<bool> {
         let req = GetNamespace {
-            name: namespace,
-            at_ref: r#ref,
+            name: &namespace.0,
+            at_ref: &r#ref.0,
         };
 
         match super::roundtrip(req, &self.profile, &self.agent) {
