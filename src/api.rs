@@ -10,6 +10,7 @@ mod error;
 pub mod namespace;
 mod paginate;
 pub mod table;
+pub mod tag;
 
 #[cfg(all(test, feature = "_integration_tests"))]
 pub(crate) mod testutil;

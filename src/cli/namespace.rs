@@ -138,8 +138,12 @@ fn create_namespace(
 
     let result = super::roundtrip(cli, req);
     match result {
-        Ok(ns) => {
-            log::info!("Namespace {} created", ns.name);
+        Ok(_) => {
+            log::info!(
+                "Namespace \"{}\" created successfully in branch \"{}\"",
+                namespace,
+                branch
+            );
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceExists) => {
             log::info!("Namespace {namespace} already exists");
@@ -175,9 +179,12 @@ fn delete_namespace(
 
     let result = super::roundtrip(cli, req);
     match result {
-        Ok(r) => {
-            log::debug!("Created ref {r}");
-            log::info!("Namespace {namespace} deleted");
+        Ok(_) => {
+            log::info!(
+                "Namespace \"{}\" removed successfully from branch \"{}\"",
+                namespace,
+                branch
+            );
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceNotFound) => {
             log::info!("Namespace {namespace} does not exist");

@@ -94,6 +94,25 @@ impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
     }
 }
 
+/// Accepts a tag name (str) or Tag object.
+pub(crate) struct TagArg(pub String);
+
+impl<'a, 'py> FromPyObject<'a, 'py> for TagArg {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        if let Ok(s) = ob.extract::<String>() {
+            Ok(TagArg(s))
+        } else if let Ok(tag) = ob.extract::<PyRef<'_, PyTag>>() {
+            Ok(TagArg(tag.name.clone()))
+        } else {
+            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+                "expected str or Tag",
+            ))
+        }
+    }
+}
+
 #[pymethods]
 impl PyBranch {
     #[new]
@@ -123,7 +142,7 @@ pub(crate) struct PyTag {
 #[pymethods]
 impl PyTag {
     #[new]
-    fn new(name: String, hash: String) -> Self {
+    pub(crate) fn new(name: String, hash: String) -> Self {
         Self { name, hash }
     }
 
@@ -182,6 +201,20 @@ impl<'py> IntoPyObject<'py> for crate::branch::Branch {
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
         PyBranch {
+            name: self.name,
+            hash: self.hash,
+        }
+        .into_bound_py_any(py)
+    }
+}
+
+impl<'py> IntoPyObject<'py> for crate::tag::Tag {
+    type Target = PyAny;
+    type Output = Bound<'py, PyAny>;
+    type Error = PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        PyTag {
             name: self.name,
             hash: self.hash,
         }

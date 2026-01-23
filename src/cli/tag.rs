@@ -1,4 +1,9 @@
-use crate::cli::Cli;
+use std::io::{Write as _, stdout};
+
+use bauplan::{ApiErrorKind, tag::*};
+use tabwriter::TabWriter;
+
+use crate::cli::{Cli, Output, is_api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TagArgs {
@@ -59,11 +64,116 @@ pub(crate) struct TagRenameArgs {
     pub new_tag_name: String,
 }
 
-pub(crate) fn handle(_cli: &Cli, _args: TagArgs) -> anyhow::Result<()> {
-    match _args.command {
-        TagCommand::Ls(_) => todo!(),
-        TagCommand::Create(_) => todo!(),
-        TagCommand::Rm(_) => todo!(),
-        TagCommand::Rename(_) => todo!(),
+pub(crate) fn handle(cli: &Cli, args: TagArgs) -> anyhow::Result<()> {
+    match args.command {
+        TagCommand::Ls(args) => list_tags(cli, args),
+        TagCommand::Create(args) => create_tag(cli, args),
+        TagCommand::Rm(args) => delete_tag(cli, args),
+        TagCommand::Rename(args) => rename_tag(cli, args),
     }
+}
+
+fn list_tags(cli: &Cli, TagLsArgs { name, limit }: TagLsArgs) -> anyhow::Result<()> {
+    let req = GetTags {
+        filter_by_name: name.as_deref(),
+    };
+
+    let tags = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+
+    match cli.global.output.unwrap_or_default() {
+        Output::Json => {
+            let all_tags = tags.collect::<anyhow::Result<Vec<_>>>()?;
+            serde_json::to_writer(stdout(), &all_tags)?;
+        }
+        Output::Tty => {
+            let mut tw = TabWriter::new(stdout());
+            writeln!(&mut tw, "NAME\tHASH")?;
+            for tag in tags {
+                let tag = tag?;
+                writeln!(&mut tw, "{}\t{}", tag.name, tag.hash)?;
+            }
+
+            tw.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
+fn create_tag(
+    cli: &Cli,
+    TagCreateArgs {
+        from_ref,
+        if_not_exists,
+        tag_name,
+    }: TagCreateArgs,
+) -> anyhow::Result<()> {
+    let from_ref = from_ref
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let req = CreateTag {
+        name: &tag_name,
+        from_ref,
+    };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(tag) => {
+            log::info!(tag = tag.name.as_str(); "Created tag");
+        }
+        Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::TagExists) => {
+            log::info!("Tag {tag_name} already exists");
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(())
+}
+
+fn delete_tag(
+    cli: &Cli,
+    TagRmArgs {
+        if_exists,
+        tag_name,
+    }: TagRmArgs,
+) -> anyhow::Result<()> {
+    let req = DeleteTag { name: &tag_name };
+
+    let result = super::roundtrip(cli, req);
+    match result {
+        Ok(tag) => {
+            log::info!(name = tag.name.as_str(); "Deleted tag");
+        }
+        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TagNotFound) => {
+            log::info!("Tag {tag_name} does not exist");
+        }
+        Err(e) => return Err(e),
+    }
+
+    Ok(())
+}
+
+fn rename_tag(
+    cli: &Cli,
+    TagRenameArgs {
+        tag_name,
+        new_tag_name,
+    }: TagRenameArgs,
+) -> anyhow::Result<()> {
+    let req = RenameTag {
+        name: &tag_name,
+        new_name: &new_tag_name,
+    };
+
+    let tag = super::roundtrip(cli, req)?;
+    log::info!(
+        tag = tag_name.as_str(),
+        newTag = tag.name.as_str(),
+        hash = tag.hash.as_str();
+        "Renamed tag"
+    );
+
+    Ok(())
 }

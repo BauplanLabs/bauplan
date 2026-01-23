@@ -323,9 +323,14 @@ fn delete_table(
         table_name,
     }: TableRmArgs,
 ) -> anyhow::Result<()> {
+    let branch = branch
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
     let req = DeleteTable {
         name: &table_name,
-        branch: branch.as_deref().unwrap_or("main"),
+        branch,
         namespace: None,
         commit: CommitOptions {
             body: commit_body.as_deref(),
@@ -335,9 +340,12 @@ fn delete_table(
 
     let result = super::roundtrip(cli, req);
     match result {
-        Ok(r) => {
-            log::debug!("Created ref {r}");
-            log::info!("Table {table_name} deleted");
+        Ok(_) => {
+            log::info!(
+                "Table \"{}\" removed successfully from branch \"{}\"",
+                table_name,
+                branch
+            );
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TableNotFound) => {
             log::info!("Table {table_name} does not exist");

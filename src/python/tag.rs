@@ -1,9 +1,15 @@
 //! Tag operations.
 
-#![allow(unused_imports)]
-
 use pyo3::prelude::*;
-use std::collections::HashMap;
+
+use crate::{
+    ApiErrorKind, ApiRequest,
+    python::{
+        paginate::PyPaginator,
+        refs::{PyTag, RefArg, TagArg},
+    },
+    tag::{CreateTag, DeleteTag, GetTag, GetTags, RenameTag},
+};
 
 use super::Client;
 
@@ -24,12 +30,20 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (filter_by_name=None, limit=None))]
     fn get_tags(
-        &mut self,
-        filter_by_name: Option<&str>,
-        limit: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (filter_by_name, limit);
-        todo!("get_tags")
+        &self,
+        filter_by_name: Option<String>,
+        limit: Option<usize>,
+    ) -> PyResult<PyPaginator> {
+        let profile = self.profile.clone();
+        let agent = self.agent.clone();
+        PyPaginator::new(limit, move |token, limit| {
+            let req = GetTags {
+                filter_by_name: filter_by_name.as_deref(),
+            }
+            .paginate(token, limit);
+
+            Ok(super::roundtrip(req, &profile, &agent)?)
+        })
     }
 
     /// Get the tag.
@@ -55,9 +69,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag))]
-    fn get_tag(&mut self, tag: &str) -> PyResult<Py<PyAny>> {
-        let _ = tag;
-        todo!("get_tag")
+    fn get_tag(&mut self, tag: TagArg) -> PyResult<PyTag> {
+        let req = GetTag { name: &tag.0 };
+        let t = super::roundtrip(req, &self.profile, &self.agent)?;
+        Ok(PyTag::new(t.name, t.hash))
     }
 
     /// Check if a tag exists.
@@ -83,9 +98,14 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag))]
-    fn has_tag(&mut self, tag: &str) -> PyResult<bool> {
-        let _ = tag;
-        todo!("has_tag")
+    fn has_tag(&mut self, tag: TagArg) -> PyResult<bool> {
+        let req = GetTag { name: &tag.0 };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(_) => Ok(true),
+            Err(e) if e.is_api_err(ApiErrorKind::TagNotFound) => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Create a new tag at a given ref.
@@ -115,15 +135,28 @@ impl Client {
     ///     TagExistsError: if the tag already exists.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag, from_ref, if_not_exists=None))]
+    #[pyo3(signature = (tag, from_ref, if_not_exists=false))]
     fn create_tag(
         &mut self,
-        tag: &str,
-        from_ref: &str,
-        if_not_exists: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (tag, from_ref, if_not_exists);
-        todo!("create_tag")
+        tag: TagArg,
+        from_ref: RefArg,
+        if_not_exists: bool,
+    ) -> PyResult<PyTag> {
+        let req = CreateTag {
+            name: &tag.0,
+            from_ref: &from_ref.0,
+        };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(t) => Ok(PyTag::new(t.name, t.hash)),
+            Err(e) if e.is_api_err(ApiErrorKind::TagExists) && if_not_exists => {
+                // Return the existing tag.
+                let req = GetTag { name: &tag.0 };
+                let t = super::roundtrip(req, &self.profile, &self.agent)?;
+                Ok(PyTag::new(t.name, t.hash))
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// Rename an existing tag.
@@ -151,9 +184,14 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag, new_tag))]
-    fn rename_tag(&mut self, tag: &str, new_tag: &str) -> PyResult<Py<PyAny>> {
-        let _ = (tag, new_tag);
-        todo!("rename_tag")
+    fn rename_tag(&mut self, tag: TagArg, new_tag: TagArg) -> PyResult<PyTag> {
+        let req = RenameTag {
+            name: &tag.0,
+            new_name: &new_tag.0,
+        };
+
+        let t = super::roundtrip(req, &self.profile, &self.agent)?;
+        Ok(PyTag::new(t.name, t.hash))
     }
 
     /// Delete a tag.
@@ -179,9 +217,14 @@ impl Client {
     ///     NotATagRefError: if the object is not a tag.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag, if_exists=None))]
-    fn delete_tag(&mut self, tag: &str, if_exists: Option<bool>) -> PyResult<bool> {
-        let _ = (tag, if_exists);
-        todo!("delete_tag")
+    #[pyo3(signature = (tag, if_exists=false))]
+    fn delete_tag(&mut self, tag: TagArg, if_exists: bool) -> PyResult<bool> {
+        let req = DeleteTag { name: &tag.0 };
+
+        match super::roundtrip(req, &self.profile, &self.agent) {
+            Ok(_) => Ok(true),
+            Err(e) if e.is_api_err(ApiErrorKind::TagNotFound) && if_exists => Ok(false),
+            Err(e) => Err(e.into()),
+        }
     }
 }

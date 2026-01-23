@@ -1,6 +1,6 @@
 use std::io::{Write as _, stdout};
 
-use bauplan::{ApiErrorKind, branch::*};
+use bauplan::{ApiErrorKind, branch::*, table::GetTables};
 use tabwriter::TabWriter;
 
 use crate::cli::{Cli, Output, is_api_err_kind};
@@ -74,6 +74,9 @@ pub(crate) struct BranchRmArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchGetArgs {
+    /// Filter by namespace
+    #[arg(short, long)]
+    pub namespace: Option<String>,
     /// Branch name
     pub branch_name: String,
 }
@@ -166,18 +169,39 @@ fn list_branches(
     Ok(())
 }
 
-fn get_branch(cli: &Cli, BranchGetArgs { branch_name }: BranchGetArgs) -> anyhow::Result<()> {
-    let req = GetBranch { name: &branch_name };
+fn get_branch(
+    cli: &Cli,
+    BranchGetArgs {
+        namespace,
+        branch_name,
+    }: BranchGetArgs,
+) -> anyhow::Result<()> {
+    let req = GetTables {
+        at_ref: &branch_name,
+        filter_by_name: None,
+        filter_by_namespace: namespace.as_deref(),
+    };
 
-    let branch = super::roundtrip(cli, req)?;
+    let tables = bauplan::paginate(req, None, |r| super::roundtrip(cli, r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
-            serde_json::to_writer(stdout(), &branch)?;
+            let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
+            serde_json::to_writer(stdout(), &all_tables)?;
         }
         Output::Tty => {
-            println!("Name: {}", branch.name);
-            println!("Hash: {}", branch.hash);
+            let mut tw = TabWriter::new(stdout());
+            writeln!(&mut tw, "NAMESPACE\tNAME\tKIND")?;
+            for table in tables {
+                let table = table?;
+                writeln!(
+                    &mut tw,
+                    "{}\t{}\t{}",
+                    table.namespace, table.name, table.kind
+                )?;
+            }
+
+            tw.flush()?;
         }
     }
 
@@ -205,7 +229,11 @@ fn create_branch(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(branch) => {
-            log::info!("Branch {} created at {}", branch.name, branch.hash);
+            log::info!(branch = branch.name.as_str(); "Created branch");
+            log::info!(
+                "To make it the active branch, run: \"bauplan checkout {}\"",
+                branch.name
+            );
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::BranchExists) => {
             log::info!("Branch {branch_name} already exists");
@@ -228,7 +256,7 @@ fn delete_branch(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(branch) => {
-            log::info!("Branch {} deleted", branch.name);
+            log::info!(name = branch.name.as_str(); "Deleted branch");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::BranchNotFound) => {
             log::info!("Branch {branch_name} does not exist");
@@ -257,8 +285,9 @@ fn merge_branch(
         },
     };
 
-    let r = super::roundtrip(cli, req)?;
-    log::info!("Merged {branch_name} into {r}");
+    super::roundtrip(cli, req)?;
+    // Original prints to stdout, not log.
+    println!("Merged branch \"{branch_name}\" into \"{into_branch}\"");
 
     Ok(())
 }
@@ -276,7 +305,12 @@ fn rename_branch(
     };
 
     let branch = super::roundtrip(cli, req)?;
-    log::info!("Branch renamed to {}", branch.name);
+    log::info!(
+        branch = branch_name.as_str(),
+        newBranch = branch.name.as_str(),
+        hash = branch.hash.as_str();
+        "Renamed branch"
+    );
 
     Ok(())
 }
