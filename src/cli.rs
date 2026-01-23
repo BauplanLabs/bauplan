@@ -20,7 +20,7 @@ use std::{
 
 use anyhow::bail;
 use bauplan::{
-    ApiRequest, ApiResponse, Profile,
+    ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile,
     grpc::{self, generated as commanderpb},
 };
 use clap::{Parser, Subcommand};
@@ -192,6 +192,13 @@ fn roundtrip<T: ApiRequest>(cli: &Cli, req: T) -> anyhow::Result<T::Response> {
     let resp = cli.agent.run(req.into_request(&cli.profile)?)?;
     let resp = <T::Response as ApiResponse>::from_response(resp.map(ureq::Body::into_reader))?;
     Ok(resp)
+}
+
+fn is_api_err_kind(e: &anyhow::Error, k: ApiErrorKind) -> bool {
+    match e.downcast_ref() {
+        Some(ApiError::ErrorResponse { kind, .. }) => *kind == k,
+        _ => false,
+    }
 }
 
 async fn get_info(cli: &Cli) -> anyhow::Result<()> {

@@ -9,10 +9,12 @@ pub(crate) struct TagArgs {
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum TagCommand {
     /// List all available tags (default action)
+    #[clap(alias = "list")]
     Ls(TagLsArgs),
     /// Create a new tag
     Create(TagCreateArgs),
     /// Delete a tag
+    #[clap(alias = "delete")]
     Rm(TagRmArgs),
     /// Rename a tag
     Rename(TagRenameArgs),

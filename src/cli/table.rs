@@ -1,9 +1,9 @@
 use std::io::{Write as _, stdout};
 
-use bauplan::{commit::CommitOptions, table::*};
+use bauplan::{ApiErrorKind, commit::CommitOptions, table::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, KeyValue, Output, Priority, kv_to_map};
+use crate::cli::{Cli, KeyValue, Output, Priority, is_api_err_kind, kv_to_map};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableArgs {
@@ -14,10 +14,12 @@ pub(crate) struct TableArgs {
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum TableCommand {
     /// List all available tables
+    #[clap(alias = "list")]
     Ls(TableLsArgs),
     /// Get information about a table
     Get(TableGetArgs),
     /// Drop a table from the data catalog (does not free up storage)
+    #[clap(alias = "delete")]
     Rm(TableRmArgs),
     /// create a new table
     Create(TableCreateArgs),
@@ -294,6 +296,7 @@ fn get_table(cli: &Cli, TableGetArgs { r#ref, table_name }: TableGetArgs) -> any
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
             writeln!(&mut tw, "NAME\tREQUIRED\tTYPE")?;
+
             for TableField {
                 name,
                 required,
@@ -336,16 +339,7 @@ fn delete_table(
             log::debug!("Created ref {r}");
             log::info!("Table {table_name} deleted");
         }
-        Err(e)
-            if if_exists
-                && matches!(
-                    e.downcast_ref(),
-                    Some(bauplan::ApiError::ErrorResponse {
-                        kind: bauplan::ApiErrorKind::TableNotFound,
-                        ..
-                    })
-                ) =>
-        {
+        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TableNotFound) => {
             log::info!("Table {table_name} does not exist");
         }
         Err(e) => return Err(e),

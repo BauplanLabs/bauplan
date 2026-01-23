@@ -9,10 +9,12 @@ pub(crate) struct BranchArgs {
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum BranchCommand {
     /// List all available branches (default action)
+    #[clap(alias = "list")]
     Ls(BranchLsArgs),
     /// Create a new branch
     Create(BranchCreateArgs),
     /// Delete a branch
+    #[clap(alias = "delete")]
     Rm(BranchRmArgs),
     /// Get information about a branch
     Get(BranchGetArgs),

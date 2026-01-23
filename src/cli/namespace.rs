@@ -9,10 +9,12 @@ pub(crate) struct NamespaceArgs {
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum NamespaceCommand {
     /// List available namespaces
+    #[clap(alias = "list")]
     Ls(NamespaceLsArgs),
     /// Create a new namespace
     Create(NamespaceCreateArgs),
     /// Drop a namespace from the data catalog
+    #[clap(alias = "delete")]
     Rm(NamespaceRmArgs),
 }
 

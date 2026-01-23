@@ -9,6 +9,7 @@ pub(crate) struct JobArgs {
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum JobCommand {
     /// List all available jobs
+    #[clap(alias = "list")]
     Ls(JobLsArgs),
     /// Get information about a job
     Get(JobGetArgs),

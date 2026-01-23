@@ -9,8 +9,10 @@ pub(crate) struct ParameterArgs {
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum ParameterCommand {
     /// List all parameters in a project
+    #[clap(alias = "list")]
     Ls(ParameterLsArgs),
     /// Remove a parameter from a project
+    #[clap(alias = "delete")]
     Rm(ParameterRmArgs),
     /// Set a parameter value in a project
     Set(ParameterSetArgs),
