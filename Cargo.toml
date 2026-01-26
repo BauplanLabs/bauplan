@@ -18,17 +18,15 @@ path = "src/main.rs"
 
 [features]
 default = []
-python = ["dep:pyo3", "dep:chrono", "pyo3/chrono", "pyo3/uuid"]
+python = ["dep:chrono", "dep:pyo3", "pyo3/chrono", "pyo3/uuid"]
 _integration_tests = []
 
 [dependencies]
 anyhow = "1"
 chrono = { version = "0.4", optional = true }
 clap = { version = "4", features = ["derive"] }
-env_logger = "0.11"
-futures-io = "0.3.31"
+futures-io = "0.3"
 http = "1"
-log = { version = "0.4", features = ["kv"] }
 prost = "0.14"
 prost-types = "0.14"
 pyo3 = { version = "0.27", optional = true, features = ["multiple-pymethods"] }
@@ -41,6 +39,8 @@ thiserror = "2"
 tokio = { version = "1", features = ["full"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 tonic-prost = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ureq = "3"
 uuid = { version = "1", features = ["serde"] }
 yansi = "1"

@@ -2,6 +2,7 @@ use std::io::{Write as _, stdout};
 
 use bauplan::{ApiErrorKind, branch::*, table::GetTables};
 use tabwriter::TabWriter;
+use tracing::info;
 
 use crate::cli::{Cli, Output, is_api_err_kind};
 
@@ -229,14 +230,14 @@ fn create_branch(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(branch) => {
-            log::info!(branch = branch.name.as_str(); "Created branch");
-            log::info!(
-                "To make it the active branch, run: \"bauplan checkout {}\"",
-                branch.name
+            info!(branch = branch.name, "Created branch");
+            info!(
+                branch = branch.name,
+                "To make it the active branch, run: bauplan checkout <branch>"
             );
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::BranchExists) => {
-            log::info!("Branch {branch_name} already exists");
+            info!(branch = branch_name, "Branch already exists");
         }
         Err(e) => return Err(e),
     }
@@ -256,10 +257,10 @@ fn delete_branch(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(branch) => {
-            log::info!(name = branch.name.as_str(); "Deleted branch");
+            info!(branch = branch.name, "Deleted branch");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::BranchNotFound) => {
-            log::info!("Branch {branch_name} does not exist");
+            info!(branch = branch_name, "Branch does not exist");
         }
         Err(e) => return Err(e),
     }
@@ -305,10 +306,10 @@ fn rename_branch(
     };
 
     let branch = super::roundtrip(cli, req)?;
-    log::info!(
-        branch = branch_name.as_str(),
-        newBranch = branch.name.as_str(),
-        hash = branch.hash.as_str();
+    info!(
+        branch = branch_name,
+        new_branch = branch.name,
+        hash = branch.hash,
         "Renamed branch"
     );
 

@@ -2,8 +2,9 @@ use std::io::{Write as _, stdout};
 
 use bauplan::{ApiErrorKind, commit::CommitOptions, table::*};
 use tabwriter::TabWriter;
+use tracing::info;
 
-use crate::cli::{Cli, KeyValue, Output, Priority, is_api_err_kind, kv_to_map};
+use crate::cli::{Cli, KeyValue, Output, Priority, is_api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableArgs {
@@ -341,14 +342,10 @@ fn delete_table(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(_) => {
-            log::info!(
-                "Table \"{}\" removed successfully from branch \"{}\"",
-                table_name,
-                branch
-            );
+            info!(table = table_name, branch, "Table deleted");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TableNotFound) => {
-            log::info!("Table {table_name} does not exist");
+            info!(table = table_name, "Table does not exist");
         }
         Err(e) => return Err(e),
     }
@@ -375,13 +372,13 @@ fn revert_table(
         replace,
         commit: CommitOptions {
             body: commit_body.as_deref(),
-            properties: kv_to_map(&commit_property),
+            properties: commit_property.iter().map(KeyValue::as_strs).collect(),
         },
     };
 
-    let r = super::roundtrip(cli, req)?;
-    log::debug!("Created ref {r}");
-    log::info!("Table {table_name} reverted from {source_ref} into branch {into_branch}");
+    let r#ref = super::roundtrip(cli, req)?;
+    tracing::debug!(?r#ref, "Created ref");
+    info!(source_ref, into_branch, "Table reverted");
 
     Ok(())
 }

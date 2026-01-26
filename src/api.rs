@@ -174,7 +174,7 @@ impl<T: DataResponse> ApiResponse for T {
         body: impl Read,
     ) -> Result<Self, ApiError> {
         let raw: RawApiResponse<Self> = serde_json::from_reader(body).map_err(|e| {
-            log::error!("Failed to parse API response: {e:#?}");
+            tracing::error!("Failed to parse API response: {e:#?}");
             ApiError::InvalidResponse(parts.status)
         })?;
 
@@ -193,7 +193,7 @@ impl ApiResponse for CatalogRef {
     ) -> Result<Self, ApiError> {
         let raw: RawApiResponse<serde_json::Value> =
             serde_json::from_reader(body).map_err(|e| {
-                log::error!("Failed to parse API response: {e:#?}");
+                tracing::error!("Failed to parse API response: {e:#?}");
                 ApiError::InvalidResponse(parts.status)
             })?;
 

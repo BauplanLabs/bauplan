@@ -91,7 +91,7 @@ where
         body: impl Read,
     ) -> Result<Self, ApiError> {
         let raw: RawApiResponse<Vec<T>> = serde_json::from_reader(body).map_err(|e| {
-            log::error!("Failed to parse API response: {e:#?}");
+            tracing::error!("Failed to parse API response: {e:#?}");
             ApiError::InvalidResponse(parts.status)
         })?;
 

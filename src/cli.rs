@@ -12,7 +12,6 @@ mod table;
 mod tag;
 
 use std::{
-    collections::BTreeMap,
     io::{Write as _, stdout},
     str::FromStr,
     time,
@@ -70,6 +69,16 @@ impl FromStr for Priority {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct KeyValue(String, String);
 
+impl KeyValue {
+    fn as_strs(&self) -> (&str, &str) {
+        (&self.0, &self.1)
+    }
+
+    fn into_strings(self) -> (String, String) {
+        (self.0, self.1)
+    }
+}
+
 impl FromStr for KeyValue {
     type Err = anyhow::Error;
 
@@ -80,10 +89,6 @@ impl FromStr for KeyValue {
 
         Ok(KeyValue(left.to_owned(), right.to_owned()))
     }
-}
-
-fn kv_to_map(kv: &[KeyValue]) -> BTreeMap<&str, &str> {
-    kv.iter().map(|kv| (kv.0.as_str(), kv.1.as_str())).collect()
 }
 
 #[derive(Debug, clap::Args)]
@@ -97,6 +102,9 @@ pub(crate) struct GlobalArgs {
     /// Timeout (in seconds) for client operations. (-1 = no timeout, default is command specific)
     #[arg(long, global = true)]
     pub client_timeout: Option<i64>,
+    /// Print verbose logs
+    #[arg(long, short = 'v', global = true)]
+    pub verbose: bool,
 }
 
 #[derive(Debug, Subcommand)]
