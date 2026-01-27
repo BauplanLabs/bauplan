@@ -1,11 +1,218 @@
 //! Query operations.
 
-#![allow(unused_imports)]
+mod iter;
 
-use pyo3::prelude::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, fs::File, path::PathBuf, sync::Arc, time};
+
+use arrow::{
+    array::{RecordBatch, RecordBatchWriter},
+    datatypes::Schema,
+};
+use commanderpb::runner_event::Event as RunnerEvent;
+use futures::{Stream, TryStreamExt};
+use gethostname::gethostname;
+use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
+use tracing::{error, info};
+
+use crate::{
+    flight,
+    grpc::{self, generated as commanderpb},
+    python::{
+        exceptions::{BauplanError, BauplanQueryError},
+        rt,
+    },
+};
+
+pub(crate) use iter::BatchStreamRowIterator;
 
 use super::Client;
+
+fn query_err(e: impl std::fmt::Display) -> PyErr {
+    BauplanQueryError::new_err(e.to_string())
+}
+
+impl Client {
+    fn query_timeout(&self, client_timeout: Option<u64>) -> time::Duration {
+        if let Some(v) = client_timeout
+            && v > 0
+        {
+            time::Duration::from_secs(v)
+        } else {
+            self.client_timeout
+        }
+    }
+
+    /// Submits a query and runs it to completion, canceling on timeout.
+    #[allow(clippy::too_many_arguments)]
+    async fn run_query(
+        &mut self,
+        query: &str,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
+        cache: Option<&str>,
+        namespace: Option<&str>,
+        args: HashMap<String, String>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
+    ) -> PyResult<(Schema, impl Stream<Item = PyResult<RecordBatch>> + use<>)> {
+        let cache = match cache {
+            None | Some("on") | Some("off") => cache,
+            Some(_) => {
+                return Err(PyValueError::new_err("cache must be 'on' or 'off'"));
+            }
+        };
+
+        if let Some(p) = priority
+            && !(1..=10).contains(&p)
+        {
+            return Err(PyValueError::new_err("priority must be between 1 and 10"));
+        }
+
+        let timeout = self.query_timeout(client_timeout);
+
+        let hostname = gethostname().to_string_lossy().into_owned();
+        let req = commanderpb::QueryRunRequest {
+            job_request_common: Some(commanderpb::JobRequestCommon {
+                module_version: Default::default(),
+                hostname,
+                args,
+                debug: 0,
+                priority: priority.map(|p| p as _),
+            }),
+            r#ref: r#ref.map(str::to_owned),
+            sql_query: query.to_owned(),
+            cache: cache.unwrap_or("on").to_owned(),
+            namespace: namespace.map(str::to_owned),
+        };
+
+        let resp = self
+            .grpc
+            .query_run(req)
+            .await
+            .map_err(query_err)?
+            .into_inner();
+
+        let job_id = resp
+            .job_response_common
+            .as_ref()
+            .map(|c| c.job_id.clone())
+            .ok_or_else(|| query_err("response missing job ID"))?;
+
+        info!(job_id, "succesfully planned query");
+
+        let mut client_clone = self.grpc.clone();
+        let stream = client_clone.monitor_job(job_id.clone(), timeout);
+        futures::pin_mut!(stream);
+
+        let mut flight_event = None;
+        loop {
+            let event = match stream.try_next().await {
+                Ok(Some(ev)) => ev,
+                Ok(None) => break,
+                Err(e) if e.code() == tonic::Code::Cancelled => {
+                    error!(job_id, "query timed out, cancelling execution");
+                    self.cancel_query(&job_id).await?;
+                    return Err(query_err("query execution timed out"));
+                }
+                Err(e) => return Err(query_err(e)),
+            };
+
+            match event {
+                RunnerEvent::FlightServerStart(ev) => flight_event = Some(ev),
+                RunnerEvent::JobCompletion(completion) => {
+                    grpc::interpret_outcome(completion.outcome).map_err(query_err)?;
+                    break;
+                }
+                _ => (),
+            }
+        }
+
+        let Some(commanderpb::FlightServerStartEvent {
+            endpoint,
+            magic_token,
+            ..
+        }) = flight_event
+        else {
+            return Err(BauplanError::new_err(
+                "query completed, but no results available",
+            ));
+        };
+
+        let endpoint = if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
+            endpoint
+        } else {
+            format!("https://{endpoint}")
+        };
+
+        let endpoint = endpoint
+            .parse()
+            .map_err(|_| BauplanError::new_err(format!("invalid flight endpoint: {endpoint}")))?;
+
+        let (schema, batches) =
+            flight::fetch_flight_results(endpoint, magic_token, timeout, max_rows)
+                .await
+                .map_err(|_| query_err("failed to fetch query results"))?;
+
+        Ok((schema, batches.map_err(query_err)))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn query_to_file<T: RecordBatchWriter>(
+        &mut self,
+        query: &str,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
+        cache: Option<&str>,
+        namespace: Option<&str>,
+        args: HashMap<String, String>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
+        open: impl FnOnce(Arc<Schema>) -> arrow::error::Result<T>,
+    ) -> PyResult<()> {
+        let (schema, batches) = self
+            .run_query(
+                query,
+                r#ref,
+                max_rows,
+                cache,
+                namespace,
+                args,
+                priority,
+                client_timeout,
+            )
+            .await?;
+
+        futures::pin_mut!(batches);
+        let mut writer = open(Arc::new(schema)).map_err(query_err)?;
+
+        loop {
+            let Some(batch) = batches.try_next().await? else {
+                break;
+            };
+
+            writer.write(&batch).map_err(query_err)?;
+        }
+
+        writer.close().map_err(query_err)?;
+        Ok(())
+    }
+
+    async fn cancel_query(&mut self, job_id: &str) -> PyResult<()> {
+        let req = commanderpb::CancelJobRequest {
+            job_id: Some(commanderpb::JobId {
+                id: job_id.to_owned(),
+                ..Default::default()
+            }),
+        };
+
+        if let Err(err) = self.grpc.cancel_job(req).await {
+            error!(?err, "failed to cancel timed out query");
+            return Err(query_err(err));
+        }
+
+        Ok(())
+    }
+}
 
 #[pymethods]
 impl Client {
@@ -36,51 +243,48 @@ impl Client {
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
     ///     cache: Whether to enable or disable caching for the query.
-    ///     connector: The connector type for the model (defaults to Bauplan). Allowed values are 'snowflake' and 'dremio'.
-    ///     connector_config_key: The key name if the SSM key is custom with the pattern `bauplan/connectors/<connector_type>/<key>`.
-    ///     connector_config_uri: Full SSM uri if completely custom path, e.g. `ssm://us-west-2/123456789012/baubau/dremio`.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: Additional arguments to pass to the query (default: None).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode for the query.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The query results as a `pyarrow.Table`.
-    #[pyo3(signature = (query, ref_=None, max_rows=None, cache=None, connector=None, connector_config_key=None, connector_config_uri=None, namespace=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
     #[allow(clippy::too_many_arguments)]
     fn query(
         &mut self,
+        py: Python<'_>,
         query: &str,
-        ref_: Option<&str>,
-        max_rows: Option<i64>,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
         cache: Option<&str>,
-        connector: Option<&str>,
-        connector_config_key: Option<&str>,
-        connector_config_uri: Option<&str>,
         namespace: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        priority: Option<i64>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            query,
-            ref_,
-            max_rows,
-            cache,
-            connector,
-            connector_config_key,
-            connector_config_uri,
-            namespace,
-            debug,
-            args,
-            priority,
-            verbose,
-            client_timeout,
-        );
-        todo!("query")
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
+    ) -> Result<Option<Py<PyAny>>, PyErr> {
+        rt().block_on(async {
+            let (schema, stream) = self
+                .run_query(
+                    query,
+                    r#ref,
+                    max_rows,
+                    cache,
+                    namespace,
+                    args.unwrap_or_default(),
+                    priority,
+                    client_timeout,
+                )
+                .await?;
+
+            let batches: Vec<RecordBatch> = stream.try_collect().await?;
+            if batches.is_empty() {
+                return Ok(None);
+            }
+
+            let table = pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))?;
+            Ok(Some(table.into_pyarrow(py)?.unbind()))
+        })
     }
 
     /// Execute a SQL query and return the results as a generator, where each row is
@@ -105,55 +309,40 @@ impl Client {
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
     ///     cache: Whether to enable or disable caching for the query.
-    ///     connector: The connector type for the model (defaults to Bauplan). Allowed values are 'snowflake' and 'dremio'.
-    ///     connector_config_key: The key name if the SSM key is custom with the pattern `bauplan/connectors/<connector_type>/<key>`.
-    ///     connector_config_uri: Full SSM uri if completely custom path, e.g. `ssm://us-west-2/123456789012/baubau/dremio`.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     as_json: Whether to return the results as a JSON-compatible string (default: `False`).
     ///     args: Additional arguments to pass to the query (default: `None`).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode for the query.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     ///
     /// Yields:
     ///     A dictionary representing a row of query results.
-    #[pyo3(signature = (query, ref_=None, max_rows=None, cache=None, connector=None, connector_config_key=None, connector_config_uri=None, namespace=None, debug=None, as_json=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
     #[allow(clippy::too_many_arguments)]
     fn query_to_generator(
         &mut self,
+        py: Python<'_>,
         query: &str,
-        ref_: Option<&str>,
-        max_rows: Option<i64>,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
         cache: Option<&str>,
-        connector: Option<&str>,
-        connector_config_key: Option<&str>,
-        connector_config_uri: Option<&str>,
         namespace: Option<&str>,
-        debug: Option<bool>,
-        as_json: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        priority: Option<i64>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
-        let _ = (
+        let (_schema, batches) = rt().block_on(self.run_query(
             query,
-            ref_,
+            r#ref,
             max_rows,
             cache,
-            connector,
-            connector_config_key,
-            connector_config_uri,
             namespace,
-            debug,
-            as_json,
-            args,
+            args.unwrap_or_default(),
             priority,
-            verbose,
             client_timeout,
-        );
-        todo!("query_to_generator")
+        ))?;
+
+        BatchStreamRowIterator::new(Box::pin(batches)).into_py_any(py)
     }
 
     /// Export the results of a SQL query to a file in Parquet format.
@@ -176,50 +365,43 @@ impl Client {
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
     ///     cache: Whether to enable or disable caching for the query.
-    ///     connector: The connector type for the model (defaults to Bauplan). Allowed values are 'snowflake' and 'dremio'.
-    ///     connector_config_key: The key name if the SSM key is custom with the pattern `bauplan/connectors/<connector_type>/<key>`.
-    ///     connector_config_uri: Full SSM uri if completely custom path, e.g. `ssm://us-west-2/123456789012/baubau/dremio`.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: Additional arguments to pass to the query (default: None).
-    ///     verbose: Whether to enable or disable verbose mode for the query.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The path of the file written.
-    #[pyo3(signature = (path, query, ref_=None, max_rows=None, cache=None, connector=None, connector_config_key=None, connector_config_uri=None, namespace=None, debug=None, args=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (path, query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
     #[allow(clippy::too_many_arguments)]
     fn query_to_parquet_file(
         &mut self,
-        path: &str,
+        path: PathBuf,
         query: &str,
-        ref_: Option<&str>,
-        max_rows: Option<i64>,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
         cache: Option<&str>,
-        connector: Option<&str>,
-        connector_config_key: Option<&str>,
-        connector_config_uri: Option<&str>,
         namespace: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            path,
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
+    ) -> PyResult<PathBuf> {
+        use parquet::arrow::ArrowWriter;
+
+        rt().block_on(self.query_to_file(
             query,
-            ref_,
+            r#ref,
             max_rows,
             cache,
-            connector,
-            connector_config_key,
-            connector_config_uri,
             namespace,
-            debug,
-            args,
-            verbose,
+            args.unwrap_or_default(),
+            priority,
             client_timeout,
-        );
-        todo!("query_to_parquet_file")
+            |schema| {
+                let file = File::create(&path)?;
+                Ok(ArrowWriter::try_new(file, schema, None)?)
+            },
+        ))?;
+
+        Ok(path)
     }
 
     /// Export the results of a SQL query to a file in CSV format.
@@ -242,50 +424,43 @@ impl Client {
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
     ///     cache: Whether to enable or disable caching for the query.
-    ///     connector: The connector type for the model (defaults to Bauplan). Allowed values are 'snowflake' and 'dremio'.
-    ///     connector_config_key: The key name if the SSM key is custom with the pattern `bauplan/connectors/<connector_type>/<key>`.
-    ///     connector_config_uri: Full SSM uri if completely custom path, e.g. `ssm://us-west-2/123456789012/baubau/dremio`.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: Additional arguments to pass to the query (default: None).
-    ///     verbose: Whether to enable or disable verbose mode for the query.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The path of the file written.
-    #[pyo3(signature = (path, query, ref_=None, max_rows=None, cache=None, connector=None, connector_config_key=None, connector_config_uri=None, namespace=None, debug=None, args=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (path, query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
     #[allow(clippy::too_many_arguments)]
     fn query_to_csv_file(
         &mut self,
-        path: &str,
+        path: PathBuf,
         query: &str,
-        ref_: Option<&str>,
-        max_rows: Option<i64>,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
         cache: Option<&str>,
-        connector: Option<&str>,
-        connector_config_key: Option<&str>,
-        connector_config_uri: Option<&str>,
         namespace: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            path,
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
+    ) -> PyResult<PathBuf> {
+        use arrow_csv::WriterBuilder;
+
+        rt().block_on(self.query_to_file(
             query,
-            ref_,
+            r#ref,
             max_rows,
             cache,
-            connector,
-            connector_config_key,
-            connector_config_uri,
             namespace,
-            debug,
-            args,
-            verbose,
+            args.unwrap_or_default(),
+            priority,
             client_timeout,
-        );
-        todo!("query_to_csv_file")
+            |_| {
+                let file = File::create(&path)?;
+                Ok(WriterBuilder::new().with_header(true).build(file))
+            },
+        ))?;
+
+        Ok(path)
     }
 
     /// Export the results of a SQL query to a file in JSON format.
@@ -309,52 +484,65 @@ impl Client {
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
     ///     cache: Whether to enable or disable caching for the query.
-    ///     connector: The connector type for the model (defaults to Bauplan). Allowed values are 'snowflake' and 'dremio'.
-    ///     connector_config_key: The key name if the SSM key is custom with the pattern `bauplan/connectors/<connector_type>/<key>`.
-    ///     connector_config_uri: Full SSM uri if completely custom path, e.g. `ssm://us-west-2/123456789012/baubau/dremio`.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: Additional arguments to pass to the query (default: None).
-    ///     verbose: Whether to enable or disable verbose mode for the query.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The path of the file written.
-    #[pyo3(signature = (path, query, file_format=None, ref_=None, max_rows=None, cache=None, connector=None, connector_config_key=None, connector_config_uri=None, namespace=None, debug=None, args=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (path, query, file_format=None, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
     #[allow(clippy::too_many_arguments)]
     fn query_to_json_file(
         &mut self,
-        path: &str,
+        path: PathBuf,
         query: &str,
         file_format: Option<&str>,
-        ref_: Option<&str>,
-        max_rows: Option<i64>,
+        r#ref: Option<&str>,
+        max_rows: Option<u64>,
         cache: Option<&str>,
-        connector: Option<&str>,
-        connector_config_key: Option<&str>,
-        connector_config_uri: Option<&str>,
         namespace: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            path,
-            query,
-            file_format,
-            ref_,
-            max_rows,
-            cache,
-            connector,
-            connector_config_key,
-            connector_config_uri,
-            namespace,
-            debug,
-            args,
-            verbose,
-            client_timeout,
-        );
-        todo!("query_to_json_file")
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
+    ) -> PyResult<PathBuf> {
+        use arrow::json::{ArrayWriter, LineDelimitedWriter};
+
+        let jsonl = match file_format {
+            None | Some("json") => false,
+            Some("jsonl") => true,
+            Some(other) => {
+                return Err(PyValueError::new_err(format!(
+                    "file_format must be 'json' or 'jsonl', got '{other}'"
+                )));
+            }
+        };
+
+        if jsonl {
+            rt().block_on(self.query_to_file(
+                query,
+                r#ref,
+                max_rows,
+                cache,
+                namespace,
+                args.unwrap_or_default(),
+                priority,
+                client_timeout,
+                |_| Ok(LineDelimitedWriter::new(File::create(&path)?)),
+            ))?;
+        } else {
+            rt().block_on(self.query_to_file(
+                query,
+                r#ref,
+                max_rows,
+                cache,
+                namespace,
+                args.unwrap_or_default(),
+                priority,
+                client_timeout,
+                |_| Ok(ArrayWriter::new(File::create(&path)?)),
+            ))?;
+        }
+
+        Ok(path)
     }
 
     /// Execute a table scan (with optional filters) and return the results as an arrow Table.
@@ -384,47 +572,35 @@ impl Client {
     ///     filters: The filters to apply (default: `None`).
     ///     limit: The maximum number of rows to return (default: `None`).
     ///     cache: Whether to enable or disable caching for the query.
-    ///     connector: The connector type for the model (defaults to Bauplan). Allowed values are 'snowflake' and 'dremio'.
-    ///     connector_config_key: The key name if the SSM key is custom with the pattern `bauplan/connectors/<connector_type>/<key>`.
-    ///     connector_config_uri: Full SSM uri if completely custom path, e.g. `ssm://us-west-2/123456789012/baubau/dremio`.
     ///     namespace: The Namespace to run the scan in. If not set, the scan will be run in the default namespace for your account.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The scan results as a `pyarrow.Table`.
-    #[pyo3(signature = (table, ref_=None, columns=None, filters=None, limit=None, cache=None, connector=None, connector_config_key=None, connector_config_uri=None, namespace=None, debug=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (table, r#ref=None, columns=None, filters=None, limit=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
     #[allow(clippy::too_many_arguments)]
     fn scan(
         &mut self,
         table: &str,
-        ref_: Option<&str>,
+        r#ref: Option<&str>,
         columns: Option<Vec<String>>,
         filters: Option<&str>,
         limit: Option<i64>,
         cache: Option<&str>,
-        connector: Option<&str>,
-        connector_config_key: Option<&str>,
-        connector_config_uri: Option<&str>,
         namespace: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        priority: Option<i64>,
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
         client_timeout: Option<i64>,
     ) -> PyResult<Py<PyAny>> {
         let _ = (
             table,
-            ref_,
+            r#ref,
             columns,
             filters,
             limit,
             cache,
-            connector,
-            connector_config_key,
-            connector_config_uri,
             namespace,
-            debug,
             args,
             priority,
             client_timeout,

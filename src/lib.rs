@@ -92,6 +92,9 @@ mod config;
 #[doc(hidden)]
 pub mod grpc;
 
+#[doc(hidden)]
+pub mod flight;
+
 pub use api::*;
 pub use config::Profile;
 

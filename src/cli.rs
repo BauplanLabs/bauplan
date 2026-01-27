@@ -23,7 +23,8 @@ use bauplan::{
     grpc::{self, generated as commanderpb},
 };
 use clap::{Parser, Subcommand};
-use yansi::Paint as _;
+use colored::Colorize as _;
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 
 #[derive(Debug, Parser)]
 #[command(
@@ -142,9 +143,37 @@ pub(crate) struct Cli {
     pub(crate) global: GlobalArgs,
     pub(crate) timeout: Option<time::Duration>,
     pub(crate) agent: ureq::Agent,
+    pub(crate) multiprogress: indicatif::MultiProgress,
 }
 
-pub(crate) fn run(args: Args) -> anyhow::Result<()> {
+impl Cli {
+    /// Creates a progress spinner that plays nicely with logging.
+    fn new_spinner(&self) -> ProgressBar {
+        fn elapsed_decimal(state: &ProgressState, w: &mut dyn std::fmt::Write) {
+            let secs = state.elapsed().as_secs_f64();
+            write!(w, "[{secs:.1}s]").unwrap()
+        }
+        fn current_timestamp(_state: &ProgressState, w: &mut dyn std::fmt::Write) {
+            write!(w, "{}", chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ")).unwrap();
+        }
+
+        // This format aligns with the log output.
+        let progress = ProgressBar::new_spinner().with_style(
+            ProgressStyle::with_template(
+                "{current_timestamp:.dim} {elapsed_decimal:.dim} {msg:.blue} {spinner:.cyan/blue}",
+            )
+            .unwrap()
+            .with_key("elapsed_decimal", elapsed_decimal)
+            .with_key("current_timestamp", current_timestamp)
+            .tick_strings(&["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓"]),
+        );
+
+        progress.enable_steady_tick(time::Duration::from_millis(100));
+        self.multiprogress.add(progress)
+    }
+}
+
+pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow::Result<()> {
     let profile = if let Some(name) = args.global.profile.as_deref() {
         Profile::from_env(name)
     } else {
@@ -169,6 +198,7 @@ pub(crate) fn run(args: Args) -> anyhow::Result<()> {
         global: args.global,
         timeout,
         agent,
+        multiprogress,
     };
 
     match args.command {
@@ -180,7 +210,7 @@ pub(crate) fn run(args: Args) -> anyhow::Result<()> {
         Command::Commit(args) => commit::handle(&cli, args),
         Command::Namespace(args) => namespace::handle(&cli, args),
         Command::Table(args) => table::handle(&cli, args),
-        Command::Query(args) => query::handle(&cli, args),
+        Command::Query(args) => with_rt(query::handle(&cli, args)),
         Command::Parameter(args) => parameter::handle(&cli, args),
         Command::Config(args) => config::handle(&cli, args),
         Command::Job(args) => job::handle(&cli, args),
