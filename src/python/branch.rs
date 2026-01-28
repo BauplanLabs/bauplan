@@ -37,7 +37,11 @@ impl Client {
     ///     limit: Optional, max number of branches to get.
     /// Returns:
     ///     An iterator over `Branch` objects.
-    #[pyo3(signature = (name=None, user=None, limit=None))]
+    #[pyo3(signature = (
+        name: "str | None" = None,
+        user: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "Iterator[Branch]")]
     fn get_branches(
         &self,
         name: Option<String>,
@@ -80,7 +84,7 @@ impl Client {
     ///     ForbiddenError: if the user does not have access to the branch.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (branch))]
+    #[pyo3(signature = (branch: "str | Branch") -> "Branch")]
     fn get_branch(&mut self, branch: BranchArg) -> PyResult<PyBranch> {
         let req = GetBranch { name: &branch.0 };
         let b = super::roundtrip(req, &self.profile, &self.agent)?;
@@ -109,7 +113,7 @@ impl Client {
     ///     ForbiddenError: if the user does not have access to the branch.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (branch))]
+    #[pyo3(signature = (branch: "str | Branch") -> "bool")]
     fn has_branch(&mut self, branch: BranchArg) -> PyResult<bool> {
         let req = GetBranch { name: &branch.0 };
 
@@ -151,7 +155,11 @@ impl Client {
     ///     BranchExistsError: if the branch already exists.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (branch, from_ref, if_not_exists=false))]
+    #[pyo3(signature = (
+        branch: "str | Branch",
+        from_ref: "str | Branch | Tag | DetachedRef",
+        if_not_exists: "bool" = false,
+    ) -> "Branch")]
     fn create_branch(
         &mut self,
         branch: BranchArg,
@@ -198,7 +206,10 @@ impl Client {
     ///     `RenameBranchForbiddenError`: if the user does not have access to create the branch.
     ///     `UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (branch, new_branch))]
+    #[pyo3(signature = (
+        branch: "str | Branch",
+        new_branch: "str | Branch",
+    ) -> "Branch")]
     fn rename_branch(&mut self, branch: BranchArg, new_branch: BranchArg) -> PyResult<PyBranch> {
         let req = RenameBranch {
             name: &branch.0,
@@ -239,7 +250,13 @@ impl Client {
     ///     MergeConflictError: if the merge operation results in a conflict.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (source_ref, into_branch, commit_message=None, commit_body=None, commit_properties=None))]
+    #[pyo3(signature = (
+        source_ref: "str | Branch | Tag | DetachedRef",
+        into_branch: "str | Branch",
+        commit_message: "str | None" = None,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch")]
     fn merge_branch(
         &mut self,
         source_ref: RefArg,
@@ -291,7 +308,10 @@ impl Client {
     ///     BranchHeadChangedError: if the branch head hash has changed.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (branch, if_exists=false))]
+    #[pyo3(signature = (
+        branch: "str | Branch",
+        if_exists: "bool" = false,
+    ) -> "bool")]
     fn delete_branch(&mut self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteBranch { name: &branch.0 };
 

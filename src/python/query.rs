@@ -249,7 +249,16 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The query results as a `pyarrow.Table`.
-    #[pyo3(signature = (query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (
+        query: "str",
+        r#ref: "str | None" = None,
+        max_rows: "int | None" = None,
+        cache: "str | None" = None,
+        namespace: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pyarrow.Table")]
     #[allow(clippy::too_many_arguments)]
     fn query(
         &mut self,
@@ -313,7 +322,16 @@ impl Client {
     ///
     /// Yields:
     ///     A dictionary representing a row of query results.
-    #[pyo3(signature = (query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (
+        query: "str",
+        r#ref: "str | None" = None,
+        max_rows: "int | None" = None,
+        cache: "str | None" = None,
+        namespace: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "Iterator[dict[str, Any]]")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_generator(
         &mut self,
@@ -366,7 +384,17 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The path of the file written.
-    #[pyo3(signature = (path, query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (
+        path: "str",
+        query: "str",
+        r#ref: "str | None" = None,
+        max_rows: "int | None" = None,
+        cache: "str | None" = None,
+        namespace: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "str")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_parquet_file(
         &mut self,
@@ -425,7 +453,17 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The path of the file written.
-    #[pyo3(signature = (path, query, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (
+        path: "str",
+        query: "str",
+        r#ref: "str | None" = None,
+        max_rows: "int | None" = None,
+        cache: "str | None" = None,
+        namespace: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "str")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_csv_file(
         &mut self,
@@ -485,7 +523,18 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The path of the file written.
-    #[pyo3(signature = (path, query, file_format=None, r#ref=None, max_rows=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (
+        path: "str",
+        query: "str",
+        file_format: "str | None" = None,
+        r#ref: "str | None" = None,
+        max_rows: "int | None" = None,
+        cache: "str | None" = None,
+        namespace: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "str")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_json_file(
         &mut self,
@@ -574,7 +623,18 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The scan results as a `pyarrow.Table`.
-    #[pyo3(signature = (table, r#ref=None, columns=None, filters=None, limit=None, cache=None, namespace=None, args=None, priority=None, client_timeout=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        r#ref: "str | Branch | Tag | DetachedRef | None" = None,
+        columns: "list[str] | None" = None,
+        filters: "str | None" = None,
+        limit: "int | None" = None,
+        cache: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pyarrow.Table")]
     #[allow(clippy::too_many_arguments)]
     fn scan(
         &mut self,

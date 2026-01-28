@@ -192,29 +192,33 @@ fn roundtrip<T: ApiRequest>(
 }
 
 #[pymodule]
-mod bauplan {
-
-    use super::*;
-
+mod _internal {
+    #[pymodule_export]
+    use super::Client;
     #[pymodule_export]
     use super::exceptions::exceptions;
-
-    #[pymodule_init]
-    fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
-        m.add_class::<Client>()?;
-        m.add_class::<info::PyInfoState>()?;
-        m.add_class::<info::PyOrganizationInfo>()?;
-        m.add_class::<info::PyUserInfo>()?;
-        m.add_class::<info::PyRunnerNodeInfo>()?;
-        m.add_class::<refs::PyBranch>()?;
-        m.add_class::<refs::PyTag>()?;
-        m.add_class::<refs::PyDetachedRef>()?;
-        m.add_class::<crate::namespace::Namespace>()?;
-        m.add_class::<crate::table::TableKind>()?;
-        m.add_class::<crate::table::TableWithMetadata>()?;
-        m.add_class::<crate::table::TableField>()?;
-        Ok(())
-    }
+    #[pymodule_export]
+    use super::info::PyInfoState as InfoState;
+    #[pymodule_export]
+    use super::info::PyOrganizationInfo as OrganizationInfo;
+    #[pymodule_export]
+    use super::info::PyRunnerNodeInfo as RunnerNodeInfo;
+    #[pymodule_export]
+    use super::info::PyUserInfo as UserInfo;
+    #[pymodule_export]
+    use super::refs::PyBranch as Branch;
+    #[pymodule_export]
+    use super::refs::PyDetachedRef as DetachedRef;
+    #[pymodule_export]
+    use super::refs::PyTag as Tag;
+    #[pymodule_export]
+    use crate::namespace::Namespace;
+    #[pymodule_export]
+    use crate::table::TableField;
+    #[pymodule_export]
+    use crate::table::TableKind;
+    #[pymodule_export]
+    use crate::table::TableWithMetadata;
 }
 
 // Copied from delta-rs:

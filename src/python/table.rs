@@ -57,7 +57,19 @@ impl Client {
     /// Raises:
     ///     TableCreatePlanStatusError: if the table creation plan fails.
     ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
-    #[pyo3(signature = (table, search_uri, branch=None, namespace=None, partitioned_by=None, replace=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        search_uri: "str",
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        partitioned_by: "str | None" = None,
+        replace: "bool | None" = None,
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "Table")]
     #[allow(clippy::too_many_arguments)]
     fn create_table(
         &mut self,
@@ -128,7 +140,19 @@ impl Client {
     ///
     /// Raises:
     ///     TableCreatePlanStatusError: if the table creation plan fails.
-    #[pyo3(signature = (table, search_uri, branch=None, namespace=None, partitioned_by=None, replace=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        search_uri: "str",
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        partitioned_by: "str | None" = None,
+        replace: "bool | None" = None,
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "TableCreationPlanState")]
     #[allow(clippy::too_many_arguments)]
     fn plan_table_creation(
         &mut self,
@@ -178,7 +202,14 @@ impl Client {
     ///
     /// Raises:
     ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
-    #[pyo3(signature = (plan, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (
+        plan: "TableCreationPlan",
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "TableCreationPlanState")]
     fn apply_table_creation_plan(
         &mut self,
         plan: Py<PyAny>,
@@ -225,7 +256,22 @@ impl Client {
     ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
     /// Returns:
     ///     A `bauplan.state.TableDataImportState` object.
-    #[pyo3(signature = (table, search_uri, branch=None, namespace=None, continue_on_error=None, import_duplicate_files=None, best_effort=None, preview=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None, detach=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        search_uri: "str",
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        continue_on_error: "bool | None" = None,
+        import_duplicate_files: "bool | None" = None,
+        best_effort: "bool | None" = None,
+        preview: "str | None" = None,
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+        detach: "bool | None" = None,
+    ) -> "TableDataImportState")]
     #[allow(clippy::too_many_arguments)]
     fn import_data(
         &mut self,
@@ -297,7 +343,19 @@ impl Client {
     ///
     /// Returns:
     ///     The external table create state.
-    #[pyo3(signature = (table, search_patterns, branch=None, namespace=None, overwrite=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None, detach=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        search_patterns: "list[str]",
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        overwrite: "bool | None" = None,
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+        detach: "bool | None" = None,
+    ) -> "ExternalTableCreateState")]
     #[allow(clippy::too_many_arguments)]
     fn create_external_table_from_parquet(
         &mut self,
@@ -348,7 +406,12 @@ impl Client {
     ///     limit: Optional, max number of tables to get.
     /// Returns:
     ///     An iterator over `TableWithMetadata` objects.
-    #[pyo3(signature = (r#ref, filter_by_name=None, filter_by_namespace=None, limit=None))]
+    #[pyo3(signature = (
+        r#ref: "str | Branch | Tag | DetachedRef",
+        filter_by_name: "str | None" = None,
+        filter_by_namespace: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "Iterator[TableWithMetadata]")]
     fn get_tables(
         &self,
         r#ref: RefArg,
@@ -408,7 +471,11 @@ impl Client {
     ///     TableNotFoundError: if the table does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (table, r#ref, namespace=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        r#ref: "str | Branch | Tag | DetachedRef",
+        namespace: "str | None" = None,
+    ) -> "TableWithMetadata")]
     fn get_table(
         &mut self,
         table: TableArg,
@@ -451,7 +518,11 @@ impl Client {
     ///     NamespaceNotFoundError: if the namespace does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (table, r#ref, namespace=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        r#ref: "str | Branch | Tag | DetachedRef",
+        namespace: "str | None" = None,
+    ) -> "bool")]
     fn has_table(
         &mut self,
         table: TableArg,
@@ -505,7 +576,14 @@ impl Client {
     ///     NamespaceConflictsError: if conflicting namespaces names are specified.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (table, branch, namespace=None, if_exists=false, commit_body=None, commit_properties=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        branch: "str | Branch",
+        namespace: "str | None" = None,
+        if_exists: "bool" = false,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn delete_table(
         &mut self,
@@ -578,7 +656,13 @@ impl Client {
     ///     InvalidDataError: if the metadata location is within the warehouse directory.
     ///     UpdateConflictError: if a table with the same name already exists and overwrite=False.
     ///     BauplanError: for other API errors during registration or retrieval.
-    #[pyo3(signature = (table, metadata_json_uri, namespace=None, branch=None, overwrite=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        metadata_json_uri: "str",
+        namespace: "str | Namespace | None" = None,
+        branch: "str | Branch | None" = None,
+        overwrite: "bool | None" = None,
+    ) -> "TableWithMetadata")]
     fn create_external_table_from_metadata(
         &mut self,
         table: &str,
@@ -628,7 +712,15 @@ impl Client {
     ///     NamespaceConflictsError: if conflicting namespaces names are specified.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (table, source_ref, into_branch, namespace=None, replace=None, commit_body=None, commit_properties=None))]
+    #[pyo3(signature = (
+        table: "str | Table",
+        source_ref: "str | Branch | Tag | DetachedRef",
+        into_branch: "str | Branch",
+        namespace: "str | None" = None,
+        replace: "bool | None" = None,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn revert_table(
         &mut self,

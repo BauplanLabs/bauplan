@@ -28,7 +28,10 @@ impl Client {
     /// Raises:
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (filter_by_name=None, limit=None))]
+    #[pyo3(signature = (
+        filter_by_name: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "Iterator[Tag]")]
     fn get_tags(
         &self,
         filter_by_name: Option<String>,
@@ -68,7 +71,7 @@ impl Client {
     ///     NotATagRefError: if the object is not a tag.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag))]
+    #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
     fn get_tag(&mut self, tag: TagArg) -> PyResult<PyTag> {
         let req = GetTag { name: &tag.0 };
         let t = super::roundtrip(req, &self.profile, &self.agent)?;
@@ -97,7 +100,7 @@ impl Client {
     ///     NotATagRefError: if the object is not a tag.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag))]
+    #[pyo3(signature = (tag: "str | Tag") -> "bool")]
     fn has_tag(&mut self, tag: TagArg) -> PyResult<bool> {
         let req = GetTag { name: &tag.0 };
 
@@ -135,7 +138,11 @@ impl Client {
     ///     TagExistsError: if the tag already exists.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag, from_ref, if_not_exists=false))]
+    #[pyo3(signature = (
+        tag: "str | Tag",
+        from_ref: "str | Branch | Tag | DetachedRef",
+        if_not_exists: "bool" = false,
+    ) -> "Tag")]
     fn create_tag(
         &mut self,
         tag: TagArg,
@@ -183,7 +190,10 @@ impl Client {
     ///     RenameTagForbiddenError: if the user does not have access to create the tag.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag, new_tag))]
+    #[pyo3(signature = (
+        tag: "str | Tag",
+        new_tag: "str | Tag",
+    ) -> "Tag")]
     fn rename_tag(&mut self, tag: TagArg, new_tag: TagArg) -> PyResult<PyTag> {
         let req = RenameTag {
             name: &tag.0,
@@ -217,7 +227,10 @@ impl Client {
     ///     NotATagRefError: if the object is not a tag.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (tag, if_exists=false))]
+    #[pyo3(signature = (
+        tag: "str | Tag",
+        if_exists: "bool" = false,
+    ) -> "bool")]
     fn delete_tag(&mut self, tag: TagArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteTag { name: &tag.0 };
 

@@ -32,11 +32,24 @@ impl Client {
     /// Raises:
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (ref_, filter_by_message=None, filter_by_author_username=None, filter_by_author_name=None, filter_by_author_email=None, filter_by_authored_date=None, filter_by_authored_date_start_at=None, filter_by_authored_date_end_at=None, filter_by_parent_hash=None, filter_by_properties=None, filter_=None, limit=None))]
+    #[pyo3(signature = (
+        r#ref: "str",
+        filter_by_message: "str | None" = None,
+        filter_by_author_username: "str | None" = None,
+        filter_by_author_name: "str | None" = None,
+        filter_by_author_email: "str | None" = None,
+        filter_by_authored_date: "str | None" = None,
+        filter_by_authored_date_start_at: "str | None" = None,
+        filter_by_authored_date_end_at: "str | None" = None,
+        filter_by_parent_hash: "str | None" = None,
+        filter_by_properties: "dict[str, str] | None" = None,
+        filter_: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "GetCommitsResponse")]
     #[allow(clippy::too_many_arguments)]
     fn get_commits(
         &mut self,
-        ref_: &str,
+        r#ref: &str,
         filter_by_message: Option<&str>,
         filter_by_author_username: Option<&str>,
         filter_by_author_name: Option<&str>,
@@ -50,7 +63,7 @@ impl Client {
         limit: Option<i64>,
     ) -> PyResult<Py<PyAny>> {
         let _ = (
-            ref_,
+            r#ref,
             filter_by_message,
             filter_by_author_username,
             filter_by_author_name,

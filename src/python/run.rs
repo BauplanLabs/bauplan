@@ -44,12 +44,28 @@ impl Client {
     ///     detach: Whether to detach the run and return immediately instead of blocking on log streaming.
     /// Returns:
     ///     `bauplan.state.RunState`: The state of the run.
-    #[pyo3(signature = (project_dir=None, ref_=None, namespace=None, parameters=None, cache=None, transaction=None, dry_run=None, strict=None, preview=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None, detach=None))]
+    #[pyo3(signature = (
+        project_dir: "str | None" = None,
+        r#ref: "str | None" = None,
+        namespace: "str | None" = None,
+        parameters: "dict[str, str] | None" = None,
+        cache: "str | None" = None,
+        transaction: "str | None" = None,
+        dry_run: "bool | None" = None,
+        strict: "str | None" = None,
+        preview: "str | None" = None,
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+        detach: "bool | None" = None,
+    ) -> "RunState")]
     #[allow(clippy::too_many_arguments)]
     fn run(
         &mut self,
         project_dir: Option<&str>,
-        ref_: Option<&str>,
+        r#ref: Option<&str>,
         namespace: Option<&str>,
         parameters: Option<std::collections::HashMap<String, String>>,
         cache: Option<&str>,
@@ -66,7 +82,7 @@ impl Client {
     ) -> PyResult<Py<PyAny>> {
         let _ = (
             project_dir,
-            ref_,
+            r#ref,
             namespace,
             parameters,
             cache,
@@ -117,12 +133,26 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     `bauplan.state.ReRunState`: The state of the run.
-    #[pyo3(signature = (job_id, ref_=None, namespace=None, cache=None, transaction=None, dry_run=None, strict=None, preview=None, debug=None, args=None, priority=None, verbose=None, client_timeout=None))]
+    #[pyo3(signature = (
+        job_id: "str",
+        r#ref: "str | None" = None,
+        namespace: "str | None" = None,
+        cache: "str | None" = None,
+        transaction: "str | None" = None,
+        dry_run: "bool | None" = None,
+        strict: "str | None" = None,
+        preview: "str | None" = None,
+        debug: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        verbose: "bool | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "ReRunState")]
     #[allow(clippy::too_many_arguments)]
     fn rerun(
         &mut self,
         job_id: &str,
-        ref_: Option<&str>,
+        r#ref: Option<&str>,
         namespace: Option<&str>,
         cache: Option<&str>,
         transaction: Option<&str>,
@@ -137,7 +167,7 @@ impl Client {
     ) -> PyResult<Py<PyAny>> {
         let _ = (
             job_id,
-            ref_,
+            r#ref,
             namespace,
             cache,
             transaction,

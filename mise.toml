@@ -1,4 +1,5 @@
 [tools]
 buf = "1.61.0"
+just = "latest"
 rust = "1.92.0"
 uv = "0.9.18"

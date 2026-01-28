@@ -39,7 +39,11 @@ impl Client {
     ///
     /// Yields:
     ///     A Namespace object.
-    #[pyo3(signature = (r#ref, filter_by_name=None, limit=None))]
+    #[pyo3(signature = (
+        r#ref: "str | Branch | Tag | DetachedRef",
+        filter_by_name: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "Iterator[Namespace]")]
     fn get_namespaces(
         &self,
         r#ref: RefArg,
@@ -85,7 +89,10 @@ impl Client {
     ///     RefNotFoundError: if the ref does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, r#ref))]
+    #[pyo3(signature = (
+        namespace: "str | Namespace",
+        r#ref: "str | Branch | Tag | DetachedRef",
+    ) -> "Namespace")]
     fn get_namespace(&mut self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<Namespace> {
         let req = GetNamespace {
             name: &namespace.0,
@@ -127,7 +134,13 @@ impl Client {
     ///     NamespaceExistsError: if the namespace already exists.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, branch, commit_body=None, commit_properties=None, if_not_exists=false))]
+    #[pyo3(signature = (
+        namespace: "str | Namespace",
+        branch: "str | Branch",
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+        if_not_exists: "bool" = false,
+    ) -> "Namespace")]
     fn create_namespace(
         &mut self,
         namespace: NamespaceArg,
@@ -199,7 +212,13 @@ impl Client {
     ///     NamespaceIsNotEmptyError: if the namespace is not empty.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, branch, if_exists=false, commit_body=None, commit_properties=None))]
+    #[pyo3(signature = (
+        namespace: "str | Namespace",
+        branch: "str | Branch",
+        if_exists: "bool" = false,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch")]
     fn delete_namespace(
         &mut self,
         namespace: NamespaceArg,
@@ -259,7 +278,10 @@ impl Client {
     ///     RefNotFoundError: if the ref does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
-    #[pyo3(signature = (namespace, r#ref))]
+    #[pyo3(signature = (
+        namespace: "str | Namespace",
+        r#ref: "str | Branch | Tag | DetachedRef",
+    ) -> "bool")]
     fn has_namespace(&mut self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<bool> {
         let req = GetNamespace {
             name: &namespace.0,

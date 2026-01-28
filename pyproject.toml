@@ -12,10 +12,12 @@ dev = [
     "griffe>=1.4.0",
     "pyarrow>=17.0.0",
     "pytest>=8.3.5",
+    "ruff>=0.14.14",
 ]
 
 [tool.maturin]
 python-source = "python"
+module-name = "bauplan._internal"
 bindings = "pyo3"
 features = ["pyo3/extension-module", "python"]
 use_base_python = true

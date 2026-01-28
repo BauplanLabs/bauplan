@@ -13,7 +13,7 @@ impl Client {
     ///
     /// Parameters:
     ///     job_id: A job ID
-    #[pyo3(signature = (job_id))]
+    #[pyo3(signature = (job_id: "str") -> "Job")]
     fn get_job(&mut self, job_id: &str) -> PyResult<Py<PyAny>> {
         let _ = job_id;
         todo!("get_job")
@@ -35,7 +35,12 @@ impl Client {
     /// later than "after" (if specified) and a finish time earlier than "before" (if specified),
     /// or between both. If neither is specified, for example `(None, None)`, then the behavior is
     /// the same as not specifying the filter itself, for example `filter_by_finish_time=None`.
-    #[pyo3(signature = (all_users=None, filter_by_id=None, filter_by_status=None, filter_by_finish_time=None))]
+    #[pyo3(signature = (
+        all_users: "bool | None" = None,
+        filter_by_id: "str | None" = None,
+        filter_by_status: "str | JobState | None" = None,
+        filter_by_finish_time: "tuple[datetime | None, datetime | None] | None" = None,
+    ) -> "list[Job]")]
     fn list_jobs(
         &mut self,
         all_users: Option<bool>,
@@ -66,7 +71,16 @@ impl Client {
     ///
     /// Returns:
     ///     A `bauplan.schema.ListJobsResponse` object.
-    #[pyo3(signature = (all_users=None, filter_by_ids=None, filter_by_users=None, filter_by_kinds=None, filter_by_statuses=None, filter_by_created_after=None, filter_by_created_before=None, limit=None))]
+    #[pyo3(signature = (
+        all_users: "bool | None" = None,
+        filter_by_ids: "str | list[str] | None" = None,
+        filter_by_users: "str | list[str] | None" = None,
+        filter_by_kinds: "str | JobKind | list[str | JobKind] | None" = None,
+        filter_by_statuses: "str | JobState | list[str | JobState] | None" = None,
+        filter_by_created_after: "datetime | None" = None,
+        filter_by_created_before: "datetime | None" = None,
+        limit: "int | None" = None,
+    ) -> "ListJobsResponse")]
     #[allow(clippy::too_many_arguments)]
     fn get_jobs(
         &mut self,
@@ -97,7 +111,10 @@ impl Client {
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
     ///     job_id_prefix: str: The prefix of a Job ID (deprecated in favor of `job`).
-    #[pyo3(signature = (job_id_prefix=None, job=None))]
+    #[pyo3(signature = (
+        job_id_prefix: "str | None" = None,
+        job: "str | Job | None" = None,
+    ) -> "JobLogs")]
     fn get_job_logs(
         &mut self,
         job_id_prefix: Option<&str>,
@@ -112,7 +129,11 @@ impl Client {
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
     ///     job_id_prefix: str: The prefix of a Job ID (deprecated in favor of `job`).
-    #[pyo3(signature = (job, include_logs=None, include_snapshot=None))]
+    #[pyo3(signature = (
+        job: "str | Job",
+        include_logs: "bool | None" = None,
+        include_snapshot: "bool | None" = None,
+    ) -> "JobContext")]
     fn get_job_context(
         &mut self,
         job: &str,
@@ -128,7 +149,11 @@ impl Client {
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
     ///     job_id_prefix: str: The prefix of a Job ID (deprecated in favor of `job`).
-    #[pyo3(signature = (jobs, include_logs=None, include_snapshot=None))]
+    #[pyo3(signature = (
+        jobs: "list[str | Job]",
+        include_logs: "bool | None" = None,
+        include_snapshot: "bool | None" = None,
+    ) -> "list[JobContext]")]
     fn get_job_contexts(
         &mut self,
         jobs: Vec<String>,
@@ -143,7 +168,7 @@ impl Client {
     ///
     /// Parameters:
     ///     job_id: A job ID
-    #[pyo3(signature = (job_id))]
+    #[pyo3(signature = (job_id: "str") -> "None")]
     fn cancel_job(&mut self, job_id: &str) -> PyResult<()> {
         let _ = job_id;
         todo!("cancel_job")
