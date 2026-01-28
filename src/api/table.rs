@@ -68,7 +68,7 @@ pub struct TableWithMetadata {
     /// The size of the table.
     pub size: Option<u64>,
     /// The timestamp when the table was last updated.
-    #[serde(rename = "last_updated_ms", deserialize_with = "deserialize_epoch_ms")]
+    #[serde(alias = "last_updated_ms", deserialize_with = "deserialize_epoch_ms")]
     pub last_updated_at: DateTime<Utc>,
     /// The fields in the table schema.
     pub fields: Vec<TableField>,
