@@ -262,7 +262,7 @@ impl Client {
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
-    ) -> Result<Option<Py<PyAny>>, PyErr> {
+    ) -> Result<Py<PyAny>, PyErr> {
         rt().block_on(async {
             let (schema, stream) = self
                 .run_query(
@@ -278,12 +278,8 @@ impl Client {
                 .await?;
 
             let batches: Vec<RecordBatch> = stream.try_collect().await?;
-            if batches.is_empty() {
-                return Ok(None);
-            }
-
             let table = pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))?;
-            Ok(Some(table.into_pyarrow(py)?.unbind()))
+            Ok(table.into_pyarrow(py)?.unbind())
         })
     }
 
