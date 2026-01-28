@@ -212,6 +212,10 @@ mod _internal {
     #[pymodule_export]
     use super::refs::PyTag as Tag;
     #[pymodule_export]
+    use crate::commit::Actor;
+    #[pymodule_export]
+    use crate::commit::Commit;
+    #[pymodule_export]
     use crate::namespace::Namespace;
     #[pymodule_export]
     use crate::table::TableField;

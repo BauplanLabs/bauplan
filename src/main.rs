@@ -7,6 +7,12 @@ use tracing_subscriber::{EnvFilter, fmt};
 fn main() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
+    // Apply color setting. Default is auto-detect (tty check).
+    // --color forces on, --no-color forces off, last one wins.
+    if args.global.color {
+        colored::control::set_override(true);
+    }
+
     // Tracks global progress bar state. This is necessary so that indicatif
     // progress bars and tracing log lines play nicely with each other.
     let mp = indicatif::MultiProgress::new();

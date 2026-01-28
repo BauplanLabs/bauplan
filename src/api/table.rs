@@ -1,7 +1,6 @@
 //! API operations concerning tables in the lake.
 
-use std::time;
-
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -70,7 +69,7 @@ pub struct TableWithMetadata {
     pub size: Option<u64>,
     /// The timestamp when the table was last updated.
     #[serde(rename = "last_updated_ms", deserialize_with = "deserialize_epoch_ms")]
-    pub last_updated_at: time::SystemTime,
+    pub last_updated_at: DateTime<Utc>,
     /// The fields in the table schema.
     pub fields: Vec<TableField>,
     /// The number of snapshots.
@@ -263,12 +262,14 @@ impl ApiRequest for RevertTable<'_> {
     }
 }
 
-fn deserialize_epoch_ms<'de, D>(deserializer: D) -> Result<time::SystemTime, D::Error>
+fn deserialize_epoch_ms<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
-    let millis: u64 = Deserialize::deserialize(deserializer)?;
-    Ok(time::UNIX_EPOCH + time::Duration::from_millis(millis))
+    let millis: i64 = Deserialize::deserialize(deserializer)?;
+    Utc.timestamp_millis_opt(millis)
+        .single()
+        .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))
 }
 
 #[cfg(all(test, feature = "_integration_tests"))]

@@ -106,6 +106,12 @@ pub(crate) struct GlobalArgs {
     /// Print verbose logs
     #[arg(long, short = 'v', global = true)]
     pub verbose: bool,
+    /// Enable colored output
+    #[arg(long, global = true, overrides_with = "_no_color", hide = true)]
+    pub color: bool,
+    /// Disable colored output
+    #[arg(long = "no-color", global = true)]
+    pub _no_color: bool,
 }
 
 #[derive(Debug, Subcommand)]

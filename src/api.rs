@@ -19,7 +19,7 @@ pub use error::*;
 pub use paginate::*;
 
 /// A ref returned by the API.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CatalogRef {
     /// A branch.

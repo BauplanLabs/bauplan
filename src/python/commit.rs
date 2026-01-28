@@ -1,11 +1,12 @@
 //! Commit operations.
 
-#![allow(unused_imports)]
+use std::collections::BTreeMap;
 
 use pyo3::prelude::*;
-use std::collections::HashMap;
 
-use super::Client;
+use crate::{ApiRequest, commit::GetCommits};
+
+use super::{Client, paginate::PyPaginator};
 
 #[pymethods]
 impl Client {
@@ -27,7 +28,7 @@ impl Client {
     ///     filter: Optional, a CEL filter expression to filter the commits.
     ///     limit: Optional, max number of commits to get.
     /// Returns:
-    ///     A `bauplan.schema.GetCommitsResponse` object.
+    ///     An iterator over `Commit` objects.
     ///
     /// Raises:
     ///     UnauthorizedError: if the user's credentials are invalid.
@@ -45,37 +46,43 @@ impl Client {
         filter_by_properties: "dict[str, str] | None" = None,
         filter_: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "GetCommitsResponse")]
+    ) -> "Iterator[Commit]")]
     #[allow(clippy::too_many_arguments)]
     fn get_commits(
-        &mut self,
-        r#ref: &str,
-        filter_by_message: Option<&str>,
-        filter_by_author_username: Option<&str>,
-        filter_by_author_name: Option<&str>,
-        filter_by_author_email: Option<&str>,
-        filter_by_authored_date: Option<&str>,
-        filter_by_authored_date_start_at: Option<&str>,
-        filter_by_authored_date_end_at: Option<&str>,
-        filter_by_parent_hash: Option<&str>,
-        filter_by_properties: Option<std::collections::HashMap<String, String>>,
-        filter_: Option<&str>,
-        limit: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            r#ref,
-            filter_by_message,
-            filter_by_author_username,
-            filter_by_author_name,
-            filter_by_author_email,
-            filter_by_authored_date,
-            filter_by_authored_date_start_at,
-            filter_by_authored_date_end_at,
-            filter_by_parent_hash,
-            filter_by_properties,
-            filter_,
-            limit,
-        );
-        todo!("get_commits")
+        &self,
+        r#ref: String,
+        filter_by_message: Option<String>,
+        filter_by_author_username: Option<String>,
+        filter_by_author_name: Option<String>,
+        filter_by_author_email: Option<String>,
+        filter_by_authored_date: Option<String>,
+        filter_by_authored_date_start_at: Option<String>,
+        filter_by_authored_date_end_at: Option<String>,
+        filter_by_parent_hash: Option<String>,
+        filter_by_properties: Option<BTreeMap<String, String>>,
+        filter_: Option<String>,
+        limit: Option<usize>,
+    ) -> PyResult<PyPaginator> {
+        let profile = self.profile.clone();
+        let agent = self.agent.clone();
+
+        PyPaginator::new(limit, move |token, limit| {
+            let req = GetCommits {
+                at_ref: &r#ref,
+                filter_by_message: filter_by_message.as_deref(),
+                filter_by_author_username: filter_by_author_username.as_deref(),
+                filter_by_author_name: filter_by_author_name.as_deref(),
+                filter_by_author_email: filter_by_author_email.as_deref(),
+                filter_by_authored_date: filter_by_authored_date.as_deref(),
+                filter_by_authored_date_start_at: filter_by_authored_date_start_at.as_deref(),
+                filter_by_authored_date_end_at: filter_by_authored_date_end_at.as_deref(),
+                filter_by_parent_hash: filter_by_parent_hash.as_deref(),
+                filter_by_properties: filter_by_properties.as_ref(),
+                filter: filter_.as_deref(),
+            }
+            .paginate(token, limit);
+
+            Ok(super::roundtrip(req, &profile, &agent)?)
+        })
     }
 }
