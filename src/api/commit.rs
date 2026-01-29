@@ -102,25 +102,6 @@ pub struct CommitOptions<'a> {
     pub properties: BTreeMap<&'a str, &'a str>,
 }
 
-impl<'a> CommitOptions<'a> {
-    /// Create a new commit.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Override the commit body.
-    pub fn body(mut self, body: &'a str) -> Self {
-        self.body = Some(body);
-        self
-    }
-
-    /// Add a custom property to the commit.
-    pub fn property(mut self, key: &'a str, value: &'a str) -> Self {
-        self.properties.insert(key, value);
-        self
-    }
-}
-
 /// List commits for a ref.
 #[derive(Debug, Clone)]
 pub struct GetCommits<'a> {
