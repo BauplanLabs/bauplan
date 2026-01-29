@@ -1,17 +1,13 @@
 //! Table operations.
 
-#![allow(unused_imports)]
-
 use pyo3::{exceptions::PyTypeError, prelude::*};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use crate::{
-    ApiError, ApiErrorKind, ApiRequest, ApiResponse, CatalogRef,
-    api::table::{Table, TableField},
+    ApiErrorKind, ApiRequest, CatalogRef,
+    api::table::Table,
     commit::CommitOptions,
-    paginate,
     python::{
-        ClientError,
         paginate::PyPaginator,
         refs::{BranchArg, RefArg},
     },
