@@ -10,7 +10,7 @@
 //!
 //! # Example with ureq
 //!
-//! ```
+//! ```no_run
 //! use bauplan::{ApiRequest, ApiResponse, Profile, table::GetTable};
 //!
 //! # fn main() -> anyhow::Result<()> {
@@ -38,7 +38,7 @@
 //!
 //! # Example with reqwest
 //!
-//! ```
+//! ```no_run
 //! use bauplan::{ApiRequest, ApiResponse, Profile, table::GetTable};
 //! use http_body_util::BodyExt;
 //! use std::io::Cursor;
