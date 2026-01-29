@@ -363,9 +363,66 @@ mod test {
             })
         );
 
-        // Clean up.
-        let req = DeleteBranch { name: &new_name };
+        Ok(())
+    }
+
+    #[test]
+    fn merge_branch() -> anyhow::Result<()> {
+        use crate::api::testutil::TestBranch;
+        use crate::namespace::CreateNamespace;
+
+        let source = TestBranch::new("test_merge_src")?;
+        let target = TestBranch::new("test_merge_dst")?;
+
+        // Make a change on the source branch by creating a namespace.
+        let req = CreateNamespace {
+            name: "test_merge_ns",
+            branch: &source.name,
+            commit: Default::default(),
+        };
         roundtrip(req)?;
+
+        // Merge source into target.
+        let req = MergeBranch {
+            source_ref: &source.name,
+            into_branch: &target.name,
+            commit: Default::default(),
+        };
+        let result = roundtrip(req)?;
+
+        // The result should be a ref pointing to the target branch.
+        match result {
+            CatalogRef::Branch { name, .. } => assert_eq!(name, target.name),
+            other => panic!("expected Branch ref, got {:?}", other),
+        }
+
+        // Verify the namespace exists on the target.
+        let req = crate::namespace::GetNamespace {
+            name: "test_merge_ns",
+            at_ref: &target.name,
+        };
+        let ns = roundtrip(req)?;
+        assert_eq!(ns.name, "test_merge_ns");
+
+        Ok(())
+    }
+
+    #[test]
+    fn merge_branch_not_found() -> anyhow::Result<()> {
+        let req = MergeBranch {
+            source_ref: "main",
+            into_branch: "nonexistent_branch_12345",
+            commit: Default::default(),
+        };
+
+        let result = roundtrip(req);
+        assert_matches!(
+            result,
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::BranchNotFound,
+                ..
+            })
+        );
 
         Ok(())
     }

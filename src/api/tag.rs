@@ -170,6 +170,28 @@ mod test {
     }
 
     #[test]
+    fn get_tags_with_filter() -> anyhow::Result<()> {
+        use crate::api::testutil::test_name;
+
+        let tag_name = test_name("filter_test_tag");
+        let req = CreateTag {
+            name: &tag_name,
+            from_ref: "main",
+        };
+        roundtrip(req)?;
+
+        let req = GetTags {
+            filter_by_name: Some(&tag_name),
+        };
+        let tags = crate::paginate(req, Some(10), |r| roundtrip(r))?
+            .collect::<Result<Vec<Tag>, ApiError>>()?;
+
+        assert!(!tags.is_empty());
+        assert!(tags.iter().all(|t| t.name.contains(&tag_name)));
+        Ok(())
+    }
+
+    #[test]
     fn create_and_delete_tag() -> anyhow::Result<()> {
         use crate::api::testutil::test_name;
 

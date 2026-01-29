@@ -180,8 +180,10 @@ impl ApiRequest for GetCommits<'_> {
 
 #[cfg(all(test, feature = "_integration_tests"))]
 mod test {
+    use assert_matches::assert_matches;
+
     use super::*;
-    use crate::{ApiError, api::testutil::roundtrip, paginate};
+    use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip, paginate};
 
     #[test]
     fn get_commits() -> anyhow::Result<()> {
@@ -240,6 +242,34 @@ mod test {
                 );
             }
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn get_commits_ref_not_found() -> anyhow::Result<()> {
+        let req = GetCommits {
+            at_ref: "nonexistent_branch_12345",
+            filter_by_message: None,
+            filter_by_author_username: None,
+            filter_by_author_name: None,
+            filter_by_author_email: None,
+            filter_by_authored_date: None,
+            filter_by_authored_date_start_at: None,
+            filter_by_authored_date_end_at: None,
+            filter_by_parent_hash: None,
+            filter_by_properties: None,
+            filter: None,
+        };
+
+        let result = roundtrip(req);
+        assert_matches!(
+            result,
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::RefNotFound,
+                ..
+            })
+        );
 
         Ok(())
     }

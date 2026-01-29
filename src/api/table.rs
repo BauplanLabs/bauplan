@@ -465,4 +465,84 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn revert_table() -> anyhow::Result<()> {
+        use crate::api::testutil::TestBranch;
+
+        let branch = TestBranch::new("test_table_revert")?;
+
+        // Delete the titanic table from our branch.
+        let req = DeleteTable {
+            name: "titanic",
+            branch: &branch.name,
+            namespace: Some("bauplan"),
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        // Verify it's gone.
+        let req = GetTable {
+            name: "titanic",
+            at_ref: &branch.name,
+            namespace: Some("bauplan"),
+        };
+        assert_matches!(
+            roundtrip(req),
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::TableNotFound,
+                ..
+            })
+        );
+
+        // Revert the table from main back into our branch.
+        let req = RevertTable {
+            name: "titanic",
+            source_ref: "main",
+            into_branch: &branch.name,
+            namespace: Some("bauplan"),
+            replace: false,
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        // Verify the table is back.
+        let req = GetTable {
+            name: "titanic",
+            at_ref: &branch.name,
+            namespace: Some("bauplan"),
+        };
+        let table = roundtrip(req)?;
+        assert_eq!(table.name, "titanic");
+
+        Ok(())
+    }
+
+    #[test]
+    fn revert_table_same_ref() -> anyhow::Result<()> {
+        use crate::api::testutil::TestBranch;
+
+        // A newly-created branch from main is on the same hash as main.
+        let branch = TestBranch::new("test_table_revert_same")?;
+
+        // Try to revert a table from main to the branch - fails because they're identical.
+        let req = RevertTable {
+            name: "titanic",
+            source_ref: "main",
+            into_branch: &branch.name,
+            namespace: Some("bauplan"),
+            replace: false,
+            commit: Default::default(),
+        };
+        let result = roundtrip(req);
+        assert_matches!(
+            result,
+            Err(ApiError::ErrorResponse {
+                kind: ApiErrorKind::SameRef,
+                ..
+            })
+        );
+
+        Ok(())
+    }
 }
