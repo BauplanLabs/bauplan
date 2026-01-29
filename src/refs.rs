@@ -1,9 +1,9 @@
-use std::{fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 
 /// A ref returned by the API.
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CatalogRef {
     /// A branch.
@@ -51,12 +51,50 @@ impl FromStr for CatalogRef {
     }
 }
 
-fn match_ref(s: &str) -> Option<CatalogRef> {
-    let regex = regex::Regex::new(r#"\A([\w+]?)(:?@([^@]+))?\z"#).unwrap();
-    let caps = regex.captures(s)?;
-    let hash = caps.get(3)?.as_str();
+// Matches refs like "main@abc123" or "@abc123" (detached).
+static REF_REGEX: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"\A([^@]+)?@([^@]+)\z").unwrap());
 
-    Some(CatalogRef::Detached {
-        hash: hash.to_string(),
-    })
+fn match_ref(s: &str) -> Option<CatalogRef> {
+    let caps = REF_REGEX.captures(s)?;
+    let hash = caps.get(2)?.as_str().to_string();
+
+    Some(CatalogRef::Detached { hash })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn match_ref() {
+        let cases: &[(&str, Option<CatalogRef>)] = &[
+            (
+                "main@abc123",
+                Some(CatalogRef::Detached {
+                    hash: "abc123".into(),
+                }),
+            ),
+            (
+                "user.feature-branch@deadbeef",
+                Some(CatalogRef::Detached {
+                    hash: "deadbeef".into(),
+                }),
+            ),
+            (
+                "@abc123",
+                Some(CatalogRef::Detached {
+                    hash: "abc123".into(),
+                }),
+            ),
+            ("main", None),
+            ("", None),
+            ("main@abc@def", None),
+        ];
+
+        for (input, expected) in cases {
+            let result = input.parse::<CatalogRef>().ok();
+            assert_eq!(&result, expected, "parsing {input:?}");
+        }
+    }
 }
