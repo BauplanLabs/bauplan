@@ -9,7 +9,7 @@ mod branch;
 mod commit;
 mod exceptions;
 mod info;
-mod jobs;
+pub(crate) mod job;
 mod namespace;
 mod paginate;
 mod query;
@@ -193,10 +193,59 @@ fn roundtrip<T: ApiRequest>(
 
 #[pymodule]
 mod _internal {
+    // Client
     #[pymodule_export]
     use super::Client;
     #[pymodule_export]
     use super::exceptions::exceptions;
+
+    // Refs
+    #[pymodule_export]
+    use super::refs::PyBranch as Branch;
+    #[pymodule_export]
+    use super::refs::PyDetachedRef as DetachedRef;
+    #[pymodule_export]
+    use super::refs::PyRef as Ref;
+    #[pymodule_export]
+    use super::refs::PyRefType;
+    #[pymodule_export]
+    use super::refs::PyTag as Tag;
+
+    // Commits
+    #[pymodule_export]
+    use crate::commit::Actor;
+    #[pymodule_export]
+    use crate::commit::Commit;
+
+    // Catalog
+    #[pymodule_export]
+    use crate::namespace::Namespace;
+    #[pymodule_export]
+    use crate::table::Table;
+    #[pymodule_export]
+    use crate::table::TableField;
+    #[pymodule_export]
+    use crate::table::TableKind;
+
+    // Jobs
+    #[pymodule_export]
+    use super::job::JobContext;
+    #[pymodule_export]
+    use super::job::JobLogEvent;
+    #[pymodule_export]
+    use super::job::JobLogLevel;
+    #[pymodule_export]
+    use super::job::JobLogList;
+    #[pymodule_export]
+    use super::job::JobLogStream;
+    #[pymodule_export]
+    use crate::grpc::job::Job;
+    #[pymodule_export]
+    use crate::grpc::job::JobKind;
+    #[pymodule_export]
+    use crate::grpc::job::JobState;
+
+    // Info
     #[pymodule_export]
     use super::info::PyInfoState as InfoState;
     #[pymodule_export]
@@ -205,24 +254,6 @@ mod _internal {
     use super::info::PyRunnerNodeInfo as RunnerNodeInfo;
     #[pymodule_export]
     use super::info::PyUserInfo as UserInfo;
-    #[pymodule_export]
-    use super::refs::PyBranch as Branch;
-    #[pymodule_export]
-    use super::refs::PyDetachedRef as DetachedRef;
-    #[pymodule_export]
-    use super::refs::PyTag as Tag;
-    #[pymodule_export]
-    use crate::commit::Actor;
-    #[pymodule_export]
-    use crate::commit::Commit;
-    #[pymodule_export]
-    use crate::namespace::Namespace;
-    #[pymodule_export]
-    use crate::table::TableField;
-    #[pymodule_export]
-    use crate::table::TableKind;
-    #[pymodule_export]
-    use crate::table::TableWithMetadata;
 }
 
 // Copied from delta-rs:

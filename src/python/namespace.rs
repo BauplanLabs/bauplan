@@ -1,6 +1,6 @@
 //! Namespace operations.
 
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::collections::BTreeMap;
 
 use crate::{
@@ -8,10 +8,28 @@ use crate::{
     commit::CommitOptions,
     namespace::{CreateNamespace, DeleteNamespace, GetNamespace, GetNamespaces, Namespace},
     python::paginate::PyPaginator,
-    python::refs::{BranchArg, NamespaceArg, RefArg},
+    python::refs::{BranchArg, RefArg},
 };
 
 use super::Client;
+
+/// Accepts a namespace name or Namespace object (from which the name is
+/// extracted).
+pub(crate) struct NamespaceArg(pub String);
+
+impl<'a, 'py> FromPyObject<'a, 'py> for NamespaceArg {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        if let Ok(s) = ob.extract::<String>() {
+            Ok(NamespaceArg(s))
+        } else if let Ok(ns) = ob.extract::<Namespace>() {
+            Ok(NamespaceArg(ns.name))
+        } else {
+            Err(PyTypeError::new_err("expected str or Namespace"))
+        }
+    }
+}
 
 #[pymethods]
 impl Client {
@@ -40,10 +58,10 @@ impl Client {
     /// Yields:
     ///     A Namespace object.
     #[pyo3(signature = (
-        r#ref: "str | Branch | Tag | DetachedRef",
+        r#ref: "str | Ref",
         filter_by_name: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "Iterator[Namespace]")]
+    ) -> "typing.Iterator[Namespace]")]
     fn get_namespaces(
         &self,
         r#ref: RefArg,
@@ -91,7 +109,7 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         namespace: "str | Namespace",
-        r#ref: "str | Branch | Tag | DetachedRef",
+        r#ref: "str | Ref",
     ) -> "Namespace")]
     fn get_namespace(&mut self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<Namespace> {
         let req = GetNamespace {
@@ -280,7 +298,7 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         namespace: "str | Namespace",
-        r#ref: "str | Branch | Tag | DetachedRef",
+        r#ref: "str | Ref",
     ) -> "bool")]
     fn has_namespace(&mut self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<bool> {
         let req = GetNamespace {

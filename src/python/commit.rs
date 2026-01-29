@@ -6,7 +6,7 @@ use pyo3::prelude::*;
 
 use crate::{ApiRequest, commit::GetCommits};
 
-use super::{Client, paginate::PyPaginator};
+use super::{Client, paginate::PyPaginator, refs::RefArg};
 
 #[pymethods]
 impl Client {
@@ -34,7 +34,7 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
-        r#ref: "str",
+        r#ref: "str | Ref",
         filter_by_message: "str | None" = None,
         filter_by_author_username: "str | None" = None,
         filter_by_author_name: "str | None" = None,
@@ -46,11 +46,11 @@ impl Client {
         filter_by_properties: "dict[str, str] | None" = None,
         filter_: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "Iterator[Commit]")]
+    ) -> "typing.Iterator[Commit]")]
     #[allow(clippy::too_many_arguments)]
     fn get_commits(
         &self,
-        r#ref: String,
+        r#ref: RefArg,
         filter_by_message: Option<String>,
         filter_by_author_username: Option<String>,
         filter_by_author_name: Option<String>,
@@ -65,6 +65,7 @@ impl Client {
     ) -> PyResult<PyPaginator> {
         let profile = self.profile.clone();
         let agent = self.agent.clone();
+        let r#ref = r#ref.0;
 
         PyPaginator::new(limit, move |token, limit| {
             let req = GetCommits {

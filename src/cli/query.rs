@@ -151,15 +151,8 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     let mut kill_query = async |reason: &str| -> ! {
         error!("{reason}, cancelling query");
 
-        let req = commanderpb::CancelJobRequest {
-            job_id: Some(commanderpb::JobId {
-                id: job_id.to_owned(),
-                ..Default::default()
-            }),
-        };
-
         progress.set_message("Cancelling query...");
-        if let Err(e) = client.cancel_job(req).await {
+        if let Err(e) = client.cancel(job_id).await {
             error!(job_id, error = %e, "failed to cancel query");
         } else {
             debug!(job_id, "query successfully cancelled");

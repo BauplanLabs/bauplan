@@ -2,23 +2,40 @@
 
 #![allow(unused_imports)]
 
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::collections::{BTreeMap, HashMap};
 
 use crate::{
     ApiError, ApiErrorKind, ApiRequest, ApiResponse, CatalogRef,
-    api::table::{TableField, TableWithMetadata},
+    api::table::{Table, TableField},
     commit::CommitOptions,
     paginate,
     python::{
         ClientError,
         paginate::PyPaginator,
-        refs::{BranchArg, RefArg, TableArg},
+        refs::{BranchArg, RefArg},
     },
     table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
 
 use super::Client;
+
+/// Accepts a table name or Table object (from which the name is extracted).
+pub(crate) struct TableArg(pub String);
+
+impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        if let Ok(s) = ob.extract::<String>() {
+            Ok(TableArg(s))
+        } else if let Ok(table) = ob.extract::<Table>() {
+            Ok(TableArg(table.name))
+        } else {
+            Err(PyTypeError::new_err("expected str or Table"))
+        }
+    }
+}
 
 #[pymethods]
 impl Client {
@@ -405,13 +422,13 @@ impl Client {
     ///     filter_by_namespace: Optional, the namespace to get filtered tables from.
     ///     limit: Optional, max number of tables to get.
     /// Returns:
-    ///     An iterator over `TableWithMetadata` objects.
+    ///     An iterator over `Table` objects.
     #[pyo3(signature = (
-        r#ref: "str | Branch | Tag | DetachedRef",
+        r#ref: "str | Ref",
         filter_by_name: "str | None" = None,
         filter_by_namespace: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "Iterator[TableWithMetadata]")]
+    ) -> "typing.Iterator[Table]")]
     fn get_tables(
         &self,
         r#ref: RefArg,
@@ -462,7 +479,7 @@ impl Client {
     ///     table: The table to retrieve.
     ///     namespace: The namespace of the table to retrieve.
     /// Returns:
-    ///     a `bauplan.schema.TableWithMetadata` object
+    ///     a `bauplan.schema.Table` object
     ///
     /// Raises:
     ///     RefNotFoundError: if the ref does not exist.
@@ -473,15 +490,15 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
-        r#ref: "str | Branch | Tag | DetachedRef",
+        r#ref: "str | Ref",
         namespace: "str | None" = None,
-    ) -> "TableWithMetadata")]
+    ) -> "Table")]
     fn get_table(
         &mut self,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<&str>,
-    ) -> PyResult<TableWithMetadata> {
+    ) -> PyResult<Table> {
         let req = GetTable {
             name: &table.0,
             at_ref: &r#ref.0,
@@ -520,7 +537,7 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
-        r#ref: "str | Branch | Tag | DetachedRef",
+        r#ref: "str | Ref",
         namespace: "str | None" = None,
     ) -> "bool")]
     fn has_table(
@@ -646,7 +663,7 @@ impl Client {
     ///     overwrite: Whether to overwrite an existing table with the same name (default: False).
     ///
     /// Returns:
-    ///     TableWithMetadata: The registered table with full metadata.
+    ///     Table: The registered table with full metadata.
     ///
     /// Raises:
     ///     ValueError: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
@@ -662,7 +679,7 @@ impl Client {
         namespace: "str | Namespace | None" = None,
         branch: "str | Branch | None" = None,
         overwrite: "bool | None" = None,
-    ) -> "TableWithMetadata")]
+    ) -> "Table")]
     fn create_external_table_from_metadata(
         &mut self,
         table: &str,
@@ -714,9 +731,10 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
-        source_ref: "str | Branch | Tag | DetachedRef",
-        into_branch: "str | Branch",
+        *,
         namespace: "str | None" = None,
+        source_ref: "str | Ref",
+        into_branch: "str | Branch",
         replace: "bool | None" = None,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
@@ -725,9 +743,9 @@ impl Client {
     fn revert_table(
         &mut self,
         table: TableArg,
+        namespace: Option<&str>,
         source_ref: RefArg,
         into_branch: BranchArg,
-        namespace: Option<&str>,
         replace: Option<bool>,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,

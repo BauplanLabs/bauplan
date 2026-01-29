@@ -6,9 +6,9 @@ use crate::{
     ApiErrorKind, ApiRequest,
     python::{
         paginate::PyPaginator,
-        refs::{PyTag, RefArg, TagArg},
+        refs::{RefArg, TagArg},
     },
-    tag::{CreateTag, DeleteTag, GetTag, GetTags, RenameTag},
+    tag::{CreateTag, DeleteTag, GetTag, GetTags, RenameTag, Tag},
 };
 
 use super::Client;
@@ -31,7 +31,7 @@ impl Client {
     #[pyo3(signature = (
         filter_by_name: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "Iterator[Tag]")]
+    ) -> "typing.Iterator[Tag]")]
     fn get_tags(
         &self,
         filter_by_name: Option<String>,
@@ -72,10 +72,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
-    fn get_tag(&mut self, tag: TagArg) -> PyResult<PyTag> {
+    fn get_tag(&mut self, tag: TagArg) -> PyResult<Tag> {
         let req = GetTag { name: &tag.0 };
         let t = super::roundtrip(req, &self.profile, &self.agent)?;
-        Ok(PyTag::new(t.name, t.hash))
+        Ok(t)
     }
 
     /// Check if a tag exists.
@@ -140,27 +140,22 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str | Tag",
-        from_ref: "str | Branch | Tag | DetachedRef",
+        from_ref: "str | Ref",
         if_not_exists: "bool" = false,
     ) -> "Tag")]
-    fn create_tag(
-        &mut self,
-        tag: TagArg,
-        from_ref: RefArg,
-        if_not_exists: bool,
-    ) -> PyResult<PyTag> {
+    fn create_tag(&mut self, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
         let req = CreateTag {
             name: &tag.0,
             from_ref: &from_ref.0,
         };
 
         match super::roundtrip(req, &self.profile, &self.agent) {
-            Ok(t) => Ok(PyTag::new(t.name, t.hash)),
+            Ok(t) => Ok(t),
             Err(e) if e.is_api_err(ApiErrorKind::TagExists) && if_not_exists => {
                 // Return the existing tag.
                 let req = GetTag { name: &tag.0 };
                 let t = super::roundtrip(req, &self.profile, &self.agent)?;
-                Ok(PyTag::new(t.name, t.hash))
+                Ok(t)
             }
             Err(e) => Err(e.into()),
         }
@@ -194,14 +189,14 @@ impl Client {
         tag: "str | Tag",
         new_tag: "str | Tag",
     ) -> "Tag")]
-    fn rename_tag(&mut self, tag: TagArg, new_tag: TagArg) -> PyResult<PyTag> {
+    fn rename_tag(&mut self, tag: TagArg, new_tag: TagArg) -> PyResult<Tag> {
         let req = RenameTag {
             name: &tag.0,
             new_name: &new_tag.0,
         };
 
         let t = super::roundtrip(req, &self.profile, &self.agent)?;
-        Ok(PyTag::new(t.name, t.hash))
+        Ok(t)
     }
 
     /// Delete a tag.

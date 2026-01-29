@@ -26,7 +26,7 @@
 //! let resp = ureq::run(http_req)?;
 //!
 //! // You can use the associated type to read the response, or use e.g.
-//! // TableWithMetadata directly.
+//! // Table directly.
 //! let table = <GetTable as ApiRequest>::Response::from_response(
 //!     resp.map(ureq::Body::into_reader),
 //! )?;
@@ -63,7 +63,7 @@
 //! let bytes = body.collect().await?.to_bytes();
 //!
 //! // You can use the associated type to read the response, or use e.g.
-//! // TableWithMetadata directly
+//! // Table directly
 //! let table = <GetTable as ApiRequest>::Response::from_response_parts(parts, Cursor::new(bytes))?;
 //! println!("Table: {} ({} records)", table.name, table.records.unwrap_or(0));
 //! # Ok(())
@@ -88,6 +88,7 @@
 
 mod api;
 mod config;
+mod refs;
 
 #[doc(hidden)]
 pub mod grpc;
@@ -97,6 +98,7 @@ pub mod flight;
 
 pub use api::*;
 pub use config::Profile;
+pub use refs::*;
 
 #[cfg(feature = "python")]
 mod python;

@@ -34,7 +34,7 @@ fn main() -> Result<()> {
     fs::create_dir_all(&out_dir)?;
 
     for (name, content) in stubs {
-        let path = out_dir.join(name);
+        let path = out_dir.join(&name);
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }

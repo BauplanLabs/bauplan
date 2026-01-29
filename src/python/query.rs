@@ -19,6 +19,7 @@ use crate::{
     grpc::{self, generated as commanderpb},
     python::{
         exceptions::{BauplanError, BauplanQueryError},
+        refs::RefArg,
         rt,
     },
 };
@@ -47,7 +48,7 @@ impl Client {
     async fn run_query(
         &mut self,
         query: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -79,7 +80,7 @@ impl Client {
                 debug: 0,
                 priority: priority.map(|p| p as _),
             }),
-            r#ref: r#ref.map(str::to_owned),
+            r#ref: r#ref.map(|r| r.0),
             sql_query: query.to_owned(),
             cache: cache.unwrap_or("on").to_owned(),
             namespace: namespace.map(str::to_owned),
@@ -160,7 +161,7 @@ impl Client {
     async fn query_to_file<T: RecordBatchWriter>(
         &mut self,
         query: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -198,14 +199,7 @@ impl Client {
     }
 
     async fn cancel_query(&mut self, job_id: &str) -> PyResult<()> {
-        let req = commanderpb::CancelJobRequest {
-            job_id: Some(commanderpb::JobId {
-                id: job_id.to_owned(),
-                ..Default::default()
-            }),
-        };
-
-        if let Err(err) = self.grpc.cancel_job(req).await {
+        if let Err(err) = self.grpc.cancel(job_id).await {
             error!(?err, "failed to cancel timed out query");
             return Err(query_err(err));
         }
@@ -251,7 +245,7 @@ impl Client {
     ///     The query results as a `pyarrow.Table`.
     #[pyo3(signature = (
         query: "str",
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
         namespace: "str | None" = None,
@@ -264,7 +258,7 @@ impl Client {
         &mut self,
         py: Python<'_>,
         query: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -324,20 +318,20 @@ impl Client {
     ///     A dictionary representing a row of query results.
     #[pyo3(signature = (
         query: "str",
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
         namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "Iterator[dict[str, Any]]")]
+    ) -> "typing.Iterator[dict[str, Any]]")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_generator(
         &mut self,
         py: Python<'_>,
         query: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -387,7 +381,7 @@ impl Client {
     #[pyo3(signature = (
         path: "str",
         query: "str",
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
         namespace: "str | None" = None,
@@ -400,7 +394,7 @@ impl Client {
         &mut self,
         path: PathBuf,
         query: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -456,7 +450,7 @@ impl Client {
     #[pyo3(signature = (
         path: "str",
         query: "str",
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
         namespace: "str | None" = None,
@@ -469,7 +463,7 @@ impl Client {
         &mut self,
         path: PathBuf,
         query: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -527,7 +521,7 @@ impl Client {
         path: "str",
         query: "str",
         file_format: "str | None" = None,
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
         namespace: "str | None" = None,
@@ -541,7 +535,7 @@ impl Client {
         path: PathBuf,
         query: &str,
         file_format: Option<&str>,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -625,7 +619,7 @@ impl Client {
     ///     The scan results as a `pyarrow.Table`.
     #[pyo3(signature = (
         table: "str | Table",
-        r#ref: "str | Branch | Tag | DetachedRef | None" = None,
+        r#ref: "str | Ref | None" = None,
         columns: "list[str] | None" = None,
         filters: "str | None" = None,
         limit: "int | None" = None,
@@ -639,7 +633,7 @@ impl Client {
     fn scan(
         &mut self,
         table: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         columns: Option<Vec<String>>,
         filters: Option<&str>,
         limit: Option<i64>,

@@ -51,9 +51,9 @@ impl std::fmt::Display for TableKind {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "TableWithMetadata", module = "bauplan", get_all)
+    pyo3::pyclass(name = "Table", module = "bauplan", get_all)
 )]
-pub struct TableWithMetadata {
+pub struct Table {
     /// The table ID.
     pub id: Uuid,
     /// The table name.
@@ -99,7 +99,7 @@ struct GetTableQuery<'a> {
 }
 
 impl ApiRequest for GetTable<'_> {
-    type Response = TableWithMetadata;
+    type Response = Table;
 
     fn path(&self) -> String {
         format!("/catalog/v0/refs/{}/tables/{}", self.at_ref, self.name)
@@ -112,7 +112,7 @@ impl ApiRequest for GetTable<'_> {
     }
 }
 
-impl DataResponse for TableWithMetadata {}
+impl DataResponse for Table {}
 
 /// List tables in a ref.
 #[derive(Debug, Clone)]
@@ -136,7 +136,7 @@ struct GetTablesQuery<'a> {
 }
 
 impl ApiRequest for GetTables<'_> {
-    type Response = PaginatedResponse<TableWithMetadata>;
+    type Response = PaginatedResponse<Table>;
 
     fn path(&self) -> String {
         format!("/catalog/v0/refs/{}/tables", self.at_ref)
@@ -287,7 +287,7 @@ mod test {
             namespace: Some("bauplan"),
         };
 
-        let table: TableWithMetadata = roundtrip(req)?;
+        let table: Table = roundtrip(req)?;
 
         assert_eq!(table.name, "titanic");
         assert_eq!(table.namespace, "bauplan");
@@ -305,7 +305,7 @@ mod test {
             namespace: None,
         };
 
-        let table: TableWithMetadata = roundtrip(req)?;
+        let table: Table = roundtrip(req)?;
 
         assert_eq!(table.name, "titanic");
         assert_eq!(table.namespace, "bauplan");
@@ -364,7 +364,7 @@ mod test {
         };
 
         let tables = crate::paginate(req, None, |r| roundtrip(r))?
-            .collect::<Result<Vec<TableWithMetadata>, ApiError>>()?;
+            .collect::<Result<Vec<Table>, ApiError>>()?;
 
         let titanic = tables.iter().find(|t| t.name == "titanic");
         assert!(titanic.is_some());
@@ -381,7 +381,7 @@ mod test {
         };
 
         let tables = crate::paginate(req, Some(7), |r| roundtrip(r))?
-            .collect::<Result<Vec<TableWithMetadata>, ApiError>>()?;
+            .collect::<Result<Vec<Table>, ApiError>>()?;
 
         assert_eq!(tables.len(), 7);
 
@@ -397,7 +397,7 @@ mod test {
         };
 
         let tables = crate::paginate(req, Some(7), |r| roundtrip(r))?
-            .collect::<Result<Vec<TableWithMetadata>, ApiError>>()?;
+            .collect::<Result<Vec<Table>, ApiError>>()?;
         assert!(!tables.is_empty());
         assert!(tables.iter().all(|t| t.name.contains("titanic")));
 

@@ -219,7 +219,7 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Command::Query(args) => with_rt(query::handle(&cli, args)),
         Command::Parameter(args) => parameter::handle(&cli, args),
         Command::Config(args) => config::handle(&cli, args),
-        Command::Job(args) => job::handle(&cli, args),
+        Command::Job(args) => with_rt(job::handle(&cli, args)),
         Command::Checkout(args) => checkout::handle(&cli, args),
     }
 }

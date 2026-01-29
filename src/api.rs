@@ -1,8 +1,8 @@
-use std::{fmt::Display, io::Read};
+use std::io::Read;
 
 use serde::{Deserialize, Serialize};
 
-use crate::Profile;
+use crate::{CatalogRef, Profile};
 
 pub mod branch;
 pub mod commit;
@@ -17,42 +17,6 @@ pub(crate) mod testutil;
 
 pub use error::*;
 pub use paginate::*;
-
-/// A ref returned by the API.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum CatalogRef {
-    /// A branch.
-    Branch {
-        /// The branch name.
-        name: String,
-        /// The commit hash.
-        hash: String,
-    },
-    /// A tag.
-    Tag {
-        /// The tag name.
-        name: String,
-        /// The commit hash.
-        hash: String,
-    },
-    /// A detached ref (a specific commit, not on any branch).
-    Detached {
-        /// The commit hash.
-        hash: String,
-    },
-}
-
-impl Display for CatalogRef {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CatalogRef::Branch { name, hash } | CatalogRef::Tag { name, hash } => {
-                write!(f, "{}@{}", name, hash)
-            }
-            CatalogRef::Detached { hash } => write!(f, "@{}", hash),
-        }
-    }
-}
 
 #[derive(Debug, Deserialize)]
 struct RawMetadata {

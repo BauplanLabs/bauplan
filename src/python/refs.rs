@@ -1,39 +1,115 @@
 //! Ref types for the Python SDK.
 
+use pyo3::Borrowed;
+use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
-use pyo3::{Borrowed, IntoPyObjectExt};
 
-use crate::api::CatalogRef;
+use crate::CatalogRef;
+use crate::branch::Branch;
+use crate::tag::Tag;
 
-#[pyclass(name = "Branch", module = "bauplan")]
-#[derive(Debug, Clone)]
-pub(crate) struct PyBranch {
-    #[pyo3(get)]
-    name: String,
-    #[pyo3(get)]
-    hash: String,
+/// The type of a ref.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[pyclass(
+    name = "RefType",
+    module = "bauplan",
+    eq,
+    str,
+    rename_all = "SCREAMING_SNAKE_CASE"
+)]
+pub enum PyRefType {
+    Branch,
+    Tag,
+    // Note: this doesn't really seem to be used.
+    Detached,
 }
 
-/// Accepts either a branch name (str) or a Branch object.
-pub(crate) struct BranchArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for BranchArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(BranchArg(s))
-        } else if let Ok(branch) = ob.extract::<PyRef<'_, PyBranch>>() {
-            Ok(BranchArg(branch.name.clone()))
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str or Branch",
-            ))
+impl std::fmt::Display for PyRefType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PyRefType::Branch => write!(f, "BRANCH"),
+            PyRefType::Tag => write!(f, "TAG"),
+            PyRefType::Detached => write!(f, "DETACHED"),
         }
     }
 }
 
-/// Accepts a ref name (str), Branch, Tag, or DetachedRef object.
+/// A reference to a branch, tag, or commit, as returned by API operations.
+#[derive(Debug, Clone)]
+#[pyclass(name = "Ref", module = "bauplan", str, get_all, subclass)]
+pub struct PyRef {
+    pub name: String,
+    pub hash: String,
+    pub r#type: PyRefType,
+}
+
+impl PyRef {
+    fn branch(name: String, hash: String) -> (PyBranch, Self) {
+        (
+            PyBranch,
+            PyRef {
+                name,
+                hash,
+                r#type: PyRefType::Branch,
+            },
+        )
+    }
+
+    fn tag(name: String, hash: String) -> (PyTag, Self) {
+        (
+            PyTag,
+            PyRef {
+                name,
+                hash,
+                r#type: PyRefType::Tag,
+            },
+        )
+    }
+
+    fn detached(hash: String) -> (PyDetachedRef, Self) {
+        (
+            PyDetachedRef,
+            PyRef {
+                name: "".to_string(),
+                hash,
+                r#type: PyRefType::Detached,
+            },
+        )
+    }
+}
+
+// todo: does this work for subclasses?
+impl std::fmt::Display for PyRef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}@{}", self.name, self.hash)
+    }
+}
+
+/// A branch reference returned by the API.
+#[derive(Debug, Clone, Copy)]
+#[pyclass(name = "Branch", module = "bauplan", extends = PyRef)]
+pub struct PyBranch;
+
+/// A tag reference returned by the API.
+#[derive(Debug, Clone, Copy)]
+#[pyclass(name = "Tag", module = "bauplan", extends = PyRef)]
+pub struct PyTag;
+
+/// A detached reference (a specific commit, not on any branch) returned by the API.
+#[derive(Debug, Clone, Copy)]
+#[pyclass(name = "DetachedRef", module = "bauplan", extends = PyRef)]
+pub(crate) struct PyDetachedRef;
+
+/// Accepts a ref hash, a tag/branch name, or any ref object (Ref, Branch,
+/// Tag, DetachedRef), from which a ref string that the API understands is
+/// extracted.
+///
+/// This is used by API methods which operate on some ref (eg `query`).
+///
+/// For example:
+///  - For `Branch(name='foo', hash='abcd...')`, the result
+///    is `foo@abcd...`.
+///  - For `Tag(name='bar', hash=None)`, the result is `bar`.
 pub(crate) struct RefArg(pub String);
 
 impl<'a, 'py> FromPyObject<'a, 'py> for RefArg {
@@ -42,59 +118,38 @@ impl<'a, 'py> FromPyObject<'a, 'py> for RefArg {
     fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
         if let Ok(s) = ob.extract::<String>() {
             Ok(RefArg(s))
-        } else if let Ok(branch) = ob.extract::<PyRef<'_, PyBranch>>() {
-            Ok(RefArg(branch.name.clone()))
-        } else if let Ok(tag) = ob.extract::<PyRef<'_, PyTag>>() {
-            Ok(RefArg(tag.name.clone()))
-        } else if let Ok(detached) = ob.extract::<PyRef<'_, PyDetachedRef>>() {
-            Ok(RefArg(detached.hash.clone()))
+        } else if let Ok(r) = ob.extract::<pyo3::PyRef<'_, PyRef>>() {
+            Ok(RefArg(r.to_string()))
         } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str, Branch, Tag, or DetachedRef",
-            ))
+            Err(PyTypeError::new_err("expected str or Ref"))
         }
     }
 }
 
-/// Accepts a namespace name (str) or Namespace object.
-pub(crate) struct NamespaceArg(pub String);
+/// Accepts either a branch name or a Branch object (from which the name is extracted).
+///
+/// This is used by methods like `rename_branch`, which operate on the branch
+/// name and not a specific hash.
+pub(crate) struct BranchArg(pub(crate) String);
 
-impl<'a, 'py> FromPyObject<'a, 'py> for NamespaceArg {
+impl<'a, 'py> FromPyObject<'a, 'py> for BranchArg {
     type Error = PyErr;
 
     fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
         if let Ok(s) = ob.extract::<String>() {
-            Ok(NamespaceArg(s))
-        } else if let Ok(ns) = ob.extract::<PyRef<'_, crate::namespace::Namespace>>() {
-            Ok(NamespaceArg(ns.name.clone()))
+            Ok(BranchArg(s))
+        } else if let Ok(branch) = ob.extract::<pyo3::PyRef<'_, PyBranch>>() {
+            Ok(BranchArg(branch.as_super().name.clone()))
         } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str or Namespace",
-            ))
+            Err(PyTypeError::new_err("expected str or Branch"))
         }
     }
 }
 
-/// Accepts a table name (str) or TableWithMetadata object.
-pub(crate) struct TableArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(TableArg(s))
-        } else if let Ok(table) = ob.extract::<PyRef<'_, crate::table::TableWithMetadata>>() {
-            Ok(TableArg(table.name.clone()))
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str or Table",
-            ))
-        }
-    }
-}
-
-/// Accepts a tag name (str) or Tag object.
+/// Accepts a tag name or Tag object (from which the name is extracted).
+///
+/// This is used by methods like `delete_tag`, which operate on the tag name and
+/// not a specific tag.
 pub(crate) struct TagArg(pub String);
 
 impl<'a, 'py> FromPyObject<'a, 'py> for TagArg {
@@ -103,121 +158,50 @@ impl<'a, 'py> FromPyObject<'a, 'py> for TagArg {
     fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
         if let Ok(s) = ob.extract::<String>() {
             Ok(TagArg(s))
-        } else if let Ok(tag) = ob.extract::<PyRef<'_, PyTag>>() {
-            Ok(TagArg(tag.name.clone()))
+        } else if let Ok(tag) = ob.extract::<pyo3::PyRef<'_, PyTag>>() {
+            Ok(TagArg(tag.as_super().name.clone()))
         } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str or Tag",
-            ))
+            Err(PyTypeError::new_err("expected str or Tag"))
         }
-    }
-}
-
-#[pymethods]
-impl PyBranch {
-    #[new]
-    pub(crate) fn new(name: String, hash: String) -> Self {
-        Self { name, hash }
-    }
-
-    #[getter]
-    fn r#type(&self) -> &'static str {
-        "BRANCH"
-    }
-
-    fn __str__(&self) -> String {
-        format!("{}@{}", self.name, self.hash)
-    }
-}
-
-#[pyclass(name = "Tag", module = "bauplan")]
-#[derive(Debug, Clone)]
-pub(crate) struct PyTag {
-    #[pyo3(get)]
-    pub(crate) name: String,
-    #[pyo3(get)]
-    hash: String,
-}
-
-#[pymethods]
-impl PyTag {
-    #[new]
-    pub(crate) fn new(name: String, hash: String) -> Self {
-        Self { name, hash }
-    }
-
-    #[getter]
-    fn r#type(&self) -> &'static str {
-        "TAG"
-    }
-
-    fn __str__(&self) -> String {
-        format!("{}@{}", self.name, self.hash)
-    }
-}
-
-#[pyclass(name = "DetachedRef", module = "bauplan")]
-#[derive(Debug, Clone)]
-pub(crate) struct PyDetachedRef {
-    #[pyo3(get)]
-    hash: String,
-}
-
-#[pymethods]
-impl PyDetachedRef {
-    #[new]
-    fn new(hash: String) -> Self {
-        Self { hash }
-    }
-
-    #[getter]
-    fn r#type(&self) -> &'static str {
-        "DETACHED"
-    }
-
-    fn __str__(&self) -> String {
-        format!("@{}", self.hash)
     }
 }
 
 impl<'py> IntoPyObject<'py> for CatalogRef {
-    type Target = PyAny;
-    type Output = Bound<'py, PyAny>;
+    type Target = PyRef;
+    type Output = Bound<'py, PyRef>;
     type Error = PyErr;
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
         match self {
-            CatalogRef::Branch { name, hash } => PyBranch { name, hash }.into_bound_py_any(py),
-            CatalogRef::Tag { name, hash } => PyTag { name, hash }.into_bound_py_any(py),
-            CatalogRef::Detached { hash } => PyDetachedRef { hash }.into_bound_py_any(py),
+            CatalogRef::Branch { name, hash } => Ok(Py::new(py, PyRef::branch(name, hash))?
+                .into_bound(py)
+                .into_super()),
+            CatalogRef::Tag { name, hash } => Ok(Py::new(py, PyRef::tag(name, hash))?
+                .into_bound(py)
+                .into_super()),
+            CatalogRef::Detached { hash } => Ok(Py::new(py, PyRef::detached(hash))?
+                .into_bound(py)
+                .into_super()),
         }
     }
 }
 
-impl<'py> IntoPyObject<'py> for crate::branch::Branch {
-    type Target = PyAny;
-    type Output = Bound<'py, PyAny>;
+impl<'py> IntoPyObject<'py> for Branch {
+    type Target = PyBranch;
+    type Output = Bound<'py, PyBranch>;
     type Error = PyErr;
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        PyBranch {
-            name: self.name,
-            hash: self.hash,
-        }
-        .into_bound_py_any(py)
+        Ok(Py::new(py, PyRef::branch(self.name, self.hash))?.into_bound(py))
     }
 }
 
-impl<'py> IntoPyObject<'py> for crate::tag::Tag {
-    type Target = PyAny;
-    type Output = Bound<'py, PyAny>;
+impl<'py> IntoPyObject<'py> for Tag {
+    type Target = PyTag;
+    type Output = Bound<'py, PyTag>;
     type Error = PyErr;
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        PyTag {
-            name: self.name,
-            hash: self.hash,
-        }
-        .into_bound_py_any(py)
+        Ok(Py::new(py, PyRef::tag(self.name, self.hash))?.into_bound(py))
     }
 }

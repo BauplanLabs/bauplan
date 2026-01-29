@@ -1,3 +1,5 @@
+pub mod job;
+
 use std::time;
 
 use futures::{Stream, StreamExt, TryStreamExt, stream};
@@ -18,8 +20,9 @@ pub mod generated {
 use crate::{
     Profile,
     grpc::generated::{
-        JobFailure, JobSuccess, SubscribeLogsRequest, job_complete_event::Outcome,
-        job_failure::ErrorCode, runner_event::Event as RunnerEvent,
+        CancelJobRequest, JobFailure, JobId, JobSuccess, SubscribeLogsRequest,
+        cancel_job_response::CancelStatus, job_complete_event::Outcome, job_failure::ErrorCode,
+        runner_event::Event as RunnerEvent,
     },
 };
 use generated::v2_commander_service_client::V2CommanderServiceClient;
@@ -49,6 +52,24 @@ impl Client {
         );
 
         Ok(inner)
+    }
+
+    /// Cancels a running job.
+    pub async fn cancel(&mut self, job_id: &str) -> Result<(), CancelJobError> {
+        let req = CancelJobRequest {
+            job_id: Some(JobId {
+                id: job_id.to_owned(),
+                ..Default::default()
+            }),
+        };
+
+        let resp = self.cancel_job(req).await?.into_inner();
+
+        match CancelStatus::try_from(resp.status) {
+            Ok(CancelStatus::Success) => Ok(()),
+            Ok(CancelStatus::Failure) => Err(CancelJobError::Failed(resp.message)),
+            _ => Err(CancelJobError::Unknown(resp.message)),
+        }
     }
 
     /// Runs a job to completion. Produces a stream of job events from commander. If
@@ -95,6 +116,17 @@ impl Interceptor for AuthInterceptor {
             .insert("authorization", self.value.clone());
         Ok(request)
     }
+}
+
+/// An error returned when cancelling a job.
+#[derive(Debug, thiserror::Error)]
+pub enum CancelJobError {
+    #[error("transport error: {0}")]
+    Transport(#[from] tonic::Status),
+    #[error("failed to cancel job: {0}")]
+    Failed(String),
+    #[error("unexpected cancel status: {0}")]
+    Unknown(String),
 }
 
 /// An error reported for a job.

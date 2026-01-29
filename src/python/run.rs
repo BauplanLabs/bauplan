@@ -6,6 +6,7 @@ use pyo3::prelude::*;
 use std::collections::HashMap;
 
 use super::Client;
+use super::refs::RefArg;
 
 #[pymethods]
 impl Client {
@@ -46,7 +47,7 @@ impl Client {
     ///     `bauplan.state.RunState`: The state of the run.
     #[pyo3(signature = (
         project_dir: "str | None" = None,
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         namespace: "str | None" = None,
         parameters: "dict[str, str] | None" = None,
         cache: "str | None" = None,
@@ -65,7 +66,7 @@ impl Client {
     fn run(
         &mut self,
         project_dir: Option<&str>,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         namespace: Option<&str>,
         parameters: Option<std::collections::HashMap<String, String>>,
         cache: Option<&str>,
@@ -135,7 +136,7 @@ impl Client {
     ///     `bauplan.state.ReRunState`: The state of the run.
     #[pyo3(signature = (
         job_id: "str",
-        r#ref: "str | None" = None,
+        r#ref: "str | Ref | None" = None,
         namespace: "str | None" = None,
         cache: "str | None" = None,
         transaction: "str | None" = None,
@@ -152,7 +153,7 @@ impl Client {
     fn rerun(
         &mut self,
         job_id: &str,
-        r#ref: Option<&str>,
+        r#ref: Option<RefArg>,
         namespace: Option<&str>,
         cache: Option<&str>,
         transaction: Option<&str>,
