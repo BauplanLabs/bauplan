@@ -23,8 +23,8 @@ use bauplan::{
     grpc::{self, generated as commanderpb},
 };
 use clap::{Parser, Subcommand};
-use colored::Colorize as _;
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
+use yansi::Paint as _;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -106,16 +106,14 @@ pub(crate) struct GlobalArgs {
     /// Print verbose logs
     #[arg(long, short = 'v', global = true)]
     pub verbose: bool,
-    /// Enable colored output
-    #[arg(long, global = true, overrides_with = "_no_color", hide = true)]
-    pub color: bool,
-    /// Disable colored output
-    #[arg(long = "no-color", global = true)]
-    pub _no_color: bool,
 }
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
+    /// Print version.
+    Version,
+    /// Print debug information about the current environment
+    Info,
     /// Execute a bauplan run
     Run(run::RunArgs),
     /// Re-execute a previous bauplan run
@@ -136,8 +134,6 @@ pub(crate) enum Command {
     Parameter(parameter::ParameterArgs),
     /// Configure Bauplan CLI settings
     Config(config::ConfigArgs),
-    /// Print debug information about the current environment
-    Info,
     /// Manage jobs
     Job(job::JobArgs),
     /// Set the active branch
@@ -180,6 +176,12 @@ impl Cli {
 }
 
 pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow::Result<()> {
+    // Some commands don't require any config.
+    if let Command::Version = args.command {
+        println!("baulpan {}", env!("BPLN_VERSION"));
+        return Ok(());
+    }
+
     let profile = if let Some(name) = args.global.profile.as_deref() {
         Profile::from_env(name)
     } else {
@@ -208,6 +210,7 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
     };
 
     match args.command {
+        Command::Version => unreachable!(),
         Command::Info => with_rt(get_info(&cli)),
         Command::Run(args) => run::handle(&cli, args),
         Command::Rerun(args) => rerun::handle(&cli, args),

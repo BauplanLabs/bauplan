@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::{Write, stdout};
 
 use bauplan::commit::{Commit, GetCommits};
-use colored::Colorize as _;
+use yansi::Paint as _;
 
 use crate::cli::{Cli, Output};
 

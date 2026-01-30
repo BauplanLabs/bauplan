@@ -8,7 +8,7 @@ use bauplan::grpc::{
 };
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
-use colored::Colorize;
+use yansi::Paint as _;
 
 use commanderpb::runtime_log_event::{LogLevel, LogType};
 use futures::{Stream, StreamExt as _, TryStreamExt, stream};
@@ -263,7 +263,7 @@ where
             JobState::Complete => job.status.green(),
             JobState::Fail | JobState::Abort => job.status.red(),
             JobState::Running => job.status.yellow(),
-            _ => job.status.normal(),
+            _ => job.status.primary(),
         };
 
         writeln!(
@@ -407,19 +407,19 @@ async fn handle_logs(cli: &Cli, args: JobLogsArgs) -> anyhow::Result<()> {
                     LogLevel::Debug => "DEBUG".blue(),
                     LogLevel::Info => "INFO".green(),
                     LogLevel::Trace => "TRACE".cyan(),
-                    LogLevel::Unspecified => "UNKNOWN".dimmed(),
+                    LogLevel::Unspecified => "UNKNOWN".dim(),
                 };
 
                 let log_type = match entry.log_type {
-                    LogType::System => "SYSTEM".dimmed(),
+                    LogType::System => "SYSTEM".dim(),
                     LogType::User => "USER".green(),
-                    LogType::Unspecified => "UNKNOWN".dimmed(),
+                    LogType::Unspecified => "UNKNOWN".dim(),
                 };
 
                 writeln!(
                     &mut tw,
                     "{}\t{}\t{}\t{}",
-                    entry.timestamp.to_rfc3339().dimmed(),
+                    entry.timestamp.to_rfc3339().dim(),
                     level,
                     log_type,
                     entry.message.replace('\n', "\\n")

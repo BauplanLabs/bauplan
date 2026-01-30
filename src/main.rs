@@ -7,10 +7,10 @@ use tracing_subscriber::{EnvFilter, fmt};
 fn main() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
-    // Apply color setting. Default is auto-detect (tty check).
-    // --color forces on, --no-color forces off, last one wins.
-    if args.global.color {
-        colored::control::set_override(true);
+    if std::env::var("NO_COLOR").is_none() && yansi::Condition::stdouterr_are_tty() {
+        yansi::enable();
+    } else {
+        yansi::disable();
     }
 
     // Tracks global progress bar state. This is necessary so that indicatif
