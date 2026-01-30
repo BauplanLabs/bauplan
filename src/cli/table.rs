@@ -1,4 +1,7 @@
-use std::io::{Write as _, stdout};
+use std::{
+    io::{Write as _, stdout},
+    path::PathBuf,
+};
 
 use bauplan::{ApiErrorKind, commit::CommitOptions, table::*};
 use tabwriter::TabWriter;
@@ -123,7 +126,7 @@ pub(crate) struct TableCreatePlanArgs {
     pub replace: bool,
     /// A filename to write the plan to
     #[arg(short = 'p', long)]
-    pub save_plan: Option<String>,
+    pub save_plan: Option<PathBuf>,
     /// Arguments to pass to the job. Format: key=value
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<String>,

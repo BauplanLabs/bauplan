@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::cli::Cli;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
@@ -21,7 +23,7 @@ pub(crate) struct RunArgs {
     pub arg: Vec<String>,
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
-    pub project_dir: Option<String>,
+    pub project_dir: Option<PathBuf>,
     /// Set the cache mode.
     #[arg(long)]
     pub cache: Option<Cache>,

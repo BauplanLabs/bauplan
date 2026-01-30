@@ -90,11 +90,9 @@ mod api;
 mod config;
 mod refs;
 
-#[doc(hidden)]
-pub mod grpc;
-
-#[doc(hidden)]
 pub mod flight;
+pub mod grpc;
+pub mod project;
 
 pub use api::*;
 pub use config::Profile;

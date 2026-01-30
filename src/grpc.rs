@@ -1,3 +1,5 @@
+//! Helpers for the deprecated gRPC API.
+
 pub mod job;
 
 use std::time;
@@ -12,6 +14,7 @@ use tonic::{
 #[allow(dead_code)]
 #[allow(unreachable_pub)]
 #[allow(unused_qualifications)]
+#[allow(missing_docs)]
 #[allow(clippy::enum_variant_names)]
 pub mod generated {
     tonic::include_proto!("bpln_proto.commander.service.v2");
@@ -120,6 +123,7 @@ impl Interceptor for AuthInterceptor {
 
 /// An error returned when cancelling a job.
 #[derive(Debug, thiserror::Error)]
+#[allow(missing_docs)]
 pub enum CancelJobError {
     #[error("transport error: {0}")]
     Transport(#[from] tonic::Status),
@@ -131,6 +135,7 @@ pub enum CancelJobError {
 
 /// An error reported for a job.
 #[derive(Debug, Clone, thiserror::Error)]
+#[allow(missing_docs)]
 pub enum JobError {
     #[error("job failed: {1} ({0:?})")]
     Failed(ErrorCode, String),
@@ -149,6 +154,7 @@ pub enum JobError {
 /// The outcome of a job, as returned by [`Client::subscribe_logs`].
 pub type JobResult = Result<JobSuccess, JobError>;
 
+/// Parse a job outcome event as a possible [`JobError`].
 pub fn interpret_outcome(outcome: Option<Outcome>) -> JobResult {
     match outcome {
         Some(outcome) => match outcome {

@@ -1,4 +1,4 @@
-use std::{fmt::Write as _, io::Write, time};
+use std::{fmt::Write as _, io::Write, path::PathBuf, time};
 
 use crate::cli::{Cli, KeyValue, Output, Priority};
 use anyhow::{Context as _, anyhow, bail};
@@ -42,7 +42,7 @@ pub(crate) struct QueryArgs {
     pub cache: Option<Cache>,
     /// Read query from file
     #[arg(short, long)]
-    pub file: Option<String>,
+    pub file: Option<PathBuf>,
     /// Arguments to pass to the job. Format: key=value
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,

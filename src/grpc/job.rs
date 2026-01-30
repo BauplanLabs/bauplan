@@ -7,6 +7,7 @@ use crate::grpc::generated as commanderpb;
 
 /// The state of a job.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+#[allow(missing_docs)]
 #[cfg_attr(
     feature = "python",
     pyo3::pyclass(module = "bauplan", eq, str, rename_all = "SCREAMING_SNAKE_CASE")
@@ -84,6 +85,7 @@ impl From<JobState> for commanderpb::JobStateType {
 
 /// The kind/type of a job.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
+#[allow(missing_docs)]
 #[cfg_attr(
     feature = "python",
     pyo3::pyclass(module = "bauplan", eq, str, rename_all = "SCREAMING_SNAKE_CASE")
