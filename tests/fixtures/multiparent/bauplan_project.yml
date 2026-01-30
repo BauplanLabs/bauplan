@@ -1,0 +1,7 @@
+project:
+  id: 641d33d8-a6c2-4525-90d5-d54e7f27c362
+  name: bauplan_multiparent
+
+defaults:
+  python:
+    version: "3.11"

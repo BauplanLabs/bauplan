@@ -1,0 +1,7 @@
+project:
+  id: 1467ae72-5a3c-44cf-aa4d-005d293638f3
+  name: bauplan_python_3_12
+
+defaults:
+  python:
+    version: "3.12"

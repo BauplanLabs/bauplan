@@ -1,0 +1,7 @@
+project:
+    id: 132954a3-2e3f-45c1-b611-50cf09426baa
+    name: pyspark_adaptation
+
+defaults:
+  python:
+    version: "3.11"

@@ -1,0 +1,7 @@
+project:
+  id: 641d33d8-a6c2-4525-90d5-d54e7f27c36f
+  name: parameters_are_cool
+
+defaults:
+  python:
+    version: "3.11"

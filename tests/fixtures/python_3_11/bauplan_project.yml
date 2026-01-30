@@ -1,0 +1,7 @@
+project:
+  id: c8f0c2a2-22fb-480f-b3c4-355deaa478b1
+  name: bauplan_python_3_11
+
+defaults:
+  python:
+    version: "3.11"

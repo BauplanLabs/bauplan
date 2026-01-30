@@ -1,0 +1,39 @@
+project:
+    id: bf9b3554-6590-4df7-aebf-ab692186115f
+    name: parameters_are_cool
+defaults:
+    python:
+        version: "3.11"
+parameters:
+    my_secret_key_1:
+        type: secret
+        default: KEtlz3LhXmdhpGl0AhI+ru7gy+GrGvnjbU/fMePQrRZ2rq8iDAwnVPA00hO4tZqtq/ZGDpdKJt/mo2maQIt/34BBXORECdFGnDcxMOxuSViQahAeNcLJ0AyANzdMaWF3+UxD0d3iiWccGkPXp/DYiXO5G7SCidIgXRBdgeZPmRc+rzTzGTrYzJxb7KDh6Jtnglgvj2vtaTgK7o+Gbbh2/+4nu1w8FJWfmJ+4jgBvUqCGAxWjZJK18UtQ4phew0XDuHYuBtTZn5endd/jQoC6GqUdLe3RpSiIMch+3w9UG8jDrxKDYmpTBgb0khJPZkn84Ksa1lKr8f0RIL208LuZs3Jq9Tl77S6XTsQewlex7NoywGGvMBnkxLNnUMSpR3G1sb6rKUpsYEdVVCNu3WT1ZUOqkO8tWBeb6SsazZQH388ue+NuW7doUQrt7rwTO8qhZYftq2FA1BgStNcED6DmsZsX7OhMJ+4nHwi55C1BBlBPKrIZxDzbBUaGC1n/H3luFxcuq19I7CO8zEbyrGn3V4IRBOdJh9Umv4AWhUMvE1/e0A9+gKualBq8W4iGpRu9Sk4aDfMJ+E+IcXxISrn5s4g5CuPD5SUI8VLdY9EYLkxDEjTDfTpd8CCFYAP8vX91r8aOvNTAd5Sd85yj0DpVC5MSeDs+wzoI4poF9GEzj6s=
+        key: awskms:///arn:aws:kms:us-east-1:381492128837:key/mrk-b5de2955e645426a9dfd18dcd0cb3ca5
+    my_secret_key_2:
+        type: secret
+        default: I3VPH+JNVISEw5FfSpHAnWbazy4VXVtEtNj/WpLduoCxxLMtYQZ+9gwc9TqVOIOyMmGEC2Li0H83yR/SxVp4TJNnLpy7efI/7t7K5Ssn93S8rMnytSWA9FL8aMTzWMmCbKbZ8mGa+NU7xt5P8d6q7Ad7F3he06F+i7U15x4KWmoIwnuvkk3ZTpjck4MKsTcrM9IS/T+uoSMeUHOIFKqAyWtCLK4uP9oIBsdKDrliBLZQEgDQKKR0QQl1x4hhLmjExsx/SEa/Ef8Qq3D/mZgOG0R7IEKMETUqSg3EQ967ptdD1l3UqbbjijJfG6/h7jgSxMWsE9+4neII9s6viVOajRjsH8AFCQ76e5HjV1LiiEEsGz0rC1fHwcawR+/fEhPjKDjjwQ/f3x363mdPxbUysCcEpj2PtYh30ii2mmWxFA6iuyilchXkOQQfYSkufYW37zchjvgX4ZT9cqNuT4AJM86HNIzL2m/u8ATVbngl5+AmnPSGFDV9ka74UOqaEGwmt3sTwyLvAsbqr87P+ipvwpDILb9e5Js3ImhzIGuy4QBB+3HFbkR3uSzL+S5eVy4QFLxR+opxnbvDWvGgQl6q7eHGRUe3WO/v1lVVeIzR3qgQVcNRH9wJC0dFV9KqObQEz3Nd3mn9v6A3BqFjoNdFL6bR8EgFm4kLeMtlmLI1WYU=
+        key: awskms:///arn:aws:kms:us-east-1:381492128837:key/mrk-b5de2955e645426a9dfd18dcd0cb3ca5
+    my_vault_string_us:
+        type: vault
+        default: awsssm:///arn:aws:ssm:us-east-1:381492128837:parameter/e2e/string-parameter
+    my_vault_string_list_us:
+        type: vault
+        default: awsssm:///arn:aws:ssm:us-east-1:381492128837:parameter/e2e/string-list-parameter
+    my_vault_secure_string_us:
+        type: vault
+        default: awsssm:///arn:aws:ssm:us-east-1:381492128837:parameter/e2e/secure-string-parameter
+    my_vault_override_us_with_eu:
+        type: vault
+        default: awsssm:///arn:aws:ssm:us-east-1:381492128837:parameter/e2e/secure-string-parameter
+    my_vault_string_eu:
+        type: vault
+        default: awsssm:///arn:aws:ssm:eu-west-1:381492128837:parameter/e2e/string-parameter
+    my_vault_string_list_eu:
+        type: vault
+        default: awsssm:///arn:aws:ssm:eu-west-1:381492128837:parameter/e2e/string-list-parameter
+    my_vault_secure_string_eu:
+        type: vault
+        default: awsssm:///arn:aws:ssm:eu-west-1:381492128837:parameter/e2e/secure-string-parameter
+    my_vault_override_eu_with_us:
+        type: vault
+        default: awsssm:///arn:aws:ssm:eu-west-1:381492128837:parameter/e2e/secure-string-parameter

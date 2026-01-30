@@ -7,7 +7,7 @@ use tracing_subscriber::{EnvFilter, fmt};
 fn main() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
-    if std::env::var("NO_COLOR").is_none() && yansi::Condition::stdouterr_are_tty() {
+    if std::env::var_os("NO_COLOR").is_none() && yansi::Condition::stdouterr_are_tty() {
         yansi::enable();
     } else {
         yansi::disable();

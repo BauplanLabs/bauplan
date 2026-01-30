@@ -1,0 +1,24 @@
+project:
+  id: 641d33d8-a6c2-4525-90d5-d54e7f27c36f
+  name: parameters_are_cool
+
+defaults:
+  python:
+    version: "3.11"
+
+parameters:
+  location_id:
+    default: 138
+    type: int
+  golden_ratio:
+    default: 1.666
+    type: float
+  use_random_forest:
+    default: True
+    type: bool
+  start_datetime:
+    default: "2023-01-01T00:00:00+00:00"
+    type: str
+  end_datetime:
+    default: "2023-01-03T00:00:00+00:00"
+    type: str

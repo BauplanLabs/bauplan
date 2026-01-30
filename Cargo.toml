@@ -63,7 +63,12 @@ anyhow = "1"
 tonic-prost-build = "0.14"
 
 [dev-dependencies]
+assert_cmd = "2"
 assert_matches = "1"
+bstr = "1.12.1"
 http-body-util = "0.1"
+predicates = "3"
 reqwest = { version = "0.12", features = ["json"] }
+similar = { version = "2", features = ["bytes"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+yansi = "1.0.1"
