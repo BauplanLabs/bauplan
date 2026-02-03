@@ -1,10 +1,15 @@
 //! Helpers for managing bauplan projects.
 
 use std::collections::BTreeMap;
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+use base64::Engine;
+use rsa::sha2::Sha256;
+use rsa::{Oaep, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 /// Errors that can occur when working with project files.
 #[derive(Debug, Error)]
@@ -18,10 +23,12 @@ pub enum ProjectError {
     Io(#[from] std::io::Error),
     #[error("failed to parse project file: {0}")]
     Parse(#[from] serde_yaml::Error),
-    #[error("project.id must not be empty")]
-    EmptyProjectId,
+    #[error("failed to create archive: {0}")]
+    Zip(#[from] zip::result::ZipError),
+    #[error("encryption failed: {0}")]
+    Encryption(#[from] rsa::Error),
     #[error("invalid value {0:?} of type {1}")]
-    InvalidParameterValue(String, &'static str),
+    InvalidParameterValue(String, ParameterType),
 }
 
 /// The type of a parameter.
@@ -51,9 +58,76 @@ impl std::fmt::Display for ParameterType {
     }
 }
 
+/// A resolved parameter value.
+#[derive(Clone, PartialEq)]
+#[allow(missing_docs)]
+pub enum ParameterValue {
+    Str(String),
+    Int(i64),
+    Float(f64),
+    Bool(bool),
+    Secret {
+        key: String,
+        encrypted_value: String,
+    },
+    Vault(String),
+}
+
+impl ParameterValue {
+    /// Create an encrypted parameter value. The key_name is just metadata,
+    /// usually an AWS KMS ARN.
+    ///
+    /// The encoded value takes the form {project_id}={value}, which pins the
+    /// secret to the project so that users can't copy paste (for some reason).
+    pub fn encrypt_secret(
+        key_name: String,
+        key: &RsaPublicKey,
+        project_id: Uuid,
+        value: impl AsRef<str>,
+    ) -> Result<Self, ProjectError> {
+        use base64::engine::general_purpose::STANDARD;
+
+        let value = format!("{}={}", project_id.as_braced(), value.as_ref());
+
+        let padding = Oaep::new::<Sha256>();
+        let secret = key.encrypt(&mut rand::thread_rng(), padding, value.as_bytes())?;
+        let encrypted_value = STANDARD.encode(secret);
+        Ok(ParameterValue::Secret {
+            key: key_name,
+            encrypted_value,
+        })
+    }
+}
+
+impl std::fmt::Debug for ParameterValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Str(s) => write!(f, "{s:?}"),
+            Self::Int(i) => write!(f, "{i:?}"),
+            Self::Float(v) => write!(f, "{v:?}"),
+            Self::Bool(b) => write!(f, "{b:?}"),
+            Self::Secret { .. } => write!(f, "***********"),
+            Self::Vault(v) => write!(f, "{v}"),
+        }
+    }
+}
+
+impl std::fmt::Display for ParameterValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Str(s) => write!(f, "{}", s),
+            Self::Int(i) => write!(f, "{}", i),
+            Self::Float(v) => write!(f, "{}", v),
+            Self::Bool(b) => write!(f, "{}", b),
+            Self::Secret { .. } => write!(f, "***********"),
+            Self::Vault(v) => write!(f, "{}", v),
+        }
+    }
+}
+
 /// A parameter definition in a project file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Parameter {
+pub struct ParameterDefault {
     /// The type of the parameter.
     #[serde(rename = "type", default)]
     pub param_type: ParameterType,
@@ -71,7 +145,7 @@ pub struct Parameter {
     pub key: Option<String>,
 }
 
-struct DisplayDefaultValue<'a>(&'a Parameter);
+struct DisplayDefaultValue<'a>(&'a ParameterDefault);
 
 impl std::fmt::Display for DisplayDefaultValue<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -85,34 +159,67 @@ impl std::fmt::Display for DisplayDefaultValue<'_> {
     }
 }
 
-impl Parameter {
-    /// Set the default value from a string, parsing it according to the type.
-    pub fn set_default_from_string(&mut self, value: &str) -> Result<(), ProjectError> {
-        let parsed = match self.param_type {
-            ParameterType::Str | ParameterType::Secret | ParameterType::Vault => {
-                serde_yaml::Value::String(value.to_string())
-            }
-            ParameterType::Int => {
-                let n: i64 = value
-                    .parse()
-                    .map_err(|_| ProjectError::InvalidParameterValue(value.to_string(), "int"))?;
-                serde_yaml::Value::Number(n.into())
-            }
-            ParameterType::Float => {
-                let n: f64 = value
-                    .parse()
-                    .map_err(|_| ProjectError::InvalidParameterValue(value.to_string(), "float"))?;
-                serde_yaml::Value::Number(n.into())
-            }
-            ParameterType::Bool => {
-                let b = parse_bool(value).ok_or_else(|| {
-                    ProjectError::InvalidParameterValue(value.to_string(), "bool")
-                })?;
-                serde_yaml::Value::Bool(b)
-            }
+impl ParameterDefault {
+    /// Return the default as a [ParameterValue]. If the value in the file is
+    /// not valid for the parameter type, an error is returned.
+    pub fn eval_default(&self) -> Result<Option<ParameterValue>, ProjectError> {
+        let Some(value) = self.default.as_ref() else {
+            return Ok(None);
         };
 
-        self.default = Some(parsed);
+        let err = || ProjectError::InvalidParameterValue(format!("{value:?}"), self.param_type);
+
+        let v = match self.param_type {
+            ParameterType::Str => ParameterValue::Str(value.as_str().ok_or_else(err)?.to_owned()),
+            ParameterType::Int => ParameterValue::Int(value.as_i64().ok_or_else(err)?),
+            ParameterType::Float => ParameterValue::Float(value.as_f64().ok_or_else(err)?),
+            ParameterType::Bool => ParameterValue::Bool(value.as_bool().ok_or_else(err)?),
+            ParameterType::Vault => {
+                ParameterValue::Vault(value.as_str().ok_or_else(err)?.to_owned())
+            }
+            ParameterType::Secret => ParameterValue::Secret {
+                key: self.key.clone().ok_or_else(err)?,
+                encrypted_value: value.as_str().ok_or_else(err)?.to_owned(),
+            },
+        };
+
+        Ok(Some(v))
+    }
+
+    /// Set the default value in YAML. The type of the value must match the
+    /// [ParameterType].
+    pub fn update_default(&mut self, value: ParameterValue) -> Result<(), ProjectError> {
+        match (value, self.param_type) {
+            (ParameterValue::Str(s), ParameterType::Str) => {
+                self.default = Some(serde_yaml::Value::String(s));
+            }
+            (ParameterValue::Int(i), ParameterType::Int) => {
+                self.default = Some(serde_yaml::Value::Number(i.into()));
+            }
+            (ParameterValue::Float(f), ParameterType::Float) => {
+                self.default = Some(serde_yaml::Value::Number(f.into()));
+            }
+            (ParameterValue::Bool(b), ParameterType::Bool) => {
+                self.default = Some(serde_yaml::Value::Bool(b));
+            }
+            (
+                ParameterValue::Secret {
+                    key,
+                    encrypted_value: value,
+                },
+                ParameterType::Secret,
+            ) => {
+                self.default = Some(serde_yaml::Value::String(value));
+                self.key = Some(key);
+            }
+            (ParameterValue::Vault(v), ParameterType::Vault) => {
+                self.default = Some(serde_yaml::Value::String(v));
+            }
+            (v, t) => {
+                return Err(ProjectError::InvalidParameterValue(v.to_string(), t));
+            }
+        }
+
         Ok(())
     }
 
@@ -123,19 +230,11 @@ impl Parameter {
     }
 }
 
-fn parse_bool(s: &str) -> Option<bool> {
-    match s.to_lowercase().as_str() {
-        "true" | "yes" | "1" | "on" => Some(true),
-        "false" | "no" | "0" | "off" => Some(false),
-        _ => None,
-    }
-}
-
 /// Project metadata.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProjectInfo {
     /// The project ID.
-    pub id: String,
+    pub id: Uuid,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     /// The name of the project.
     pub name: Option<String>,
@@ -151,7 +250,7 @@ pub struct ProjectFile {
     pub project: ProjectInfo,
     /// Parameters for models.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub parameters: BTreeMap<String, Parameter>,
+    pub parameters: BTreeMap<String, ParameterDefault>,
 
     /// The location of the project file on disk.
     #[serde(skip)]
@@ -181,10 +280,6 @@ impl ProjectFile {
         let content = std::fs::read_to_string(&path)?;
         let mut project: Self = serde_yaml::from_str(&content)?;
 
-        if project.project.id.trim().is_empty() {
-            return Err(ProjectError::EmptyProjectId);
-        }
-
         project.path = path;
         Ok(project)
     }
@@ -195,28 +290,49 @@ impl ProjectFile {
         std::fs::write(&self.path, content)?;
         Ok(())
     }
+
+    /// Create a zip archive of the project directory, including only relevant
+    /// files (.py, .sql, requirements.txt, and the project file itself).
+    pub fn create_code_snapshot(&self) -> Result<Vec<u8>, ProjectError> {
+        let project_dir = self.path.parent().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "invalid project file path",
+            )
+        })?;
+
+        let mut buf = Vec::new();
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
+        let options = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated);
+
+        let mut contents = Vec::new();
+        for entry in std::fs::read_dir(project_dir)? {
+            let path = entry?.path();
+            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+                continue;
+            };
+
+            if !include_in_snapshot(name) {
+                continue;
+            }
+
+            let mut file = std::fs::File::open(&path)?;
+            file.read_to_end(&mut contents)?;
+
+            zip.start_file(name, options)?;
+            zip.write_all(&contents)?;
+        }
+
+        zip.finish()?;
+        Ok(buf)
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_bool() {
-        assert_eq!(parse_bool("true"), Some(true));
-        assert_eq!(parse_bool("True"), Some(true));
-        assert_eq!(parse_bool("TRUE"), Some(true));
-        assert_eq!(parse_bool("yes"), Some(true));
-        assert_eq!(parse_bool("1"), Some(true));
-        assert_eq!(parse_bool("on"), Some(true));
-
-        assert_eq!(parse_bool("false"), Some(false));
-        assert_eq!(parse_bool("False"), Some(false));
-        assert_eq!(parse_bool("no"), Some(false));
-        assert_eq!(parse_bool("0"), Some(false));
-        assert_eq!(parse_bool("off"), Some(false));
-
-        assert_eq!(parse_bool("invalid"), None);
-        assert_eq!(parse_bool(""), None);
-    }
+fn include_in_snapshot(name: &str) -> bool {
+    name.ends_with(".py")
+        || name.ends_with(".sql")
+        || name == "requirements.txt"
+        || name == "bauplan_project.yml"
+        || name == "bauplan_project.yaml"
 }

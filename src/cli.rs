@@ -177,13 +177,9 @@ impl Cli {
 
 pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow::Result<()> {
     // Some commands don't require any config.
-    match args.command {
-        Command::Version => {
-            println!("bauplan {}", env!("BPLN_VERSION"));
-            return Ok(());
-        }
-        Command::Parameter(args) => return parameter::handle(args),
-        _ => (),
+    if let Command::Version = args.command {
+        println!("bauplan {}", env!("BPLN_VERSION"));
+        return Ok(());
     }
 
     let profile = if let Some(name) = args.global.profile.as_deref() {
@@ -215,8 +211,8 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
 
     match args.command {
         Command::Version => unreachable!(),
-        Command::Parameter(_) => unreachable!(),
-        Command::Info => with_rt(get_info(&cli)),
+        Command::Parameter(args) => parameter::handle(&cli, args),
+        Command::Info => with_rt(handle_info(&cli)),
         Command::Run(args) => run::handle(&cli, args),
         Command::Rerun(args) => rerun::handle(&cli, args),
         Command::Branch(args) => branch::handle(&cli, args),
@@ -231,10 +227,11 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
     }
 }
 
-fn with_rt<T, F: Future<Output = anyhow::Result<T>>>(f: F) -> anyhow::Result<T> {
+fn with_rt<T, F: Future<Output = T>>(f: F) -> T {
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()?;
+        .build()
+        .unwrap();
     let _guard = rt.enter();
     rt.block_on(f)
 }
@@ -252,7 +249,7 @@ fn is_api_err_kind(e: &anyhow::Error, k: ApiErrorKind) -> bool {
     }
 }
 
-async fn get_info(cli: &Cli) -> anyhow::Result<()> {
+async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
     let mut stdout = stdout().lock();
 
     let mut client = grpc::Client::new_lazy(

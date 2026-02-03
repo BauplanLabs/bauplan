@@ -3,7 +3,7 @@
 use chrono::{DateTime, TimeZone, Utc};
 use serde::Serialize;
 
-use crate::grpc::generated as commanderpb;
+use crate::{grpc::generated as commanderpb, project};
 
 /// The state of a job.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -209,6 +209,35 @@ impl From<commanderpb::JobInfo> for Job {
             started_at: info.started_at.and_then(pb_to_chrono),
             finished_at: info.finished_at.and_then(pb_to_chrono),
             runner: info.runner,
+        }
+    }
+}
+
+impl From<project::ParameterValue> for commanderpb::parameter::Value {
+    fn from(param: project::ParameterValue) -> Self {
+        match param {
+            project::ParameterValue::Str(value) => {
+                Self::StrValue(commanderpb::StrParameterValue { value: Some(value) })
+            }
+            project::ParameterValue::Int(value) => {
+                Self::IntValue(commanderpb::IntParameterValue { value: Some(value) })
+            }
+            project::ParameterValue::Float(value) => {
+                Self::FloatValue(commanderpb::FloatParameterValue { value: Some(value) })
+            }
+            project::ParameterValue::Bool(value) => {
+                Self::BoolValue(commanderpb::BoolParameterValue { value: Some(value) })
+            }
+            project::ParameterValue::Secret {
+                key,
+                encrypted_value: value,
+            } => Self::SecretValue(commanderpb::SecretParameterValue {
+                key: Some(key),
+                value: Some(value),
+            }),
+            project::ParameterValue::Vault(value) => {
+                Self::VaultValue(commanderpb::VaultParameterValue { value: Some(value) })
+            }
         }
     }
 }

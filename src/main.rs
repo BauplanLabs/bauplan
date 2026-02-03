@@ -31,6 +31,7 @@ fn init_logging(verbose: bool, mp: indicatif::MultiProgress) {
         .with_target(false)
         .with_level(true)
         .with_timer(timer);
+
     let writer: IndicatifWriter<tracing_indicatif::writer::Stderr> = IndicatifWriter::new(mp);
     tracing_subscriber::fmt()
         .with_writer(writer)

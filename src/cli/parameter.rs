@@ -1,15 +1,26 @@
 use std::{
     io::{Write, stdout},
     path::{Path, PathBuf},
+    time,
 };
 
-use anyhow::bail;
-use bauplan::project::{Parameter, ProjectFile};
+use anyhow::{anyhow, bail};
+use bauplan::{
+    grpc::{
+        self,
+        generated::{self as commanderpb},
+    },
+    project::{ParameterDefault, ParameterType, ParameterValue, ProjectFile},
+};
 use resolve_path::PathResolveExt as _;
+use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
 use tabwriter::TabWriter;
+use yansi::Paint;
+
+use crate::cli::{Cli, with_rt};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub(crate) enum ParameterType {
+pub(crate) enum ParameterTypeArg {
     Int,
     Float,
     Bool,
@@ -17,14 +28,14 @@ pub(crate) enum ParameterType {
     Secret,
 }
 
-impl From<ParameterType> for bauplan::project::ParameterType {
-    fn from(t: ParameterType) -> Self {
+impl From<ParameterTypeArg> for bauplan::project::ParameterType {
+    fn from(t: ParameterTypeArg) -> Self {
         match t {
-            ParameterType::Int => Self::Int,
-            ParameterType::Float => Self::Float,
-            ParameterType::Bool => Self::Bool,
-            ParameterType::Str => Self::Str,
-            ParameterType::Secret => Self::Secret,
+            ParameterTypeArg::Int => Self::Int,
+            ParameterTypeArg::Float => Self::Float,
+            ParameterTypeArg::Bool => Self::Bool,
+            ParameterTypeArg::Str => Self::Str,
+            ParameterTypeArg::Secret => Self::Secret,
         }
     }
 }
@@ -71,7 +82,7 @@ pub(crate) struct ParameterSetArgs {
     pub default_value: Option<String>,
     /// The type of the parameter
     #[arg(long)]
-    pub r#type: Option<ParameterType>,
+    pub r#type: Option<ParameterTypeArg>,
     #[arg(long)]
     /// A description of the parameter
     pub description: Option<String>,
@@ -89,16 +100,16 @@ pub(crate) struct ParameterSetArgs {
     pub project_dir: Option<PathBuf>,
 }
 
-pub(crate) fn handle(args: ParameterArgs) -> anyhow::Result<()> {
+pub(crate) fn handle(cli: &Cli, args: ParameterArgs) -> anyhow::Result<()> {
     match args.command {
-        ParameterCommand::Ls(a) => list_parameters(a),
-        ParameterCommand::Rm(a) => remove_parameter(a),
-        ParameterCommand::Set(a) => set_parameter(a),
+        ParameterCommand::Ls(args) => list_parameters(args),
+        ParameterCommand::Rm(args) => remove_parameter(args),
+        ParameterCommand::Set(args) => set_parameter(cli, args),
     }
 }
 
 fn list_parameters(args: ParameterLsArgs) -> anyhow::Result<()> {
-    let project_dir = project_dir(args.project_dir.as_deref())?;
+    let project_dir = resolve_project_dir(args.project_dir.as_deref())?;
     let project = ProjectFile::from_dir(&project_dir)?;
 
     print_parameters(&project)
@@ -107,7 +118,7 @@ fn list_parameters(args: ParameterLsArgs) -> anyhow::Result<()> {
 fn remove_parameter(args: ParameterRmArgs) -> anyhow::Result<()> {
     validate_parameter_name(&args.name)?;
 
-    let project_dir = project_dir(args.project_dir.as_deref())?;
+    let project_dir = resolve_project_dir(args.project_dir.as_deref())?;
     let mut project = ProjectFile::from_dir(&project_dir)?;
 
     if project.parameters.remove(&args.name).is_none() {
@@ -118,7 +129,7 @@ fn remove_parameter(args: ParameterRmArgs) -> anyhow::Result<()> {
     print_parameters(&project)
 }
 
-fn set_parameter(args: ParameterSetArgs) -> anyhow::Result<()> {
+fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
     validate_parameter_name(&args.name)?;
 
     if args.default_value.is_some() && args.file.is_some() {
@@ -131,26 +142,40 @@ fn set_parameter(args: ParameterSetArgs) -> anyhow::Result<()> {
         args.default_value
     };
 
-    let project_dir = project_dir(args.project_dir.as_deref())?;
+    let project_dir = resolve_project_dir(args.project_dir.as_deref())?;
     let mut project = ProjectFile::from_dir(&project_dir)?;
 
     let param_type = args.r#type.map(bauplan::project::ParameterType::from);
-    let param = project.parameters.entry(args.name).or_insert(Parameter {
-        param_type: param_type.unwrap_or_default(),
-        required: false,
-        default: None,
-        description: None,
-        key: None,
-    });
+    let param = project
+        .parameters
+        .entry(args.name)
+        .or_insert(ParameterDefault {
+            param_type: param_type.unwrap_or_default(),
+            required: false,
+            default: None,
+            description: None,
+            key: None,
+        });
 
     if param.default.is_some() && param_type.is_some() && default_value.is_none() {
         bail!("cannot change the type of a parameter without also changing the default value");
-    } else if let Some(v) = default_value {
-        param.set_default_from_string(&v)?;
     }
 
-    if let Some(t) = param_type {
-        param.param_type = t;
+    if let Some(v) = default_value {
+        if let Some(t) = param_type {
+            param.param_type = t;
+        }
+
+        let value = match param.param_type {
+            ParameterType::Secret => {
+                // Fetch the org-wide public key from commander.
+                let (key_name, key) = with_rt(fetch_org_public_key(cli))?;
+                ParameterValue::encrypt_secret(key_name, &key, project.project.id, v)?
+            }
+            _ => parse_parameter(param.param_type, &v)?,
+        };
+
+        param.update_default(value)?;
     }
 
     if let Some(desc) = &args.description {
@@ -172,7 +197,7 @@ fn set_parameter(args: ParameterSetArgs) -> anyhow::Result<()> {
     print_parameters(&project)
 }
 
-fn project_dir(arg: Option<&Path>) -> std::io::Result<PathBuf> {
+pub(crate) fn resolve_project_dir(arg: Option<&Path>) -> std::io::Result<PathBuf> {
     if let Some(p) = arg {
         Ok(p.try_resolve()?.into_owned())
     } else {
@@ -180,27 +205,7 @@ fn project_dir(arg: Option<&Path>) -> std::io::Result<PathBuf> {
     }
 }
 
-fn print_parameters(project: &ProjectFile) -> anyhow::Result<()> {
-    let mut tw = TabWriter::new(stdout().lock());
-    writeln!(&mut tw, "NAME\tTYPE\tREQUIRED\tDEFAULT\tDESCRIPTION")?;
-
-    for (name, param) in &project.parameters {
-        writeln!(
-            &mut tw,
-            "{}\t{}\t{}\t{}\t{}",
-            name,
-            param.param_type,
-            param.required,
-            param.display_default(),
-            param.description.as_deref().unwrap_or("-"),
-        )?;
-    }
-
-    tw.flush()?;
-    Ok(())
-}
-
-fn validate_parameter_name(name: &str) -> anyhow::Result<()> {
+pub(crate) fn validate_parameter_name(name: &str) -> anyhow::Result<()> {
     if name.trim().is_empty() {
         bail!("empty parameter name");
     }
@@ -209,5 +214,81 @@ fn validate_parameter_name(name: &str) -> anyhow::Result<()> {
         bail!("invalid parameter name: {name:?}")
     }
 
+    Ok(())
+}
+
+/// Parse a raw parameter string as a value. Should only be called for
+/// non-secret parameters.
+pub(crate) fn parse_parameter(
+    param_type: ParameterType,
+    value: &str,
+) -> anyhow::Result<ParameterValue> {
+    let parsed = match param_type {
+        ParameterType::Int => value.parse().map(ParameterValue::Int)?,
+        ParameterType::Float => value.parse().map(ParameterValue::Float)?,
+        ParameterType::Bool => parse_bool(value).map(ParameterValue::Bool)?,
+        ParameterType::Str => ParameterValue::Str(value.to_string()),
+        ParameterType::Vault => ParameterValue::Vault(value.to_string()),
+        ParameterType::Secret => {
+            panic!("parse_parameter called on secret")
+        }
+    };
+
+    Ok(parsed)
+}
+
+fn parse_bool(s: &str) -> anyhow::Result<bool> {
+    match s.to_lowercase().as_str() {
+        "true" | "yes" | "1" | "on" => Ok(true),
+        "false" | "no" | "0" | "off" => Ok(false),
+        _ => Err(anyhow!("invalid boolean value: {s:?}")),
+    }
+}
+
+async fn fetch_org_public_key(cli: &Cli) -> anyhow::Result<(String, RsaPublicKey)> {
+    let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(5));
+    let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
+
+    let resp = client
+        .get_bauplan_info(commanderpb::GetBauplanInfoRequest::default())
+        .await?
+        .into_inner();
+
+    let Some(commanderpb::OrganizationInfo {
+        default_parameter_secret_public_key: Some(pkey),
+        default_parameter_secret_key: Some(key_name),
+        ..
+    }) = resp.organization_info
+    else {
+        return Err(anyhow!("no org-wide public key configured"));
+    };
+
+    let pkey = RsaPublicKey::from_public_key_pem(&pkey)?;
+    Ok((key_name, pkey))
+}
+
+fn print_parameters(project: &ProjectFile) -> anyhow::Result<()> {
+    let mut tw = TabWriter::new(stdout().lock()).ansi(true);
+    writeln!(&mut tw, "NAME\tTYPE\tREQUIRED\tDEFAULT\tDESCRIPTION")?;
+
+    for (name, param) in &project.parameters {
+        let required = if param.required {
+            "required".blue()
+        } else {
+            "optional".dim()
+        };
+
+        writeln!(
+            &mut tw,
+            "{}\t{}\t{}\t{}\t{}",
+            name.bold(),
+            param.param_type,
+            required,
+            param.display_default(),
+            param.description.as_deref().unwrap_or("-").dim(),
+        )?;
+    }
+
+    tw.flush()?;
     Ok(())
 }

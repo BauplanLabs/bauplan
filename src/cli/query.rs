@@ -1,6 +1,6 @@
 use std::{fmt::Write as _, io::Write, path::PathBuf, time};
 
-use crate::cli::{Cli, KeyValue, Output, Priority};
+use crate::cli::{Cli, KeyValue, OnOff, Output, Priority};
 use anyhow::{Context as _, anyhow, bail};
 use arrow::{
     array::RecordBatch,
@@ -16,22 +16,6 @@ use gethostname::gethostname;
 use tabwriter::TabWriter;
 use tracing::{debug, error};
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub(crate) enum Cache {
-    #[default]
-    On,
-    Off,
-}
-
-impl std::fmt::Display for Cache {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Cache::On => write!(f, "on"),
-            Cache::Off => write!(f, "off"),
-        }
-    }
-}
-
 #[derive(Debug, clap::Args)]
 pub(crate) struct QueryArgs {
     /// Do not truncate output
@@ -39,7 +23,7 @@ pub(crate) struct QueryArgs {
     pub no_trunc: bool,
     /// Set the cache mode.
     #[arg(long)]
-    pub cache: Option<Cache>,
+    pub cache: Option<OnOff>,
     /// Read query from file
     #[arg(short, long)]
     pub file: Option<PathBuf>,
@@ -113,7 +97,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         }),
         r#ref,
         sql_query,
-        cache: cache.unwrap_or_default().to_string(),
+        cache: cache.unwrap_or(OnOff::On).to_string(),
         namespace,
     };
 
