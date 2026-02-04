@@ -353,3 +353,30 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+pub(crate) struct CliExamples(pub &'static str);
+
+impl From<CliExamples> for clap::builder::StyledStr {
+    fn from(ex: CliExamples) -> Self {
+        use clap::builder::styling::Style;
+        use std::fmt::Write;
+
+        const BOLD: Style = Style::new().bold();
+        const DIM: Style = Style::new().dimmed();
+        const HEADING: Style = Style::new().bold().underline();
+
+        let mut s = clap::builder::StyledStr::new();
+        write!(s, "{HEADING}Examples{HEADING:#}").unwrap();
+        for line in ex.0.trim_matches('\n').lines() {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with('#') {
+                write!(s, "{DIM}\n{line}{DIM:#}").unwrap();
+            } else if !trimmed.is_empty() {
+                write!(s, "{BOLD}\n{line}{BOLD:#}").unwrap();
+            } else {
+                writeln!(s).unwrap();
+            }
+        }
+        s
+    }
+}

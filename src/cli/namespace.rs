@@ -3,7 +3,7 @@ use std::io::{Write as _, stdout};
 use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, Output, api_err_kind};
+use crate::cli::{Cli, CliExamples, Output, api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceArgs {
@@ -24,6 +24,16 @@ pub(crate) enum NamespaceCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List namespaces on active branch
+  bauplan namespace ls
+
+  # List namespaces on specific branch
+  bauplan namespace ls --ref main
+
+  # Limit results
+  bauplan namespace ls --limit 10
+"))]
 pub(crate) struct NamespaceLsArgs {
     /// Filter namespaces by name
     pub namespace: Option<String>,
@@ -36,6 +46,16 @@ pub(crate) struct NamespaceLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Create namespace on active branch
+  bauplan namespace create raw_data
+
+  # Create namespace on specific branch
+  bauplan namespace create transformed_data --branch main
+
+  # Create namespace if it doesn't already exist
+  bauplan namespace create my_namespace --if-not-exists
+"))]
 pub(crate) struct NamespaceCreateArgs {
     /// Namespace
     pub namespace: String,
@@ -51,6 +71,16 @@ pub(crate) struct NamespaceCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Delete namespace from active branch
+  bauplan namespace rm old_namespace
+
+  # Delete from specific branch
+  bauplan namespace rm old_namespace --branch main
+
+  # Conditionally delete
+  bauplan namespace rm maybe_namespace --if-exists
+"))]
 pub(crate) struct NamespaceRmArgs {
     /// Namespace
     pub namespace: String,

@@ -10,9 +10,9 @@ use bauplan::{
     table::{GetTables, Table},
 };
 use tabwriter::TabWriter;
-use yansi::Paint;
+use yansi::Paint as _;
 
-use crate::cli::{Cli, Output, api_err_kind, checkout};
+use crate::cli::{Cli, CliExamples, Output, api_err_kind, checkout};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchArgs {
@@ -43,6 +43,22 @@ pub(crate) enum BranchCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List user's own branches
+  bauplan branch ls
+
+  # List all branches
+  bauplan branch ls --all-zones
+
+  # Filter by name
+  bauplan branch ls --name \"dev\"
+
+  # Filter by user
+  bauplan branch ls --user username
+
+  # Limit results
+  bauplan branch ls --limit 5
+"))]
 pub(crate) struct BranchLsArgs {
     /// Branch name
     pub branch_name: Option<String>,
@@ -61,6 +77,16 @@ pub(crate) struct BranchLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Create branch from active branch
+  bauplan branch create username.dev_branch
+
+  # Create branch from specific ref
+  bauplan branch create username.new_feature --from-ref main
+
+  # Create branch if it doesn't already exist
+  bauplan branch create username.my_branch --if-not-exists
+"))]
 pub(crate) struct BranchCreateArgs {
     /// Branch name
     pub branch_name: String,
@@ -73,6 +99,13 @@ pub(crate) struct BranchCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Delete a branch
+  bauplan branch rm username.old_branch
+
+  # Conditionally delete
+  bauplan branch rm username.maybe_branch --if-exists
+"))]
 pub(crate) struct BranchRmArgs {
     /// Branch name
     pub branch_name: String,
@@ -82,6 +115,13 @@ pub(crate) struct BranchRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get branch information
+  bauplan branch get username.dev_branch
+
+  # Get with namespace filter
+  bauplan branch get username.branch --namespace raw_data
+"))]
 pub(crate) struct BranchGetArgs {
     /// Branch name
     pub branch_name: String,
@@ -91,12 +131,26 @@ pub(crate) struct BranchGetArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  bauplan branch checkout main
+  bauplan branch checkout username.dev_branch
+"))]
 pub(crate) struct BranchCheckoutArgs {
     /// Branch name
     pub branch_name: String,
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Diff between active branch and another
+  bauplan branch diff username.dev_branch
+
+  # Diff between two specific branches
+  bauplan branch diff main username.dev_branch
+
+  # Diff with namespace filter
+  bauplan branch diff username.branch1 username.branch2 --namespace raw_data
+"))]
 pub(crate) struct BranchDiffArgs {
     /// Branch name a
     pub branch_name_a: String,
@@ -108,6 +162,13 @@ pub(crate) struct BranchDiffArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Merge branch into active branch
+  bauplan branch merge username.dev_branch
+
+  # Merge with custom commit message
+  bauplan branch merge username.feature --commit-message \"Merge feature updates\"
+"))]
 pub(crate) struct BranchMergeArgs {
     /// Branch name
     pub branch_name: String,
@@ -117,6 +178,9 @@ pub(crate) struct BranchMergeArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  bauplan branch rename username.old_name username.new_name
+"))]
 pub(crate) struct BranchRenameArgs {
     /// Branch name
     pub branch_name: String,

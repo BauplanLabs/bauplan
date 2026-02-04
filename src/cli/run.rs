@@ -22,7 +22,7 @@ use rsa::RsaPublicKey;
 use serde::Serialize;
 use tabwriter::TabWriter;
 use tracing::{debug, error, info};
-use yansi::Paint;
+use yansi::Paint as _;
 
 use crate::cli::{
     Cli, KeyValue, OnOff, Priority, format_grpc_status,
@@ -52,6 +52,22 @@ impl Display for Preview {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = crate::cli::CliExamples("
+  # Run pipeline in current directory
+  bauplan run
+
+  # Dry run without materializing models
+  bauplan run --dry-run
+
+  # Run with strict mode and preview
+  bauplan run --strict --preview head
+
+  # Run on specific branch with parameters
+  bauplan run --ref main --param env=prod
+
+  # Run in background
+  bauplan run --detach
+"))]
 pub(crate) struct RunArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]

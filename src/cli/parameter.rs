@@ -13,7 +13,7 @@ use resolve_path::PathResolveExt as _;
 use tabwriter::TabWriter;
 use yansi::Paint;
 
-use crate::cli::{Cli, format_grpc_status, with_rt, yaml};
+use crate::cli::{CliExamples, Cli, format_grpc_status, with_rt, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum ParameterTypeArg {
@@ -55,6 +55,13 @@ pub(crate) enum ParameterCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List parameters in current directory
+  bauplan parameter ls
+
+  # List parameters in specific project directory
+  bauplan parameter ls --project-dir /path/to/project
+"))]
 pub(crate) struct ParameterLsArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
@@ -62,6 +69,13 @@ pub(crate) struct ParameterLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Remove parameter from current project
+  bauplan parameter rm db_connection
+
+  # Remove parameter from specific project
+  bauplan parameter rm api_key --project-dir /path/to/project
+"))]
 pub(crate) struct ParameterRmArgs {
     /// Name of the parameter to remove
     pub name: String,
@@ -71,6 +85,25 @@ pub(crate) struct ParameterRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Set string parameter
+  bauplan parameter set env production --type str
+
+  # Set integer parameter
+  bauplan parameter set max_rows 1000 --type int
+
+  # Set boolean parameter
+  bauplan parameter set debug true --type bool
+
+  # Set secret parameter
+  bauplan parameter set api_key mysecretkey --type secret --required
+
+  # Set parameter from file
+  bauplan parameter set config --type str --file config.json
+
+  # Set parameter with description
+  bauplan parameter set db_host localhost --type str --description \"Database host\"
+"))]
 pub(crate) struct ParameterSetArgs {
     /// Name
     pub name: String,

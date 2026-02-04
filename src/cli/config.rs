@@ -4,7 +4,7 @@ use bauplan::Profile;
 use tabwriter::TabWriter;
 use yansi::Paint as _;
 
-use crate::cli::{GlobalArgs, Output, yaml};
+use crate::cli::{CliExamples, GlobalArgs, Output, yaml};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct ConfigArgs {
@@ -37,6 +37,10 @@ impl std::fmt::Display for ConfigSetting {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Set configuration value
+  bauplan config set api_key your_key
+"))]
 pub(crate) struct ConfigSetArgs {
     /// Setting name
     pub name: ConfigSetting,
@@ -45,6 +49,13 @@ pub(crate) struct ConfigSetArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get specific configuration
+  bauplan config get api_key
+
+  # Get all profiles
+  bauplan config get --all
+"))]
 pub(crate) struct ConfigGetArgs {
     /// Show all the available profiles
     #[arg(short, long)]
