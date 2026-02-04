@@ -84,7 +84,36 @@ pub(crate) enum JobCommand {
     Stop(JobStopArgs),
 }
 
+fn job_ls_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# List recent jobs for current user".dim(),
+            "bauplan job ls".bold(),
+            "# List more jobs".dim(),
+            "bauplan job ls --max-count 20".bold(),
+            "# List all jobs from all users".dim(),
+            "bauplan job ls --all-users --max-count 50".bold(),
+            "# Filter by status".dim(),
+            "bauplan job ls --status running".bold(),
+            "# Filter by job kind".dim(),
+            "bauplan job ls --kind run --kind query".bold(),
+            "# Filter by specific user".dim(),
+            "bauplan job ls --user username".bold(),
+            "# Filter by date range".dim(),
+            "bauplan job ls --created-after 2024-01-01 --created-before 2024-01-31".bold(),
+            "# Filter by job ID".dim(),
+            "bauplan job ls --id abc123 --id def456".bold(),
+            "# Filter failed jobs".dim(),
+            "bauplan job ls --status fail --max-count 10".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = job_ls_help())]
 pub(crate) struct JobLsArgs {
     /// Show jobs from all users, not just your own
     #[arg(long)]
@@ -115,13 +144,41 @@ pub(crate) struct JobLsArgs {
     pub utc: bool,
 }
 
+fn job_get_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Get job details".dim(),
+            "bauplan job get abc123def456".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = job_get_help())]
 pub(crate) struct JobGetArgs {
     /// Job id
     pub job_id: String,
 }
 
+fn job_logs_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Get job logs".dim(),
+            "bauplan job logs abc123def456".bold(),
+            "# Get all logs including system logs".dim(),
+            "bauplan job logs abc123def456 --all --system".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = job_logs_help())]
 pub(crate) struct JobLogsArgs {
     /// Job id
     pub job_id: String,
@@ -133,7 +190,20 @@ pub(crate) struct JobLogsArgs {
     pub all: bool,
 }
 
+fn job_stop_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Stop a running job".dim(),
+            "bauplan job stop abc123def456".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = job_stop_help())]
 pub(crate) struct JobStopArgs {
     /// Job id
     pub job_id: String,

@@ -22,7 +22,7 @@ use rsa::RsaPublicKey;
 use serde::Serialize;
 use tabwriter::TabWriter;
 use tracing::{debug, error, info};
-use yansi::Paint;
+use yansi::Paint as _;
 
 use crate::cli::{
     Cli, KeyValue, OnOff, Priority, format_grpc_status,
@@ -51,7 +51,28 @@ impl Display for Preview {
     }
 }
 
+fn run_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Run pipeline in current directory".dim(),
+            "bauplan run".bold(),
+            "# Dry run without materializing models".dim(),
+            "bauplan run --dry-run".bold(),
+            "# Run with strict mode and preview".dim(),
+            "bauplan run --strict --preview head".bold(),
+            "# Run on specific branch with parameters".dim(),
+            "bauplan run --ref main --param env=prod".bold(),
+            "# Run in background".dim(),
+            "bauplan run --detach".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = run_help())]
 pub(crate) struct RunArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]

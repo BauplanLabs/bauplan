@@ -1,9 +1,29 @@
 use anyhow::{Context as _, bail};
 use bauplan::branch::{CreateBranch, GetBranch};
+use yansi::Paint as _;
 
 use crate::cli::{Cli, yaml};
 
+fn checkout_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Checkout existing branch".dim(),
+            "bauplan checkout main".bold(),
+            "# Checkout user branch".dim(),
+            "bauplan checkout username.dev_branch".bold(),
+            "# Create and checkout new branch from main".dim(),
+            "bauplan checkout -b username.new_feature --from-ref main".bold(),
+            "# Create and checkout from active branch".dim(),
+            "bauplan checkout -b username.new_feature".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = checkout_help())]
 pub(crate) struct CheckoutArgs {
     /// Branch name
     pub branch_name: String,

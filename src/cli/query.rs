@@ -18,7 +18,31 @@ use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, TryStreamExt};
 use tabwriter::TabWriter;
 
+fn query_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        use yansi::Paint as _;
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Run query inline".dim(),
+            r#"bauplan query "SELECT * FROM raw_data.customers LIMIT 10""#.bold(),
+            "# Run query from file".dim(),
+            "bauplan query --file query.sql".bold(),
+            "# Run query with no row limit".dim(),
+            r#"bauplan query --all-rows "SELECT COUNT(*) FROM raw_data.orders""#.bold(),
+            "# Run query on specific branch".dim(),
+            r#"bauplan query --ref main "SELECT * FROM my_table""#.bold(),
+            "# Run query in specific namespace".dim(),
+            r#"bauplan query --namespace raw_data "SELECT * FROM customers LIMIT 5""#.bold(),
+            "# Run query with full output (no truncation)".dim(),
+            r#"bauplan query --no-trunc "SELECT * FROM wide_table""#.bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = query_help())]
 pub(crate) struct QueryArgs {
     /// Sql
     pub sql: Option<String>,
