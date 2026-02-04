@@ -19,6 +19,25 @@ use futures::{Stream, TryStreamExt};
 use tabwriter::TabWriter;
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = crate::cli::CliExamples("
+  # Run query inline
+  bauplan query \"SELECT * FROM raw_data.customers LIMIT 10\"
+
+  # Run query from file
+  bauplan query --file query.sql
+
+  # Run query with no row limit
+  bauplan query --all-rows \"SELECT COUNT(*) FROM raw_data.orders\"
+
+  # Run query on specific branch
+  bauplan query --ref main \"SELECT * FROM my_table\"
+
+  # Run query in specific namespace
+  bauplan query --namespace raw_data \"SELECT * FROM customers LIMIT 5\"
+
+  # Run query with full output (no truncation)
+  bauplan query --no-trunc \"SELECT * FROM wide_table\"
+"))]
 pub(crate) struct QueryArgs {
     /// Sql
     pub sql: Option<String>,

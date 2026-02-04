@@ -15,10 +15,10 @@ use commanderpb::runner_event::Event as RunnerEvent;
 use indicatif::ProgressBar;
 use tabwriter::TabWriter;
 use tracing::info;
-use yansi::Paint;
+use yansi::Paint as _;
 
 use crate::cli::{
-    Cli, KeyValue, Output, Priority, api_err_kind, format_grpc_status,
+    Cli, CliExamples, KeyValue, Output, Priority, api_err_kind, format_grpc_status,
     run::{job_request_common, monitor_job_progress},
     spinner::ProgressExt as _,
     with_rt,
@@ -55,6 +55,19 @@ pub(crate) enum TableCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List tables on active branch
+  bauplan table ls
+
+  # List tables in specific namespace
+  bauplan table ls --namespace raw_data
+
+  # List tables from specific branch
+  bauplan table ls --ref main
+
+  # Limit results
+  bauplan table ls --limit 20
+"))]
 pub(crate) struct TableLsArgs {
     /// Filter tables by name (exact match or regex)
     #[arg(long)]
@@ -71,6 +84,16 @@ pub(crate) struct TableLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get table info from active branch
+  bauplan table get customers
+
+  # Get table info from specific branch
+  bauplan table get customers --ref main
+
+  # Get table info with namespace prefix
+  bauplan table get raw_data.customers
+"))]
 pub(crate) struct TableGetArgs {
     /// Table name
     pub table_name: String,
@@ -80,6 +103,16 @@ pub(crate) struct TableGetArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Delete table from active branch
+  bauplan table rm old_table
+
+  # Delete from specific branch
+  bauplan table rm old_table --branch main
+
+  # Conditionally delete
+  bauplan table rm maybe_table --if-exists
+"))]
 pub(crate) struct TableRmArgs {
     /// Table name
     pub table_name: String,
@@ -95,6 +128,19 @@ pub(crate) struct TableRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Create table from S3 data
+  bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --namespace raw_data
+
+  # Create table with partitioning
+  bauplan table create --name orders --search-uri s3://mybucket/orders/*.parquet --partitioned-by date_column
+
+  # Create table on specific branch
+  bauplan table create --name products --search-uri s3://mybucket/products/*.parquet --branch main
+
+  # Replace existing table
+  bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --replace
+"))]
 pub(crate) struct TableCreateArgs {
     /// Name of the table to create
     pub table_name: String,
@@ -122,6 +168,13 @@ pub(crate) struct TableCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Create plan and save to file
+  bauplan table create-plan --name customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json
+
+  # Create plan without saving
+  bauplan table create-plan --name products --search-uri s3://mybucket/products/*.parquet
+"))]
 pub(crate) struct TableCreatePlanArgs {
     /// Name of the table to create
     pub table_name: String,
@@ -149,6 +202,10 @@ pub(crate) struct TableCreatePlanArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Apply previously created plan
+  bauplan table create-plan-apply --plan plan.json
+"))]
 pub(crate) struct TableCreatePlanApplyArgs {
     /// Path to a plan YAML file; reads from stdin if not provided
     #[arg(long)]
@@ -162,6 +219,19 @@ pub(crate) struct TableCreatePlanApplyArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Create external table from Iceberg metadata
+  bauplan table create-external --name events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data
+
+  # Create external table from parquet files
+  bauplan table create-external --name events --search-pattern \"s3://bucket/data/*.parquet\" --namespace raw_data
+
+  # Create external table with multiple search patterns
+  bauplan table create-external --name events --search-pattern \"s3://bucket/2024/*.parquet\" --search-pattern \"s3://bucket/2025/*.parquet\" --namespace raw_data
+
+  # Create and overwrite existing table
+  bauplan table create-external --name events --search-pattern \"s3://bucket/data/*.parquet\" --overwrite
+"))]
 pub(crate) struct TableCreateExternalArgs {
     /// Name of the external table to create
     pub table_name: String,
@@ -192,6 +262,19 @@ pub(crate) struct TableCreateExternalArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Import data to existing table
+  bauplan table import --name customers --search-uri s3://bucket/customers/new_data/*.parquet
+
+  # Import with continue on error flag
+  bauplan table import --name events --search-uri s3://bucket/events/*.parquet --continue-on-error
+
+  # Import in best-effort mode (ignore new columns)
+  bauplan table import --name products --search-uri s3://bucket/products/*.parquet --best-effort
+
+  # Import in background
+  bauplan table import --name logs --search-uri s3://bucket/logs/*.parquet --detach
+"))]
 pub(crate) struct TableImportArgs {
     /// Name of table where data will be imported into
     pub table_name: String,
@@ -225,6 +308,19 @@ pub(crate) struct TableImportArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Revert table from another branch
+  bauplan table revert customers --source-ref main
+
+  # Revert table to specific branch
+  bauplan table revert customers --source-ref main --into-branch username.dev_branch
+
+  # Revert and replace if exists
+  bauplan table revert customers --source-ref v1.0 --replace
+
+  # Revert with commit message
+  bauplan table revert customers --source-ref main --commit-body \"Reverted due to data issue\"
+"))]
 pub(crate) struct TableRevertArgs {
     /// Table name
     pub table_name: String,
