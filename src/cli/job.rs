@@ -84,6 +84,17 @@ pub(crate) enum JobCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan job ls                   List recent jobs for current user
+  bauplan job ls --max-count 20    List more jobs
+  bauplan job ls --all-users --max-count 50  List all jobs from all users
+  bauplan job ls --status running  Filter by status
+  bauplan job ls --kind run --kind query  Filter by job kind
+  bauplan job ls --user username   Filter by specific user
+  bauplan job ls --created-after 2024-01-01 --created-before 2024-01-31  Filter by date range
+  bauplan job ls --id abc123 --id def456  Filter by job ID
+  bauplan job ls --status fail --max-count 10  Filter failed jobs
+"#)]
 pub(crate) struct JobLsArgs {
     /// Show jobs from all users, not just your own
     #[arg(long)]
@@ -115,12 +126,19 @@ pub(crate) struct JobLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan job get abc123def456     Get job details
+"#)]
 pub(crate) struct JobGetArgs {
     /// Job id
     pub job_id: String,
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan job logs abc123def456    Get job logs
+  bauplan job logs abc123def456 --all --system  Get all logs including system logs
+"#)]
 pub(crate) struct JobLogsArgs {
     /// Include system logs
     #[arg(long)]
@@ -133,6 +151,9 @@ pub(crate) struct JobLogsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan job stop abc123def456    Stop a running job
+"#)]
 pub(crate) struct JobStopArgs {
     /// Job id
     pub job_id: String,

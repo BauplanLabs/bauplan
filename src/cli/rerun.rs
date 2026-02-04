@@ -15,6 +15,11 @@ pub(crate) enum Cache {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan rerun --id abc123def456            Re-run a specific job
+  bauplan rerun --id abc123def456 --arg env=staging  Re-run with new parameters
+  bauplan rerun --id abc123def456 --dry-run  Re-run as dry run
+"#)]
 pub(crate) struct RerunArgs {
     /// Run ID to re-run
     #[arg(long)]

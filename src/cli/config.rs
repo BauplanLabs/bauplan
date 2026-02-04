@@ -15,6 +15,9 @@ pub(crate) enum ConfigCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan config set api_key your_key  Set configuration value
+"#)]
 pub(crate) struct ConfigSetArgs {
     /// Name
     pub name: String,
@@ -23,6 +26,10 @@ pub(crate) struct ConfigSetArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan config get api_key       Get specific configuration
+  bauplan config get --all         Get all profiles
+"#)]
 pub(crate) struct ConfigGetArgs {
     /// Show all the available profiles
     #[arg(short, long)]

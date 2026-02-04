@@ -25,6 +25,11 @@ pub(crate) enum NamespaceCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan namespace ls             List namespaces on active branch
+  bauplan namespace ls --ref main  List namespaces on specific branch
+  bauplan namespace ls --limit 10  Limit results
+"#)]
 pub(crate) struct NamespaceLsArgs {
     /// Ref or branch name to get the namespaces from; it defaults to the active branch
     #[arg(short, long)]
@@ -37,6 +42,11 @@ pub(crate) struct NamespaceLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan namespace create raw_data  Create namespace on active branch
+  bauplan namespace create transformed_data --branch main  Create namespace on specific branch
+  bauplan namespace create my_namespace --if-not-exists  Create without failing if exists
+"#)]
 pub(crate) struct NamespaceCreateArgs {
     /// Branch to create the namespace in; it defaults to the active branch
     #[arg(short, long)]
@@ -52,6 +62,11 @@ pub(crate) struct NamespaceCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan namespace rm old_namespace  Delete namespace from active branch
+  bauplan namespace rm old_namespace --branch main  Delete from specific branch
+  bauplan namespace rm maybe_namespace --if-exists  Delete without failing if not exists
+"#)]
 pub(crate) struct NamespaceRmArgs {
     /// Branch to delete the namespace from; it defaults to the active branch
     #[arg(short, long)]

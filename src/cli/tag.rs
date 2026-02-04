@@ -27,6 +27,11 @@ pub(crate) enum TagCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan tag ls                List all tags
+  bauplan tag ls --name "v.*"   Filter by name pattern
+  bauplan tag ls --limit 10     Limit results
+"#)]
 pub(crate) struct TagLsArgs {
     /// Filter by name (can be a regex)
     #[arg(long)]
@@ -37,6 +42,11 @@ pub(crate) struct TagLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan tag create v1.0                Create tag from active branch
+  bauplan tag create v1.0 --from-ref main  Create tag from specific ref
+  bauplan tag create v1.0 --if-not-exists  Create without failing if exists
+"#)]
 pub(crate) struct TagCreateArgs {
     /// Ref from which to create. If not specified, default is active branch
     #[arg(long)]
@@ -49,6 +59,10 @@ pub(crate) struct TagCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan tag rm v1.0              Delete a tag
+  bauplan tag rm v1.0 --if-exists  Delete without failing if not exists
+"#)]
 pub(crate) struct TagRmArgs {
     /// Do not fail if the tag does not exist
     #[arg(long)]
@@ -58,6 +72,9 @@ pub(crate) struct TagRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan tag rename v1.0 v1.0-stable
+"#)]
 pub(crate) struct TagRenameArgs {
     /// Tag name
     pub tag_name: String,

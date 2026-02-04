@@ -35,6 +35,13 @@ pub(crate) enum BranchCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch ls                List user's own branches
+  bauplan branch ls --all-zones    List all branches
+  bauplan branch ls --name "dev"   Filter by name
+  bauplan branch ls --user username  Filter by user
+  bauplan branch ls --limit 5      Limit results
+"#)]
 pub(crate) struct BranchLsArgs {
     /// Show all branches, including those from other namespaces (users)
     #[arg(short, long)]
@@ -53,6 +60,11 @@ pub(crate) struct BranchLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch create username.dev_branch  Create branch from active branch
+  bauplan branch create username.new_feature --from-ref main  Create branch from specific ref
+  bauplan branch create username.my_branch --if-not-exists  Create branch without failing if exists
+"#)]
 pub(crate) struct BranchCreateArgs {
     /// Ref from which to create. If not specified, default is active branch
     #[arg(long)]
@@ -65,6 +77,10 @@ pub(crate) struct BranchCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch rm username.old_branch  Delete a branch
+  bauplan branch rm username.maybe_branch --if-exists  Delete without failing if not exists
+"#)]
 pub(crate) struct BranchRmArgs {
     /// Do not fail if the branch does not exist
     #[arg(long)]
@@ -74,6 +90,10 @@ pub(crate) struct BranchRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch get username.dev_branch  Get branch information
+  bauplan branch get username.branch --namespace raw_data  Get with namespace filter
+"#)]
 pub(crate) struct BranchGetArgs {
     /// Filter by namespace
     #[arg(short, long)]
@@ -83,12 +103,21 @@ pub(crate) struct BranchGetArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch checkout main
+  bauplan branch checkout username.dev_branch
+"#)]
 pub(crate) struct BranchCheckoutArgs {
     /// Branch name
     pub branch_name: String,
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch diff username.dev_branch  Diff between active branch and another
+  bauplan branch diff main username.dev_branch  Diff between two specific branches
+  bauplan branch diff username.branch1 username.branch2 --namespace raw_data  Diff with namespace filter
+"#)]
 pub(crate) struct BranchDiffArgs {
     /// Filter by namespace
     #[arg(short, long)]
@@ -100,6 +129,10 @@ pub(crate) struct BranchDiffArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch merge username.dev_branch  Merge branch into active branch
+  bauplan branch merge username.feature --commit-message "Merge feature updates"  Merge with custom commit message
+"#)]
 pub(crate) struct BranchMergeArgs {
     /// Optional commit message
     #[arg(long)]
@@ -109,6 +142,9 @@ pub(crate) struct BranchMergeArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan branch rename username.old_name username.new_name
+"#)]
 pub(crate) struct BranchRenameArgs {
     /// Branch name
     pub branch_name: String,

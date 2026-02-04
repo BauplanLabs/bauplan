@@ -17,6 +17,14 @@ pub(crate) enum Format {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan commit                          Show recent commits on active branch
+  bauplan commit main                     Show commits from specific branch
+  bauplan commit --max-count 20           Show more commits
+  bauplan commit --author-username john_doe  Show commits by specific author
+  bauplan commit --message "^fix.*" --max-count 5  Show commits matching message pattern
+  bauplan commit --format oneline         Show commits in oneline format
+"#)]
 pub(crate) struct CommitArgs {
     /// Ref or branch name to get the commits from; it defaults to the active branch
     pub ref_name: Option<String>,

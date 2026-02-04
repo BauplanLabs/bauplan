@@ -33,6 +33,14 @@ impl std::fmt::Display for Cache {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan query "SELECT * FROM raw_data.customers LIMIT 10"  Run query inline
+  bauplan query --file query.sql       Run query from file
+  bauplan query --all-rows "SELECT COUNT(*) FROM raw_data.orders"  Run query with no row limit
+  bauplan query --ref main "SELECT * FROM my_table"  Run query on specific branch
+  bauplan query --namespace raw_data "SELECT * FROM customers LIMIT 5"  Run query in specific namespace
+  bauplan query --no-trunc "SELECT * FROM wide_table"  Run query with full output (no truncation)
+"#)]
 pub(crate) struct QueryArgs {
     /// Do not truncate output
     #[arg(long)]

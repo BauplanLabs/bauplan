@@ -17,6 +17,13 @@ pub(crate) enum Preview {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan run                           Run pipeline in current directory
+  bauplan run --dry-run                 Dry run without materializing models
+  bauplan run --strict --preview head   Run with strict mode and preview
+  bauplan run --ref main --param env=prod  Run on specific branch with parameters
+  bauplan run --detach                  Run in background
+"#)]
 pub(crate) struct RunArgs {
     /// Arguments to pass to the job. Format: key=value
     #[arg(short, long, action = clap::ArgAction::Append)]

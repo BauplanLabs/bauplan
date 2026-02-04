@@ -48,6 +48,10 @@ pub(crate) enum ParameterCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan parameter ls             List parameters in current directory
+  bauplan parameter ls --project-dir /path/to/project  List parameters in specific project directory
+"#)]
 pub(crate) struct ParameterLsArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
@@ -55,6 +59,10 @@ pub(crate) struct ParameterLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan parameter rm db_connection  Remove parameter from current project
+  bauplan parameter rm api_key --project-dir /path/to/project  Remove parameter from specific project
+"#)]
 pub(crate) struct ParameterRmArgs {
     /// Name of the parameter to remove
     pub name: String,
@@ -64,6 +72,14 @@ pub(crate) struct ParameterRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = r#"Examples:
+  bauplan parameter set env production --type str  Set string parameter
+  bauplan parameter set max_rows 1000 --type int  Set integer parameter
+  bauplan parameter set debug true --type bool  Set boolean parameter
+  bauplan parameter set api_key mysecretkey --type secret --required  Set secret parameter
+  bauplan parameter set config --type str --file config.json  Set parameter from file
+  bauplan parameter set db_host localhost --type str --description "Database host"  Set parameter with description
+"#)]
 pub(crate) struct ParameterSetArgs {
     /// Name
     pub name: String,
