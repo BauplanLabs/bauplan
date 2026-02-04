@@ -3,7 +3,7 @@ use std::io::{Write as _, stdout};
 use bauplan::{ApiErrorKind, tag::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, Output, api_err_kind};
+use crate::cli::{Cli, CliExamples, Output, api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TagArgs {
@@ -26,6 +26,16 @@ pub(crate) enum TagCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List all tags
+  bauplan tag ls
+
+  # Filter by name pattern
+  bauplan tag ls --name \"v.*\"
+
+  # Limit results
+  bauplan tag ls --limit 10
+"))]
 pub(crate) struct TagLsArgs {
     /// Filter by name (can be a regex)
     #[arg(long)]
@@ -36,6 +46,16 @@ pub(crate) struct TagLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Create tag from active branch
+  bauplan tag create v1.0
+
+  # Create tag from specific ref
+  bauplan tag create v1.0 --from-ref main
+
+  # Create tag if it doesn't already exist
+  bauplan tag create v1.0 --if-not-exists
+"))]
 pub(crate) struct TagCreateArgs {
     /// Tag name
     pub tag_name: String,
@@ -48,6 +68,13 @@ pub(crate) struct TagCreateArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Delete a tag
+  bauplan tag rm v1.0
+
+  # Conditionally delete
+  bauplan tag rm v1.0 --if-exists
+"))]
 pub(crate) struct TagRmArgs {
     /// Tag name
     pub tag_name: String,
@@ -57,6 +84,9 @@ pub(crate) struct TagRmArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  bauplan tag rename v1.0 v1.0-stable
+"))]
 pub(crate) struct TagRenameArgs {
     /// Tag name
     pub tag_name: String,

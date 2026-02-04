@@ -17,7 +17,7 @@ use tabwriter::TabWriter;
 
 use tracing::info;
 
-use crate::cli::{Cli, Output, format_grpc_status};
+use crate::cli::{CliExamples, Cli, Output, format_grpc_status};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum JobKindArg {
@@ -85,6 +85,34 @@ pub(crate) enum JobCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List recent jobs for current user
+  bauplan job ls
+
+  # List more jobs
+  bauplan job ls --max-count 20
+
+  # List all jobs from all users
+  bauplan job ls --all-users --max-count 50
+
+  # Filter by status
+  bauplan job ls --status running
+
+  # Filter by job kind
+  bauplan job ls --kind run --kind query
+
+  # Filter by specific user
+  bauplan job ls --user username
+
+  # Filter by date range
+  bauplan job ls --created-after 2024-01-01 --created-before 2024-01-31
+
+  # Filter by job ID
+  bauplan job ls --id abc123 --id def456
+
+  # Filter failed jobs
+  bauplan job ls --status fail --max-count 10
+"))]
 pub(crate) struct JobLsArgs {
     /// Show jobs from all users, not just your own
     #[arg(long)]
@@ -116,12 +144,23 @@ pub(crate) struct JobLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get job details
+  bauplan job get abc123def456
+"))]
 pub(crate) struct JobGetArgs {
     /// Job id
     pub job_id: String,
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get job logs
+  bauplan job logs abc123def456
+
+  # Get all logs including system logs
+  bauplan job logs abc123def456 --all --system
+"))]
 pub(crate) struct JobLogsArgs {
     /// Job id
     pub job_id: String,
@@ -134,6 +173,10 @@ pub(crate) struct JobLogsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Stop a running job
+  bauplan job stop abc123def456
+"))]
 pub(crate) struct JobStopArgs {
     /// Job id
     pub job_id: String,
