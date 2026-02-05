@@ -6,7 +6,6 @@ mod job;
 mod namespace;
 mod parameter;
 mod query;
-mod rerun;
 mod run;
 mod table;
 mod tag;
@@ -116,8 +115,6 @@ pub(crate) enum Command {
     Info,
     /// Execute a bauplan run
     Run(run::RunArgs),
-    /// Re-execute a previous bauplan run
-    Rerun(rerun::RerunArgs),
     /// Manage branches
     Branch(branch::BranchArgs),
     /// Manage tags
@@ -214,7 +211,6 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Command::Parameter(args) => parameter::handle(&cli, args),
         Command::Info => with_rt(handle_info(&cli)),
         Command::Run(args) => run::handle(&cli, args),
-        Command::Rerun(args) => rerun::handle(&cli, args),
         Command::Branch(args) => branch::handle(&cli, args),
         Command::Tag(args) => tag::handle(&cli, args),
         Command::Commit(args) => commit::handle(&cli, args),
