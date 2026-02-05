@@ -98,6 +98,7 @@ fn list_namespaces(
         Output::Json => {
             let all_namespaces = namespaces.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_namespaces)?;
+            println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());

@@ -86,6 +86,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
         Output::Json => {
             let all_commits = commits.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_commits)?;
+            println!();
         }
         Output::Tty => {
             let mut out = stdout().lock();

@@ -153,6 +153,7 @@ fn list_branches(
         Output::Json => {
             let all_branches = branches.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_branches)?;
+            println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
@@ -189,6 +190,7 @@ fn get_branch(
         Output::Json => {
             let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_tables)?;
+            println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());

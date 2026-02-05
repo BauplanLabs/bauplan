@@ -238,6 +238,7 @@ async fn handle_ls(cli: &Cli, args: JobLsArgs) -> anyhow::Result<()> {
         Output::Json => {
             let jobs: Vec<Job> = stream.try_collect().await?;
             serde_json::to_writer(stdout(), &jobs)?;
+            println!();
         }
         Output::Tty => print_jobs_stream(stream, args.utc).await?,
     }
@@ -305,7 +306,10 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
     };
 
     match cli.global.output.unwrap_or_default() {
-        Output::Json => serde_json::to_writer(stdout(), &[job])?,
+        Output::Json => {
+            serde_json::to_writer(stdout(), &[job])?;
+            println!();
+        }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout()).ansi(true);
             writeln!(&mut tw, "Job ID:\t{}", job.id)?;
@@ -390,7 +394,10 @@ async fn handle_logs(cli: &Cli, args: JobLogsArgs) -> anyhow::Result<()> {
     });
 
     match cli.global.output.unwrap_or_default() {
-        Output::Json => serde_json::to_writer(stdout(), &entries.collect::<Vec<_>>())?,
+        Output::Json => {
+            serde_json::to_writer(stdout(), &entries.collect::<Vec<_>>())?;
+            println!();
+        }
         Output::Tty => {
             let mut entries = entries.peekable();
             if entries.peek().is_none() {

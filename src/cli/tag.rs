@@ -85,6 +85,7 @@ fn list_tags(cli: &Cli, TagLsArgs { name, limit }: TagLsArgs) -> anyhow::Result<
         Output::Json => {
             let all_tags = tags.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_tags)?;
+            println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());

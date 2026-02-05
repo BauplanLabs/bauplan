@@ -265,6 +265,7 @@ fn list_tables(
         Output::Json => {
             let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_tables)?;
+            println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
@@ -296,6 +297,7 @@ fn get_table(cli: &Cli, TableGetArgs { r#ref, table_name }: TableGetArgs) -> any
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
             serde_json::to_writer(stdout(), &resp)?;
+            println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
