@@ -9,16 +9,13 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use bauplan::{
-    grpc::{
-        self,
-        generated::{self as commanderpb},
-    },
+    grpc::{self, generated as commanderpb},
     project::{ParameterType, ParameterValue, ProjectFile},
 };
 use chrono::Utc;
 use futures::TryStreamExt as _;
 use gethostname::gethostname;
-use indicatif::ProgressBar;
+use indicatif::{ProgressBar, ProgressDrawTarget};
 use rsa::RsaPublicKey;
 use serde::Serialize;
 use tabwriter::TabWriter;
@@ -129,9 +126,97 @@ pub(crate) fn handle(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     crate::cli::with_rt(handle_run(cli, args))
 }
 
-async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
-    let start = Utc::now();
+/// Common handler for running a job and managing spinners for it. This handles
+/// the following common behavior:
+///  - Cancelling a job on a cancel signal or a request timeout
+///  - Monitoring job logs until a JobCompletion event is recieved.
+///
+/// `thing` influences the format of the spinner message ("Running {thing}...").
+///
+/// The provided closure is called on every event except the final JobCompletion.
+pub(crate) async fn monitor_job_progress(
+    client: &mut grpc::Client,
+    job_id: String,
+    thing: &'static str,
+    progress: ProgressBar,
+    mut cancel_signal: impl Future + Unpin,
+    timeout: time::Duration,
+    mut handler: impl FnMut(RunnerEvent),
+) -> anyhow::Result<commanderpb::JobSuccess> {
+    let mut client_clone = client.clone();
+    let mut kill_job = async |reason: &str| -> anyhow::Result<commanderpb::JobSuccess> {
+        error!(job_id, "{reason}, cancelling {thing}");
 
+        progress.set_message(format!("Cancelling {thing}..."));
+        progress.enable_steady_tick(time::Duration::from_millis(100));
+
+        if let Err(e) = client_clone.cancel(&job_id).await {
+            error!(job_id, error = %e, "failed to cancel {thing}");
+            progress.finish_with_message(format!("Cancelling {thing}... {}", "failed".red()));
+        } else {
+            debug!(job_id, "job successfully cancelled");
+            progress.finish_with_message(format!("Cancelling {thing}... {}", "done".green()));
+        }
+
+        Err(grpc::JobError::Cancelled.into())
+    };
+
+    // We have to manually tick the progress bar here, or we get ghosting.
+    let mut ticker = tokio::time::interval(time::Duration::from_millis(100));
+    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+    let stream = client.monitor_job(job_id.clone(), timeout);
+    futures::pin_mut!(stream);
+
+    loop {
+        let res = tokio::select! {
+            v = stream.try_next() => v,
+            _ = ticker.tick() => {
+                progress.tick();
+                continue;
+            }
+            _ = &mut cancel_signal => return kill_job("interrupt received").await,
+        };
+
+        let event = match res {
+            Ok(Some(v)) => v,
+            Ok(None) => bail!("no JobCompletion event found"),
+            Err(ref e)
+                if e.code() == tonic::Code::Cancelled
+                    || e.code() == tonic::Code::DeadlineExceeded =>
+            {
+                return kill_job("execution timed out").await;
+            }
+            Err(e) => return Err(e.into()),
+        };
+
+        match event {
+            RunnerEvent::RuntimeUserLog(commanderpb::RuntimeLogEvent {
+                level,
+                output_stream,
+                r#type,
+                ref msg,
+                ref job_id,
+                ..
+            }) => {
+                debug!(
+                    job_id,
+                    ?level,
+                    ?output_stream,
+                    ?r#type,
+                    msg,
+                    "runtime log event"
+                );
+
+                handler(event);
+            }
+            RunnerEvent::JobCompletion(ev) => return Ok(grpc::interpret_outcome(ev.outcome)?),
+            _ => handler(event),
+        }
+    }
+}
+
+async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let RunArgs {
         arg,
         project_dir,
@@ -148,6 +233,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         priority,
     } = args;
 
+    let start = Utc::now();
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(1800));
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
@@ -221,38 +307,8 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let ctrl_c = tokio::signal::ctrl_c();
     futures::pin_mut!(ctrl_c);
 
-    let mut client_clone = client.clone();
-    let stream = client_clone.monitor_job(job_id.clone(), timeout);
-    futures::pin_mut!(stream);
-
-    // We have to manually tick the progress bar here, or we get ghosting.
-    let mut ticker = tokio::time::interval(time::Duration::from_millis(100));
-    ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
     // One spinner for each task.
     let spinners: RefCell<BTreeMap<String, ProgressBar>> = RefCell::new(BTreeMap::new());
-
-    let mut kill_job = async |reason: &str| -> ! {
-        // Clear the task spinners.
-        for spinner in spinners.borrow().values() {
-            spinner.finish_and_clear();
-        }
-
-        error!(job_id, "{reason}, cancelling job");
-
-        progress.set_message("Cancelling job...");
-        progress.enable_steady_tick(time::Duration::from_millis(100));
-
-        if let Err(e) = client.cancel(&job_id).await {
-            error!(job_id, error = %e, "failed to cancel job");
-            progress.finish_with_message(format!("Cancelling job... {}", "failed".red()));
-        } else {
-            debug!(job_id, "job successfully cancelled");
-            progress.finish_with_message(format!("Cancelling job... {}", "done".green()));
-        }
-
-        std::process::exit(1)
-    };
 
     info!("view this job in the app: https://app.bauplanlabs.com/jobs/{job_id}");
     let show_previews = resp.preview != "off";
@@ -266,37 +322,21 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         tasks: Vec::new(),
     };
 
-    loop {
-        let res = tokio::select! {
-            v = stream.try_next() => v,
-            _ = ticker.tick() => {
-                progress.tick();
-                spinners.borrow().values().for_each(|sp| sp.tick());
-                continue;
-            }
-            _ = &mut ctrl_c => kill_job("interrupt received").await,
-        };
-
-        let event = match res {
-            Ok(Some(v)) => v,
-            Ok(None) => break,
-            Err(ref e)
-                if e.code() == tonic::Code::Cancelled
-                    || e.code() == tonic::Code::DeadlineExceeded =>
-            {
-                kill_job("execution timed out").await
-            }
-            Err(e) => return Err(e.into()),
-        };
-
-        match event {
+    let outcome = monitor_job_progress(
+        &mut client,
+        job_id,
+        "job",
+        progress.clone(),
+        &mut ctrl_c,
+        timeout,
+        |event| match event {
             RunnerEvent::TaskStart(ev) => {
                 let Some(metadata) = ev.task_metadata else {
-                    continue;
+                    return;
                 };
 
                 if metadata.level() != commanderpb::task_metadata::TaskLevel::Dag {
-                    continue;
+                    return;
                 }
 
                 let task_id = ev.task_id;
@@ -304,6 +344,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                 let task_spinner = spinners
                     .entry(task_id.clone())
                     .or_insert_with(|| cli.new_spinner());
+                task_spinner.enable_steady_tick(time::Duration::from_millis(100));
 
                 // Indent the task name to present a hierarchy.
                 // TODO: maybe we can replicate the DAG hierarchy here a bit?
@@ -331,7 +372,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
             RunnerEvent::TaskCompletion(ev) => {
                 use commanderpb::task_complete_event::Outcome;
                 let Some(outcome) = ev.outcome else {
-                    continue;
+                    return;
                 };
 
                 // Finish the task spinner.
@@ -355,7 +396,8 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                     && !success.runtime_table_preview.is_empty()
                 {
                     for preview in &success.runtime_table_preview {
-                        cli.multiprogress.suspend(|| print_preview(preview))?;
+                        cli.multiprogress
+                            .suspend(|| print_preview(preview).unwrap());
                     }
                 }
 
@@ -373,55 +415,66 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                     task_summary.ended = Utc::now();
                 }
             }
-            RunnerEvent::JobCompletion(ev) => {
-                use commanderpb::job_complete_event::Outcome;
-                let outcome = match &ev.outcome {
-                    Some(Outcome::Success(_)) => SummaryOutcome::Success,
-                    Some(Outcome::Cancellation(_)) => SummaryOutcome::Cancelled,
-                    Some(Outcome::Timeout(_)) => SummaryOutcome::Timeout,
-                    _ => SummaryOutcome::Failed,
-                };
-
-                // Finish the spinner.
-                let suffix = match outcome {
-                    SummaryOutcome::Success => "done".green(),
-                    SummaryOutcome::Cancelled => "cancelled".red(),
-                    SummaryOutcome::Timeout => "timeout".red(),
-                    SummaryOutcome::Failed => "failed".red(),
-                    SummaryOutcome::Skipped => unreachable!(),
-                };
-
-                progress.finish_with_message(format!("Executing job... {suffix}"));
-                if let Err(e) = grpc::interpret_outcome(ev.outcome) {
-                    return Err(e.into());
-                };
-
-                // Update the JSON summary.
-                summary.outcome = outcome;
-                summary.ended = Utc::now();
-
-                break;
-            }
             RunnerEvent::RuntimeUserLog(ev)
                 if ev.r#type() == commanderpb::runtime_log_event::LogType::User =>
             {
                 let stream = ev.output_stream();
                 let Some(metadata) = ev.task_metadata else {
-                    continue;
+                    return;
                 };
 
                 cli.multiprogress
                     .suspend(|| print_user_log(&ev.msg, stream, metadata));
             }
             _ => (),
+        },
+    )
+    .await;
+
+    summary.ended = Utc::now();
+    let res = match outcome {
+        Ok(_) => {
+            summary.outcome = SummaryOutcome::Success;
+            progress.finish_with_message(format!("Executing job... {}", "done".green()));
+            Ok(())
+        }
+        Err(e) => {
+            if let Some(job_err) = e.downcast_ref::<grpc::JobError>() {
+                let (outcome, suffix) = match job_err {
+                    grpc::JobError::Cancelled => (SummaryOutcome::Cancelled, "cancelled".red()),
+                    grpc::JobError::Rejected(_) => (SummaryOutcome::Skipped, "skipped".yellow()),
+                    grpc::JobError::Timeout => (SummaryOutcome::Timeout, "timeout".red()),
+                    _ => (SummaryOutcome::Failed, "failed".red()),
+                };
+
+                summary.outcome = outcome;
+                progress.finish_with_message(format!("Executing job... {suffix}"));
+                Err(e)
+            } else {
+                // Exit now.
+                return Err(e);
+            }
+        }
+    };
+
+    for sp in spinners.borrow().values() {
+        if !sp.is_finished() {
+            sp.finish_with_message(format!("{} {}", sp.message(), "cancelled".red()));
         }
     }
 
     if cli.global.output == Some(crate::cli::Output::Json) {
-        serde_json::to_writer(stdout(), &summary)?;
+        // Redirect any further writes to stderr, so that they don't get
+        // interleaved with the json to stdout.
+        cli.multiprogress
+            .set_draw_target(ProgressDrawTarget::hidden());
+
+        let mut out = stdout().lock();
+        serde_json::to_writer(&mut out, &summary)?;
+        writeln!(&mut out)?;
     }
 
-    Ok(())
+    res
 }
 
 fn print_dag(dag_ascii: String) -> anyhow::Result<()> {

@@ -11,10 +11,10 @@ use arrow_flight::error::Result as FlightResult;
 use bauplan::flight::fetch_flight_results;
 use bauplan::grpc::{self, generated as commanderpb};
 use commanderpb::runner_event::Event as RunnerEvent;
-use futures::{Stream, TryStreamExt, future};
+use futures::{Stream, TryStreamExt};
 use gethostname::gethostname;
 use tabwriter::TabWriter;
-use tracing::{debug, error};
+use tracing::debug;
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct QueryArgs {
@@ -112,83 +112,33 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         }
     };
 
-    let job_id = resp.job_response_common.as_ref().map(|c| &c.job_id);
-    let Some(job_id) = job_id.to_owned() else {
-        bail!("response missing job ID");
-    };
+    let job_id = resp
+        .job_response_common
+        .as_ref()
+        .map(|c| c.job_id.clone())
+        .ok_or_else(|| anyhow!("response missing job ID"))?;
 
     debug!(job_id, "successfully planned query");
     progress.set_message("Executing query...");
 
-    let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
-        job_id: job_id.clone(),
-    });
-    req.set_timeout(timeout);
-
-    // This replaces the default handler, so we need to manually exit on
-    // SIGINT from now on.
     let ctrl_c = tokio::signal::ctrl_c();
     futures::pin_mut!(ctrl_c);
 
-    let mut client_clone = client.clone();
-    let stream = client_clone.monitor_job(job_id.to_owned(), timeout);
-    futures::pin_mut!(stream);
-
-    // If we hit a timeout or SIGINT below, we'll call this closure.
-    let mut kill_query = async |reason: &str| -> ! {
-        error!(job_id, "{reason}, cancelling query");
-
-        progress.set_message("Cancelling query...");
-        if let Err(e) = client.cancel(job_id).await {
-            error!(job_id, error = %e, "failed to cancel query");
-            progress.finish_with_message(format!("Cancelling query... {}", "failed".red()));
-        } else {
-            debug!(job_id, "query successfully cancelled");
-            progress.finish_with_message(format!("Cancelling query... {}", "done".green()));
-        }
-
-        std::process::exit(1)
-    };
-
     let mut flight_event = None;
-    loop {
-        let res = match future::select(stream.try_next(), &mut ctrl_c).await {
-            future::Either::Left((v, _)) => v,
-            future::Either::Right(_) => kill_query("interrupt received").await,
-        };
-
-        let event = match res {
-            Ok(Some(v)) => v,
-            Ok(None) => break,
-            Err(e)
-                if e.code() == tonic::Code::Cancelled
-                    || e.code() == tonic::Code::DeadlineExceeded =>
-            {
-                kill_query("execution timed out").await
+    super::run::monitor_job_progress(
+        &mut client,
+        job_id.clone(),
+        "query",
+        progress.clone(),
+        &mut ctrl_c,
+        timeout,
+        |event| {
+            if let RunnerEvent::FlightServerStart(flight) = event {
+                flight_event = Some(flight);
             }
-            Err(e) => return Err(e.into()),
-        };
-
-        match event {
-            // Supposed to happen first.
-            RunnerEvent::FlightServerStart(flight) => flight_event = Some(flight),
-            RunnerEvent::JobCompletion(completion) => {
-                if let Err(e) = grpc::interpret_outcome(completion.outcome) {
-                    let suffix = match e {
-                        grpc::JobError::Cancelled => "cancelled".red(),
-                        grpc::JobError::Timeout => "timeout".red(),
-                        _ => "failed".red(),
-                    };
-
-                    progress.finish_with_message(format!("Executing query... {suffix}"));
-                    return Err(e.into());
-                }
-
-                break;
-            }
-            _ => (),
-        }
-    }
+        },
+    )
+    .await?;
 
     let Some(commanderpb::FlightServerStartEvent {
         endpoint,
@@ -209,24 +159,16 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         bail!("Invalid endpoint: {}", endpoint);
     };
 
-    let fut = async {
-        progress.set_message("Fetching results...");
-        let (schema, batches) = fetch_flight_results(endpoint, magic_token, timeout, row_limit)
-            .await
-            .context("Failed to fetch query results")?;
-        futures::pin_mut!(batches);
+    progress.set_message("Fetching results...");
+    let (schema, batches) = fetch_flight_results(endpoint, magic_token, timeout, row_limit)
+        .await
+        .context("Failed to fetch query results")?;
+    futures::pin_mut!(batches);
 
-        progress.finish_with_message(format!("Fetching results... {}", "done".green()));
-        match cli.global.output.unwrap_or_default() {
-            Output::Tty => print_tty(schema, batches, !no_trunc).await,
-            Output::Json => print_json(batches, job_id).await,
-        }
-    };
-
-    futures::pin_mut!(fut);
-    match future::select(fut, &mut ctrl_c).await {
-        future::Either::Left((v, _)) => v,
-        future::Either::Right(_) => std::process::exit(1),
+    progress.finish_with_message(format!("Fetching results... {}", "done".green()));
+    match cli.global.output.unwrap_or_default() {
+        Output::Tty => print_tty(schema, batches, !no_trunc).await,
+        Output::Json => print_json(batches, &job_id).await,
     }
 }
 
