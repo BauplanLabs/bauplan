@@ -26,7 +26,7 @@ _integration_tests = []
 
 [dependencies]
 anyhow = "1"
-arrow = { version = "57", default-features = false, features = ["ipc_compression", "json"] }
+arrow = { version = "57", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
 arrow-csv = { version = "57", optional = true }
 arrow-flight = "57"
 base64 = "0.22"
