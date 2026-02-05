@@ -5,6 +5,7 @@ pub mod job;
 use std::time;
 
 use futures::{Stream, StreamExt, TryStreamExt, stream};
+use rsa::{RsaPublicKey, pkcs8::DecodePublicKey as _};
 use tonic::{
     metadata::{Ascii, MetadataValue},
     service::{Interceptor, interceptor::InterceptedService},
@@ -23,9 +24,9 @@ pub mod generated {
 use crate::{
     Profile,
     grpc::generated::{
-        CancelJobRequest, JobFailure, JobId, JobSuccess, SubscribeLogsRequest,
-        cancel_job_response::CancelStatus, job_complete_event::Outcome, job_failure::ErrorCode,
-        runner_event::Event as RunnerEvent,
+        CancelJobRequest, GetBauplanInfoRequest, JobFailure, JobId, JobSuccess, OrganizationInfo,
+        SubscribeLogsRequest, cancel_job_response::CancelStatus, job_complete_event::Outcome,
+        job_failure::ErrorCode, runner_event::Event as RunnerEvent,
     },
 };
 use generated::v2_commander_service_client::V2CommanderServiceClient;
@@ -73,6 +74,38 @@ impl Client {
             Ok(CancelStatus::Failure) => Err(CancelJobError::Failed(resp.message)),
             _ => Err(CancelJobError::Unknown(resp.message)),
         }
+    }
+
+    /// Fetches the organization-wide default public key, along with the key name
+    /// (usually the ARN).
+    pub async fn org_default_public_key(
+        &mut self,
+        timeout: time::Duration,
+    ) -> Result<(String, RsaPublicKey), tonic::Status> {
+        let mut req = tonic::Request::new(GetBauplanInfoRequest::default());
+        req.set_timeout(timeout);
+
+        let resp = self
+            .get_bauplan_info(GetBauplanInfoRequest::default())
+            .await?
+            .into_inner();
+
+        let Some(OrganizationInfo {
+            default_parameter_secret_public_key: Some(pkey),
+            default_parameter_secret_key: Some(key_name),
+            ..
+        }) = resp.organization_info
+        else {
+            return Err(tonic::Status::not_found(
+                "encryption requested, but no organization-wide public key found",
+            ));
+        };
+
+        let pkey = RsaPublicKey::from_public_key_pem(&pkey).map_err(|e| {
+            tonic::Status::internal(format!("invalid organization-wide public key: {e}"))
+        })?;
+
+        Ok((key_name, pkey))
     }
 
     /// Runs a job to completion. Produces a stream of job events from commander. If

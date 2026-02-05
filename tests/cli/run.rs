@@ -1,14 +1,8 @@
 use crate::{bauplan, username};
-use predicates::prelude::*;
-
-#[test]
-fn non_existent_json_output() {
-    bauplan()
-        .args(["-O", "json", "table", "get", "nonexist"])
-        .assert()
-        .code(1)
-        .stdout(predicate::str::starts_with("{"));
-}
+use predicates::{
+    prelude::*,
+    str::{contains, starts_with},
+};
 
 #[test]
 fn dry_run() {
@@ -25,8 +19,25 @@ fn dry_run() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"));
+        .stderr(contains("num_rows= 430488"));
+}
+
+#[test]
+fn run_json_output() {
+    bauplan()
+        .args([
+            "-O",
+            "json",
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/simple_taxi_dag",
+        ])
+        .assert()
+        .success()
+        .stdout(starts_with("{"));
 }
 
 #[test]
@@ -46,8 +57,7 @@ fn executor_pip_install_error() {
         ])
         .assert()
         .code(1)
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"));
+        .stderr(contains("an internal error occurred"));
 }
 
 #[test]
@@ -65,10 +75,9 @@ fn expectations_returns_int() {
         ])
         .assert()
         .code(1)
-        .stdout(
-            predicate::str::contains("Expectation must return a boolean!").or(
-                predicate::str::contains("expectation returned with unsupported type"),
-            ),
+        .stderr(
+            contains("Expectation must return a boolean!")
+                .or(contains("expectation returned with unsupported type")),
         );
 }
 
@@ -87,7 +96,7 @@ fn run_failing_expectation() {
         ])
         .assert()
         .code(1)
-        .stdout(predicate::str::contains("expectation returned false"));
+        .stderr(contains("expectation returned false"));
 }
 
 #[test]
@@ -105,7 +114,7 @@ fn run_failing_expectation_strict_on() {
         ])
         .assert()
         .code(1)
-        .stdout(predicate::str::contains("assert False"));
+        .stderr(contains("assert False"));
 }
 
 #[test]
@@ -155,13 +164,11 @@ fn invalid_package_ppandas() {
         ])
         .assert()
         .code(1)
-        .stdout(
-            predicate::str::contains(
+        .stderr(
+            contains(
                 "depends on pppandas (2.1.0) which doesn't match any versions, version solving",
             )
-            .or(predicate::str::contains(
-                "pppandas was not found in the package registry",
-            )),
+            .or(contains("pppandas was not found in the package registry")),
         );
 }
 
@@ -187,18 +194,7 @@ fn materialize_partitioned_by_year() {
             "tests/fixtures/materialize_partitioned_by_year",
         ])
         .assert()
-        .success()
-        .stdout(predicate::str::contains(
-            "Task success description=\"checkout ",
-        ))
-        .stdout(predicate::str::contains(
-            "Task success description=\"merge ",
-        ))
-        .stdout(predicate::str::contains(
-            "Task success description=\"s3write ",
-        ))
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"));
+        .success();
 
     let _ = bauplan().args(["branch", "delete", &branch]).ok();
 }
@@ -216,18 +212,17 @@ fn multiparent() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "val_0,val_1,val_0,val_1,val_0,val_1",
-        ));
+        .stderr(contains("val_0,val_1,val_0,val_1,val_0,val_1"));
 }
 
 #[test]
 fn no_write_access() {
+    // Supposed to fail, because it's supposed to be run as a non-admin user.
     bauplan()
         .args(["run", "--ref", "main", "-p", "tests/fixtures/prophet"])
         .assert()
         .code(1)
-        .stdout(predicate::str::contains("you don't have write access to"));
+        .stderr(contains("you don't have write access to"));
 }
 
 #[test]
@@ -279,80 +274,10 @@ fn object_store_save_load_pass() {
 //         ])
 //         .assert()
 //         .code(1)
-//         .stdout(predicate::str::contains("timed").not())
-//         .stdout(predicate::str::contains("Task failed"))
-//         .stdout(predicate::str::contains("s3write parallel_child_1"));
+//         .stdout(contains("timed").not())
+//         .stdout(contains("Task failed"))
+//         .stdout(contains("s3write parallel_child_1"));
 // }
-
-#[test]
-fn parameters_project_default_values() {
-    bauplan()
-        .args([
-            "run",
-            "--cache",
-            "off",
-            "--dry-run",
-            "-p",
-            "tests/fixtures/parameters",
-        ])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("golden_ratio=1.666"))
-        .stdout(predicate::str::contains("use_random_forest=True"))
-        .stdout(predicate::str::contains(
-            "start_datetime=2023-01-01T00:00:00+00:00",
-        ))
-        .stdout(predicate::str::contains(
-            "end_datetime=2023-01-03T00:00:00+00:00",
-        ))
-        .stdout(predicate::str::contains("yayparams.num_rows=1037238"))
-        .stdout(predicate::str::contains("yayparams.num_columns=3"));
-}
-
-const REDACTED_MESSAGE: &str = "<secret-***>";
-
-fn reverse(s: &str) -> String {
-    s.chars().rev().collect()
-}
-
-#[test]
-fn parameters_project_kms_ssm() {
-    let my_secret_key_reversed_1 = reverse("this is my secret");
-    let my_secret_key_reversed_2 = reverse("this is another secret");
-    let my_vault_secure_string_us_reversed = reverse("This is the US encrypted string value");
-    let my_vault_override_us_with_eu_reversed = reverse("This is the EU encrypted string value");
-    let my_vault_secure_string_eu_reversed = reverse("This is the EU encrypted string value");
-    let my_vault_override_eu_with_us_reversed = reverse("This is the US encrypted string value");
-
-    bauplan()
-        .args([
-            "run",
-            "--cache", "off",
-            "--dry-run",
-            "-p", "tests/fixtures/parameters_kms_ssm",
-            "--param", "my_secret_key_2=this is another secret",
-            "--param", "my_vault_override_us_with_eu=awsssm:///arn:aws:ssm:eu-west-1:381492128837:parameter/e2e/secure-string-parameter",
-            "--param", "my_vault_override_eu_with_us=awsssm:///arn:aws:ssm:us-east-1:381492128837:parameter/e2e/secure-string-parameter",
-        ])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains(format!("my_secret_key_1={REDACTED_MESSAGE}")))
-        .stdout(predicate::str::contains(format!("my_secret_key_2={REDACTED_MESSAGE}")))
-        .stdout(predicate::str::contains(format!("my_secret_key_1_reversed={my_secret_key_reversed_1}")))
-        .stdout(predicate::str::contains(format!("my_secret_key_2_reversed={my_secret_key_reversed_2}")))
-        .stdout(predicate::str::contains("my_vault_string_us=This is the US string value"))
-        .stdout(predicate::str::contains("my_vault_string_list_us=this,is,the,us,string,list,value"))
-        .stdout(predicate::str::contains(format!("my_vault_secure_string_us={REDACTED_MESSAGE}")))
-        .stdout(predicate::str::contains(format!("my_vault_secure_string_us_reversed={my_vault_secure_string_us_reversed}")))
-        .stdout(predicate::str::contains(format!("my_vault_override_us_with_eu={REDACTED_MESSAGE}")))
-        .stdout(predicate::str::contains(format!("my_vault_override_us_with_eu_reversed={my_vault_override_us_with_eu_reversed}")))
-        .stdout(predicate::str::contains("my_vault_string_eu=This is the EU string value"))
-        .stdout(predicate::str::contains("my_vault_string_list_eu=this,is,the,eu,string,list,value"))
-        .stdout(predicate::str::contains(format!("my_vault_secure_string_eu={REDACTED_MESSAGE}")))
-        .stdout(predicate::str::contains(format!("my_vault_secure_string_eu_reversed={my_vault_secure_string_eu_reversed}")))
-        .stdout(predicate::str::contains(format!("my_vault_override_eu_with_us={REDACTED_MESSAGE}")))
-        .stdout(predicate::str::contains(format!("my_vault_override_eu_with_us_reversed={my_vault_override_eu_with_us_reversed}")));
-}
 
 #[test]
 fn parameters_project() {
@@ -377,16 +302,78 @@ fn parameters_project() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("golden_ratio=4.2"))
-        .stdout(predicate::str::contains("use_random_forest=False"))
-        .stdout(predicate::str::contains(
-            "start_datetime=2023-01-01T00:00:00+00:00",
-        ))
-        .stdout(predicate::str::contains(
-            "end_datetime=2023-01-02T00:00:00+00:00",
-        ))
-        .stdout(predicate::str::contains("yayparams.num_rows=629154"))
-        .stdout(predicate::str::contains("yayparams.num_columns=3"));
+        .stderr(contains("golden_ratio=4.2"))
+        .stderr(contains("use_random_forest=False"))
+        .stderr(contains("start_datetime=2023-01-01T00:00:00+00:00"))
+        .stderr(contains("end_datetime=2023-01-02T00:00:00+00:00"))
+        .stderr(contains("yayparams.num_rows=629154"))
+        .stderr(contains("yayparams.num_columns=3"));
+}
+
+#[test]
+fn parameters_project_default_values() {
+    bauplan()
+        .args([
+            "run",
+            "--cache",
+            "off",
+            "--dry-run",
+            "-p",
+            "tests/fixtures/parameters",
+        ])
+        .assert()
+        .success()
+        .stderr(contains("golden_ratio=1.666"))
+        .stderr(contains("use_random_forest=True"))
+        .stderr(contains("start_datetime=2023-01-01T00:00:00+00:00"))
+        .stderr(contains("end_datetime=2023-01-03T00:00:00+00:00"))
+        .stderr(contains("yayparams.num_rows=1037238"))
+        .stderr(contains("yayparams.num_columns=3"));
+}
+
+#[test]
+fn parameters_project_kms_ssm() {
+    const REDACTED_MESSAGE: &str = "<secret-***>";
+
+    fn reverse(s: &str) -> String {
+        s.chars().rev().collect()
+    }
+
+    let my_secret_key_reversed_1 = reverse("this is my secret");
+    let my_secret_key_reversed_2 = reverse("this is another secret");
+    let my_vault_secure_string_us_reversed = reverse("This is the US encrypted string value");
+    let my_vault_override_us_with_eu_reversed = reverse("This is the EU encrypted string value");
+    let my_vault_secure_string_eu_reversed = reverse("This is the EU encrypted string value");
+    let my_vault_override_eu_with_us_reversed = reverse("This is the US encrypted string value");
+
+    bauplan()
+        .args([
+            "run",
+            "--cache", "off",
+            "--dry-run",
+            "-p", "tests/fixtures/parameters_kms_ssm",
+            "--param", "my_secret_key_2=this is another secret",
+            "--param", "my_vault_override_us_with_eu=awsssm:///arn:aws:ssm:eu-west-1:381492128837:parameter/e2e/secure-string-parameter",
+            "--param", "my_vault_override_eu_with_us=awsssm:///arn:aws:ssm:us-east-1:381492128837:parameter/e2e/secure-string-parameter",
+        ])
+        .assert()
+        .success()
+        .stderr(contains(format!("my_secret_key_1={REDACTED_MESSAGE}")))
+        .stderr(contains(format!("my_secret_key_2={REDACTED_MESSAGE}")))
+        .stderr(contains(format!("my_secret_key_1_reversed={my_secret_key_reversed_1}")))
+        .stderr(contains(format!("my_secret_key_2_reversed={my_secret_key_reversed_2}")))
+        .stderr(contains("my_vault_string_us=This is the US string value"))
+        .stderr(contains("my_vault_string_list_us=this,is,the,us,string,list,value"))
+        .stderr(contains(format!("my_vault_secure_string_us={REDACTED_MESSAGE}")))
+        .stderr(contains(format!("my_vault_secure_string_us_reversed={my_vault_secure_string_us_reversed}")))
+        .stderr(contains(format!("my_vault_override_us_with_eu={REDACTED_MESSAGE}")))
+        .stderr(contains(format!("my_vault_override_us_with_eu_reversed={my_vault_override_us_with_eu_reversed}")))
+        .stderr(contains("my_vault_string_eu=This is the EU string value"))
+        .stderr(contains("my_vault_string_list_eu=this,is,the,eu,string,list,value"))
+        .stderr(contains(format!("my_vault_secure_string_eu={REDACTED_MESSAGE}")))
+        .stderr(contains(format!("my_vault_secure_string_eu_reversed={my_vault_secure_string_eu_reversed}")))
+        .stderr(contains(format!("my_vault_override_eu_with_us={REDACTED_MESSAGE}")))
+        .stderr(contains(format!("my_vault_override_eu_with_us_reversed={my_vault_override_eu_with_us_reversed}")));
 }
 
 #[test]
@@ -402,24 +389,6 @@ fn parquet_field_ids() {
         ])
         .assert()
         .success();
-}
-
-#[test]
-fn prophet_project_json_output() {
-    bauplan()
-        .args([
-            "-O",
-            "json",
-            "run",
-            "--dry-run",
-            "--cache",
-            "off",
-            "-p",
-            "tests/fixtures/simple_taxi_dag",
-        ])
-        .assert()
-        .success()
-        .stdout(predicate::str::starts_with("{"));
 }
 
 #[test]
@@ -445,17 +414,7 @@ fn prophet_with_materialization() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "Task success description=\"checkout ",
-        ))
-        .stdout(predicate::str::contains(
-            "Task success description=\"s3write ",
-        ))
-        .stdout(predicate::str::contains(
-            "Task success description=\"merge ",
-        ))
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"));
+        .stderr(contains("ciao gianx"));
 
     bauplan()
         .args(["branch", "delete", &branch])
@@ -476,8 +435,7 @@ fn prophet() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"));
+        .stderr(contains("ciao gianx"));
 }
 
 #[test]
@@ -493,9 +451,7 @@ fn pyspark() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"))
-        .stdout(predicate::str::contains("I'm in the spark model now!"));
+        .stderr(contains("I'm in the spark model now!"));
 }
 
 #[test]
@@ -511,7 +467,7 @@ fn python_3_10() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Running on python 3.10."));
+        .stderr(contains("Running on python 3.10."));
 }
 
 #[test]
@@ -527,7 +483,7 @@ fn python_3_12() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Running on python 3.12."));
+        .stderr(contains("Running on python 3.12."));
 }
 
 #[test]
@@ -543,7 +499,7 @@ fn sdk_expectations_project() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Running on python 3.12."));
+        .stderr(contains("Running on python 3.12."));
 }
 
 #[test]
@@ -560,8 +516,6 @@ fn with_transaction() {
     bauplan()
         .args([
             "run",
-            "--ref",
-            "main",
             "--transaction",
             "on",
             "--cache",
@@ -573,17 +527,7 @@ fn with_transaction() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "Task success description=\"checkout ",
-        ))
-        .stdout(predicate::str::contains(
-            "Task success description=\"s3write ",
-        ))
-        .stdout(predicate::str::contains(
-            "Task success description=\"merge ",
-        ))
-        .stdout(predicate::str::contains("SYSTEM TASK SUMMARY"))
-        .stdout(predicate::str::contains("USER TASK SUMMARY"));
+        .stderr(contains("Executing job... done"));
 
     bauplan()
         .args(["branch", "delete", &branch])

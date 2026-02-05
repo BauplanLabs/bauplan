@@ -50,6 +50,8 @@ pub(crate) struct QueryArgs {
 }
 
 pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
+    use yansi::Paint as _;
+
     let QueryArgs {
         no_trunc,
         cache,
@@ -86,6 +88,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     let args = arg.into_iter().map(KeyValue::into_strings).collect();
 
     let progress = cli.new_spinner().with_message("Planning query...");
+    progress.enable_steady_tick(time::Duration::from_millis(100));
 
     let req = commanderpb::QueryRunRequest {
         job_request_common: Some(commanderpb::JobRequestCommon {
@@ -164,7 +167,17 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
             // Supposed to happen first.
             RunnerEvent::FlightServerStart(flight) => flight_event = Some(flight),
             RunnerEvent::JobCompletion(completion) => {
-                grpc::interpret_outcome(completion.outcome)?;
+                if let Err(e) = grpc::interpret_outcome(completion.outcome) {
+                    let suffix = match e {
+                        grpc::JobError::Cancelled => "cancelled".red(),
+                        grpc::JobError::Timeout => "timeout".red(),
+                        _ => "failed".red(),
+                    };
+
+                    progress.finish_with_message(format!("Executing query... {suffix}"));
+                    return Err(e.into());
+                }
+
                 break;
             }
             _ => (),
@@ -195,9 +208,9 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         let (schema, batches) = fetch_flight_results(endpoint, magic_token, timeout, row_limit)
             .await
             .context("Failed to fetch query results")?;
-
         futures::pin_mut!(batches);
-        progress.finish_and_clear();
+
+        progress.finish_with_message(format!("Fetching results... {}", "done".green()));
         match cli.global.output.unwrap_or_default() {
             Output::Tty => print_tty(schema, batches, !no_trunc).await,
             Output::Json => print_json(batches, job_id).await,

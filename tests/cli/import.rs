@@ -1,4 +1,4 @@
-use predicates::prelude::predicate;
+use predicates::str::contains;
 
 use crate::cli::{bauplan, username};
 
@@ -159,7 +159,7 @@ fn import_manually() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("400"));
+        .stdout(contains("400"));
 
     bauplan()
         .args(["branch", "delete", &branch])

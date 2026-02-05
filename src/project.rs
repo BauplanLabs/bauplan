@@ -87,7 +87,7 @@ impl ParameterValue {
     ) -> Result<Self, ProjectError> {
         use base64::engine::general_purpose::STANDARD;
 
-        let value = format!("{}={}", project_id.as_braced(), value.as_ref());
+        let value = format!("{}={}", project_id.as_hyphenated(), value.as_ref());
 
         let padding = Oaep::new::<Sha256>();
         let secret = key.encrypt(&mut rand::thread_rng(), padding, value.as_bytes())?;
@@ -317,6 +317,7 @@ impl ProjectFile {
                 continue;
             }
 
+            contents.clear();
             let mut file = std::fs::File::open(&path)?;
             file.read_to_end(&mut contents)?;
 

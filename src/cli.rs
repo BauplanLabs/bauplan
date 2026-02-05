@@ -91,6 +91,30 @@ impl FromStr for KeyValue {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+pub(crate) enum OnOff {
+    On,
+    Off,
+}
+
+impl std::fmt::Display for OnOff {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            OnOff::On => write!(f, "on"),
+            OnOff::Off => write!(f, "off"),
+        }
+    }
+}
+
+impl From<OnOff> for bool {
+    fn from(value: OnOff) -> Self {
+        match value {
+            OnOff::On => true,
+            OnOff::Off => false,
+        }
+    }
+}
+
 #[derive(Debug, clap::Args)]
 pub(crate) struct GlobalArgs {
     /// Name of the profile to use
@@ -159,15 +183,14 @@ impl Cli {
         // This format aligns with the log output.
         let progress = ProgressBar::new_spinner().with_style(
             ProgressStyle::with_template(
-                "{current_timestamp:.dim} {elapsed_decimal:.dim} {msg:.blue} {spinner:.cyan/blue}",
+                "{current_timestamp:.dim} {elapsed_decimal:<8.dim} {msg:.blue} {outcome}{spinner:.cyan/blue}",
             )
             .unwrap()
             .with_key("elapsed_decimal", elapsed_decimal)
             .with_key("current_timestamp", current_timestamp)
-            .tick_strings(&["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓"]),
+            .tick_strings(&["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓", ""]),
         );
 
-        progress.enable_steady_tick(time::Duration::from_millis(100));
         self.multiprogress.add(progress)
     }
 }

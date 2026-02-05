@@ -2,11 +2,173 @@
 
 #![allow(unused_imports)]
 
-use pyo3::prelude::*;
+pub(crate) mod state;
+
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::time;
+
+use chrono::{TimeZone, Utc};
+use commanderpb::runner_event::Event as RunnerEvent;
+use futures::TryStreamExt;
+use tracing::{error, info};
 
 use super::Client;
 use super::refs::RefArg;
+use crate::grpc::{self, generated as commanderpb};
+use crate::project::{ParameterType, ParameterValue, ProjectFile};
+use crate::python::exceptions::BauplanJobError;
+use crate::python::job::JobLogEvent;
+use crate::python::namespace::NamespaceArg;
+use crate::python::{optional_on_off, rt};
+use gethostname::gethostname;
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use rsa::RsaPublicKey;
+
+use self::state::{RunExecutionContext, RunState};
+
+fn job_err(e: impl std::fmt::Display) -> PyErr {
+    BauplanJobError::new_err(e.to_string())
+}
+
+impl Client {
+    pub(crate) fn job_timeout(&self, client_timeout: Option<u64>) -> time::Duration {
+        if let Some(v) = client_timeout
+            && v > 0
+        {
+            time::Duration::from_secs(v)
+        } else {
+            self.client_timeout
+        }
+    }
+
+    pub(crate) fn job_request_common(
+        &self,
+        priority: Option<u32>,
+        args: HashMap<String, String>,
+    ) -> PyResult<commanderpb::JobRequestCommon> {
+        if let Some(p) = priority
+            && !(1..=10).contains(&p)
+        {
+            return Err(PyValueError::new_err("priority must be between 1 and 10"));
+        }
+
+        let hostname = gethostname().to_string_lossy().into_owned();
+        Ok(commanderpb::JobRequestCommon {
+            module_version: Default::default(),
+            hostname,
+            args,
+            debug: 0,
+            priority: priority.map(|p| p as _),
+        })
+    }
+
+    /// Monitors a job until completion, and cancels it if the timeout is hit.
+    pub(crate) async fn monitor_run(
+        &mut self,
+        timeout: time::Duration,
+        state: &mut RunState,
+    ) -> PyResult<()> {
+        let job_id = state.job_id.clone().unwrap_or_default();
+
+        let mut client = self.grpc.clone();
+        let stream = client.monitor_job(job_id.clone(), timeout);
+        futures::pin_mut!(stream);
+
+        loop {
+            let event = match stream.try_next().await {
+                Ok(Some(ev)) => ev,
+                Ok(None) => break,
+                Err(e) if e.code() == tonic::Code::Cancelled => {
+                    error!(job_id, "timeout reached, cancelling job");
+
+                    if let Err(e) = self.grpc.cancel(&job_id).await {
+                        return Err(job_err(format!("failed to cancel job: {e}")));
+                    }
+
+                    state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap_or(0));
+                    state.job_status = Some("TIMEOUT".to_owned());
+                    state.error = Some("execution timed out".to_owned());
+                    return Ok(());
+                }
+                Err(e) => return Err(job_err(e)),
+            };
+
+            match event {
+                RunnerEvent::TaskStart(ev) => {
+                    if let Some(ts) = ev.timestamp
+                        && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
+                    {
+                        state.tasks_started.insert(ev.task_id, dt);
+                    }
+                }
+                RunnerEvent::TaskCompletion(ev) => {
+                    if let Some(ts) = ev.timestamp
+                        && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
+                    {
+                        state.tasks_stopped.insert(ev.task_id, dt);
+                    }
+                }
+                RunnerEvent::RuntimeUserLog(ev)
+                    if ev.r#type() == commanderpb::runtime_log_event::LogType::User =>
+                {
+                    if let Ok(log) = JobLogEvent::try_from(ev) {
+                        state.user_logs.push(log);
+                    }
+                }
+                RunnerEvent::JobCompletion(ev) => {
+                    state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap_or(0));
+
+                    match grpc::interpret_outcome(ev.outcome) {
+                        Ok(_) => {
+                            state.job_status = Some("SUCCESS".to_owned());
+                        }
+                        Err(e) => {
+                            state.job_status = Some("FAILURE".to_owned());
+                            state.error = Some(e.to_string());
+                        }
+                    }
+
+                    break;
+                }
+                _ => (),
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(FromPyObject)]
+enum RawParameterValue {
+    Bool(bool),
+    Int(i64),
+    Float(f64),
+    Str(String),
+}
+
+impl From<RawParameterValue> for ParameterValue {
+    fn from(value: RawParameterValue) -> Self {
+        match value {
+            RawParameterValue::Bool(b) => ParameterValue::Bool(b),
+            RawParameterValue::Int(i) => ParameterValue::Int(i),
+            RawParameterValue::Float(f) => ParameterValue::Float(f),
+            RawParameterValue::Str(s) => ParameterValue::Str(s),
+        }
+    }
+}
+
+impl RawParameterValue {
+    fn type_str(&self) -> &'static str {
+        match self {
+            RawParameterValue::Bool(_) => "bool",
+            RawParameterValue::Int(_) => "int",
+            RawParameterValue::Float(_) => "float",
+            RawParameterValue::Str(_) => "str",
+        }
+    }
+}
 
 #[pymethods]
 impl Client {
@@ -46,141 +208,201 @@ impl Client {
     /// Returns:
     ///     `bauplan.state.RunState`: The state of the run.
     #[pyo3(signature = (
-        project_dir: "str | None" = None,
+        project_dir: "str",
         r#ref: "str | Ref | None" = None,
-        namespace: "str | None" = None,
-        parameters: "dict[str, str] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        parameters: "Dict[str, Optional[Union[str, int, float, bool]]]] | None" = None,
         cache: "str | None" = None,
         transaction: "str | None" = None,
         dry_run: "bool | None" = None,
         strict: "str | None" = None,
         preview: "str | None" = None,
-        debug: "bool | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
-        verbose: "bool | None" = None,
         client_timeout: "int | None" = None,
         detach: "bool | None" = None,
     ) -> "RunState")]
     #[allow(clippy::too_many_arguments)]
     fn run(
         &mut self,
-        project_dir: Option<&str>,
+        project_dir: PathBuf,
         r#ref: Option<RefArg>,
-        namespace: Option<&str>,
-        parameters: Option<std::collections::HashMap<String, String>>,
+        namespace: Option<NamespaceArg>,
+        parameters: Option<HashMap<String, Option<RawParameterValue>>>,
         cache: Option<&str>,
         transaction: Option<&str>,
         dry_run: Option<bool>,
         strict: Option<&str>,
         preview: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        priority: Option<i64>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
+        args: Option<HashMap<String, String>>,
+        priority: Option<u32>,
+        client_timeout: Option<u64>,
         detach: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            project_dir,
-            r#ref,
-            namespace,
+    ) -> PyResult<RunState> {
+        let timeout = self.job_timeout(client_timeout);
+        let common = self.job_request_common(priority, args.unwrap_or_default())?;
+        let cache = optional_on_off("cache", cache)?;
+        let transaction = optional_on_off("transaction", transaction)?;
+        let strict = optional_on_off("strict", strict)?;
+        let detach = detach.unwrap_or(false);
+
+        let dry_run = match dry_run {
+            Some(true) => commanderpb::JobRequestOptionalBool::True,
+            Some(false) => commanderpb::JobRequestOptionalBool::False,
+            None => commanderpb::JobRequestOptionalBool::Unspecified,
+        };
+
+        let project_dir = Path::new(&project_dir);
+        let project = ProjectFile::from_dir(project_dir).map_err(job_err)?;
+        let zip_file = project.create_code_snapshot().map_err(job_err)?;
+
+        let parameters = rt().block_on(resolve_job_parameters(
+            &mut self.grpc,
+            self.client_timeout,
+            &project,
+            parameters.unwrap_or_default(),
+        ))?;
+
+        let req = commanderpb::CodeSnapshotRunRequest {
+            job_request_common: Some(common),
+            zip_file,
+            r#ref: r#ref.map(|a| a.0),
+            namespace: namespace.map(|a| a.0),
+            dry_run: dry_run.into(),
+            transaction: transaction.unwrap_or_default().to_owned(),
+            strict: strict.unwrap_or_default().to_owned(),
+            cache: cache.unwrap_or_default().to_owned(),
+            preview: preview.unwrap_or_default().to_owned(),
+            project_id: project.project.id.as_hyphenated().to_string(),
+            project_name: project.project.name.clone().unwrap_or_default(),
             parameters,
-            cache,
-            transaction,
-            dry_run,
-            strict,
-            preview,
-            debug,
-            args,
-            priority,
-            verbose,
-            client_timeout,
-            detach,
-        );
-        todo!("run")
+            ..Default::default()
+        };
+
+        let state = rt().block_on(async {
+            let resp = self
+                .grpc
+                .code_snapshot_run(req)
+                .await
+                .map_err(job_err)?
+                .into_inner();
+
+            let job_id = resp
+                .job_response_common
+                .as_ref()
+                .map(|c| c.job_id.clone())
+                .ok_or_else(|| job_err("response missing job ID"))?;
+
+            info!(job_id, "successfully planned job");
+
+            let ctx = RunExecutionContext {
+                snapshot_id: resp.snapshot_id,
+                snapshot_uri: resp.snapshot_uri,
+                project_dir: project_dir.display().to_string(),
+                r#ref: resp.r#ref,
+                namespace: resp.namespace,
+                dry_run: resp.dry_run,
+                transaction: resp.transaction,
+                strict: resp.strict,
+                cache: resp.cache,
+                preview: resp.preview,
+                debug: false,
+                detach,
+            };
+
+            let mut state = RunState {
+                job_id: Some(job_id),
+                ctx,
+                user_logs: Vec::new(),
+                tasks_started: HashMap::new(),
+                tasks_stopped: HashMap::new(),
+                job_status: None,
+                started_at_ns: Utc::now().timestamp_nanos_opt().unwrap_or(0),
+                ended_at_ns: None,
+                error: None,
+            };
+
+            if detach {
+                return Ok(state);
+            }
+
+            // Run the job until we get a completion. A job error is not an
+            // Err here.
+            match self.monitor_run(timeout, &mut state).await {
+                Ok(()) => Ok(state),
+                Err(e) => Err(e),
+            }
+        })?;
+
+        Ok(state)
+    }
+}
+
+async fn resolve_job_parameters(
+    grpc: &mut grpc::Client,
+    timeout: time::Duration,
+    project: &ProjectFile,
+    mut parameters: HashMap<String, Option<RawParameterValue>>,
+) -> PyResult<Vec<commanderpb::Parameter>> {
+    for name in parameters.keys() {
+        if !project.parameters.contains_key(name) {
+            return Err(PyValueError::new_err(format!(
+                "unknown parameter: {:?}",
+                name
+            )));
+        }
     }
 
-    /// Re run a Bauplan job using its ID and return the state of the run.
-    /// All on and off / bool parameters default to 'off' unless otherwise specified.
-    ///
-    /// ## Examples
-    ///
-    /// ```python notest
-    /// rerun_state = client.rerun(
-    ///     job_id=prod_job_id,
-    ///     ref='feature-branch',
-    ///     cache='off'
-    /// )
-    ///
-    /// # Check if rerun succeeded (best practice)
-    /// if str(rerun_state.job_status).lower() != "success":
-    ///     raise Exception(f"Rerun failed with status: {rerun_state.job_status}")
-    /// ```
-    ///
-    /// Parameters:
-    ///     job_id: The Job ID of the previous run. This can be used to re-run a previous run, e.g., on a different branch.
-    ///     ref: The ref, branch name or tag name from which to rerun the project.
-    ///     namespace: The Namespace to run the job in. If not set, the job will be run in the default namespace.
-    ///     cache: Whether to enable or disable caching for the run. Defaults to 'on'.
-    ///     transaction: Whether to enable or disable transaction mode for the run. Defaults to 'on'.
-    ///     dry_run: Whether to enable or disable dry-run mode for the run; models are not materialized.
-    ///     strict: Whether to enable or disable strict schema validation.
-    ///     preview: Whether to enable or disable preview mode for the run.
-    ///     debug: Whether to enable or disable debug mode for the run.
-    ///     args: Additional arguments (optional).
-    ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode for the run.
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
-    /// Returns:
-    ///     `bauplan.state.ReRunState`: The state of the run.
-    #[pyo3(signature = (
-        job_id: "str",
-        r#ref: "str | Ref | None" = None,
-        namespace: "str | None" = None,
-        cache: "str | None" = None,
-        transaction: "str | None" = None,
-        dry_run: "bool | None" = None,
-        strict: "str | None" = None,
-        preview: "str | None" = None,
-        debug: "bool | None" = None,
-        args: "dict[str, str] | None" = None,
-        priority: "int | None" = None,
-        verbose: "bool | None" = None,
-        client_timeout: "int | None" = None,
-    ) -> "ReRunState")]
-    #[allow(clippy::too_many_arguments)]
-    fn rerun(
-        &mut self,
-        job_id: &str,
-        r#ref: Option<RefArg>,
-        namespace: Option<&str>,
-        cache: Option<&str>,
-        transaction: Option<&str>,
-        dry_run: Option<bool>,
-        strict: Option<&str>,
-        preview: Option<&str>,
-        debug: Option<bool>,
-        args: Option<std::collections::HashMap<String, String>>,
-        priority: Option<i64>,
-        verbose: Option<bool>,
-        client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            job_id,
-            r#ref,
-            namespace,
-            cache,
-            transaction,
-            dry_run,
-            strict,
-            preview,
-            debug,
-            args,
-            priority,
-            verbose,
-            client_timeout,
-        );
-        todo!("rerun")
+    // If any of the params are a secret, we need to fetch the org-wide public
+    // key from commander. This is used to cache the result, in case multiple
+    // parameters are secrets.
+    let mut key_cache: Option<(String, RsaPublicKey)> = None;
+
+    let mut resolved = Vec::with_capacity(project.parameters.len());
+    for (name, param) in &project.parameters {
+        if let Some(Some(raw_value)) = parameters.remove(name) {
+            let parsed = if param.param_type == ParameterType::Secret {
+                let RawParameterValue::Str(value) = raw_value else {
+                    return Err(PyValueError::new_err(format!(
+                        "Expected string value for parameter '{}', got {:?}",
+                        name,
+                        raw_value.type_str()
+                    )));
+                };
+
+                let (key_name, key) = if let Some((key_name, key)) = &key_cache {
+                    (key_name.clone(), key)
+                } else {
+                    let (key_name, key) = grpc
+                        .org_default_public_key(timeout)
+                        .await
+                        .map_err(job_err)?;
+                    let (_, key) = key_cache.insert((key_name.clone(), key));
+
+                    (key_name, &*key)
+                };
+
+                ParameterValue::encrypt_secret(key_name, key, project.project.id, value)
+                    .map_err(job_err)?
+            } else {
+                raw_value.into()
+            };
+
+            resolved.push(commanderpb::Parameter {
+                name: name.clone(),
+                value: Some(parsed.into()),
+            });
+        } else if let Some(default_value) = param.eval_default().map_err(job_err)? {
+            resolved.push(commanderpb::Parameter {
+                name: name.clone(),
+                value: Some(default_value.into()),
+            });
+        } else if param.required {
+            return Err(PyValueError::new_err(format!(
+                "missing required parameter: {name:?}"
+            )));
+        }
     }
+
+    Ok(resolved)
 }

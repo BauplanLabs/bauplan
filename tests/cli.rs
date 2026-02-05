@@ -16,7 +16,9 @@ mod cli {
 }
 
 pub fn bauplan() -> assert_cmd::Command {
-    assert_cmd::cargo::cargo_bin_cmd!("bauplan")
+    let mut cmd = assert_cmd::cargo::cargo_bin_cmd!("bauplan");
+    cmd.env("NO_COLOR", "1");
+    cmd
 }
 
 pub fn username() -> String {

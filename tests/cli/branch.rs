@@ -1,5 +1,5 @@
 use crate::cli::bauplan;
-use predicates::prelude::*;
+use predicates::str::{contains, starts_with};
 
 #[test]
 fn ls_json_output() {
@@ -7,7 +7,7 @@ fn ls_json_output() {
         .args(["-O", "json", "branch", "ls"])
         .assert()
         .success()
-        .stdout(predicate::str::starts_with("["));
+        .stdout(starts_with("["));
 }
 
 #[test]
@@ -16,7 +16,7 @@ fn ls() {
         .args(["branch", "ls"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("main"));
+        .stdout(contains("main"));
 }
 
 #[test]

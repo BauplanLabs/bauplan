@@ -6,14 +6,10 @@ use std::{
 
 use anyhow::{anyhow, bail};
 use bauplan::{
-    grpc::{
-        self,
-        generated::{self as commanderpb},
-    },
+    grpc,
     project::{ParameterDefault, ParameterType, ParameterValue, ProjectFile},
 };
 use resolve_path::PathResolveExt as _;
-use rsa::{RsaPublicKey, pkcs8::DecodePublicKey};
 use tabwriter::TabWriter;
 use yansi::Paint;
 
@@ -169,7 +165,10 @@ fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
         let value = match param.param_type {
             ParameterType::Secret => {
                 // Fetch the org-wide public key from commander.
-                let (key_name, key) = with_rt(fetch_org_public_key(cli))?;
+                let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(5));
+                let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
+
+                let (key_name, key) = with_rt(client.org_default_public_key(timeout))?;
                 ParameterValue::encrypt_secret(key_name, &key, project.project.id, v)?
             }
             _ => parse_parameter(param.param_type, &v)?,
@@ -243,28 +242,6 @@ fn parse_bool(s: &str) -> anyhow::Result<bool> {
         "false" | "no" | "0" | "off" => Ok(false),
         _ => Err(anyhow!("invalid boolean value: {s:?}")),
     }
-}
-
-async fn fetch_org_public_key(cli: &Cli) -> anyhow::Result<(String, RsaPublicKey)> {
-    let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(5));
-    let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
-
-    let resp = client
-        .get_bauplan_info(commanderpb::GetBauplanInfoRequest::default())
-        .await?
-        .into_inner();
-
-    let Some(commanderpb::OrganizationInfo {
-        default_parameter_secret_public_key: Some(pkey),
-        default_parameter_secret_key: Some(key_name),
-        ..
-    }) = resp.organization_info
-    else {
-        return Err(anyhow!("no org-wide public key configured"));
-    };
-
-    let pkey = RsaPublicKey::from_public_key_pem(&pkey)?;
-    Ok((key_name, pkey))
 }
 
 fn print_parameters(project: &ProjectFile) -> anyhow::Result<()> {

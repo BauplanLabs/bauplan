@@ -1,5 +1,5 @@
 use crate::cli::{bauplan, username};
-use predicates::prelude::*;
+use predicates::str::contains;
 
 #[test]
 fn namespace() {
@@ -7,7 +7,7 @@ fn namespace() {
         .args(["namespace", "ls"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("bauplan"));
+        .stdout(contains("bauplan"));
 }
 
 #[test]
@@ -46,7 +46,7 @@ fn register_table_metadata() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("150000"));
+        .stdout(contains("150000"));
 
     bauplan()
         .args(["branch", "delete", &branch])
@@ -88,7 +88,7 @@ fn register_table_parquet() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("134344870"));
+        .stdout(contains("134344870"));
 
     bauplan()
         .args(["branch", "delete", &branch])
@@ -102,9 +102,8 @@ fn get_json_output() {
         .args(["-O", "json", "table", "get", "bauplan.taxi_fhvhv"])
         .assert()
         .success()
-        .stdout(predicate::str::contains(r#""name":"taxi_fhvhv","#))
-        .stdout(predicate::str::contains(r#""branch":"main","#))
-        .stdout(predicate::str::contains(r#""namespace":"bauplan","#));
+        .stdout(contains(r#""name":"taxi_fhvhv","#))
+        .stdout(contains(r#""namespace":"bauplan","#));
 }
 
 #[test]

@@ -9,5 +9,5 @@ fn cli_version() {
         .args(["version"])
         .assert()
         .success()
-        .stdout(predicate::str::contains(BAUPLAN_VERSION_PREFIX));
+        .stdout(contains(BAUPLAN_VERSION_PREFIX));
 }

@@ -2,7 +2,7 @@
 
 mod iter;
 
-use std::{collections::HashMap, fs::File, path::PathBuf, sync::Arc, time};
+use std::{collections::HashMap, fs::File, path::PathBuf, sync::Arc};
 
 use arrow::{
     array::{RecordBatch, RecordBatchWriter},
@@ -10,7 +10,6 @@ use arrow::{
 };
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, TryStreamExt};
-use gethostname::gethostname;
 use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
 use tracing::{error, info};
 
@@ -19,6 +18,7 @@ use crate::{
     grpc::{self, generated as commanderpb},
     python::{
         exceptions::{BauplanError, BauplanQueryError},
+        optional_on_off,
         refs::RefArg,
         rt,
     },
@@ -33,16 +33,6 @@ fn query_err(e: impl std::fmt::Display) -> PyErr {
 }
 
 impl Client {
-    fn query_timeout(&self, client_timeout: Option<u64>) -> time::Duration {
-        if let Some(v) = client_timeout
-            && v > 0
-        {
-            time::Duration::from_secs(v)
-        } else {
-            self.client_timeout
-        }
-    }
-
     /// Submits a query and runs it to completion, canceling on timeout.
     #[allow(clippy::too_many_arguments)]
     async fn run_query(
@@ -56,33 +46,15 @@ impl Client {
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<(Schema, impl Stream<Item = PyResult<RecordBatch>> + use<>)> {
-        let cache = match cache {
-            None | Some("on") | Some("off") => cache,
-            Some(_) => {
-                return Err(PyValueError::new_err("cache must be 'on' or 'off'"));
-            }
-        };
+        let timeout = self.job_timeout(client_timeout);
+        let common = self.job_request_common(priority, args)?;
+        let cache = optional_on_off("cache", cache)?;
 
-        if let Some(p) = priority
-            && !(1..=10).contains(&p)
-        {
-            return Err(PyValueError::new_err("priority must be between 1 and 10"));
-        }
-
-        let timeout = self.query_timeout(client_timeout);
-
-        let hostname = gethostname().to_string_lossy().into_owned();
         let req = commanderpb::QueryRunRequest {
-            job_request_common: Some(commanderpb::JobRequestCommon {
-                module_version: Default::default(),
-                hostname,
-                args,
-                debug: 0,
-                priority: priority.map(|p| p as _),
-            }),
+            job_request_common: Some(common),
             r#ref: r#ref.map(|r| r.0),
             sql_query: query.to_owned(),
-            cache: cache.unwrap_or("on").to_owned(),
+            cache: cache.unwrap_or_default().to_owned(),
             namespace: namespace.map(str::to_owned),
         };
 

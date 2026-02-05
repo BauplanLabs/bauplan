@@ -1,5 +1,5 @@
 use crate::cli::bauplan;
-use predicates::prelude::*;
+use predicates::str::contains;
 
 #[test]
 fn query_tpch_1_01() {
@@ -13,10 +13,10 @@ fn query_tpch_1_01() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("37734107"))
-        .stdout(predicate::str::contains("56586554400."))
-        .stdout(predicate::str::contains("53758257134."))
-        .stdout(predicate::str::contains("55909065222."));
+        .stdout(contains("37734107"))
+        .stdout(contains("56586554400."))
+        .stdout(contains("53758257134."))
+        .stdout(contains("55909065222."));
 }
 
 #[test]
@@ -31,7 +31,7 @@ fn query_tpch_1_q15() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("50004"))
-        .stdout(predicate::str::contains("6668"))
-        .stdout(predicate::str::contains("6563"));
+        .stdout(contains("50004"))
+        .stdout(contains("6668"))
+        .stdout(contains("6563"));
 }

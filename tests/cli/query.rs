@@ -1,4 +1,4 @@
-use predicates::prelude::predicate;
+use predicates::str::contains;
 
 use crate::{cli::bauplan, lines};
 
@@ -130,7 +130,7 @@ fn with_results_json_output() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains(r#""results":"#));
+        .stdout(contains(r#""results":"#));
 }
 
 #[test]
@@ -144,24 +144,24 @@ fn run_twice() {
         .assert()
         .success()
         .stdout(lines(&[
-            "3\t973",
-            "4\t1314",
-            "5\t132",
-            "6\t207"
+            "3             973",
+            "4             1314",
+            "5             132",
+            "6             207"
         ]));
 
     bauplan()
-            .args([
-                "query",
-                "--cache", "on",
-                "SELECT PULocationID, COUNT(*) FROM taxi_fhvhv WHERE pickup_datetime >= '2023-01-01T00:00:00-05:00' AND pickup_datetime < '2023-01-02T00:00:00-05:00' GROUP BY 1 ORDER BY PULocationID",
-            ])
-            .assert()
-            .success()
-            .stdout(lines(&[
-                "973",
-                "1314",
-                "132",
-                "207"
-            ]));
+        .args([
+            "query",
+            "--cache", "on",
+            "SELECT PULocationID, COUNT(*) FROM taxi_fhvhv WHERE pickup_datetime >= '2023-01-01T00:00:00-05:00' AND pickup_datetime < '2023-01-02T00:00:00-05:00' GROUP BY 1 ORDER BY PULocationID",
+        ])
+        .assert()
+        .success()
+        .stdout(lines(&[
+            "3             973",
+            "4             1314",
+            "5             132",
+            "6             207"
+        ]));
 }

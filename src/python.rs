@@ -191,6 +191,15 @@ fn roundtrip<T: ApiRequest>(
     Ok(resp)
 }
 
+fn optional_on_off<'a>(name: &'static str, v: Option<&'a str>) -> PyResult<Option<&'a str>> {
+    match v {
+        None | Some("on") | Some("off") => Ok(v),
+        Some(_) => Err(PyValueError::new_err(format!(
+            "{name} must be 'on' or 'off'"
+        ))),
+    }
+}
+
 #[pymodule]
 mod _internal {
     // Client
@@ -244,6 +253,12 @@ mod _internal {
     use crate::grpc::job::JobKind;
     #[pymodule_export]
     use crate::grpc::job::JobState;
+
+    // Run state
+    #[pymodule_export]
+    use super::run::state::RunExecutionContext;
+    #[pymodule_export]
+    use super::run::state::RunState;
 
     // Info
     #[pymodule_export]

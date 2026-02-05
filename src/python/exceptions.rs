@@ -131,11 +131,11 @@ pub mod exceptions {
 
     // Non-HTTP errors
     #[pymodule_export]
+    use super::BauplanJobError;
+    #[pymodule_export]
     use super::BauplanQueryError;
     #[pymodule_export]
     use super::InvalidPlanError;
-    #[pymodule_export]
-    use super::JobError;
     #[pymodule_export]
     use super::NoResultsFoundError;
 
@@ -427,7 +427,7 @@ pyo3::create_exception!(
 pyo3::create_exception!(bauplan.exceptions, GatewayTimeoutError, BauplanHTTPError);
 
 // Non-HTTP errors
-pyo3::create_exception!(bauplan.exceptions, JobError, BauplanError);
-pyo3::create_exception!(bauplan.exceptions, BauplanQueryError, JobError);
+pyo3::create_exception!(bauplan.exceptions, BauplanJobError, BauplanError);
+pyo3::create_exception!(bauplan.exceptions, BauplanQueryError, BauplanJobError);
 pyo3::create_exception!(bauplan.exceptions, NoResultsFoundError, BauplanError);
 pyo3::create_exception!(bauplan.exceptions, InvalidPlanError, BauplanError);
