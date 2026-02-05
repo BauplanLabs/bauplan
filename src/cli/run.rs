@@ -56,9 +56,6 @@ pub(crate) struct RunArgs {
     /// Set the cache mode.
     #[arg(long)]
     pub cache: Option<OnOff>,
-    /// Do not truncate summary output
-    #[arg(long)]
-    pub summary_no_trunc: bool,
     /// Set the preview mode.
     #[arg(long)]
     pub preview: Option<Preview>,
@@ -221,7 +218,6 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         arg,
         project_dir,
         cache,
-        summary_no_trunc: _, // TODO: implement summary truncation
         preview,
         strict,
         param,
