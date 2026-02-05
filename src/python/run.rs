@@ -80,7 +80,10 @@ impl Client {
             let event = match stream.try_next().await {
                 Ok(Some(ev)) => ev,
                 Ok(None) => break,
-                Err(e) if e.code() == tonic::Code::Cancelled => {
+                Err(e)
+                    if e.code() == tonic::Code::Cancelled
+                        || e.code() == tonic::Code::DeadlineExceeded =>
+                {
                     error!(job_id, "timeout reached, cancelling job");
 
                     if let Err(e) = self.grpc.cancel(&job_id).await {

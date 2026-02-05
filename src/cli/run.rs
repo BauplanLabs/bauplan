@@ -238,17 +238,17 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
             spinner.finish_and_clear();
         }
 
-        error!("{reason}, cancelling job");
-        progress.set_message("Cancelling job...");
+        error!(job_id, "{reason}, cancelling job");
 
-        // progress.enable_steady_tick(time::Duration::from_millis(100));
+        progress.set_message("Cancelling job...");
+        progress.enable_steady_tick(time::Duration::from_millis(100));
 
         if let Err(e) = client.cancel(&job_id).await {
             error!(job_id, error = %e, "failed to cancel job");
             progress.finish_with_message(format!("Cancelling job... {}", "failed".red()));
         } else {
-            progress.finish_with_message(format!("Cancelling job... {}", "done".green()));
             debug!(job_id, "job successfully cancelled");
+            progress.finish_with_message(format!("Cancelling job... {}", "done".green()));
         }
 
         std::process::exit(1)
@@ -280,7 +280,10 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         let event = match res {
             Ok(Some(v)) => v,
             Ok(None) => break,
-            Err(ref e) if e.code() == tonic::Code::Cancelled => {
+            Err(ref e)
+                if e.code() == tonic::Code::Cancelled
+                    || e.code() == tonic::Code::DeadlineExceeded =>
+            {
                 kill_job("execution timed out").await
             }
             Err(e) => return Err(e.into()),

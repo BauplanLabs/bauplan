@@ -136,16 +136,17 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
 
     // If we hit a timeout or SIGINT below, we'll call this closure.
     let mut kill_query = async |reason: &str| -> ! {
-        error!("{reason}, cancelling query");
+        error!(job_id, "{reason}, cancelling query");
 
         progress.set_message("Cancelling query...");
         if let Err(e) = client.cancel(job_id).await {
             error!(job_id, error = %e, "failed to cancel query");
+            progress.finish_with_message(format!("Cancelling query... {}", "failed".red()));
         } else {
             debug!(job_id, "query successfully cancelled");
+            progress.finish_with_message(format!("Cancelling query... {}", "done".green()));
         }
 
-        progress.finish_and_clear();
         std::process::exit(1)
     };
 
@@ -159,7 +160,12 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         let event = match res {
             Ok(Some(v)) => v,
             Ok(None) => break,
-            Err(e) if e.code() == tonic::Code::Cancelled => kill_query("execution timed out").await,
+            Err(e)
+                if e.code() == tonic::Code::Cancelled
+                    || e.code() == tonic::Code::DeadlineExceeded =>
+            {
+                kill_query("execution timed out").await
+            }
             Err(e) => return Err(e.into()),
         };
 
