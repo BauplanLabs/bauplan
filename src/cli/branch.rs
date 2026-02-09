@@ -36,6 +36,8 @@ pub(crate) enum BranchCommand {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchLsArgs {
+    /// Branch name
+    pub branch_name: Option<String>,
     /// Show all branches, including those from other namespaces (users)
     #[arg(short, long)]
     pub all_zones: bool,
@@ -48,38 +50,36 @@ pub(crate) struct BranchLsArgs {
     /// Limit the number of branches to show
     #[arg(long)]
     pub limit: Option<usize>,
-    /// Branch name
-    pub branch_name: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchCreateArgs {
+    /// Branch name
+    pub branch_name: String,
     /// Ref from which to create. If not specified, default is active branch
     #[arg(long)]
     pub from_ref: Option<String>,
     /// Do not fail if the branch already exists
     #[arg(long)]
     pub if_not_exists: bool,
-    /// Branch name
-    pub branch_name: String,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchRmArgs {
+    /// Branch name
+    pub branch_name: String,
     /// Do not fail if the branch does not exist
     #[arg(long)]
     pub if_exists: bool,
-    /// Branch name
-    pub branch_name: String,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchGetArgs {
+    /// Branch name
+    pub branch_name: String,
     /// Filter by namespace
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// Branch name
-    pub branch_name: String,
 }
 
 #[derive(Debug, clap::Args)]
@@ -90,22 +90,22 @@ pub(crate) struct BranchCheckoutArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchDiffArgs {
-    /// Filter by namespace
-    #[arg(short, long)]
-    pub namespace: Option<String>,
     /// Branch name a
     pub branch_name_a: String,
     /// Branch name b
     pub branch_name_b: Option<String>,
+    /// Filter by namespace
+    #[arg(short, long)]
+    pub namespace: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchMergeArgs {
+    /// Branch name
+    pub branch_name: String,
     /// Optional commit message
     #[arg(long)]
     pub commit_message: Option<String>,
-    /// Branch name
-    pub branch_name: String,
 }
 
 #[derive(Debug, clap::Args)]
@@ -132,11 +132,11 @@ pub(crate) fn handle(cli: &Cli, args: BranchArgs) -> anyhow::Result<()> {
 fn list_branches(
     cli: &Cli,
     BranchLsArgs {
+        branch_name,
         all_zones: _,
         name,
         user,
         limit,
-        branch_name,
     }: BranchLsArgs,
 ) -> anyhow::Result<()> {
     // The branch_name positional arg acts as a name filter.
@@ -174,8 +174,8 @@ fn list_branches(
 fn get_branch(
     cli: &Cli,
     BranchGetArgs {
-        namespace,
         branch_name,
+        namespace,
     }: BranchGetArgs,
 ) -> anyhow::Result<()> {
     let req = GetTables {
@@ -214,9 +214,9 @@ fn get_branch(
 fn create_branch(
     cli: &Cli,
     BranchCreateArgs {
+        branch_name,
         from_ref,
         if_not_exists,
-        branch_name,
     }: BranchCreateArgs,
 ) -> anyhow::Result<()> {
     let from_ref = from_ref
@@ -232,7 +232,7 @@ fn create_branch(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(branch) => {
-            info!(branch = branch.name, "Created branch");
+            info!(branch = branch.name, "created branch");
             info!(
                 branch = branch.name,
                 "To make it the active branch, run: bauplan checkout <branch>"
@@ -250,8 +250,8 @@ fn create_branch(
 fn delete_branch(
     cli: &Cli,
     BranchRmArgs {
-        if_exists,
         branch_name,
+        if_exists,
     }: BranchRmArgs,
 ) -> anyhow::Result<()> {
     let req = DeleteBranch { name: &branch_name };
@@ -259,7 +259,7 @@ fn delete_branch(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(branch) => {
-            info!(branch = branch.name, "Deleted branch");
+            info!(branch = branch.name, "deleted branch");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::BranchNotFound) => {
             info!(branch = branch_name, "Branch does not exist");
@@ -273,8 +273,8 @@ fn delete_branch(
 fn merge_branch(
     cli: &Cli,
     BranchMergeArgs {
-        commit_message,
         branch_name,
+        commit_message,
     }: BranchMergeArgs,
 ) -> anyhow::Result<()> {
     let into_branch = cli.profile.active_branch.as_deref().unwrap_or("main");

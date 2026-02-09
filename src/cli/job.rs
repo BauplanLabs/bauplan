@@ -122,14 +122,14 @@ pub(crate) struct JobGetArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct JobLogsArgs {
+    /// Job id
+    pub job_id: String,
     /// Include system logs
     #[arg(long)]
     pub system: bool,
     /// Include all logs
     #[arg(long)]
     pub all: bool,
-    /// Job id
-    pub job_id: String,
 }
 
 #[derive(Debug, clap::Args)]

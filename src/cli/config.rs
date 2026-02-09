@@ -24,11 +24,11 @@ pub(crate) struct ConfigSetArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct ConfigGetArgs {
+    /// Name
+    pub name: String,
     /// Show all the available profiles
     #[arg(short, long)]
     pub all: bool,
-    /// Name
-    pub name: String,
 }
 
 pub(crate) fn handle(_cli: &Cli, _args: ConfigArgs) -> anyhow::Result<()> {

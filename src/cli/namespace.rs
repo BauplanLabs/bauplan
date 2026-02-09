@@ -26,44 +26,44 @@ pub(crate) enum NamespaceCommand {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceLsArgs {
+    /// Filter namespaces by name
+    pub namespace: Option<String>,
     /// Ref or branch name to get the namespaces from; it defaults to the active branch
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of namespaces to show
     #[arg(long)]
     pub limit: Option<usize>,
-    /// Filter namespaces by name
-    pub namespace: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceCreateArgs {
+    /// Namespace
+    pub namespace: String,
     /// Branch to create the namespace in; it defaults to the active branch
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Optional commit body to append to the commit message
-    #[arg(long)]
-    pub commit_body: Option<String>,
     /// Do not fail if the namespace already exists
     #[arg(long)]
     pub if_not_exists: bool,
-    /// Namespace
-    pub namespace: String,
+    /// Optional commit body to append to the commit message
+    #[arg(long)]
+    pub commit_body: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceRmArgs {
+    /// Namespace
+    pub namespace: String,
     /// Branch to delete the namespace from; it defaults to the active branch
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Optional commit body to append to the commit message
-    #[arg(long)]
-    pub commit_body: Option<String>,
     /// Do not fail if the namespace does not exist
     #[arg(long)]
     pub if_exists: bool,
-    /// Namespace
-    pub namespace: String,
+    /// Optional commit body to append to the commit message
+    #[arg(long)]
+    pub commit_body: Option<String>,
 }
 
 pub(crate) fn handle(cli: &Cli, args: NamespaceArgs) -> anyhow::Result<()> {
@@ -77,9 +77,9 @@ pub(crate) fn handle(cli: &Cli, args: NamespaceArgs) -> anyhow::Result<()> {
 fn list_namespaces(
     cli: &Cli,
     NamespaceLsArgs {
+        namespace,
         r#ref,
         limit,
-        namespace,
     }: NamespaceLsArgs,
 ) -> anyhow::Result<()> {
     let at_ref = r#ref
@@ -118,10 +118,10 @@ fn list_namespaces(
 fn create_namespace(
     cli: &Cli,
     NamespaceCreateArgs {
-        branch,
-        commit_body,
-        if_not_exists,
         namespace,
+        branch,
+        if_not_exists,
+        commit_body,
     }: NamespaceCreateArgs,
 ) -> anyhow::Result<()> {
     let branch = branch
@@ -141,7 +141,7 @@ fn create_namespace(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(_) => {
-            info!(namespace, branch, "Namespace created");
+            info!(namespace, branch, "namespace created");
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceExists) => {
             info!(namespace, "Namespace already exists");
@@ -155,10 +155,10 @@ fn create_namespace(
 fn delete_namespace(
     cli: &Cli,
     NamespaceRmArgs {
-        branch,
-        commit_body,
-        if_exists,
         namespace,
+        branch,
+        if_exists,
+        commit_body,
     }: NamespaceRmArgs,
 ) -> anyhow::Result<()> {
     let branch = branch
@@ -178,7 +178,7 @@ fn delete_namespace(
     let result = super::roundtrip(cli, req);
     match result {
         Ok(_) => {
-            info!(namespace, branch, "Namespace deleted");
+            info!(namespace, branch, "namespace deleted");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceNotFound) => {
             info!(namespace, "Namespace does not exist");

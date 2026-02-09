@@ -67,41 +67,41 @@ pub(crate) struct TableLsArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableGetArgs {
+    /// Table name
+    pub table_name: String,
     /// Ref or branch name to get the table from; it defaults to the active branch
     #[arg(short, long)]
     pub r#ref: Option<String>,
-    /// Table name
-    pub table_name: String,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableRmArgs {
+    /// Table name
+    pub table_name: String,
     /// Branch to delete the table from; it defaults to the active branch
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Optinal commit body to append to the commit message
-    #[arg(long)]
-    pub commit_body: Option<String>,
     /// Do not fail if the table does not exist
     #[arg(long)]
     pub if_exists: bool,
-    /// Table name
-    pub table_name: String,
+    /// Optinal commit body to append to the commit message
+    #[arg(long)]
+    pub commit_body: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableCreateArgs {
     /// Name of the table to create
     pub table_name: String,
-    /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
-    #[arg(long)]
-    pub search_uri: Option<String>,
     /// Branch in which to create the table in. defaults to active branch
     #[arg(short, long)]
     pub branch: Option<String>,
     /// Namespace the table is in. If not set, the default namespace in your account will be used
     #[arg(short, long)]
     pub namespace: Option<String>,
+    /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
+    #[arg(long)]
+    pub search_uri: Option<String>,
     /// Partition the table by the given columns
     #[arg(long)]
     pub partitioned_by: Option<String>,
@@ -120,15 +120,15 @@ pub(crate) struct TableCreateArgs {
 pub(crate) struct TableCreatePlanArgs {
     /// Name of the table to create
     pub table_name: String,
-    /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
-    #[arg(long)]
-    pub search_uri: Option<String>,
     /// Branch in which to create the table in. defaults to active branch
     #[arg(short, long)]
     pub branch: Option<String>,
     /// Namespace the table is in. If not set, the default namespace in your account will be used
     #[arg(short, long)]
     pub namespace: Option<String>,
+    /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
+    #[arg(long)]
+    pub search_uri: Option<String>,
     /// Partition the table by the given columns
     #[arg(long)]
     pub partitioned_by: Option<String>,
@@ -160,18 +160,18 @@ pub(crate) struct TableCreatePlanApplyArgs {
 pub(crate) struct TableCreateExternalArgs {
     /// Name of the external table to create
     pub table_name: String,
-    /// URI to Iceberg metadata.json file (e.g., s3://bucket/metadata.json)
-    #[arg(long)]
-    pub metadata_json_uri: Option<String>,
-    /// Search pattern for parquet files (e.g., s3://bucket/2025/*.parquet). Can be specified multiple times.
-    #[arg(long, action = clap::ArgAction::Append, conflicts_with = "metadata_json_uri")]
-    pub search_pattern: Vec<String>,
     /// Branch in which to create the table (defaults to active branch)
     #[arg(short, long)]
     pub branch: Option<String>,
     /// Namespace for the table
     #[arg(short, long)]
     pub namespace: Option<String>,
+    /// URI to Iceberg metadata.json file (e.g., s3://bucket/metadata.json)
+    #[arg(long)]
+    pub metadata_json_uri: Option<String>,
+    /// Search pattern for parquet files (e.g., s3://bucket/2025/*.parquet). Can be specified multiple times.
+    #[arg(long, action = clap::ArgAction::Append, conflicts_with = "metadata_json_uri")]
+    pub search_pattern: Vec<String>,
     /// Overwrite the table if it already exists
     #[arg(long)]
     pub overwrite: bool,
@@ -193,6 +193,9 @@ pub(crate) struct TableImportArgs {
     /// Overwrite ref if needed. it defaults to active branch
     #[arg(short, long)]
     pub branch: Option<String>,
+    /// Namespace the table is in. If not set, the default namespace in your acconnt will be used
+    #[arg(short, long)]
+    pub namespace: Option<String>,
     /// Uri search string e.g s3://bucket/path/a/*
     #[arg(long)]
     pub search_uri: Option<String>,
@@ -205,9 +208,6 @@ pub(crate) struct TableImportArgs {
     /// Set to ignore new columns. if an import file  has column aa, bb, and parquet has col aa, bb, cc, columns aa and bb will be imported
     #[arg(long)]
     pub best_effort: bool,
-    /// Namespace the table is in. If not set, the default namespace in your acconnt will be used
-    #[arg(short, long)]
-    pub namespace: Option<String>,
     /// Run the job in the background
     #[arg(short, long)]
     pub detach: bool,
@@ -303,7 +303,7 @@ fn handle_list_tables(
 
 fn handle_get_table(
     cli: &Cli,
-    TableGetArgs { r#ref, table_name }: TableGetArgs,
+    TableGetArgs { table_name, r#ref }: TableGetArgs,
 ) -> anyhow::Result<()> {
     let req = GetTable {
         name: &table_name,
@@ -341,10 +341,10 @@ fn handle_get_table(
 fn handle_delete_table(
     cli: &Cli,
     TableRmArgs {
-        branch,
-        commit_body,
-        if_exists,
         table_name,
+        branch,
+        if_exists,
+        commit_body,
     }: TableRmArgs,
 ) -> anyhow::Result<()> {
     let branch = branch
@@ -453,9 +453,9 @@ async fn apply_plan(
 async fn handle_create_plan(cli: &Cli, args: TableCreatePlanArgs) -> anyhow::Result<()> {
     let TableCreatePlanArgs {
         table_name: name,
-        search_uri,
         branch,
         namespace,
+        search_uri,
         partitioned_by,
         replace,
         save_plan,
@@ -536,9 +536,9 @@ async fn handle_apply_plan(cli: &Cli, args: TableCreatePlanApplyArgs) -> anyhow:
 async fn handle_create_table(cli: &Cli, args: TableCreateArgs) -> anyhow::Result<()> {
     let TableCreateArgs {
         table_name: name,
-        search_uri,
         branch,
         namespace,
+        search_uri,
         partitioned_by,
         replace,
         arg,
@@ -604,11 +604,11 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
     let TableImportArgs {
         table_name: name,
         branch,
+        namespace,
         search_uri,
         continue_on_error,
         import_duplicate_files,
         best_effort,
-        namespace,
         detach,
         arg,
         priority,
@@ -679,10 +679,10 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
 async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> anyhow::Result<()> {
     let TableCreateExternalArgs {
         table_name,
-        metadata_json_uri,
-        search_pattern,
         branch,
         namespace,
+        metadata_json_uri,
+        search_pattern,
         overwrite,
         detach,
         arg,
@@ -761,9 +761,9 @@ fn handle_create_external_from_metadata(
 ) -> anyhow::Result<()> {
     let TableCreateExternalArgs {
         table_name,
-        metadata_json_uri,
         branch,
         namespace,
+        metadata_json_uri,
         overwrite,
         ..
     } = args;
@@ -814,12 +814,12 @@ fn handle_create_external_from_metadata(
 fn handle_revert_table(
     cli: &Cli,
     TableRevertArgs {
+        table_name,
         source_ref,
         into_branch,
         replace,
         commit_body,
         commit_property,
-        table_name,
     }: TableRevertArgs,
 ) -> anyhow::Result<()> {
     let req = RevertTable {

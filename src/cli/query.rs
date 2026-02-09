@@ -21,47 +21,47 @@ use tracing::debug;
 pub(crate) struct QueryArgs {
     /// Sql
     pub sql: Option<String>,
-    /// Do not truncate output
-    #[arg(long)]
-    pub no_trunc: bool,
-    /// Set the cache mode.
-    #[arg(long)]
-    pub cache: Option<OnOff>,
-    /// Read query from file
-    #[arg(short, long, conflicts_with = "sql")]
-    pub file: Option<PathBuf>,
     /// Ref or branch name to run query against.
     #[arg(short, long)]
     pub r#ref: Option<String>,
+    /// Namespace to run the query in
+    #[arg(short, long)]
+    pub namespace: Option<String>,
+    /// Read query from file
+    #[arg(short, long, conflicts_with = "sql")]
+    pub file: Option<PathBuf>,
+    /// Set the cache mode.
+    #[arg(long)]
+    pub cache: Option<OnOff>,
     /// Limit number of returned rows. (use --all-rows to disable this)
     #[arg(long, default_value = "10")]
     pub max_rows: Option<u64>,
     /// Do not limit returned rows. Supercedes --max-rows
     #[arg(long)]
     pub all_rows: bool,
-    /// Namespace to run the query in
-    #[arg(short, long)]
-    pub namespace: Option<String>,
-    /// Set the job priority (1-10, where 10 is highest priority)
+    /// Do not truncate output
     #[arg(long)]
-    pub priority: Option<Priority>,
+    pub no_trunc: bool,
     /// Arguments to pass to the job
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
+    /// Set the job priority (1-10, where 10 is highest priority)
+    #[arg(long)]
+    pub priority: Option<Priority>,
 }
 
 pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     let QueryArgs {
-        no_trunc,
-        cache,
-        file,
-        arg,
-        r#ref,
-        max_rows,
-        namespace,
-        all_rows,
-        priority,
         sql,
+        r#ref,
+        namespace,
+        file,
+        cache,
+        max_rows,
+        all_rows,
+        no_trunc,
+        arg,
+        priority,
     } = args;
 
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(1800));

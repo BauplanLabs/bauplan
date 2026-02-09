@@ -79,8 +79,8 @@ pub(crate) struct ParameterSetArgs {
     /// The type of the parameter
     #[arg(long)]
     pub r#type: Option<ParameterTypeArg>,
-    #[arg(long)]
     /// A description of the parameter
+    #[arg(long)]
     pub description: Option<String>,
     /// Mark the parameter as required
     #[arg(long)]

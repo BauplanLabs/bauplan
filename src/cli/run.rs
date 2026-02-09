@@ -56,6 +56,12 @@ pub(crate) struct RunArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
     pub project_dir: Option<PathBuf>,
+    /// Ref or branch name from which to run the job.
+    #[arg(short, long)]
+    pub r#ref: Option<String>,
+    /// Namespace to run the job in. If not set, the job will be run in the default namespace for the project.
+    #[arg(short, long)]
+    pub namespace: Option<String>,
     /// Set the cache mode.
     #[arg(long)]
     pub cache: Option<OnOff>,
@@ -65,30 +71,24 @@ pub(crate) struct RunArgs {
     /// Exit upon encountering runtime warnings (e.g., invalid column output)
     #[arg(long)]
     pub strict: Option<OnOff>,
-    /// Set a parameter for the job. Format: key=value. Can be used multiple times.
-    #[arg(long, action = clap::ArgAction::Append)]
-    pub param: Vec<KeyValue>,
-    /// Namespace to run the job in. If not set, the job will be run in the default namespace for the project.
-    #[arg(short, long)]
-    pub namespace: Option<String>,
-    /// Ref or branch name from which to run the job.
-    #[arg(short, long)]
-    pub r#ref: Option<String>,
     /// Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to branch in which this run is happenning in
     #[arg(short, long)]
     pub transaction: Option<OnOff>,
     /// Dry run the job without materializing any models.
     #[arg(long)]
     pub dry_run: bool,
+    /// Set a parameter for the job. Format: key=value. Can be used multiple times.
+    #[arg(long, action = clap::ArgAction::Append)]
+    pub param: Vec<KeyValue>,
     /// Run the job in the background instead of streaming logs
     #[arg(short, long)]
     pub detach: bool,
-    /// Set the job priority (1-10, where 10 is highest priority)
-    #[arg(long)]
-    pub priority: Option<Priority>,
     /// Arguments to pass to the job. Format: key=value
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
+    /// Set the job priority (1-10, where 10 is highest priority)
+    #[arg(long)]
+    pub priority: Option<Priority>,
 }
 
 #[derive(Debug, Serialize)]
@@ -236,17 +236,17 @@ pub(crate) async fn monitor_job_progress(
 
 async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let RunArgs {
-        arg,
         project_dir,
+        r#ref,
+        namespace,
         cache,
         preview,
         strict,
-        param,
-        namespace,
-        r#ref,
-        dry_run,
         transaction,
+        dry_run,
+        param,
         detach,
+        arg,
         priority,
     } = args;
 
