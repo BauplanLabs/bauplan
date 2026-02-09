@@ -13,6 +13,7 @@ dev = [
     "pyarrow>=17.0.0",
     "pytest>=8.3.5",
     "ruff>=0.14.14",
+    "ty>=0.0.15",
 ]
 
 [tool.maturin]
