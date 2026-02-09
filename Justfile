@@ -3,9 +3,5 @@ test:
     uv run ruff check
     uv run ty check python/
 
-    cargo test
+    cargo test --features _integration-tests -- --test-threads=4
     uv run pytest -v
-
-stub:
-    cargo build --release --features python
-    cargo run -p gen-stubs
