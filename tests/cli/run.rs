@@ -527,7 +527,7 @@ fn with_transaction() {
         ])
         .assert()
         .success()
-        .stderr(contains("Executing job... done"));
+        .stderr(contains("num_rows= 430488"));
 
     bauplan()
         .args(["branch", "delete", &branch])

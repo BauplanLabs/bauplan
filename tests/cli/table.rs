@@ -25,7 +25,6 @@ fn register_table_metadata() {
         .args([
             "table",
             "create-external",
-            "--name",
             "external_table_metadata",
             "--branch",
             &branch,
