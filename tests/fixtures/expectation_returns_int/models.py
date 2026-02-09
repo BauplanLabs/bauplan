@@ -1,5 +1,4 @@
 import bauplan
-from bauplan.standard_expectations import expect_column_all_null
 
 
 @bauplan.expectation()

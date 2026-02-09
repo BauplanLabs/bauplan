@@ -1,6 +1,14 @@
 # Re-export everything from the extension module.
 from bauplan._internal import *  # noqa: F403
-from bauplan._internal import exceptions
+from bauplan._internal import (  # noqa: F811
+    Client,
+    InfoState,
+    JobState,
+    OrganizationInfo,
+    RunnerNodeInfo,
+    UserInfo,
+    exceptions,
+)
 
 # Stub-only SDK definitions (eg bauplan.Model).
 from bauplan import standard_expectations, store

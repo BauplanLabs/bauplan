@@ -215,15 +215,18 @@ fn multiparent() {
         .stderr(contains("val_0,val_1,val_0,val_1,val_0,val_1"));
 }
 
-#[test]
-fn no_write_access() {
-    // Supposed to fail, because it's supposed to be run as a non-admin user.
-    bauplan()
-        .args(["run", "--ref", "main", "-p", "tests/fixtures/prophet"])
-        .assert()
-        .code(1)
-        .stderr(contains("you don't have write access to"));
-}
+// TODO: add this back once we have explicit fixtures. For now this depends
+// on the environment being set up correctly, but we want people to be able to
+// run tests themselves.
+// #[test]
+// fn no_write_access() {
+//     // Supposed to fail, because it's supposed to be run as a non-admin user.
+//     bauplan()
+//         .args(["run", "--ref", "main", "-p", "tests/fixtures/prophet"])
+//         .assert()
+//         .code(1)
+//         .stderr(contains("you don't have write access to"));
+// }
 
 #[test]
 fn object_store_save_load_pass() {

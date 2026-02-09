@@ -25,9 +25,9 @@ def normalize_data(
     print('===> Normalizing model <===')
     import sys
 
-    import numpy as np
-    import pandas as pd
-    import pyarrow as pa
+    import numpy as np # noqa
+    import pandas as pd # noqa
+    import pyarrow as pa # noqa
 
     print('ciao gianx')
     print('Python version')
@@ -63,9 +63,9 @@ def predict_trips(
     We take the arg to be the parent dataframe,
     and run a time-series model on the "group by" by date.
     """
-    import pandas as pd
-    import pyarrow as pa
-    from prophet import Prophet
+    import pandas as pd # noqa
+    import pyarrow as pa # noqa
+    from prophet import Prophet # noqa
 
     print('===> Prediction model <===')
     m = Prophet()

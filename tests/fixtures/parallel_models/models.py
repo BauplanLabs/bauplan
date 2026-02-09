@@ -1,6 +1,5 @@
 import time
 import bauplan
-from time import sleep
 
 
 # @bauplan.model(materialization_strategy='REPLACE')

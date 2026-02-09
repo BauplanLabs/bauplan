@@ -1,9 +1,9 @@
 test:
-    cargo test
     cargo clippy -- -Dwarnings
-
     uv run ruff check
-    uv run ty check
+    uv run ty check python/
+
+    cargo test
     uv run pytest -v
 
 stub:

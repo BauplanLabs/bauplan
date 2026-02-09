@@ -48,12 +48,13 @@ class TestBranchArg:
         result_str = client.has_branch("main")
         result_obj = client.has_branch(branch)
 
-        assert result_str == result_obj == True
+        assert result_str is True
+        assert result_obj is True
 
     def test_delete_branch(self, client, username):
         name = f"{username}.test_{uuid.uuid4().hex[:8]}"
         branch = client.create_branch(branch=name, from_ref="main")
-        result_obj = client.delete_branch(branch)
+        client.delete_branch(branch)
 
         assert client.has_branch(name) is False
 
@@ -63,7 +64,7 @@ class TestRefArg:
         name = f"{username}.test_{uuid.uuid4().hex[:8]}"
 
         try:
-            branch = client.create_branch(
+            client.create_branch(
                 branch=name,
                 from_ref=temp_branch,
             )

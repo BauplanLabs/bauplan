@@ -1,6 +1,5 @@
 """Tests for table create and import operations."""
 
-import os
 import uuid
 
 import pytest

@@ -23,8 +23,8 @@ def get_trips_spark(
 ):
     # import pandas (we need it to convert the data to a Spark DataFrame from arrow because
     # Spark being clowns etc.)
-    import pandas as pd
-    from pyspark.sql.functions import udf
+    import pandas as pd # noqa
+    from pyspark.sql.functions import udf # noqa
 
     # register the UDF
     NumberUDF = udf(lambda m: _converter(m))
@@ -45,7 +45,7 @@ def class_imbalance_spark(data=bauplan.Model('get_trips_spark')):
     This just shows the class imbalance in the tip_flag column, to prove
     data FROM PySpark can be used in a Python model in Bauplan.
     """
-    import pandas as pd
+    import pandas as pd # noqa
 
     df = data.to_pandas()
     df = df.groupby('tip_flag').size().reset_index(name='count_flag').sort_values(by='tip_flag')
