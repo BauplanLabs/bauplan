@@ -1,5 +1,5 @@
 [tools]
 buf = "1.61.0"
 just = "latest"
-rust = "1.92.0"
+rust = { version = "1.92.0", profile = "default" }
 uv = "0.9.18"
