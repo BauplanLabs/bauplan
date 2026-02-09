@@ -605,6 +605,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn scan(
         &mut self,
+        py: Python<'_>,
         table: &str,
         r#ref: Option<RefArg>,
         columns: Option<Vec<String>>,
@@ -616,18 +617,51 @@ impl Client {
         priority: Option<u32>,
         client_timeout: Option<i64>,
     ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            table,
-            r#ref,
-            columns,
-            filters,
-            limit,
-            cache,
-            namespace,
-            args,
-            priority,
-            client_timeout,
-        );
-        todo!("scan")
+        use sql_query_builder as sql;
+
+        let full_table = match namespace {
+            Some(ns) => format!("{ns}.{table}"),
+            None => table.to_owned(),
+        };
+
+        let mut query = sql::Select::new().from(&full_table);
+
+        if let Some(cols) = &columns {
+            for col in cols {
+                query = query.select(col);
+            }
+        } else {
+            query = query.select("*");
+        }
+
+        if let Some(f) = filters {
+            query = query.where_clause(f);
+        }
+
+        if let Some(n) = limit {
+            query = query.limit(&n.to_string());
+        }
+
+        let sql = query.to_string();
+        let client_timeout = client_timeout.map(|t| t as u64);
+
+        rt().block_on(async {
+            let (schema, stream) = self
+                .run_query(
+                    &sql,
+                    r#ref,
+                    None,
+                    cache,
+                    namespace,
+                    args.unwrap_or_default(),
+                    priority,
+                    client_timeout,
+                )
+                .await?;
+
+            let batches: Vec<RecordBatch> = stream.try_collect().await?;
+            let table = pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))?;
+            Ok(table.into_pyarrow(py)?.unbind())
+        })
     }
 }

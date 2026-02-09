@@ -36,3 +36,18 @@ def test_query_with_max_rows(client):
     )
 
     assert result.num_rows == 3
+
+
+def test_scan_returns_arrow_table(client):
+    result = client.scan(
+        table="titanic",
+        namespace="bauplan",
+        ref="main",
+        columns=["PassengerId", "Name"],
+        filters="Survived = 1",
+        limit=5,
+    )
+
+    assert result.num_rows == 5
+    assert "PassengerId" in result.column_names
+    assert "Name" in result.column_names

@@ -582,6 +582,7 @@ dependencies = [
  "serde_qs",
  "serde_yaml",
  "similar",
+ "sql_query_builder",
  "tabwriter",
  "thiserror 2.0.17",
  "tokio",
@@ -4095,6 +4096,12 @@ dependencies = [
  "base64ct",
  "der",
 ]
+
+[[package]]
+name = "sql_query_builder"
+version = "2.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2651412ae7213fc4eb36349c204614c0aee7d7cef23328e10101413781b4b200"
 
 [[package]]
 name = "stable_deref_trait"
