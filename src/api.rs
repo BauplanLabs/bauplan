@@ -13,7 +13,7 @@ mod paginate;
 pub mod table;
 pub mod tag;
 
-#[cfg(all(test, feature = "_integration_tests"))]
+#[cfg(all(test, feature = "_integration-tests"))]
 pub(crate) mod testutil;
 
 pub use error::*;

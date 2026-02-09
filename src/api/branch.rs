@@ -201,7 +201,7 @@ impl ApiRequest for MergeBranch<'_> {
     }
 }
 
-#[cfg(all(test, feature = "_integration_tests"))]
+#[cfg(all(test, feature = "_integration-tests"))]
 mod test {
     use assert_matches::assert_matches;
 

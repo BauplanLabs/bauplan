@@ -272,7 +272,7 @@ where
         .ok_or_else(|| serde::de::Error::custom("invalid timestamp"))
 }
 
-#[cfg(all(test, feature = "_integration_tests"))]
+#[cfg(all(test, feature = "_integration-tests"))]
 mod test {
     use assert_matches::assert_matches;
 

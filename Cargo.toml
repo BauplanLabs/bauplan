@@ -22,7 +22,7 @@ path = "src/main.rs"
 [features]
 default = []
 python = ["dep:arrow-csv", "dep:parquet", "dep:pyo3", "dep:pyo3-arrow", "pyo3/chrono", "pyo3/uuid"]
-_integration_tests = []
+_integration-tests = []
 
 [dependencies]
 anyhow = "1"
@@ -80,3 +80,6 @@ reqwest = { version = "0.12", features = ["json"] }
 similar = { version = "2", features = ["bytes"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 yansi = "1.0.1"
+
+[profile.release]
+strip = true
