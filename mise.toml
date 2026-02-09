@@ -1,5 +1,6 @@
 [tools]
 buf = "1.61.0"
 just = "latest"
+protoc = "31.1"
 rust = { version = "1.92.0", profile = "default" }
 uv = "0.9.18"
