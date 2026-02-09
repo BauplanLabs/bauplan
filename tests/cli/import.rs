@@ -25,12 +25,11 @@ fn import_create_table_and_query() {
         .args([
             "table",
             "create",
+            TABLE_NAME,
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
             "--namespace",
             NAMESPACE_NAME,
-            "--name",
-            TABLE_NAME,
             "--branch",
             &branch,
         ])
@@ -41,12 +40,11 @@ fn import_create_table_and_query() {
         .args([
             "table",
             "import",
+            TABLE_NAME,
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
             "--namespace",
             NAMESPACE_NAME,
-            "--name",
-            TABLE_NAME,
             "--branch",
             &branch,
         ])
@@ -88,10 +86,9 @@ fn import_manually() {
         .args([
             "table",
             "create-plan",
+            "table_with_partitions",
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
-            "--name",
-            "table_with_partitions",
             "--branch",
             &branch,
             "--save-plan",
@@ -109,10 +106,9 @@ fn import_manually() {
         .args([
             "table",
             "import",
+            "table_with_partitions",
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
-            "--name",
-            "table_with_partitions",
             "--branch",
             &branch,
         ])
@@ -123,10 +119,9 @@ fn import_manually() {
         .args([
             "table",
             "import",
+            "table_with_partitions",
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
-            "--name",
-            "table_with_partitions",
             "--branch",
             &branch,
             "--import-duplicate-files",
@@ -138,10 +133,9 @@ fn import_manually() {
         .args([
             "table",
             "import",
+            "table_with_partitions",
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
-            "--name",
-            "table_with_partitions",
             "--branch",
             &branch,
         ])

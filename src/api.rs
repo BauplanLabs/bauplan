@@ -7,6 +7,7 @@ use crate::{CatalogRef, Profile};
 pub mod branch;
 pub mod commit;
 mod error;
+pub mod iceberg;
 pub mod namespace;
 mod paginate;
 pub mod table;

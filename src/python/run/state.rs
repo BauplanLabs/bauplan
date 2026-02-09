@@ -54,7 +54,7 @@ pub(crate) struct RunState {
     pub tasks_started: HashMap<String, DateTime<Utc>>,
     /// Per-task stop times, keyed by task ID.
     pub tasks_stopped: HashMap<String, DateTime<Utc>>,
-    /// The final status string (e.g. "SUCCESS", "FAILURE").
+    /// The final status string (e.g. "SUCCESS", "FAILED").
     pub job_status: Option<String>,
     /// Epoch nanoseconds when the run started.
     pub started_at_ns: i64,
@@ -77,5 +77,115 @@ impl RunState {
     #[getter]
     fn duration_ns(&self) -> Option<i64> {
         self.ended_at_ns.map(|end| end - self.started_at_ns)
+    }
+}
+
+#[derive(Clone, Debug)]
+#[pyclass(name = "TableCreatePlanContext", module = "bauplan", get_all)]
+pub(crate) struct TableCreatePlanContext {
+    pub branch_name: String,
+    pub table_name: String,
+    pub table_replace: bool,
+    pub table_partitioned_by: Option<String>,
+    pub namespace: String,
+    pub search_string: String,
+}
+
+#[derive(Clone)]
+#[pyclass(name = "TableCreationPlanState", module = "bauplan", get_all)]
+pub(crate) struct TableCreationPlanState {
+    pub job_id: Option<String>,
+    pub ctx: TableCreatePlanContext,
+    pub job_status: Option<String>,
+    pub error: Option<String>,
+    pub plan: Option<String>,
+    pub can_auto_apply: bool,
+    pub files_to_be_imported: Vec<String>,
+}
+
+impl fmt::Debug for TableCreationPlanState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TableCreationPlanState")
+            .field("job_id", &self.job_id)
+            .field("job_status", &self.job_status)
+            .field("can_auto_apply", &self.can_auto_apply)
+            .field("files", &self.files_to_be_imported.len())
+            .finish()
+    }
+}
+
+#[derive(Clone)]
+#[pyclass(name = "TableCreatePlanApplyState", module = "bauplan", get_all)]
+pub(crate) struct TableCreatePlanApplyState {
+    pub job_id: Option<String>,
+    pub job_status: Option<String>,
+    pub error: Option<String>,
+}
+
+impl fmt::Debug for TableCreatePlanApplyState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TableCreatePlanApplyState")
+            .field("job_id", &self.job_id)
+            .field("job_status", &self.job_status)
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug)]
+#[pyclass(name = "TableDataImportContext", module = "bauplan", get_all)]
+pub(crate) struct TableDataImportContext {
+    pub branch_name: String,
+    pub table_name: String,
+    pub namespace: String,
+    pub search_string: String,
+    pub import_duplicate_files: bool,
+    pub best_effort: bool,
+    pub continue_on_error: bool,
+    pub transformation_query: Option<String>,
+    pub preview: String,
+}
+
+/// The state of a completed data import job.
+#[derive(Clone)]
+#[pyclass(name = "TableDataImportState", module = "bauplan", get_all)]
+pub(crate) struct TableDataImportState {
+    pub job_id: Option<String>,
+    pub ctx: TableDataImportContext,
+    pub job_status: Option<String>,
+    pub error: Option<String>,
+}
+
+impl fmt::Debug for TableDataImportState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("TableDataImportState")
+            .field("job_id", &self.job_id)
+            .field("job_status", &self.job_status)
+            .finish()
+    }
+}
+
+#[derive(Clone, Debug)]
+#[pyclass(name = "ExternalTableCreateContext", module = "bauplan", get_all)]
+pub(crate) struct ExternalTableCreateContext {
+    pub branch_name: String,
+    pub table_name: String,
+    pub namespace: String,
+}
+
+#[derive(Clone)]
+#[pyclass(name = "ExternalTableCreateState", module = "bauplan", get_all)]
+pub(crate) struct ExternalTableCreateState {
+    pub job_id: Option<String>,
+    pub ctx: ExternalTableCreateContext,
+    pub job_status: Option<String>,
+    pub error: Option<String>,
+}
+
+impl fmt::Debug for ExternalTableCreateState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ExternalTableCreateState")
+            .field("job_id", &self.job_id)
+            .field("job_status", &self.job_status)
+            .finish()
     }
 }

@@ -65,11 +65,9 @@ impl Client {
             .map_err(query_err)?
             .into_inner();
 
-        let job_id = resp
-            .job_response_common
-            .as_ref()
-            .map(|c| c.job_id.clone())
-            .ok_or_else(|| query_err("response missing job ID"))?;
+        let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common else {
+            return Err(query_err("response missing job ID"));
+        };
 
         info!(job_id, "succesfully planned query");
 

@@ -8,19 +8,19 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time;
 
+use anyhow::bail;
 use chrono::{TimeZone, Utc};
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::TryStreamExt;
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use super::Client;
 use super::refs::RefArg;
 use crate::grpc::{self, generated as commanderpb};
 use crate::project::{ParameterType, ParameterValue, ProjectFile};
-use crate::python::exceptions::BauplanJobError;
 use crate::python::job::JobLogEvent;
 use crate::python::namespace::NamespaceArg;
-use crate::python::{optional_on_off, rt};
+use crate::python::{job_err, optional_on_off, rt};
 use gethostname::gethostname;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -28,8 +28,11 @@ use rsa::RsaPublicKey;
 
 use self::state::{RunExecutionContext, RunState};
 
-fn job_err(e: impl std::fmt::Display) -> PyErr {
-    BauplanJobError::new_err(e.to_string())
+pub(crate) fn job_status_strings(result: Result<(), grpc::JobError>) -> (String, Option<String>) {
+    match result {
+        Ok(()) => ("SUCCESS".to_owned(), None),
+        Err(e) => (e.status_str().to_owned(), Some(e.to_string())),
+    }
 }
 
 impl Client {
@@ -64,7 +67,50 @@ impl Client {
         })
     }
 
-    /// Monitors a job until completion, and cancels it if the timeout is hit.
+    pub(crate) async fn monitor_job(
+        &mut self,
+        job_id: &str,
+        timeout: time::Duration,
+        mut on_event: impl FnMut(RunnerEvent),
+    ) -> PyResult<Result<(), grpc::JobError>> {
+        info!(job_id, "running job");
+
+        let mut client = self.grpc.clone();
+        let stream = client.monitor_job(job_id.to_owned(), timeout);
+        futures::pin_mut!(stream);
+
+        loop {
+            let event = match stream.try_next().await {
+                Ok(Some(ev)) => ev,
+                Ok(None) => {
+                    return Ok(Err(grpc::JobError::Failed(
+                        Default::default(),
+                        "stream ended without completion".to_owned(),
+                    )));
+                }
+                Err(e)
+                    if e.code() == tonic::Code::Cancelled
+                        || e.code() == tonic::Code::DeadlineExceeded =>
+                {
+                    error!(job_id, "timeout reached, cancelling job");
+                    if let Err(e) = self.grpc.cancel(job_id).await {
+                        return Err(job_err(format!("failed to cancel job: {e}")));
+                    }
+                    return Err(job_err("client timed out"));
+                }
+                Err(e) => return Err(job_err(e)),
+            };
+
+            trace!(job_id, ?event, "received runner event");
+
+            if let RunnerEvent::JobCompletion(ev) = event {
+                return Ok(grpc::interpret_outcome(ev.outcome).map(|_| ()));
+            }
+
+            on_event(event);
+        }
+    }
+
     pub(crate) async fn monitor_run(
         &mut self,
         timeout: time::Duration,
@@ -72,33 +118,8 @@ impl Client {
     ) -> PyResult<()> {
         let job_id = state.job_id.clone().unwrap_or_default();
 
-        let mut client = self.grpc.clone();
-        let stream = client.monitor_job(job_id.clone(), timeout);
-        futures::pin_mut!(stream);
-
-        loop {
-            let event = match stream.try_next().await {
-                Ok(Some(ev)) => ev,
-                Ok(None) => break,
-                Err(e)
-                    if e.code() == tonic::Code::Cancelled
-                        || e.code() == tonic::Code::DeadlineExceeded =>
-                {
-                    error!(job_id, "timeout reached, cancelling job");
-
-                    if let Err(e) = self.grpc.cancel(&job_id).await {
-                        return Err(job_err(format!("failed to cancel job: {e}")));
-                    }
-
-                    state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap_or(0));
-                    state.job_status = Some("TIMEOUT".to_owned());
-                    state.error = Some("execution timed out".to_owned());
-                    return Ok(());
-                }
-                Err(e) => return Err(job_err(e)),
-            };
-
-            match event {
+        let status = self
+            .monitor_job(&job_id, timeout, |event| match event {
                 RunnerEvent::TaskStart(ev) => {
                     if let Some(ts) = ev.timestamp
                         && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
@@ -120,24 +141,14 @@ impl Client {
                         state.user_logs.push(log);
                     }
                 }
-                RunnerEvent::JobCompletion(ev) => {
-                    state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap_or(0));
-
-                    match grpc::interpret_outcome(ev.outcome) {
-                        Ok(_) => {
-                            state.job_status = Some("SUCCESS".to_owned());
-                        }
-                        Err(e) => {
-                            state.job_status = Some("FAILURE".to_owned());
-                            state.error = Some(e.to_string());
-                        }
-                    }
-
-                    break;
-                }
                 _ => (),
-            }
-        }
+            })
+            .await?;
+
+        state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap());
+        let (job_status, error) = job_status_strings(status);
+        state.job_status = Some(job_status);
+        state.error = error;
 
         Ok(())
     }
@@ -290,13 +301,10 @@ impl Client {
                 .map_err(job_err)?
                 .into_inner();
 
-            let job_id = resp
-                .job_response_common
-                .as_ref()
-                .map(|c| c.job_id.clone())
-                .ok_or_else(|| job_err("response missing job ID"))?;
-
-            info!(job_id, "successfully planned job");
+            let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common
+            else {
+                return Err(job_err("response missing job ID"));
+            };
 
             let ctx = RunExecutionContext {
                 snapshot_id: resp.snapshot_id,

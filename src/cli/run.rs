@@ -7,14 +7,16 @@ use std::{
     time,
 };
 
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use bauplan::{
-    grpc::{self, generated as commanderpb},
+    grpc::{
+        self,
+        generated::{self as commanderpb, JobResponseCommon},
+    },
     project::{ParameterType, ParameterValue, ProjectFile},
 };
 use chrono::Utc;
 use futures::TryStreamExt as _;
-use gethostname::gethostname;
 use indicatif::{ProgressBar, ProgressDrawTarget};
 use rsa::RsaPublicKey;
 use serde::Serialize;
@@ -25,6 +27,7 @@ use yansi::Paint;
 use crate::cli::{
     Cli, KeyValue, OnOff, Priority,
     parameter::{parse_parameter, resolve_project_dir},
+    spinner::ProgressExt,
 };
 use commanderpb::runner_event::Event as RunnerEvent;
 
@@ -123,6 +126,24 @@ pub(crate) fn handle(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     crate::cli::with_rt(handle_run(cli, args))
 }
 
+pub(crate) fn job_request_common(
+    args: Vec<KeyValue>,
+    priority: Option<Priority>,
+) -> commanderpb::JobRequestCommon {
+    let hostname = gethostname::gethostname().to_string_lossy().into_owned();
+    let args = args.into_iter().map(KeyValue::into_strings).collect();
+
+    commanderpb::JobRequestCommon {
+        // module_version: env!("CARGO_PKG_VERSION").to_owned(),
+        // TODO: the new sdk isn't on codeartifact yet, so the above fails.
+        module_version: "".to_string(),
+        hostname,
+        args,
+        debug: 0,
+        priority: priority.map(|p| p.0 as _),
+    }
+}
+
 /// Common handler for running a job and managing spinners for it. This handles
 /// the following common behavior:
 ///  - Cancelling a job on a cancel signal or a request timeout
@@ -149,10 +170,10 @@ pub(crate) async fn monitor_job_progress(
 
         if let Err(e) = client_clone.cancel(&job_id).await {
             error!(job_id, error = %e, "failed to cancel {thing}");
-            progress.finish_with_message(format!("Cancelling {thing}... {}", "failed".red()));
+            progress.finish_with_failed();
         } else {
             debug!(job_id, "job successfully cancelled");
-            progress.finish_with_message(format!("Cancelling {thing}... {}", "done".green()));
+            progress.finish_with_done();
         }
 
         Err(grpc::JobError::Cancelled.into())
@@ -239,8 +260,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let parameters = resolve_parameters(cli, &project, param).await?;
     let zip_file = project.create_code_snapshot()?;
 
-    let hostname = gethostname().to_string_lossy().into_owned();
-    let args = arg.into_iter().map(KeyValue::into_strings).collect();
+    let job_request_common = job_request_common(arg, priority);
 
     let dry_run = if dry_run {
         commanderpb::JobRequestOptionalBool::True as _
@@ -249,13 +269,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     };
 
     let req = commanderpb::CodeSnapshotRunRequest {
-        job_request_common: Some(commanderpb::JobRequestCommon {
-            module_version: Default::default(),
-            hostname,
-            args,
-            debug: 0,
-            priority: priority.map(|p| p.0 as _),
-        }),
+        job_request_common: Some(job_request_common),
         zip_file,
         r#ref,
         namespace,
@@ -271,17 +285,15 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     };
 
     let progress = cli.new_spinner().with_message("Planning job...");
-
     let resp = match client.code_snapshot_run(req).await {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
-            progress.finish_and_clear();
-            return Err(anyhow!("{}", e.message()));
+            progress.finish_with_failed();
+            return Err(e.into());
         }
     };
 
-    let job_id = resp.job_response_common.as_ref().map(|c| &c.job_id);
-    let Some(job_id) = job_id.cloned() else {
+    let Some(JobResponseCommon { job_id, .. }) = resp.job_response_common else {
         bail!("response missing job ID");
     };
 
@@ -292,7 +304,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     }
 
     if detach {
-        progress.finish_and_clear();
+        progress.finish_with_done();
         eprintln!("\nJob {job_id} is now running in detached mode.\n");
         eprintln!("Tip: use \"bauplan job <command>\" to list and inspect running jobs.");
         return Ok(());
@@ -382,8 +394,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                         Outcome::Skipped(_) => "skipped".yellow(),
                     };
 
-                    let name = task_spinner.message();
-                    task_spinner.finish_with_message(format!("{name} {suffix}"));
+                    task_spinner.finish_with_append(suffix);
                 }
 
                 // Print a preview(s), if relevant.
@@ -431,7 +442,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let res = match outcome {
         Ok(_) => {
             summary.outcome = SummaryOutcome::Success;
-            progress.finish_with_message(format!("Executing job... {}", "done".green()));
+            progress.finish_with_done();
             Ok(())
         }
         Err(e) => {
@@ -444,7 +455,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                 };
 
                 summary.outcome = outcome;
-                progress.finish_with_message(format!("Executing job... {suffix}"));
+                progress.finish_with_append(suffix);
                 Err(e)
             } else {
                 // Exit now.

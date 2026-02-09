@@ -1,6 +1,8 @@
 use std::{fmt::Write as _, io::Write, path::PathBuf, time};
 
-use crate::cli::{Cli, KeyValue, OnOff, Output, Priority};
+use crate::cli::{
+    Cli, KeyValue, OnOff, Output, Priority, run::job_request_common, spinner::ProgressExt,
+};
 use anyhow::{Context as _, anyhow, bail};
 use arrow::{
     array::RecordBatch,
@@ -12,12 +14,13 @@ use bauplan::flight::fetch_flight_results;
 use bauplan::grpc::{self, generated as commanderpb};
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, TryStreamExt};
-use gethostname::gethostname;
 use tabwriter::TabWriter;
 use tracing::debug;
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct QueryArgs {
+    /// Sql
+    pub sql: Option<String>,
     /// Do not truncate output
     #[arg(long)]
     pub no_trunc: bool,
@@ -25,11 +28,8 @@ pub(crate) struct QueryArgs {
     #[arg(long)]
     pub cache: Option<OnOff>,
     /// Read query from file
-    #[arg(short, long)]
+    #[arg(short, long, conflicts_with = "sql")]
     pub file: Option<PathBuf>,
-    /// Arguments to pass to the job. Format: key=value
-    #[arg(short, long, action = clap::ArgAction::Append)]
-    pub arg: Vec<KeyValue>,
     /// Ref or branch name to run query against.
     #[arg(short, long)]
     pub r#ref: Option<String>,
@@ -45,13 +45,12 @@ pub(crate) struct QueryArgs {
     /// Set the job priority (1-10, where 10 is highest priority)
     #[arg(long)]
     pub priority: Option<Priority>,
-    /// Sql
-    pub sql: Option<String>,
+    /// Arguments to pass to the job
+    #[arg(short, long, action = clap::ArgAction::Append)]
+    pub arg: Vec<KeyValue>,
 }
 
 pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
-    use yansi::Paint as _;
-
     let QueryArgs {
         no_trunc,
         cache,
@@ -84,20 +83,13 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         None
     };
 
-    let hostname = gethostname().to_string_lossy().into_owned();
-    let args = arg.into_iter().map(KeyValue::into_strings).collect();
+    let job_request_common = job_request_common(arg, priority);
 
     let progress = cli.new_spinner().with_message("Planning query...");
     progress.enable_steady_tick(time::Duration::from_millis(100));
 
     let req = commanderpb::QueryRunRequest {
-        job_request_common: Some(commanderpb::JobRequestCommon {
-            module_version: Default::default(),
-            hostname,
-            args,
-            debug: 0,
-            priority: priority.map(|p| p.0 as _),
-        }),
+        job_request_common: Some(job_request_common),
         r#ref,
         sql_query,
         cache: cache.unwrap_or(OnOff::On).to_string(),
@@ -107,16 +99,14 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     let resp = match client.query_run(req).await {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
-            progress.finish_and_clear();
+            progress.finish_with_failed();
             return Err(anyhow!("{}", e.message()));
         }
     };
 
-    let job_id = resp
-        .job_response_common
-        .as_ref()
-        .map(|c| c.job_id.clone())
-        .ok_or_else(|| anyhow!("response missing job ID"))?;
+    let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common else {
+        bail!("response missing job ID");
+    };
 
     debug!(job_id, "successfully planned query");
     progress.set_message("Executing query...");
@@ -165,7 +155,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         .context("Failed to fetch query results")?;
     futures::pin_mut!(batches);
 
-    progress.finish_with_message(format!("Fetching results... {}", "done".green()));
+    progress.finish_with_done();
     match cli.global.output.unwrap_or_default() {
         Output::Tty => print_tty(schema, batches, !no_trunc).await,
         Output::Json => print_json(batches, &job_id).await,

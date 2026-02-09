@@ -20,8 +20,12 @@ mod tag;
 
 use crate::{
     ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile, grpc,
-    python::exceptions::BauplanError,
+    python::exceptions::{BauplanError, BauplanJobError},
 };
+
+pub(crate) fn job_err(e: impl std::fmt::Display) -> PyErr {
+    BauplanJobError::new_err(e.to_string())
+}
 
 #[derive(Debug, thiserror::Error)]
 enum ClientError {
@@ -259,6 +263,22 @@ mod _internal {
     use super::run::state::RunExecutionContext;
     #[pymodule_export]
     use super::run::state::RunState;
+
+    // Table state
+    #[pymodule_export]
+    use super::run::state::ExternalTableCreateContext;
+    #[pymodule_export]
+    use super::run::state::ExternalTableCreateState;
+    #[pymodule_export]
+    use super::run::state::TableCreatePlanApplyState;
+    #[pymodule_export]
+    use super::run::state::TableCreatePlanContext;
+    #[pymodule_export]
+    use super::run::state::TableCreationPlanState;
+    #[pymodule_export]
+    use super::run::state::TableDataImportContext;
+    #[pymodule_export]
+    use super::run::state::TableDataImportState;
 
     // Info
     #[pymodule_export]

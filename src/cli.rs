@@ -7,6 +7,7 @@ mod namespace;
 mod parameter;
 mod query;
 mod run;
+mod spinner;
 mod table;
 mod tag;
 
@@ -22,7 +23,6 @@ use bauplan::{
     grpc::{self, generated as commanderpb},
 };
 use clap::{Parser, Subcommand};
-use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use yansi::Paint as _;
 
 #[derive(Debug, Parser)]
@@ -167,32 +167,6 @@ pub(crate) struct Cli {
     pub(crate) timeout: Option<time::Duration>,
     pub(crate) agent: ureq::Agent,
     pub(crate) multiprogress: indicatif::MultiProgress,
-}
-
-impl Cli {
-    /// Creates a progress spinner that plays nicely with logging.
-    fn new_spinner(&self) -> ProgressBar {
-        fn elapsed_decimal(state: &ProgressState, w: &mut dyn std::fmt::Write) {
-            let secs = state.elapsed().as_secs_f64();
-            write!(w, "[{secs:.1}s]").unwrap()
-        }
-        fn current_timestamp(_state: &ProgressState, w: &mut dyn std::fmt::Write) {
-            write!(w, "{}", chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ")).unwrap();
-        }
-
-        // This format aligns with the log output.
-        let progress = ProgressBar::new_spinner().with_style(
-            ProgressStyle::with_template(
-                "{current_timestamp:.dim} {elapsed_decimal:<8.dim} {msg:.blue} {outcome}{spinner:.cyan/blue}",
-            )
-            .unwrap()
-            .with_key("elapsed_decimal", elapsed_decimal)
-            .with_key("current_timestamp", current_timestamp)
-            .tick_strings(&["⠋", "⠙", "⠚", "⠞", "⠖", "⠦", "⠴", "⠲", "⠳", "⠓", ""]),
-        );
-
-        self.multiprogress.add(progress)
-    }
 }
 
 pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow::Result<()> {

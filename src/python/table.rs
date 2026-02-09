@@ -1,20 +1,30 @@
 //! Table operations.
 
-use pyo3::{exceptions::PyTypeError, prelude::*};
 use std::collections::BTreeMap;
+
+use commanderpb::runner_event::Event as RunnerEvent;
+use pyo3::{exceptions::PyTypeError, prelude::*};
 
 use crate::{
     ApiErrorKind, ApiRequest, CatalogRef,
     api::table::Table,
     commit::CommitOptions,
+    grpc::generated as commanderpb,
     python::{
+        job_err,
         paginate::PyPaginator,
         refs::{BranchArg, RefArg},
+        rt,
     },
     table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
 
 use super::Client;
+use super::run::job_status_strings;
+use crate::python::run::state::{
+    ExternalTableCreateContext, ExternalTableCreateState, TableCreatePlanApplyState,
+    TableCreatePlanContext, TableCreationPlanState, TableDataImportContext, TableDataImportState,
+};
 
 /// Accepts a table name or Table object (from which the name is extracted).
 pub(crate) struct TableArg(pub String);
@@ -77,10 +87,8 @@ impl Client {
         namespace: "str | Namespace | None" = None,
         partitioned_by: "str | None" = None,
         replace: "bool | None" = None,
-        debug: "bool | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
-        verbose: "bool | None" = None,
         client_timeout: "int | None" = None,
     ) -> "Table")]
     #[allow(clippy::too_many_arguments)]
@@ -92,26 +100,82 @@ impl Client {
         namespace: Option<&str>,
         partitioned_by: Option<&str>,
         replace: Option<bool>,
-        debug: Option<bool>,
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
-        verbose: Option<bool>,
         client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
+    ) -> PyResult<Table> {
+        // Step 1: create the plan.
+        let plan_state = self.plan_table_creation(
             table,
             search_uri,
             branch,
             namespace,
             partitioned_by,
             replace,
-            debug,
-            args,
+            args.clone(),
             priority,
-            verbose,
             client_timeout,
-        );
-        todo!("create_table")
+        )?;
+
+        if plan_state.error.is_some() {
+            return Err(job_err(
+                plan_state
+                    .error
+                    .as_deref()
+                    .unwrap_or("table create plan failed"),
+            ));
+        }
+
+        let Some(ref plan_yaml) = plan_state.plan else {
+            return Err(job_err("plan completed without producing a plan"));
+        };
+
+        if !plan_state.can_auto_apply {
+            return Err(job_err(
+                "plan has schema conflicts and cannot be auto-applied; \
+                 use plan_table_creation and apply_table_creation_plan instead",
+            ));
+        }
+
+        // Step 2: apply the plan.
+        let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
+        let common =
+            self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
+
+        let req = commanderpb::TableCreatePlanApplyRequest {
+            job_request_common: Some(common),
+            plan_yaml: plan_yaml.clone(),
+        };
+
+        rt().block_on(async {
+            let resp = self
+                .grpc
+                .table_create_plan_apply(req)
+                .await
+                .map_err(job_err)?
+                .into_inner();
+
+            let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common
+            else {
+                return Err(job_err("response missing job ID"));
+            };
+
+            if let Err(e) = self.monitor_job(&job_id, timeout, |_| {}).await? {
+                return Err(job_err(e));
+            }
+
+            Ok(())
+        })?;
+
+        // Step 3: fetch the created table from the catalog.
+        let ctx = &plan_state.ctx;
+        let req = GetTable {
+            name: &ctx.table_name,
+            at_ref: &ctx.branch_name,
+            namespace: None,
+        };
+
+        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
     }
 
     /// Create a table import plan from an S3 location.
@@ -160,10 +224,8 @@ impl Client {
         namespace: "str | Namespace | None" = None,
         partitioned_by: "str | None" = None,
         replace: "bool | None" = None,
-        debug: "bool | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
-        verbose: "bool | None" = None,
         client_timeout: "int | None" = None,
     ) -> "TableCreationPlanState")]
     #[allow(clippy::too_many_arguments)]
@@ -175,26 +237,85 @@ impl Client {
         namespace: Option<&str>,
         partitioned_by: Option<&str>,
         replace: Option<bool>,
-        debug: Option<bool>,
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
-        verbose: Option<bool>,
         client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            table,
-            search_uri,
-            branch,
-            namespace,
-            partitioned_by,
-            replace,
-            debug,
-            args,
-            priority,
-            verbose,
-            client_timeout,
-        );
-        todo!("plan_table_creation")
+    ) -> PyResult<TableCreationPlanState> {
+        let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
+        let common =
+            self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
+
+        let req = commanderpb::TableCreatePlanRequest {
+            job_request_common: Some(common),
+            branch_name: branch.map(str::to_owned),
+            table_name: table.to_owned(),
+            namespace: namespace.map(str::to_owned),
+            search_string: search_uri.to_owned(),
+            table_replace: replace.unwrap_or(false),
+            table_partitioned_by: partitioned_by.map(str::to_owned),
+        };
+
+        rt().block_on(async {
+            let resp = self
+                .grpc
+                .table_create_plan(req)
+                .await
+                .map_err(job_err)?
+                .into_inner();
+
+            let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common
+            else {
+                return Err(job_err("response missing job ID"));
+            };
+
+            let ctx = TableCreatePlanContext {
+                branch_name: resp.branch_name,
+                table_name: resp.table_name,
+                table_replace: resp.table_replace,
+                table_partitioned_by: resp.table_partitioned_by,
+                namespace: resp.namespace,
+                search_string: resp.search_string,
+            };
+
+            let mut state = TableCreationPlanState {
+                job_id: Some(job_id.clone()),
+                ctx,
+                job_status: None,
+                error: None,
+                plan: None,
+                can_auto_apply: false,
+                files_to_be_imported: Vec::new(),
+            };
+
+            let res = self
+                .monitor_job(&job_id, timeout, |event| {
+                    if let RunnerEvent::TableCreatePlanDoneEvent(ev) = event {
+                        if !ev.error_message.is_empty() {
+                            state.error = Some(ev.error_message);
+                        }
+
+                        state.plan = Some(ev.plan_as_yaml);
+                        state.can_auto_apply = ev.can_auto_apply;
+                        state.files_to_be_imported = ev.files_to_be_imported;
+                    }
+                })
+                .await?;
+
+            let (job_status, error) = job_status_strings(res);
+            state.job_status = Some(job_status);
+            if let Some(e) = error
+                && state.error.is_none()
+            {
+                state.error = Some(e);
+            }
+
+            // There's a conflict in the plan, and it can't be autoapplied.
+            if state.error.is_none() && !state.can_auto_apply && state.plan.is_some() {
+                state.error = Some("table plan created but has conflicts".to_owned());
+            }
+
+            Ok(state)
+        })
     }
 
     /// Apply a plan for creating a table. It is done automaticaly during th
@@ -217,23 +338,63 @@ impl Client {
     ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
     #[pyo3(signature = (
         plan: "TableCreationPlan",
-        debug: "bool | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
-        verbose: "bool | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "TableCreationPlanState")]
+    ) -> "TableCreatePlanApplyState")]
     fn apply_table_creation_plan(
         &mut self,
+        py: Python<'_>,
         plan: Py<PyAny>,
-        debug: Option<bool>,
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
-        verbose: Option<bool>,
         client_timeout: Option<i64>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (plan, debug, args, priority, verbose, client_timeout);
-        todo!("apply_table_creation_plan")
+    ) -> PyResult<TableCreatePlanApplyState> {
+        // Accept either a TableCreationPlanState or a string YAML.
+        let plan_yaml = if let Ok(state) = plan.extract::<TableCreationPlanState>(py) {
+            state
+                .plan
+                .ok_or_else(|| job_err("plan state has no plan YAML"))?
+        } else if let Ok(s) = plan.extract::<String>(py) {
+            s
+        } else {
+            return Err(PyTypeError::new_err(
+                "expected str or TableCreationPlanState",
+            ));
+        };
+
+        let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
+        let common =
+            self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
+
+        let req = commanderpb::TableCreatePlanApplyRequest {
+            job_request_common: Some(common),
+            plan_yaml,
+        };
+
+        rt().block_on(async {
+            let resp = self
+                .grpc
+                .table_create_plan_apply(req)
+                .await
+                .map_err(job_err)?
+                .into_inner();
+
+            let job_id = resp
+                .job_response_common
+                .as_ref()
+                .map(|c| c.job_id.clone())
+                .ok_or_else(|| job_err("response missing job ID"))?;
+
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let (job_status, error) = job_status_strings(res);
+
+            Ok(TableCreatePlanApplyState {
+                job_id: Some(job_id),
+                job_status: Some(job_status),
+                error,
+            })
+        })
     }
 
     /// Imports data into an already existing table.
@@ -274,16 +435,14 @@ impl Client {
         search_uri: "str",
         branch: "str | Branch | None" = None,
         namespace: "str | Namespace | None" = None,
-        continue_on_error: "bool | None" = None,
-        import_duplicate_files: "bool | None" = None,
-        best_effort: "bool | None" = None,
+        continue_on_error: "bool" = false,
+        import_duplicate_files: "bool" = false,
+        best_effort: "bool" = false,
         preview: "str | None" = None,
-        debug: "bool | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
-        verbose: "bool | None" = None,
         client_timeout: "int | None" = None,
-        detach: "bool | None" = None,
+        detach: "bool" = false,
     ) -> "TableDataImportState")]
     #[allow(clippy::too_many_arguments)]
     fn import_data(
@@ -292,34 +451,77 @@ impl Client {
         search_uri: &str,
         branch: Option<&str>,
         namespace: Option<&str>,
-        continue_on_error: Option<bool>,
-        import_duplicate_files: Option<bool>,
-        best_effort: Option<bool>,
+        continue_on_error: bool,
+        import_duplicate_files: bool,
+        best_effort: bool,
         preview: Option<&str>,
-        debug: Option<bool>,
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
-        verbose: Option<bool>,
         client_timeout: Option<i64>,
-        detach: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            table,
-            search_uri,
-            branch,
-            namespace,
-            continue_on_error,
+        detach: bool,
+    ) -> PyResult<TableDataImportState> {
+        let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
+        let common =
+            self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
+
+        let req = commanderpb::TableDataImportRequest {
+            job_request_common: Some(common),
+            branch_name: branch.map(str::to_owned),
+            table_name: table.to_owned(),
+            namespace: namespace.map(str::to_owned),
+            search_string: search_uri.to_owned(),
             import_duplicate_files,
             best_effort,
-            preview,
-            debug,
-            args,
-            priority,
-            verbose,
-            client_timeout,
-            detach,
-        );
-        todo!("import_data")
+            continue_on_error,
+            transformation_query: None,
+            preview: preview.unwrap_or_default().to_owned(),
+        };
+
+        rt().block_on(async {
+            let resp = self
+                .grpc
+                .table_data_import(req)
+                .await
+                .map_err(job_err)?
+                .into_inner();
+
+            let job_id = resp
+                .job_response_common
+                .as_ref()
+                .map(|c| c.job_id.clone())
+                .ok_or_else(|| job_err("response missing job ID"))?;
+
+            let ctx = TableDataImportContext {
+                branch_name: resp.branch_name,
+                table_name: resp.table_name,
+                namespace: resp.namespace,
+                search_string: resp.search_string,
+                import_duplicate_files: resp.import_duplicate_files,
+                best_effort: resp.best_effort,
+                continue_on_error: resp.continue_on_error,
+                transformation_query: resp.transformation_query,
+                preview: resp.preview,
+            };
+
+            if detach {
+                return Ok(TableDataImportState {
+                    job_id: Some(job_id),
+                    ctx,
+                    job_status: None,
+                    error: None,
+                });
+            }
+
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let (job_status, error) = job_status_strings(res);
+
+            Ok(TableDataImportState {
+                job_id: Some(job_id),
+                ctx,
+                job_status: Some(job_status),
+                error,
+            })
+        })
     }
 
     /// Creates an external table from S3 files.
@@ -361,13 +563,11 @@ impl Client {
         search_patterns: "list[str]",
         branch: "str | Branch | None" = None,
         namespace: "str | Namespace | None" = None,
-        overwrite: "bool | None" = None,
-        debug: "bool | None" = None,
+        overwrite: "bool" = false,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
-        verbose: "bool | None" = None,
         client_timeout: "int | None" = None,
-        detach: "bool | None" = None,
+        detach: "bool" = false,
     ) -> "ExternalTableCreateState")]
     #[allow(clippy::too_many_arguments)]
     fn create_external_table_from_parquet(
@@ -376,28 +576,70 @@ impl Client {
         search_patterns: Vec<String>,
         branch: Option<&str>,
         namespace: Option<&str>,
-        overwrite: Option<bool>,
-        debug: Option<bool>,
+        overwrite: bool,
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
-        verbose: Option<bool>,
         client_timeout: Option<i64>,
-        detach: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (
-            table,
-            search_patterns,
-            branch,
-            namespace,
+        detach: bool,
+    ) -> PyResult<ExternalTableCreateState> {
+        let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
+        let common =
+            self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
+
+        let req = commanderpb::ExternalTableCreateRequest {
+            job_request_common: Some(common),
+            branch_name: branch.map(str::to_owned),
+            table_name: table.to_owned(),
+            namespace: namespace.map(str::to_owned),
+            input_source: Some(
+                commanderpb::external_table_create_request::InputSource::InputFiles(
+                    commanderpb::SearchUris {
+                        uris: search_patterns,
+                    },
+                ),
+            ),
             overwrite,
-            debug,
-            args,
-            priority,
-            verbose,
-            client_timeout,
-            detach,
-        );
-        todo!("create_external_table_from_parquet")
+        };
+
+        rt().block_on(async {
+            let resp = self
+                .grpc
+                .external_table_create(req)
+                .await
+                .map_err(job_err)?
+                .into_inner();
+
+            let job_id = resp
+                .job_response_common
+                .as_ref()
+                .map(|c| c.job_id.clone())
+                .ok_or_else(|| job_err("response missing job ID"))?;
+
+            let ctx = ExternalTableCreateContext {
+                branch_name: resp.branch_name,
+                table_name: resp.table_name,
+                namespace: resp.namespace,
+            };
+
+            if detach {
+                return Ok(ExternalTableCreateState {
+                    job_id: Some(job_id),
+                    ctx,
+                    job_status: None,
+                    error: None,
+                });
+            }
+
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let (job_status, error) = job_status_strings(res);
+
+            Ok(ExternalTableCreateState {
+                job_id: Some(job_id),
+                ctx,
+                job_status: Some(job_status),
+                error,
+            })
+        })
     }
 
     /// Get the tables and views in the target branch.

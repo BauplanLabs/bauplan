@@ -69,7 +69,6 @@ fn register_table_parquet() {
         .args([
             "table",
             "create-external",
-            "--name",
             "external_table_parquet",
             "--branch",
             &branch,

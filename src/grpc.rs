@@ -184,6 +184,21 @@ pub enum JobError {
     Unknown,
 }
 
+#[cfg(feature = "python")]
+impl JobError {
+    /// The status string matching the original SDK's constants.
+    pub fn status_str(&self) -> &'static str {
+        match self {
+            JobError::Failed(..) => "FAILED",
+            JobError::Cancelled => "CANCELLED",
+            JobError::Rejected(_) => "REJECTED",
+            JobError::Timeout => "TIMEOUT",
+            JobError::Internal => "HEARTBEAT_FAILURE",
+            JobError::Unknown => "UNKNOWN",
+        }
+    }
+}
+
 /// The outcome of a job, as returned by [`Client::subscribe_logs`].
 pub type JobResult = Result<JobSuccess, JobError>;
 
