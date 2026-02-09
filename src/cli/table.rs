@@ -689,10 +689,9 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
         priority,
     } = args;
 
-    if let Some(_uri) = metadata_json_uri {
-        // The metadata-json-uri path uses the REST catalog API and is
-        // handled separately.
-        todo!("create-external --metadata-json-uri")
+    if metadata_json_uri.is_some() {
+        // We should be in `handle_create_external_from_metadata`.
+        unreachable!()
     }
 
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(1800));
