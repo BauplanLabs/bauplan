@@ -1,0 +1,17 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v2
+      - run: mise x -- just test
+        env:
+          BAUPLAN_API_ENDPOINT: https://api.use1.aqa.bauplanlabs.com
+          BAUPLAN_API_KEY: ${{ secrets.BAUPLAN_API_KEY }}
