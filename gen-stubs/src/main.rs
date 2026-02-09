@@ -1,6 +1,10 @@
 //! Generates Python type stubs from the compiled bauplan extension module.
 
-use std::{env, fs, path::PathBuf};
+use std::{
+    env,
+    io::{Write as _, stdout},
+    path::PathBuf,
+};
 
 use anyhow::{Context, Result, bail};
 use pyo3_introspection::{introspect_cdylib, module_stub_files};
@@ -30,16 +34,21 @@ fn main() -> Result<()> {
         .with_context(|| format!("failed to introspect {}", lib_path.display()))?;
 
     let stubs = module_stub_files(&module);
-    let out_dir = root.join("python/bauplan/_internal");
-    fs::create_dir_all(&out_dir)?;
 
+    let mut out = stdout().lock();
     for (name, content) in stubs {
-        let path = out_dir.join(&name);
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent)?;
+        writeln!(&mut out, "# {}", name.display())?;
+
+        // Fix pyo3-introspection issues:
+        // - Remove circular `import bauplan` (this module IS bauplan via re-export)
+        // - Remove `bauplan.` prefix from type references (they're defined locally)
+        for line in content.lines() {
+            if line == "import bauplan" {
+                continue;
+            }
+
+            writeln!(&mut out, "{}", line.replace("bauplan.", ""))?;
         }
-        fs::write(&path, content)?;
-        eprintln!("wrote {}", path.display());
     }
 
     Ok(())

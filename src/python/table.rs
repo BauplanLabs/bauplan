@@ -337,7 +337,7 @@ impl Client {
     /// Raises:
     ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
     #[pyo3(signature = (
-        plan: "TableCreationPlan",
+        plan: "TableCreationPlanState | str",
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,

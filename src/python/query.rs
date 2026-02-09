@@ -298,7 +298,7 @@ impl Client {
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "typing.Iterator[dict[str, Any]]")]
+    ) -> "typing.Iterator[dict[str, typing.Any]]")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_generator(
         &mut self,

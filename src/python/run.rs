@@ -225,7 +225,7 @@ impl Client {
         project_dir: "str",
         r#ref: "str | Ref | None" = None,
         namespace: "str | Namespace | None" = None,
-        parameters: "Dict[str, Optional[Union[str, int, float, bool]]]] | None" = None,
+        parameters: "dict[str, str | int | float | bool | None] | None" = None,
         cache: "str | None" = None,
         transaction: "str | None" = None,
         dry_run: "bool | None" = None,
