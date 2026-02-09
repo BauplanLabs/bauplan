@@ -1,6 +1,4 @@
-from typing import Annotated, ClassVar
-
-from typing_extensions import TypeAlias
+from typing import Annotated, ClassVar, TypeAlias
 
 # The below enables us to document Parameter, which is actually
 # an instance of a callable object, usually docstrings only work

@@ -7,10 +7,10 @@ Python environments, with examples of how to use them.
 """
 
 import functools
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, TypeAlias, Union
+from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-ModelMaterializationStrategy: TypeAlias = Literal['NONE', 'REPLACE', 'APPEND', 'OVERWRITE_PARTITIONS']
-ModelCacheStrategy: TypeAlias = Literal['NONE', 'DEFAULT']
+ModelMaterializationStrategy = Literal['NONE', 'REPLACE', 'APPEND', 'OVERWRITE_PARTITIONS']
+ModelCacheStrategy = Literal['NONE', 'DEFAULT']
 
 
 def model(
