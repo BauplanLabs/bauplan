@@ -11,11 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v3
-        with:
-          # mise appears to have a bug where it'll use the cached version
-          # of rust, even if the cached version doesn't have the same profile
-          # we have. This leads to e.g. clippy not being on the path.
-          cache_key: "mise-{{platform}}-{{version}}-{{file_hash}}"
+
+      # mise is supposed to install this, but it doesn't. Changing the cache
+      # key doesn't work.
+      - run: rustup component add clippy
 
       - uses: actions/cache@v4
         with:
