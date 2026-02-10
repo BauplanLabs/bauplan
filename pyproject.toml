@@ -23,7 +23,8 @@ bindings = "pyo3"
 features = ["pyo3/extension-module", "python"]
 use_base_python = true
 
-
+[tool.ty.src]
+exclude = ["tests/fixtures"]
 
 # Recompile whenever a rust file changes.
 [tool.uv]
