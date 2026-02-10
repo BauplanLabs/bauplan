@@ -1,6 +1,6 @@
 //! Python bindings for the Bauplan client.
 
-use std::{fs::File, sync::OnceLock, time};
+use std::{sync::OnceLock, time};
 
 use pyo3::{exceptions::PyValueError, prelude::*};
 use tokio::runtime::Runtime;
@@ -143,7 +143,7 @@ impl Client {
         config_file_path: Option<&str>,
     ) -> PyResult<Self> {
         let profile = if let Some(p) = config_file_path {
-            Profile::read(&File::open(p)?, profile)
+            Profile::read(p, profile)
         } else if let Some(name) = profile {
             Profile::from_env(name)
         } else {

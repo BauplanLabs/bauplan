@@ -172,9 +172,13 @@ pub(crate) struct Cli {
 
 pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow::Result<()> {
     // Some commands don't require any config.
-    if let Command::Version = args.command {
-        println!("bauplan {}", env!("BPLN_VERSION"));
-        return Ok(());
+    match args.command {
+        Command::Version => {
+            println!("bauplan {}", env!("BPLN_VERSION"));
+            return Ok(());
+        }
+        Command::Config(config_args) => return config::handle(config_args, args.global),
+        _ => (),
     }
 
     let profile = if let Some(name) = args.global.profile.as_deref() {
@@ -206,6 +210,7 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
 
     match args.command {
         Command::Version => unreachable!(),
+        Command::Config(_) => unreachable!(),
         Command::Parameter(args) => parameter::handle(&cli, args),
         Command::Info => with_rt(handle_info(&cli)),
         Command::Run(args) => run::handle(&cli, args),
@@ -215,7 +220,6 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Command::Namespace(args) => namespace::handle(&cli, args),
         Command::Table(args) => table::handle(&cli, args),
         Command::Query(args) => with_rt(query::handle(&cli, args)),
-        Command::Config(args) => config::handle(&cli, args),
         Command::Job(args) => with_rt(job::handle(&cli, args)),
         Command::Checkout(args) => checkout::handle(&cli, args),
     }

@@ -1,6 +1,12 @@
-use std::{collections::BTreeMap, env, fs::File, io};
+use std::{
+    collections::BTreeMap,
+    env,
+    fs::File,
+    io,
+    path::{Path, PathBuf},
+};
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 const DEFAULT_API_ENDPOINT: &str = "https://api.use1.aprod.bauplanlabs.com";
@@ -23,19 +29,26 @@ pub enum Error {
 }
 
 /// A fully resolved configuration profile for interacting with Bauplan.
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct Profile {
     /// The name of the profile.
     pub name: String,
     /// The API endpoint to use. Intended for internal use.
+    #[serde(skip)]
     pub api_endpoint: http::Uri,
     /// The API key to use for authentication.
     pub api_key: String,
     /// The default branch for CLI operations. Set by `bauplan checkout`.
     /// Intended for internal use.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub active_branch: Option<String>,
     /// The user-agent used on requests. Intended for internal use.
+    #[serde(skip)]
     pub user_agent: String,
+    /// The config file this profile was loaded from, or the canonical one if
+    /// no config file exists.
+    #[serde(skip)]
+    pub config_path: PathBuf,
 }
 
 impl std::fmt::Debug for Profile {
@@ -101,12 +114,14 @@ impl Profile {
         let api_key = env::var("BAUPLAN_API_KEY").ok();
         let api_endpoint = env::var("BAUPLAN_API_ENDPOINT").ok();
 
-        let profile = match find_config() {
-            Ok(f) => read_profile(&f, name)?,
-            Err(e) => {
-                debug!("failed to locate config file: {e:#}");
+        let config_path = find_config()?;
+        let profile = match read_profile(&config_path, name) {
+            Ok(p) => p,
+            Err(Error::Io(e)) if e.kind() == io::ErrorKind::NotFound => {
+                debug!("no config file found");
                 Default::default()
             }
+            Err(e) => return Err(e),
         };
 
         let api_endpoint = api_endpoint
@@ -129,6 +144,7 @@ impl Profile {
             api_endpoint,
             api_key,
             user_agent: make_ua(None),
+            config_path,
         })
     }
 
@@ -137,11 +153,8 @@ impl Profile {
     #[doc(hidden)]
     pub fn with_ua_product(self, ua_product: &str) -> Self {
         Self {
-            name: self.name,
-            active_branch: self.active_branch,
-            api_endpoint: self.api_endpoint,
-            api_key: self.api_key,
             user_agent: make_ua(Some(ua_product)),
+            ..self
         }
     }
 
@@ -155,18 +168,55 @@ impl Profile {
         Self::read(&file, name)
     }
 
+    /// Iterate through all profiles in the Bauplan configuration file (usually
+    /// ~/.config/bauplan.yaml). Does not read any environment variables.
+    pub fn load_all() -> Result<impl Iterator<Item = Self>, Error> {
+        let path = find_config()?;
+        let file = File::open(&path)?;
+        let config: Config = serde_yaml::from_reader(file)?;
+        let profiles: Result<Vec<_>, Error> = config
+            .profiles
+            .into_iter()
+            .map(|(name, raw)| Profile::from_raw(raw, name, path.clone()))
+            .collect();
+
+        Ok(profiles?.into_iter())
+    }
+
     /// Load the given profile (or 'default') from the given file, which must
     /// be a valid Bauplan configuration file. Does not read any environment
     /// variables.
     ///
     /// Usually, you will want to use [Profile::from_env] instead.
-    pub fn read(file: &File, name: Option<&str>) -> Result<Self, Error> {
+    pub fn read(path: impl AsRef<Path>, name: Option<&str>) -> Result<Self, Error> {
+        let path = path.as_ref();
         let name = name.unwrap_or("default").to_owned();
+        let profile = read_profile(path, &name)?;
+        Self::from_raw(profile, name, path.to_owned())
+    }
+
+    /// Read all profiles from the given file, which must be a valid Bauplan
+    /// configuration file. Does not read any environment variables.
+    pub fn read_all(path: impl AsRef<Path>) -> Result<impl Iterator<Item = Self>, Error> {
+        let path = path.as_ref();
+        let file = File::open(path)?;
+        let config: Config = serde_yaml::from_reader(file)?;
+
+        let profiles: Result<Vec<_>, Error> = config
+            .profiles
+            .into_iter()
+            .map(|(name, raw)| Profile::from_raw(raw, name, path.to_owned()))
+            .collect();
+
+        Ok(profiles?.into_iter())
+    }
+
+    fn from_raw(raw: ConfigProfile, name: String, path: PathBuf) -> Result<Self, Error> {
         let ConfigProfile {
+            active_branch,
             api_endpoint,
             api_key,
-            active_branch,
-        } = read_profile(file, &name)?;
+        } = raw;
 
         let api_endpoint = api_endpoint
             .unwrap_or(DEFAULT_API_ENDPOINT.to_string())
@@ -182,21 +232,22 @@ impl Profile {
             api_endpoint,
             api_key,
             user_agent: make_ua(None),
+            config_path: path.to_owned(),
         })
     }
 }
 
-fn find_config() -> Result<File, Error> {
+fn find_config() -> Result<PathBuf, Error> {
     let Some(home) = env::home_dir() else {
         return Err(Error::Io(io::Error::other(
             "No $HOME found for the current user",
         )));
     };
 
-    let res = match File::open(home.join(".config/bauplan.yaml")) {
-        Ok(f) => return Ok(f),
-        Err(e) => Err(e.into()),
-    };
+    let canonical = home.join(".config/bauplan.yaml");
+    if canonical.exists() {
+        return Ok(canonical);
+    }
 
     // Try some fallback paths, and if that doesn't work, return the error from
     // the canonical location.
@@ -205,15 +256,17 @@ fn find_config() -> Result<File, Error> {
         ".bauplan/config.yaml",
         ".bauplan/config.yml",
     ] {
-        if let Ok(f) = File::open(home.join(fallback)) {
-            return Ok(f);
+        let path = home.join(fallback);
+        if path.exists() {
+            return Ok(path);
         }
     }
 
-    res
+    Ok(canonical)
 }
 
-fn read_profile(file: &File, name: &str) -> Result<ConfigProfile, Error> {
+fn read_profile(p: &Path, name: &str) -> Result<ConfigProfile, Error> {
+    let file = File::open(p)?;
     let mut config: Config = serde_yaml::from_reader(file).map_err(Error::Invalid)?;
     let Some(config_profile) = config.profiles.remove(name) else {
         return Err(Error::ProfileNotFound(name.to_string()));
