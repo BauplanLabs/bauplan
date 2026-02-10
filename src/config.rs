@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, env, fs::File, io};
 
 use serde::Deserialize;
+use tracing::debug;
 
 const DEFAULT_API_ENDPOINT: &str = "https://api.use1.aprod.bauplanlabs.com";
 
@@ -97,28 +98,34 @@ impl Profile {
     /// | `BAUPLAN_API_KEY`       | `api_key`      |
     /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
     pub fn from_env(name: &str) -> Result<Self, Error> {
-        let file = find_config()?;
-        let ConfigProfile {
-            api_endpoint,
-            api_key,
-            active_branch,
-        } = read_profile(&file, name).unwrap_or_default();
+        let api_key = env::var("BAUPLAN_API_KEY").ok();
+        let api_endpoint = env::var("BAUPLAN_API_ENDPOINT").ok();
+
+        let profile = match find_config() {
+            Ok(f) => read_profile(&f, name)?,
+            Err(e) => {
+                debug!("failed to locate config file: {e:#}");
+                Default::default()
+            }
+        };
 
         let api_endpoint = api_endpoint
-            .or_else(|| env::var("BAUPLAN_API_ENDPOINT").ok())
-            .unwrap_or(DEFAULT_API_ENDPOINT.to_string())
+            .as_deref()
+            .or(profile.api_endpoint.as_deref())
+            .unwrap_or(DEFAULT_API_ENDPOINT)
             .parse()?;
 
-        let api_key = api_key
-            .or_else(|| env::var("BAUPLAN_API_KEY").ok())
-            .ok_or(Error::NoApiKey)?;
+        let Some(api_key) = api_key.or(profile.api_key) else {
+            return Err(Error::NoApiKey);
+        };
+
         if !api_key.is_ascii() {
             return Err(Error::InvalidApiKey);
         }
 
         Ok(Self {
             name: name.to_owned(),
-            active_branch,
+            active_branch: profile.active_branch,
             api_endpoint,
             api_key,
             user_agent: make_ua(None),
