@@ -8,7 +8,7 @@ use serde::Serialize;
 use tonic::Request;
 
 use crate::{
-    CatalogRef, PaginatedResponse,
+    PaginatedResponse,
     grpc::{
         generated as commanderpb,
         job::{Job, JobKind, JobState},
@@ -300,7 +300,7 @@ pub(crate) struct JobContext {
     pub id: String,
     pub project_id: Option<String>,
     pub project_name: Option<String>,
-    pub r#ref: Option<CatalogRef>,
+    pub r#ref: Option<String>,
     pub tx_ref: Option<String>,
     pub logs: Vec<JobLogEvent>,
     pub dag_nodes: Vec<DAGNode>,
@@ -312,13 +312,7 @@ impl TryFrom<commanderpb::JobContext> for JobContext {
     type Error = PyErr;
 
     fn try_from(ctx: commanderpb::JobContext) -> Result<Self, Self::Error> {
-        let r#ref = match ctx.r#ref {
-            Some(s) if !s.is_empty() => Some(
-                s.parse::<CatalogRef>()
-                    .map_err(|e| PyValueError::new_err(e.to_string()))?,
-            ),
-            _ => None,
-        };
+        let r#ref = ctx.r#ref.filter(|s| !s.is_empty());
 
         let tx_ref = ctx.transaction_branch.map(|b| b.name);
 
@@ -358,9 +352,23 @@ impl TryFrom<commanderpb::JobContext> for JobContext {
     }
 }
 
-fn decompress_snapshot(_data: &[u8]) -> Option<HashMap<String, String>> {
-    // TODO: implement zip decompression
-    todo!()
+fn decompress_snapshot(data: &[u8]) -> Option<HashMap<String, String>> {
+    let cursor = std::io::Cursor::new(data);
+    let mut archive = zip::ZipArchive::new(cursor).ok()?;
+
+    let mut snapshot = HashMap::new();
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i).ok()?;
+        if file.is_dir() {
+            continue;
+        }
+
+        let mut contents = String::new();
+        std::io::Read::read_to_string(&mut file, &mut contents).ok()?;
+        snapshot.insert(file.name().to_owned(), contents);
+    }
+
+    Some(snapshot)
 }
 
 #[pymethods]

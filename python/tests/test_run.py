@@ -72,3 +72,23 @@ def test_detach(client):
         time.sleep(1)
 
     assert job.status_type == bauplan.JobState.COMPLETE
+
+
+def test_job_context_snapshot(client):
+    state = client.run(
+        project_dir="tests/fixtures/simple_taxi_dag",
+        dry_run=True,
+        cache="off",
+    )
+
+    ctx = client.get_job_context(state.job_id, include_snapshot=True)
+
+    assert ctx.id == state.job_id
+    assert len(ctx.snapshot_dict) > 0
+
+    assert "models.py" in ctx.snapshot_dict
+    assert "bauplan_project.yml" in ctx.snapshot_dict
+    assert "query_model.sql" in ctx.snapshot_dict
+
+    assert "normalize_data" in ctx.snapshot_dict["models.py"]
+    assert "taxi_fhvhv" in ctx.snapshot_dict["query_model.sql"]
