@@ -4,7 +4,7 @@ use std::{
     time,
 };
 
-use anyhow::{anyhow, bail};
+use anyhow::{Context as _, anyhow, bail};
 use bauplan::{
     grpc,
     project::{ParameterDefault, ParameterType, ParameterValue, ProjectFile},
@@ -13,7 +13,7 @@ use resolve_path::PathResolveExt as _;
 use tabwriter::TabWriter;
 use yansi::Paint;
 
-use crate::cli::{Cli, with_rt};
+use crate::cli::{Cli, with_rt, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum ParameterTypeArg {
@@ -117,11 +117,16 @@ fn remove_parameter(args: ParameterRmArgs) -> anyhow::Result<()> {
     let project_dir = resolve_project_dir(args.project_dir.as_deref())?;
     let mut project = ProjectFile::from_dir(&project_dir)?;
 
-    if project.parameters.remove(&args.name).is_none() {
+    if !project.parameters.contains_key(&args.name) {
         anyhow::bail!("parameter not found: {:?}", args.name);
     }
 
-    project.save()?;
+    yaml::edit_yaml(&project.path, |doc| {
+        write_parameter_nondestructively(doc, &args.name, None)
+    })
+    .context("unable to update parameter in project file")?;
+
+    project.parameters.remove(&args.name);
     print_parameters(&project)
 }
 
@@ -144,7 +149,7 @@ fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
     let param_type = args.r#type.map(bauplan::project::ParameterType::from);
     let param = project
         .parameters
-        .entry(args.name)
+        .entry(args.name.clone())
         .or_insert(ParameterDefault {
             param_type: param_type.unwrap_or_default(),
             required: false,
@@ -192,8 +197,70 @@ fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
         param.required = false;
     }
 
-    project.save()?;
+    yaml::edit_yaml(&project.path, |doc| {
+        write_parameter_nondestructively(doc, &args.name, Some(&*param))
+    })
+    .context("unable to update parameter in project file")?;
+
     print_parameters(&project)
+}
+
+/// Update or remove a single parameter in the project file, preserving
+/// comments and formatting. Pass `None` to remove the parameter.
+fn write_parameter_nondestructively(
+    doc: &mut nondestructive::yaml::Document,
+    name: &str,
+    param: Option<&ParameterDefault>,
+) -> anyhow::Result<()> {
+    let Some(ParameterDefault {
+        param_type,
+        required,
+        default,
+        description,
+        key,
+    }) = param
+    else {
+        yaml::mapping_at_path(doc, &["parameters"])?.remove(name);
+        return Ok(());
+    };
+
+    let mut entry = yaml::mapping_at_path(doc, &["parameters", name])?;
+
+    yaml::upsert_str(&mut entry, "type", &param_type.to_string());
+    match default {
+        None => {
+            entry.remove("default");
+        }
+        Some(serde_yaml::Value::String(s)) => yaml::upsert_str(&mut entry, "default", s),
+        Some(serde_yaml::Value::Bool(b)) => yaml::upsert_bool(&mut entry, "default", *b),
+        Some(serde_yaml::Value::Number(n)) if n.is_i64() => {
+            yaml::upsert_i64(&mut entry, "default", n.as_i64().unwrap())
+        }
+        Some(serde_yaml::Value::Number(n)) if n.is_f64() => {
+            yaml::upsert_f64(&mut entry, "default", n.as_f64().unwrap())
+        }
+        v => bail!("invalid type for parameter default: {v:?}"),
+    }
+
+    if let Some(k) = &key {
+        yaml::upsert_str(&mut entry, "key", k)
+    } else {
+        entry.remove("key");
+    }
+
+    if let Some(d) = &description {
+        yaml::upsert_str(&mut entry, "description", d)
+    } else {
+        entry.remove("description");
+    }
+
+    if let Some(mut v) = entry.get_mut("required") {
+        v.set_bool(*required);
+    } else if *required {
+        entry.insert_bool("required", true);
+    }
+
+    Ok(())
 }
 
 pub(crate) fn resolve_project_dir(arg: Option<&Path>) -> std::io::Result<PathBuf> {

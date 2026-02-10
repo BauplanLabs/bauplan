@@ -192,15 +192,19 @@ impl ParameterDefault {
         match (value, self.param_type) {
             (ParameterValue::Str(s), ParameterType::Str) => {
                 self.default = Some(serde_yaml::Value::String(s));
+                self.key = None;
             }
             (ParameterValue::Int(i), ParameterType::Int) => {
                 self.default = Some(serde_yaml::Value::Number(i.into()));
+                self.key = None;
             }
             (ParameterValue::Float(f), ParameterType::Float) => {
                 self.default = Some(serde_yaml::Value::Number(f.into()));
+                self.key = None;
             }
             (ParameterValue::Bool(b), ParameterType::Bool) => {
                 self.default = Some(serde_yaml::Value::Bool(b));
+                self.key = None;
             }
             (
                 ParameterValue::Secret {
@@ -214,6 +218,7 @@ impl ParameterDefault {
             }
             (ParameterValue::Vault(v), ParameterType::Vault) => {
                 self.default = Some(serde_yaml::Value::String(v));
+                self.key = None;
             }
             (v, t) => {
                 return Err(ProjectError::InvalidParameterValue(v.to_string(), t));
@@ -282,13 +287,6 @@ impl ProjectFile {
 
         project.path = path;
         Ok(project)
-    }
-
-    /// Write the project file back to disk.
-    pub fn save(&self) -> Result<(), ProjectError> {
-        let content = serde_yaml::to_string(self)?;
-        std::fs::write(&self.path, content)?;
-        Ok(())
     }
 
     /// Create a zip archive of the project directory, including only relevant

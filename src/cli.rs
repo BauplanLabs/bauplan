@@ -10,6 +10,7 @@ mod run;
 mod spinner;
 mod table;
 mod tag;
+mod yaml;
 
 use std::{
     io::{Write as _, stdout},
