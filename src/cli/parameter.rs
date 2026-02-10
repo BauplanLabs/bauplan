@@ -121,10 +121,8 @@ fn remove_parameter(args: ParameterRmArgs) -> anyhow::Result<()> {
         anyhow::bail!("parameter not found: {:?}", args.name);
     }
 
-    yaml::edit_yaml(&project.path, |doc| {
-        write_parameter_nondestructively(doc, &args.name, None)
-    })
-    .context("unable to update parameter in project file")?;
+    yaml::edit(&project.path, |doc| write_parameter(doc, &args.name, None))
+        .context("unable to update parameter in project file")?;
 
     project.parameters.remove(&args.name);
     print_parameters(&project)
@@ -197,17 +195,15 @@ fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
         param.required = false;
     }
 
-    yaml::edit_yaml(&project.path, |doc| {
-        write_parameter_nondestructively(doc, &args.name, Some(&*param))
+    yaml::edit(&project.path, |doc| {
+        write_parameter(doc, &args.name, Some(&*param))
     })
     .context("unable to update parameter in project file")?;
 
     print_parameters(&project)
 }
 
-/// Update or remove a single parameter in the project file, preserving
-/// comments and formatting. Pass `None` to remove the parameter.
-fn write_parameter_nondestructively(
+fn write_parameter(
     doc: &mut nondestructive::yaml::Document,
     name: &str,
     param: Option<&ParameterDefault>,

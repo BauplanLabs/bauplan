@@ -5,7 +5,10 @@ use nondestructive::yaml;
 
 /// Load a YAML file, apply edits via a closure, and write it back. The
 /// closure receives a mutable reference to the parsed document.
-pub(crate) fn edit_yaml(
+///
+/// Edits made in this way will be nondestructive, ie they will not affect
+/// whitespace or comments.
+pub(crate) fn edit(
     path: &Path,
     f: impl FnOnce(&mut yaml::Document) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
