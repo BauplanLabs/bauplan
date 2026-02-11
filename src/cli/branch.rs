@@ -56,7 +56,7 @@ pub(crate) struct BranchLsArgs {
 pub(crate) struct BranchCreateArgs {
     /// Branch name
     pub branch_name: String,
-    /// Ref from which to create. If not specified, default is active branch
+    /// Ref to branch from [default: active branch]
     #[arg(long)]
     pub from_ref: Option<String>,
     /// Do not fail if the branch already exists
@@ -77,7 +77,7 @@ pub(crate) struct BranchRmArgs {
 pub(crate) struct BranchGetArgs {
     /// Branch name
     pub branch_name: String,
-    /// Filter by namespace
+    /// Filter by namespace (exact match or regex)
     #[arg(short, long)]
     pub namespace: Option<String>,
 }
@@ -94,7 +94,7 @@ pub(crate) struct BranchDiffArgs {
     pub branch_name_a: String,
     /// Branch name b
     pub branch_name_b: Option<String>,
-    /// Filter by namespace
+    /// Filter by namespace (exact match or regex)
     #[arg(short, long)]
     pub namespace: Option<String>,
 }

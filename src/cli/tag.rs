@@ -40,7 +40,7 @@ pub(crate) struct TagLsArgs {
 pub(crate) struct TagCreateArgs {
     /// Tag name
     pub tag_name: String,
-    /// Ref from which to create. If not specified, default is active branch
+    /// Ref to create the tag from [default: active branch]
     #[arg(long)]
     pub from_ref: Option<String>,
     /// Do not fail if the tag already exists

@@ -59,10 +59,10 @@ pub(crate) struct TableLsArgs {
     /// Filter tables by name (exact match or regex)
     #[arg(long)]
     pub name: Option<String>,
-    /// Namespace to get the table from
+    /// Filter by namespace (exact match or regex)
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// Ref or branch name to get the tables from; it defaults to the active branch
+    /// Ref or branch name to list tables from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of tables to show
@@ -74,7 +74,7 @@ pub(crate) struct TableLsArgs {
 pub(crate) struct TableGetArgs {
     /// Table name
     pub table_name: String,
-    /// Ref or branch name to get the table from; it defaults to the active branch
+    /// Ref or branch name to get the table from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
 }
@@ -83,7 +83,7 @@ pub(crate) struct TableGetArgs {
 pub(crate) struct TableRmArgs {
     /// Table name
     pub table_name: String,
-    /// Branch to delete the table from; it defaults to the active branch
+    /// Branch to delete the table from [default: active branch]
     #[arg(short, long)]
     pub branch: Option<String>,
     /// Do not fail if the table does not exist
@@ -98,13 +98,13 @@ pub(crate) struct TableRmArgs {
 pub(crate) struct TableCreateArgs {
     /// Name of the table to create
     pub table_name: String,
-    /// Branch in which to create the table in. defaults to active branch
+    /// Branch to create the table in [default: active branch]
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Namespace the table is in. If not set, the default namespace in your account will be used
+    /// Namespace for the table
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
+    /// S3 URI pattern for parquet files to import (e.g. s3://bucket/path/*)
     #[arg(long)]
     pub search_uri: url::Url,
     /// Partition the table by the given columns
@@ -113,7 +113,7 @@ pub(crate) struct TableCreateArgs {
     /// Replace the existing table, if it exists
     #[arg(short, long)]
     pub replace: bool,
-    /// Arguments to pass to the job
+    /// Extra arguments as key=value pairs (repeatable)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
     /// Set the job priority (1-10, where 10 is highest priority)
@@ -125,13 +125,13 @@ pub(crate) struct TableCreateArgs {
 pub(crate) struct TableCreatePlanArgs {
     /// Name of the table to create
     pub table_name: String,
-    /// Branch in which to create the table in. defaults to active branch
+    /// Branch to create the table in [default: active branch]
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Namespace the table is in. If not set, the default namespace in your account will be used
+    /// Namespace for the table
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
+    /// S3 URI pattern for parquet files to import (e.g. s3://bucket/path/*)
     #[arg(long)]
     pub search_uri: url::Url,
     /// Partition the table by the given columns
@@ -143,7 +143,7 @@ pub(crate) struct TableCreatePlanArgs {
     /// A filename to write the plan to
     #[arg(short = 'p', long)]
     pub save_plan: Option<PathBuf>,
-    /// Arguments to pass to the job
+    /// Extra arguments as key=value pairs (repeatable)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
 }
@@ -153,7 +153,7 @@ pub(crate) struct TableCreatePlanApplyArgs {
     /// Path to a plan YAML file; reads from stdin if not provided
     #[arg(long)]
     pub plan: Option<String>,
-    /// Arguments to pass to the job.
+    /// Extra arguments as key=value pairs (repeatable)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
     /// Set the job priority (1-10, where 10 is highest priority)
@@ -165,7 +165,7 @@ pub(crate) struct TableCreatePlanApplyArgs {
 pub(crate) struct TableCreateExternalArgs {
     /// Name of the external table to create
     pub table_name: String,
-    /// Branch in which to create the table (defaults to active branch)
+    /// Branch to create the table in [default: active branch]
     #[arg(short, long)]
     pub branch: Option<String>,
     /// Namespace for the table
@@ -183,7 +183,7 @@ pub(crate) struct TableCreateExternalArgs {
     /// Run the job in the background (only for parquet mode)
     #[arg(short, long)]
     pub detach: bool,
-    /// Arguments to pass to the job (only for parquet mode)
+    /// Extra arguments as key=value pairs, repeatable (only for parquet mode)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
     /// Set the job priority (1-10, where 10 is highest priority) (only for parquet mode)
@@ -195,10 +195,10 @@ pub(crate) struct TableCreateExternalArgs {
 pub(crate) struct TableImportArgs {
     /// Name of table where data will be imported into
     pub table_name: String,
-    /// Overwrite ref if needed. it defaults to active branch
+    /// Branch to import into [default: active branch]
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Namespace the table is in. If not set, the default namespace in your account will be used
+    /// Namespace for the table
     #[arg(short, long)]
     pub namespace: Option<String>,
     /// Uri search string e.g s3://bucket/path/a/*
@@ -216,7 +216,7 @@ pub(crate) struct TableImportArgs {
     /// Run the job in the background
     #[arg(short, long)]
     pub detach: bool,
-    /// Arguments to pass to the job.
+    /// Extra arguments as key=value pairs (repeatable)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
     /// Set the job priority (1-10, where 10 is highest priority)
@@ -231,7 +231,7 @@ pub(crate) struct TableRevertArgs {
     /// The ref (branch or tag) to revert the table from
     #[arg(short, long)]
     pub source_ref: String,
-    /// The branch to revert the table into (defaults to the active branch)
+    /// Branch to revert the table into [default: active branch]
     #[arg(short, long)]
     pub into_branch: String,
     /// Replace the destination table if it exists

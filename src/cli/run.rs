@@ -83,7 +83,7 @@ pub(crate) struct RunArgs {
     /// Run the job in the background instead of streaming logs
     #[arg(short, long)]
     pub detach: bool,
-    /// Arguments to pass to the job. Format: key=value
+    /// Extra arguments as key=value pairs (repeatable)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
     /// Set the job priority (1-10, where 10 is highest priority)

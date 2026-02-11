@@ -119,14 +119,15 @@ impl From<OnOff> for bool {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(next_help_heading = "Global Options")]
 pub(crate) struct GlobalArgs {
     /// Name of the profile to use
     #[arg(long, short = 'P', global = true)]
     pub profile: Option<String>,
-    /// Output format (options: tty, json)
+    /// Output format
     #[arg(long, short = 'O', global = true)]
     pub output: Option<Output>,
-    /// Timeout (in seconds) for client operations. (-1 = no timeout, default is command specific)
+    /// Timeout (in seconds) for client operations (-1 = no timeout)
     #[arg(long, global = true)]
     pub client_timeout: Option<i64>,
     /// Print verbose logs

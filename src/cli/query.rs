@@ -43,7 +43,7 @@ pub(crate) struct QueryArgs {
     /// Do not truncate output
     #[arg(long)]
     pub no_trunc: bool,
-    /// Arguments to pass to the job
+    /// Extra arguments as key=value pairs (repeatable)
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub arg: Vec<KeyValue>,
     /// Set the job priority (1-10, where 10 is highest priority)

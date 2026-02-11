@@ -18,7 +18,7 @@ pub(crate) enum Format {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct CommitArgs {
-    /// Ref or branch name to get the commits from; it defaults to the active branch
+    /// Ref or branch name to get commits from [default: active branch]
     pub ref_name: Option<String>,
     /// Filter by message content (string or a regex like "^something.*$")
     #[arg(long)]
