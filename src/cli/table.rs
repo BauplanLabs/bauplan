@@ -101,7 +101,7 @@ pub(crate) struct TableCreateArgs {
     pub namespace: Option<String>,
     /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
     #[arg(long)]
-    pub search_uri: Option<String>,
+    pub search_uri: url::Url,
     /// Partition the table by the given columns
     #[arg(long)]
     pub partitioned_by: Option<String>,
@@ -560,7 +560,7 @@ async fn handle_create_table(cli: &Cli, args: TableCreateArgs) -> anyhow::Result
         branch_name: branch,
         table_name: name,
         namespace,
-        search_string: search_uri.unwrap_or_default(),
+        search_string: search_uri.to_string(),
         table_replace: replace,
         table_partitioned_by: partitioned_by,
     };
