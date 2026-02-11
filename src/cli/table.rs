@@ -18,7 +18,7 @@ use tracing::{debug, info};
 use yansi::Paint;
 
 use crate::cli::{
-    Cli, KeyValue, Output, Priority, is_api_err_kind, run::job_request_common,
+    Cli, KeyValue, Output, Priority, format_grpc_status, is_api_err_kind, run::job_request_common,
     spinner::ProgressExt as _, with_rt,
 };
 
@@ -428,8 +428,13 @@ async fn apply_plan(
     progress: &indicatif::ProgressBar,
     timeout: time::Duration,
 ) -> anyhow::Result<()> {
-    let resp = client.table_create_plan_apply(req).await?.into_inner();
-    let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common else {
+    let resp = client
+        .table_create_plan_apply(req)
+        .await
+        .map_err(format_grpc_status)?;
+
+    let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.into_inner().job_response_common
+    else {
         bail!("response missing job ID");
     };
 
@@ -638,7 +643,7 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
         Ok(v) => v.into_inner(),
         Err(e) => {
             progress.finish_with_failed();
-            return Err(e.into());
+            return Err(format_grpc_status(e));
         }
     };
 
@@ -720,7 +725,7 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             progress.finish_and_clear();
-            return Err(anyhow!("{}", e.message()));
+            return Err(format_grpc_status(e));
         }
     };
 

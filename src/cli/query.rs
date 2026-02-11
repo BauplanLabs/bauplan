@@ -1,9 +1,10 @@
 use std::{fmt::Write as _, io::Write, path::PathBuf, time};
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Output, Priority, run::job_request_common, spinner::ProgressExt,
+    Cli, KeyValue, OnOff, Output, Priority, format_grpc_status, run::job_request_common,
+    spinner::ProgressExt,
 };
-use anyhow::{Context as _, anyhow, bail};
+use anyhow::{Context as _, bail};
 use arrow::{
     array::RecordBatch,
     datatypes::Schema,
@@ -100,7 +101,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             progress.finish_with_failed();
-            return Err(anyhow!("{}", e.message()));
+            return Err(format_grpc_status(e));
         }
     };
 

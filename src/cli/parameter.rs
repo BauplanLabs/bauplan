@@ -13,7 +13,7 @@ use resolve_path::PathResolveExt as _;
 use tabwriter::TabWriter;
 use yansi::Paint;
 
-use crate::cli::{Cli, with_rt, yaml};
+use crate::cli::{Cli, format_grpc_status, with_rt, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum ParameterTypeArg {
@@ -171,7 +171,8 @@ fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
                 let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(5));
                 let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
-                let (key_name, key) = with_rt(client.org_default_public_key(timeout))?;
+                let (key_name, key) =
+                    with_rt(client.org_default_public_key(timeout)).map_err(format_grpc_status)?;
                 ParameterValue::encrypt_secret(key_name, &key, project.project.id, v)?
             }
             _ => parse_parameter(param.param_type, &v)?,

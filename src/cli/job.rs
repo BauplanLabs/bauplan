@@ -2,6 +2,7 @@ use std::io::{Write as _, stdout};
 use std::time;
 
 use anyhow::bail;
+use bauplan::grpc::CancelJobError;
 use bauplan::grpc::{
     self, generated as commanderpb,
     job::{Job, JobState},
@@ -16,7 +17,7 @@ use tabwriter::TabWriter;
 use tonic::Request;
 use tracing::info;
 
-use crate::cli::{Cli, Output};
+use crate::cli::{Cli, Output, format_grpc_status};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum JobKindArg {
@@ -300,7 +301,11 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
     });
     request.set_timeout(timeout);
 
-    let response = client.get_jobs(request).await?.into_inner();
+    let response = client
+        .get_jobs(request)
+        .await
+        .map_err(format_grpc_status)?
+        .into_inner();
     let Some(job) = response.jobs.into_iter().next().map(Job::from) else {
         bail!("job not found: {}", args.job_id);
     };
@@ -368,7 +373,11 @@ async fn handle_logs(cli: &Cli, args: JobLogsArgs) -> anyhow::Result<()> {
     });
     request.set_timeout(timeout);
 
-    let response = client.get_logs(request).await?.into_inner();
+    let response = client
+        .get_logs(request)
+        .await
+        .map_err(format_grpc_status)?
+        .into_inner();
     let entries = response.events.into_iter().filter_map(|ev| {
         let commanderpb::runner_event::Event::RuntimeUserLog(log) = ev.event? else {
             return None;
@@ -444,7 +453,12 @@ async fn handle_stop(cli: &Cli, args: JobStopArgs) -> anyhow::Result<()> {
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(30));
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
-    client.cancel(&args.job_id).await?;
+    match client.cancel(&args.job_id).await {
+        Ok(()) => (),
+        Err(CancelJobError::Transport(status)) => return Err(format_grpc_status(status)),
+        Err(e) => return Err(e.into()),
+    }
+
     info!(job_id = args.job_id, "job cancelled");
     Ok(())
 }

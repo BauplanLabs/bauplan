@@ -25,7 +25,7 @@ use tracing::{debug, error, info};
 use yansi::Paint;
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Priority,
+    Cli, KeyValue, OnOff, Priority, format_grpc_status,
     parameter::{parse_parameter, resolve_project_dir},
     spinner::ProgressExt,
 };
@@ -289,7 +289,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             progress.finish_with_failed();
-            return Err(e.into());
+            return Err(format_grpc_status(e));
         }
     };
 
@@ -586,7 +586,10 @@ async fn resolve_parameters(
                 let (key_name, key) = if let Some((key_name, key)) = &key_cache {
                     (key_name.clone(), key)
                 } else {
-                    let (key_name, key) = client.org_default_public_key(timeout).await?;
+                    let (key_name, key) = client
+                        .org_default_public_key(timeout)
+                        .await
+                        .map_err(format_grpc_status)?;
                     let (_, key) = key_cache.insert((key_name.clone(), key));
 
                     (key_name, &*key)

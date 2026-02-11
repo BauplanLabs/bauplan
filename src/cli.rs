@@ -247,6 +247,10 @@ fn is_api_err_kind(e: &anyhow::Error, k: ApiErrorKind) -> bool {
     }
 }
 
+pub(crate) fn format_grpc_status(status: tonic::Status) -> anyhow::Error {
+    anyhow::anyhow!("{:?}: {}", status.code(), status.message())
+}
+
 async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
     let mut stdout = stdout().lock();
 
@@ -257,7 +261,8 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
 
     let resp = client
         .get_bauplan_info(commanderpb::GetBauplanInfoRequest::default())
-        .await?
+        .await
+        .map_err(format_grpc_status)?
         .into_inner();
 
     let profile_name = &cli.profile.name;
