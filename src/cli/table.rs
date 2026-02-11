@@ -131,7 +131,7 @@ pub(crate) struct TableCreatePlanArgs {
     pub namespace: Option<String>,
     /// Uri search string to s3 bucket containing parquet files to import e.g s3://bucket/path/a/*
     #[arg(long)]
-    pub search_uri: Option<String>,
+    pub search_uri: url::Url,
     /// Partition the table by the given columns
     #[arg(long)]
     pub partitioned_by: Option<String>,
@@ -196,13 +196,13 @@ pub(crate) struct TableImportArgs {
     /// Overwrite ref if needed. it defaults to active branch
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Namespace the table is in. If not set, the default namespace in your acconnt will be used
+    /// Namespace the table is in. If not set, the default namespace in your account will be used
     #[arg(short, long)]
     pub namespace: Option<String>,
     /// Uri search string e.g s3://bucket/path/a/*
     #[arg(long)]
-    pub search_uri: Option<String>,
-    /// Don't fail the command even if 1/N files failes to import
+    pub search_uri: url::Url,
+    /// Don't fail the command even if 1/N files fails to import
     #[arg(long)]
     pub continue_on_error: bool,
     /// Force importing of files without checking what was already imported. likely result in duplicate rows being imported
@@ -479,7 +479,7 @@ async fn handle_create_plan(cli: &Cli, args: TableCreatePlanArgs) -> anyhow::Res
         branch_name: branch,
         table_name: name,
         namespace,
-        search_string: search_uri.unwrap_or_default(),
+        search_string: search_uri.to_string(),
         table_replace: replace,
         table_partitioned_by: partitioned_by,
     };
@@ -635,7 +635,7 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
         branch_name: branch,
         table_name: name,
         namespace,
-        search_string: search_uri.unwrap_or_default(),
+        search_string: search_uri.to_string(),
         import_duplicate_files,
         best_effort,
         continue_on_error,
