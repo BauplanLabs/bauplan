@@ -321,7 +321,8 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     };
 
     if !resp.dag_ascii.is_empty() {
-        cli.multiprogress.suspend(|| print_dag(resp.dag_ascii))?
+        cli.multiprogress
+            .suspend(|| print_dag(&job_id, resp.dag_ascii))?
     }
 
     if detach {
@@ -339,7 +340,6 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     // One spinner for each task.
     let spinners: RefCell<BTreeMap<String, ProgressBar>> = RefCell::new(BTreeMap::new());
 
-    info!("view this job in the app: https://app.bauplanlabs.com/jobs/{job_id}");
     let show_previews = resp.preview != "off";
 
     // All events, collated for json output.
@@ -505,7 +505,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     res
 }
 
-fn print_dag(dag_ascii: String) -> anyhow::Result<()> {
+fn print_dag(job_id: &str, dag_ascii: String) -> anyhow::Result<()> {
     let mut stderr = stderr().lock();
 
     writeln!(&mut stderr, "{}", "=> DAG".dim())?;
@@ -513,6 +513,11 @@ fn print_dag(dag_ascii: String) -> anyhow::Result<()> {
     for line in dag_ascii.lines() {
         writeln!(&mut stderr, "{arrow} {line}")?;
     }
+
+    writeln!(
+        &mut stderr,
+        "{arrow} View this job in the app: https://app.bauplanlabs.com/jobs/{job_id}"
+    )?;
 
     Ok(())
 }

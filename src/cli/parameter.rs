@@ -108,7 +108,7 @@ fn list_parameters(args: ParameterLsArgs) -> anyhow::Result<()> {
     let project_dir = resolve_project_dir(args.project_dir.as_deref())?;
     let project = ProjectFile::from_dir(&project_dir)?;
 
-    // Validate that the parameters are valid.
+    // Validate all the parameters as we print them.
     for (name, param) in &project.parameters {
         if param.default.is_some() {
             param
