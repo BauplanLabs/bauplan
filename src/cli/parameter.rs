@@ -287,10 +287,13 @@ pub(crate) fn parse_parameter(
     param_type: ParameterType,
     value: &str,
 ) -> anyhow::Result<ParameterValue> {
+    let ctx = || format!("invalid value {value:?} for {param_type}");
     let parsed = match param_type {
-        ParameterType::Int => value.parse().map(ParameterValue::Int)?,
-        ParameterType::Float => value.parse().map(ParameterValue::Float)?,
-        ParameterType::Bool => parse_bool(value).map(ParameterValue::Bool)?,
+        ParameterType::Int => value.parse().map(ParameterValue::Int).with_context(ctx)?,
+        ParameterType::Float => value.parse().map(ParameterValue::Float).with_context(ctx)?,
+        ParameterType::Bool => parse_bool(value)
+            .map(ParameterValue::Bool)
+            .with_context(ctx)?,
         ParameterType::Str => ParameterValue::Str(value.to_string()),
         ParameterType::Vault => ParameterValue::Vault(value.to_string()),
         ParameterType::Secret => {

@@ -7,7 +7,7 @@ use std::{
     time,
 };
 
-use anyhow::bail;
+use anyhow::{Context as _, bail};
 use bauplan::{
     grpc::{
         self,
@@ -278,7 +278,9 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let project_dir = resolve_project_dir(project_dir.as_deref())?;
     let project = ProjectFile::from_dir(&project_dir)?;
 
-    let parameters = resolve_parameters(cli, &project, param).await?;
+    let parameters = resolve_parameters(cli, &project, param)
+        .await
+        .context("failed to resolve parameters")?;
     let zip_file = project.create_code_snapshot()?;
 
     let job_request_common = job_request_common(arg, priority);
@@ -350,7 +352,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     };
 
     let outcome = monitor_job_progress(
-        &cli,
+        cli,
         &mut client,
         job_id,
         "job",
@@ -617,7 +619,8 @@ async fn resolve_parameters(
 
                 ParameterValue::encrypt_secret(key_name, key, project.project.id, value)?
             } else {
-                parse_parameter(param.param_type, value)?
+                parse_parameter(param.param_type, value)
+                    .context(format!("failed to parse value for {name:?}"))?
             };
 
             resolved.push(commanderpb::Parameter {

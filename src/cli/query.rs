@@ -116,7 +116,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
 
     let mut flight_event = None;
     monitor_job_progress(
-        &cli,
+        cli,
         &mut client,
         job_id.clone(),
         "query",

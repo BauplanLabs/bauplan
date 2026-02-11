@@ -402,7 +402,7 @@ async fn create_plan(
     let mut res = Err(anyhow!("job completed without producing a plan"));
 
     monitor_job_progress(
-        &cli,
+        cli,
         client,
         job_id,
         "import planning job",
@@ -449,7 +449,7 @@ async fn apply_plan(
     futures::pin_mut!(ctrl_c);
 
     monitor_job_progress(
-        &cli,
+        cli,
         client,
         job_id,
         "import job",
@@ -757,7 +757,7 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
     futures::pin_mut!(ctrl_c);
 
     monitor_job_progress(
-        &cli,
+        cli,
         &mut client,
         job_id,
         "job",
