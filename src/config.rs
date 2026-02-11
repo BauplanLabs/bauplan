@@ -272,6 +272,8 @@ fn read_profile(p: &Path, name: &str) -> Result<ConfigProfile, Error> {
         return Err(Error::ProfileNotFound(name.to_string()));
     };
 
+    debug!(path = %p.display(), "loaded config file");
+
     Ok(config_profile)
 }
 

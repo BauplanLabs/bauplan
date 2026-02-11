@@ -14,7 +14,7 @@ use bauplan::{
 use commanderpb::runner_event::Event as RunnerEvent;
 use indicatif::ProgressBar;
 use tabwriter::TabWriter;
-use tracing::{debug, info};
+use tracing::info;
 use yansi::Paint;
 
 use crate::cli::{
@@ -386,8 +386,6 @@ async fn create_plan(
     let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common else {
         bail!("response missing job ID");
     };
-
-    debug!(job_id, "table plan job submitted");
 
     let ctrl_c = tokio::signal::ctrl_c();
     futures::pin_mut!(ctrl_c);

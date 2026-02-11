@@ -16,7 +16,6 @@ use bauplan::grpc::{self, generated as commanderpb};
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, TryStreamExt};
 use tabwriter::TabWriter;
-use tracing::debug;
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct QueryArgs {
@@ -109,7 +108,6 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         bail!("response missing job ID");
     };
 
-    debug!(job_id, "successfully planned query");
     progress.set_message("Executing query...");
 
     let ctrl_c = tokio::signal::ctrl_c();

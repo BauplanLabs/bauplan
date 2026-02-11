@@ -161,6 +161,8 @@ pub(crate) async fn monitor_job_progress(
     timeout: time::Duration,
     mut handler: impl FnMut(RunnerEvent),
 ) -> anyhow::Result<commanderpb::JobSuccess> {
+    info!(job_id, "started {thing}");
+
     let mut client_clone = client.clone();
     let mut kill_job = async |reason: &str| -> anyhow::Result<commanderpb::JobSuccess> {
         error!(job_id, "{reason}, cancelling {thing}");
@@ -296,8 +298,6 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     let Some(JobResponseCommon { job_id, .. }) = resp.job_response_common else {
         bail!("response missing job ID");
     };
-
-    debug!(job_id, "successfully planned job");
 
     if !resp.dag_ascii.is_empty() {
         cli.multiprogress.suspend(|| print_dag(resp.dag_ascii))?
