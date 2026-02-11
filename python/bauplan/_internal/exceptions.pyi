@@ -1,6 +1,8 @@
 import _typeshed
+import typing
 
 class BauplanHTTPError:
+    def __new__(cls, /, code: int, type: str, message: str) -> typing.Self: ...
     @property
     def code(self, /) -> int: ...
     @property

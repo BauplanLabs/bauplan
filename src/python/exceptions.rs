@@ -164,6 +164,19 @@ pub(crate) struct BauplanHTTPError {
     message: String,
 }
 
+#[pymethods]
+impl BauplanHTTPError {
+    #[new]
+    #[pyo3(signature = (code, r#type, message))]
+    fn new(code: u16, r#type: String, message: String) -> Self {
+        Self {
+            code,
+            r#type,
+            message,
+        }
+    }
+}
+
 impl BauplanHTTPError {
     fn into_err<T: PyTypeInfo>(self) -> PyErr {
         PyErr::new::<T, _>((self.code, self.r#type, self.message))
