@@ -5,6 +5,9 @@ requires-python = ">=3.11"
 [[package]]
 name = "bauplan"
 source = { editable = "." }
+dependencies = [
+    { name = "pyarrow" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -16,6 +19,7 @@ dev = [
 ]
 
 [package.metadata]
+requires-dist = [{ name = "pyarrow", specifier = ">=23.0.0" }]
 
 [package.metadata.requires-dev]
 dev = [
