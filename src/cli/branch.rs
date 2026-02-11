@@ -14,7 +14,7 @@ pub(crate) struct BranchArgs {
 
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum BranchCommand {
-    /// List all available branches (default action)
+    /// List branches (shows only your branches by default)
     #[clap(alias = "list")]
     Ls(BranchLsArgs),
     /// Create a new branch
@@ -133,7 +133,7 @@ fn list_branches(
     cli: &Cli,
     BranchLsArgs {
         branch_name,
-        all_zones: _,
+        all_zones,
         name,
         user,
         limit,
@@ -142,9 +142,19 @@ fn list_branches(
     // The branch_name positional arg acts as a name filter.
     let filter_by_name = name.as_deref().or(branch_name.as_deref());
 
+    // By default, only show the current user's branches. The --all-zones
+    // flag disables this, and --user overrides it.
+    let filter_by_user = if all_zones {
+        None
+    } else if let Some(ref user) = user {
+        Some(user.as_str())
+    } else {
+        Some(CURRENT_USER) // This is a special string the server understands.
+    };
+
     let req = GetBranches {
         filter_by_name,
-        filter_by_user: user.as_deref(),
+        filter_by_user,
     };
 
     let branches = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;

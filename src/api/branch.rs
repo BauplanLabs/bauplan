@@ -1,5 +1,9 @@
 //! API operations concerning branches.
 
+/// This special filter can be passed to `filter_by_user` to filter to the
+/// calling user.
+pub const CURRENT_USER: &str = "~";
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
