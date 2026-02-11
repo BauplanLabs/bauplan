@@ -15,7 +15,7 @@ use uuid::Uuid;
 #[derive(Debug, Error)]
 #[allow(missing_docs)]
 pub enum ProjectError {
-    #[error("no bauplan_project.yaml found")]
+    #[error("no bauplan_project.yaml found in {0}")]
     ProjectFileNotFound(PathBuf),
     #[error("both bauplan_project.yml and .yaml found in {0}; remove one to avoid ambiguity")]
     ProjectFileAmbiguous(PathBuf),
@@ -266,6 +266,9 @@ impl ProjectFile {
     /// Load a project file from a directory, looking for either `.yml` or `.yaml`.
     pub fn from_dir(dir: impl AsRef<Path>) -> Result<Self, ProjectError> {
         let dir = dir.as_ref();
+        // Ensure the directory exists before looking for files.
+        std::fs::metadata(dir)?;
+
         let yml_path = dir.join("bauplan_project.yml");
         let yaml_path = dir.join("bauplan_project.yaml");
 
