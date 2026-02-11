@@ -54,6 +54,9 @@ pub(crate) enum TableCommand {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableLsArgs {
+    /// Filter tables by name (exact match or regex)
+    #[arg(long)]
+    pub name: Option<String>,
     /// Namespace to get the table from
     #[arg(short, long)]
     pub namespace: Option<String>,
@@ -263,6 +266,7 @@ pub(crate) fn handle(cli: &Cli, args: TableArgs) -> anyhow::Result<()> {
 fn handle_list_tables(
     cli: &Cli,
     TableLsArgs {
+        name,
         namespace,
         r#ref,
         limit,
@@ -270,7 +274,7 @@ fn handle_list_tables(
 ) -> anyhow::Result<()> {
     let req = GetTables {
         at_ref: r#ref.as_deref().unwrap_or("main"),
-        filter_by_name: None,
+        filter_by_name: name.as_deref(),
         filter_by_namespace: namespace.as_deref(),
     };
 
