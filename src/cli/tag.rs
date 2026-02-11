@@ -2,7 +2,6 @@ use std::io::{Write as _, stdout};
 
 use bauplan::{ApiErrorKind, tag::*};
 use tabwriter::TabWriter;
-use tracing::info;
 
 use crate::cli::{Cli, Output, is_api_err_kind};
 
@@ -122,11 +121,11 @@ fn create_tag(
 
     let result = cli.roundtrip(req);
     match result {
-        Ok(tag) => {
-            info!(tag = tag.name, "created tag");
+        Ok(_) => {
+            eprintln!("Created tag {tag_name:?}");
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::TagExists) => {
-            info!(tag = tag_name, "tag already exists");
+            eprintln!("Tag {tag_name:?} already exists");
         }
         Err(e) => return Err(e),
     }
@@ -145,11 +144,11 @@ fn delete_tag(
 
     let result = cli.roundtrip(req);
     match result {
-        Ok(tag) => {
-            info!(tag = tag.name, "deleted tag");
+        Ok(_) => {
+            eprintln!("Deleted tag {tag_name:?}");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TagNotFound) => {
-            info!(tag = tag_name, "tag does not exist");
+            eprintln!("Tag {tag_name:?} does not exist");
         }
         Err(e) => return Err(e),
     }
@@ -169,13 +168,8 @@ fn rename_tag(
         new_name: &new_tag_name,
     };
 
-    let tag = cli.roundtrip(req)?;
-    info!(
-        tag = tag_name,
-        new_tag = tag.name,
-        hash = tag.hash,
-        "Renamed tag"
-    );
+    cli.roundtrip(req)?;
+    eprintln!("Renamed tag {tag_name:?} to {new_tag_name:?}");
 
     Ok(())
 }

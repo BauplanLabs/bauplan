@@ -1,5 +1,4 @@
 use std::io::{Write as _, stdout};
-use tracing::info;
 
 use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
 use tabwriter::TabWriter;
@@ -141,10 +140,10 @@ fn create_namespace(
     let result = cli.roundtrip(req);
     match result {
         Ok(_) => {
-            info!(namespace, branch, "namespace created");
+            eprintln!("Created namespace {namespace:?}");
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceExists) => {
-            info!(namespace, "Namespace already exists");
+            eprintln!("Namespace {namespace:?} already exists");
         }
         Err(e) => return Err(e),
     }
@@ -178,10 +177,10 @@ fn delete_namespace(
     let result = cli.roundtrip(req);
     match result {
         Ok(_) => {
-            info!(namespace, branch, "namespace deleted");
+            eprintln!("Deleted namespace {namespace:?}");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceNotFound) => {
-            info!(namespace, "Namespace does not exist");
+            eprintln!("Namespace {namespace:?} does not exist");
         }
         Err(e) => return Err(e),
     }

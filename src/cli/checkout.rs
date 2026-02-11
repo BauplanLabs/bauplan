@@ -1,6 +1,5 @@
 use anyhow::{Context as _, bail};
 use bauplan::branch::{CreateBranch, GetBranch};
-use tracing::info;
 
 use crate::cli::{Cli, yaml};
 
@@ -36,15 +35,14 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
         };
 
         cli.roundtrip(req).context("Failed to create branch")?;
-        info!(name = branch_name, "created branch");
+        eprintln!("Created branch {branch_name:?}");
     } else if from_ref.is_some() {
         bail!("--from-ref can only be used with -b");
     }
 
-    cli.roundtrip(GetBranch { name: &branch_name })?;
-    // if cli.roundtrip(GetBranch { name: &branch_name }).is_err() {
-    //     bail!("Branch {branch_name:?} doesn't exist or is inaccessible");
-    // }
+    if cli.roundtrip(GetBranch { name: &branch_name }).is_err() {
+        bail!("branch {branch_name:?} doesn't exist or is inaccessible");
+    }
 
     yaml::edit(&cli.profile.config_path, |doc| {
         let mut profile = yaml::mapping_at_path(doc, &["profiles", &cli.profile.name])?;

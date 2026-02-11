@@ -2,7 +2,7 @@ use std::io::{Write as _, stdout};
 
 use bauplan::{ApiErrorKind, branch::*, table::GetTables};
 use tabwriter::TabWriter;
-use tracing::info;
+use yansi::Paint;
 
 use crate::cli::{Cli, Output, is_api_err_kind};
 
@@ -241,15 +241,16 @@ fn create_branch(
 
     let result = cli.roundtrip(req);
     match result {
-        Ok(branch) => {
-            info!(branch = branch.name, "created branch");
-            info!(
-                branch = branch.name,
-                "To make it the active branch, run: bauplan checkout <branch>"
+        Ok(_) => {
+            eprintln!("Created branch \"{branch_name}\"");
+            eprintln!(
+                "{} To create and switch to a branch in one command, run:",
+                "TIP:".green()
             );
+            eprintln!("\tbauplan checkout -b {branch_name:?}");
         }
         Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::BranchExists) => {
-            info!(branch = branch_name, "Branch already exists");
+            eprintln!("Branch {branch_name:?} already exists");
         }
         Err(e) => return Err(e),
     }
@@ -268,11 +269,11 @@ fn delete_branch(
 
     let result = cli.roundtrip(req);
     match result {
-        Ok(branch) => {
-            info!(branch = branch.name, "deleted branch");
+        Ok(_) => {
+            eprintln!("Deleted branch \"{branch_name}\"");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::BranchNotFound) => {
-            info!(branch = branch_name, "Branch does not exist");
+            eprintln!("Branch \"{branch_name}\" does not exist");
         }
         Err(e) => return Err(e),
     }
@@ -299,8 +300,7 @@ fn merge_branch(
     };
 
     cli.roundtrip(req)?;
-    // Original prints to stdout, not log.
-    println!("Merged branch \"{branch_name}\" into \"{into_branch}\"");
+    eprintln!("Merged branch \"{branch_name}\" into \"{into_branch}\"");
 
     Ok(())
 }
@@ -317,13 +317,8 @@ fn rename_branch(
         new_name: &new_branch_name,
     };
 
-    let branch = cli.roundtrip(req)?;
-    info!(
-        branch = branch_name,
-        new_branch = branch.name,
-        hash = branch.hash,
-        "Renamed branch"
-    );
+    cli.roundtrip(req)?;
+    eprintln!("Renamed branch \"{branch_name}\" to \"{new_branch_name}\"");
 
     Ok(())
 }

@@ -371,10 +371,10 @@ fn handle_delete_table(
     let result = cli.roundtrip(req);
     match result {
         Ok(_) => {
-            info!(table = table_name, branch, "table deleted");
+            eprintln!("Deleted table {table_name:?}");
         }
         Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TableNotFound) => {
-            info!(table = table_name, "table does not exist");
+            eprintln!("Table {table_name:?} does not exist");
         }
         Err(e) => return Err(e),
     }
@@ -673,7 +673,7 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
     futures::pin_mut!(ctrl_c);
 
     if let Err(e) = monitor_job_progress(
-        &cli,
+        cli,
         &mut client,
         job_id,
         "job",
@@ -851,7 +851,7 @@ fn handle_revert_table(
 
     let r#ref = cli.roundtrip(req)?;
     tracing::debug!(?r#ref, "Created ref");
-    info!(source_ref, into_branch, "table reverted");
+    eprintln!("Reverted table {table_name:?} to {source_ref:?} in {into_branch:?}");
 
     Ok(())
 }
