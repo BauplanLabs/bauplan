@@ -38,6 +38,7 @@ impl Client {
     /// Returns:
     ///     An iterator over `Branch` objects.
     #[pyo3(signature = (
+        *,
         name: "str | None" = None,
         user: "str | None" = None,
         limit: "int | None" = None,
@@ -158,6 +159,7 @@ impl Client {
     #[pyo3(signature = (
         branch: "str | Branch",
         from_ref: "str | Ref",
+        *,
         if_not_exists: "bool" = false,
     ) -> "Branch")]
     fn create_branch(
@@ -253,6 +255,7 @@ impl Client {
     #[pyo3(signature = (
         source_ref: "str | Ref",
         into_branch: "str | Branch",
+        *,
         commit_message: "str | None" = None,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
@@ -310,6 +313,7 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         branch: "str | Branch",
+        *,
         if_exists: "bool" = false,
     ) -> "bool")]
     fn delete_branch(&mut self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {

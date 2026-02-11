@@ -412,6 +412,7 @@ impl Client {
     /// Returns:
     ///     An iterator over `Job` objects.
     #[pyo3(signature = (
+        *,
         all_users=None,
         filter_by_ids=None,
         filter_by_users=None,
@@ -522,7 +523,7 @@ impl Client {
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
-    #[pyo3(signature = (job, include_logs=None, include_snapshot=None) -> "JobContext")]
+    #[pyo3(signature = (job, *, include_logs=None, include_snapshot=None) -> "JobContext")]
     fn get_job_context(
         &mut self,
         job: JobArg,
@@ -567,7 +568,7 @@ impl Client {
     ///     jobs: list[Union[str, Job]]: A list of job IDs or Job instances.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
-    #[pyo3(signature = (jobs, include_logs=None, include_snapshot=None) -> "list[JobContext]")]
+    #[pyo3(signature = (jobs, *, include_logs=None, include_snapshot=None) -> "list[JobContext]")]
     fn get_job_contexts(
         &mut self,
         jobs: JobListArg,

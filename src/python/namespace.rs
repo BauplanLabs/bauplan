@@ -59,6 +59,7 @@ impl Client {
     ///     A Namespace object.
     #[pyo3(signature = (
         r#ref: "str | Ref",
+        *,
         filter_by_name: "str | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Namespace]")]
@@ -155,6 +156,7 @@ impl Client {
     #[pyo3(signature = (
         namespace: "str | Namespace",
         branch: "str | Branch",
+        *,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
         if_not_exists: "bool" = false,
@@ -233,6 +235,7 @@ impl Client {
     #[pyo3(signature = (
         namespace: "str | Namespace",
         branch: "str | Branch",
+        *,
         if_exists: "bool" = false,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,

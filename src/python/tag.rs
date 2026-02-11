@@ -29,6 +29,7 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
+        *,
         filter_by_name: "str | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Tag]")]
@@ -141,6 +142,7 @@ impl Client {
     #[pyo3(signature = (
         tag: "str | Tag",
         from_ref: "str | Ref",
+        *,
         if_not_exists: "bool" = false,
     ) -> "Tag")]
     fn create_tag(&mut self, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
@@ -224,6 +226,7 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str | Tag",
+        *,
         if_exists: "bool" = false,
     ) -> "bool")]
     fn delete_tag(&mut self, tag: TagArg, if_exists: bool) -> PyResult<bool> {

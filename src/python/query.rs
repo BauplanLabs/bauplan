@@ -218,6 +218,7 @@ impl Client {
     ///     The query results as a `pyarrow.Table`.
     #[pyo3(signature = (
         query: "str",
+        *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
@@ -291,6 +292,7 @@ impl Client {
     ///     A dictionary representing a row of query results.
     #[pyo3(signature = (
         query: "str",
+        *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
@@ -354,6 +356,7 @@ impl Client {
     #[pyo3(signature = (
         path: "str",
         query: "str",
+        *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
@@ -423,6 +426,7 @@ impl Client {
     #[pyo3(signature = (
         path: "str",
         query: "str",
+        *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "str | None" = None,
@@ -493,6 +497,7 @@ impl Client {
     #[pyo3(signature = (
         path: "str",
         query: "str",
+        *,
         file_format: "str | None" = None,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
@@ -592,6 +597,7 @@ impl Client {
     ///     The scan results as a `pyarrow.Table`.
     #[pyo3(signature = (
         table: "str | Table",
+        *,
         r#ref: "str | Ref | None" = None,
         columns: "list[str] | None" = None,
         filters: "str | None" = None,
@@ -615,7 +621,7 @@ impl Client {
         namespace: Option<&str>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
-        client_timeout: Option<i64>,
+        client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
         use sql_query_builder as sql;
 
@@ -643,7 +649,6 @@ impl Client {
         }
 
         let sql = query.to_string();
-        let client_timeout = client_timeout.map(|t| t as u64);
 
         rt().block_on(async {
             let (schema, stream) = self

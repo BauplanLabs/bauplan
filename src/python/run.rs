@@ -223,6 +223,7 @@ impl Client {
     ///     `bauplan.state.RunState`: The state of the run.
     #[pyo3(signature = (
         project_dir: "str",
+        *,
         r#ref: "str | Ref | None" = None,
         namespace: "str | Namespace | None" = None,
         parameters: "dict[str, str | int | float | bool | None] | None" = None,

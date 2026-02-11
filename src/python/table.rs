@@ -83,6 +83,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         search_uri: "str",
+        *,
         branch: "str | Branch | None" = None,
         namespace: "str | Namespace | None" = None,
         partitioned_by: "str | None" = None,
@@ -220,6 +221,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         search_uri: "str",
+        *,
         branch: "str | Branch | None" = None,
         namespace: "str | Namespace | None" = None,
         partitioned_by: "str | None" = None,
@@ -338,6 +340,7 @@ impl Client {
     ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
     #[pyo3(signature = (
         plan: "TableCreationPlanState | str",
+        *,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -433,6 +436,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         search_uri: "str",
+        *,
         branch: "str | Branch | None" = None,
         namespace: "str | Namespace | None" = None,
         continue_on_error: "bool" = false,
@@ -561,6 +565,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         search_patterns: "list[str]",
+        *,
         branch: "str | Branch | None" = None,
         namespace: "str | Namespace | None" = None,
         overwrite: "bool" = false,
@@ -663,6 +668,7 @@ impl Client {
     ///     An iterator over `Table` objects.
     #[pyo3(signature = (
         r#ref: "str | Ref",
+        *,
         filter_by_name: "str | None" = None,
         filter_by_namespace: "str | None" = None,
         limit: "int | None" = None,
@@ -729,6 +735,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         r#ref: "str | Ref",
+        *,
         namespace: "str | None" = None,
     ) -> "Table")]
     fn get_table(
@@ -776,6 +783,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         r#ref: "str | Ref",
+        *,
         namespace: "str | None" = None,
     ) -> "bool")]
     fn has_table(
@@ -834,6 +842,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         branch: "str | Branch",
+        *,
         namespace: "str | None" = None,
         if_exists: "bool" = false,
         commit_body: "str | None" = None,
@@ -914,6 +923,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         metadata_json_uri: "str",
+        *,
         namespace: "str | Namespace | None" = None,
         branch: "str | Branch | None" = None,
         overwrite: "bool | None" = None,

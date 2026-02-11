@@ -35,6 +35,7 @@ impl Client {
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (
         r#ref: "str | Ref",
+        *,
         filter_by_message: "str | None" = None,
         filter_by_author_username: "str | None" = None,
         filter_by_author_name: "str | None" = None,
