@@ -192,6 +192,17 @@ pub struct Job {
     pub runner: String,
 }
 
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl Job {
+    fn __repr__(&self) -> String {
+        format!(
+            "Job(id={:?}, kind={:?}, status={:?}, user={:?})",
+            self.id, self.kind, self.status, self.user,
+        )
+    }
+}
+
 impl From<commanderpb::JobInfo> for Job {
     fn from(info: commanderpb::JobInfo) -> Self {
         Self {

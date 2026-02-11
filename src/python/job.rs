@@ -225,6 +225,16 @@ pub(crate) struct JobLogEvent {
     pub message: String,
 }
 
+#[pymethods]
+impl JobLogEvent {
+    fn __repr__(&self) -> String {
+        format!(
+            "JobLogEvent(level={:?}, message={:?})",
+            self.level, self.message
+        )
+    }
+}
+
 impl TryFrom<commanderpb::RuntimeLogEvent> for JobLogEvent {
     type Error = PyErr;
 

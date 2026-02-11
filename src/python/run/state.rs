@@ -25,6 +25,16 @@ pub(crate) struct RunExecutionContext {
     pub detach: bool,
 }
 
+#[pymethods]
+impl RunExecutionContext {
+    fn __repr__(&self) -> String {
+        format!(
+            "RunExecutionContext(ref={:?}, namespace={:?})",
+            self.r#ref, self.namespace,
+        )
+    }
+}
+
 impl fmt::Debug for RunExecutionContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RunExecutionContext")
@@ -66,6 +76,13 @@ pub(crate) struct RunState {
 
 #[pymethods]
 impl RunState {
+    fn __repr__(&self) -> String {
+        format!(
+            "RunState(job_id={:?}, status={:?}, error={:?})",
+            self.job_id, self.job_status, self.error,
+        )
+    }
+
     /// Duration in seconds, or None if the run hasn't ended.
     #[getter]
     fn duration(&self) -> Option<f64> {
@@ -103,6 +120,16 @@ pub(crate) struct TableCreationPlanState {
     pub files_to_be_imported: Vec<String>,
 }
 
+#[pymethods]
+impl TableCreationPlanState {
+    fn __repr__(&self) -> String {
+        format!(
+            "TableCreationPlanState(job_id={:?}, status={:?}, can_auto_apply={})",
+            self.job_id, self.job_status, self.can_auto_apply,
+        )
+    }
+}
+
 impl fmt::Debug for TableCreationPlanState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TableCreationPlanState")
@@ -120,6 +147,16 @@ pub(crate) struct TableCreatePlanApplyState {
     pub job_id: Option<String>,
     pub job_status: Option<String>,
     pub error: Option<String>,
+}
+
+#[pymethods]
+impl TableCreatePlanApplyState {
+    fn __repr__(&self) -> String {
+        format!(
+            "TableCreatePlanApplyState(job_id={:?}, status={:?})",
+            self.job_id, self.job_status,
+        )
+    }
 }
 
 impl fmt::Debug for TableCreatePlanApplyState {
@@ -155,6 +192,16 @@ pub(crate) struct TableDataImportState {
     pub error: Option<String>,
 }
 
+#[pymethods]
+impl TableDataImportState {
+    fn __repr__(&self) -> String {
+        format!(
+            "TableDataImportState(job_id={:?}, status={:?})",
+            self.job_id, self.job_status,
+        )
+    }
+}
+
 impl fmt::Debug for TableDataImportState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TableDataImportState")
@@ -179,6 +226,16 @@ pub(crate) struct ExternalTableCreateState {
     pub ctx: ExternalTableCreateContext,
     pub job_status: Option<String>,
     pub error: Option<String>,
+}
+
+#[pymethods]
+impl ExternalTableCreateState {
+    fn __repr__(&self) -> String {
+        format!(
+            "ExternalTableCreateState(job_id={:?}, status={:?})",
+            self.job_id, self.job_status,
+        )
+    }
 }
 
 impl fmt::Debug for ExternalTableCreateState {

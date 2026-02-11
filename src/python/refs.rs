@@ -85,6 +85,28 @@ impl std::fmt::Display for PyRef {
     }
 }
 
+#[pymethods]
+impl PyRef {
+    fn __repr__(&self) -> String {
+        format!(
+            "{}(name={:?}, hash={:?})",
+            self.r#type.class_name(),
+            self.name,
+            self.hash,
+        )
+    }
+}
+
+impl PyRefType {
+    fn class_name(self) -> &'static str {
+        match self {
+            PyRefType::Branch => "Branch",
+            PyRefType::Tag => "Tag",
+            PyRefType::Detached => "DetachedRef",
+        }
+    }
+}
+
 /// A branch reference returned by the API.
 #[derive(Debug, Clone, Copy)]
 #[pyclass(name = "Branch", module = "bauplan", extends = PyRef)]

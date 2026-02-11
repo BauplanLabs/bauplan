@@ -76,6 +76,28 @@ pub struct Table {
     pub snapshots: Option<u32>,
 }
 
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl Table {
+    fn __repr__(&self) -> String {
+        format!(
+            "Table(name={:?}, namespace={:?}, kind={})",
+            self.name, self.namespace, self.kind,
+        )
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl TableField {
+    fn __repr__(&self) -> String {
+        format!(
+            "TableField(name={:?}, type={:?}, required={})",
+            self.name, self.r#type, self.required,
+        )
+    }
+}
+
 /// Load the schema and other metadata for a table.
 #[derive(Debug, Clone)]
 pub struct GetTable<'a> {

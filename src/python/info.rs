@@ -48,10 +48,49 @@ pub(crate) struct PyUserInfo {
 }
 
 #[pymethods]
+impl PyRunnerNodeInfo {
+    fn __repr__(&self) -> String {
+        format!("RunnerNodeInfo(hostname={:?})", self.hostname)
+    }
+}
+
+#[pymethods]
+impl PyOrganizationInfo {
+    fn __repr__(&self) -> String {
+        format!("OrganizationInfo(id={:?}, name={:?})", self.id, self.name,)
+    }
+}
+
+#[pymethods]
 impl PyUserInfo {
     #[getter]
     fn full_name(&self) -> String {
         format!("{} {}", self.first_name, self.last_name)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "UserInfo(username={:?}, name={:?})",
+            self.username,
+            self.full_name(),
+        )
+    }
+}
+
+#[pymethods]
+impl PyInfoState {
+    fn __repr__(&self) -> String {
+        let user = self
+            .user
+            .as_ref()
+            .map(|u| u.username.as_str())
+            .unwrap_or_default();
+        let org = self
+            .organization
+            .as_ref()
+            .map(|o| o.name.as_str())
+            .unwrap_or_default();
+        format!("InfoState(user={user:?}, organization={org:?})")
     }
 }
 

@@ -20,6 +20,14 @@ pub struct Namespace {
 
 impl DataResponse for Namespace {}
 
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl Namespace {
+    fn __repr__(&self) -> String {
+        format!("Namespace(name={:?})", self.name)
+    }
+}
+
 /// Load a single namespace.
 #[derive(Debug, Clone)]
 pub struct GetNamespace<'a> {

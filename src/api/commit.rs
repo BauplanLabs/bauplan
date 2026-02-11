@@ -87,6 +87,30 @@ impl Commit {
     }
 }
 
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl Commit {
+    fn __repr__(&self) -> String {
+        let hash = self.hash();
+        let short_hash = &hash[..hash.len().min(8)];
+        let subject = self.subject().unwrap_or_default();
+        let author = self.author().map(|a| a.name.as_str()).unwrap_or_default();
+        format!("Commit(hash={short_hash:?}, author={author:?}, message={subject:?})")
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl Actor {
+    fn __repr__(&self) -> String {
+        if let Some(email) = &self.email {
+            format!("Actor(name={:?}, email={:?})", self.name, email)
+        } else {
+            format!("Actor(name={:?})", self.name)
+        }
+    }
+}
+
 /// Options for modifying a commit operation.
 #[derive(Default, Debug, Clone, Serialize)]
 pub struct CommitOptions<'a> {
