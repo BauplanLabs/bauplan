@@ -76,7 +76,12 @@ impl Client {
         info!(job_id, "running job");
 
         let mut client = self.grpc.clone();
-        let stream = client.monitor_job(job_id.to_owned(), timeout);
+        let mut req = tonic::Request::new(grpc::generated::SubscribeLogsRequest {
+            job_id: job_id.to_owned(),
+        });
+        req.set_timeout(timeout);
+
+        let stream = client.monitor_job(req);
         futures::pin_mut!(stream);
 
         loop {
@@ -93,7 +98,14 @@ impl Client {
                         || e.code() == tonic::Code::DeadlineExceeded =>
                 {
                     error!(job_id, "timeout reached, cancelling job");
-                    if let Err(e) = self.grpc.cancel(job_id).await {
+                    let cancel_req = commanderpb::CancelJobRequest {
+                        job_id: Some(commanderpb::JobId {
+                            id: job_id.to_owned(),
+                            ..Default::default()
+                        }),
+                    };
+
+                    if let Err(e) = self.grpc.cancel(cancel_req).await {
                         return Err(job_err(format!("failed to cancel job: {e}")));
                     }
                     return Err(job_err("client timed out"));
@@ -273,7 +285,6 @@ impl Client {
 
         let parameters = rt().block_on(resolve_job_parameters(
             &mut self.grpc,
-            self.client_timeout,
             &project,
             parameters.unwrap_or_default(),
         ))?;
@@ -352,7 +363,6 @@ impl Client {
 
 async fn resolve_job_parameters(
     grpc: &mut grpc::Client,
-    timeout: time::Duration,
     project: &ProjectFile,
     mut parameters: HashMap<String, Option<RawParameterValue>>,
 ) -> PyResult<Vec<commanderpb::Parameter>> {
@@ -386,7 +396,7 @@ async fn resolve_job_parameters(
                     (key_name.clone(), key)
                 } else {
                     let (key_name, key) = grpc
-                        .org_default_public_key(timeout)
+                        .org_default_public_key(commanderpb::GetBauplanInfoRequest::default())
                         .await
                         .map_err(job_err)?;
                     let (_, key) = key_cache.insert((key_name.clone(), key));

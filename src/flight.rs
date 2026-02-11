@@ -25,6 +25,7 @@ pub async fn fetch_flight_results(
     auth_token: String,
     client_timeout: time::Duration,
     row_limit: Option<u64>,
+    traceparent: Option<&str>,
 ) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>>)> {
     let channel = Channel::builder(endpoint)
         .tls_config(ClientTlsConfig::new().with_native_roots())
@@ -34,7 +35,7 @@ pub async fn fetch_flight_results(
 
     // TODO: this is only supported by the legacy infra, and should be removed.
     let criteria = json!({"max_rows": row_limit}).to_string();
-    let (schema, batches) = fetch(channel, auth_token, criteria).await?;
+    let (schema, batches) = fetch(channel, auth_token, criteria, traceparent).await?;
 
     // We'll enforce the row limit on the client side. To do that, we allocate
     // rows from the total to each RecordBatch, using an atomic int to track it.
@@ -68,9 +69,13 @@ async fn fetch(
     channel: Channel,
     auth_token: String,
     serialized_criteria: String,
+    traceparent: Option<&str>,
 ) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>>)> {
     let mut client = FlightClient::new(channel.clone());
     client.add_header("authorization", &format!("Bearer {auth_token}"))?;
+    if let Some(tp) = traceparent {
+        client.add_header("traceparent", tp)?;
+    }
 
     // This returns a list of "flights", each of which have 0..N endpoints.
     let mut flights_stream = client.list_flights(serialized_criteria).await?.peekable();

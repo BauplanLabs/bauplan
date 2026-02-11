@@ -18,8 +18,10 @@ use tracing::info;
 use yansi::Paint;
 
 use crate::cli::{
-    Cli, KeyValue, Output, Priority, format_grpc_status, is_api_err_kind, run::job_request_common,
-    spinner::ProgressExt as _, with_rt,
+    Cli, KeyValue, Output, Priority, format_grpc_status, is_api_err_kind,
+    run::{job_request_common, monitor_job_progress},
+    spinner::ProgressExt as _,
+    with_rt,
 };
 
 #[derive(Debug, clap::Args)]
@@ -278,7 +280,7 @@ fn handle_list_tables(
         filter_by_namespace: namespace.as_deref(),
     };
 
-    let tables = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+    let tables = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
@@ -315,7 +317,7 @@ fn handle_get_table(
         namespace: None,
     };
 
-    let resp = super::roundtrip(cli, req)?;
+    let resp = cli.roundtrip(req)?;
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
             serde_json::to_writer(stdout(), &resp)?;
@@ -366,7 +368,7 @@ fn handle_delete_table(
         },
     };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(_) => {
             info!(table = table_name, branch, "table deleted");
@@ -381,12 +383,15 @@ fn handle_delete_table(
 }
 
 async fn create_plan(
+    cli: &Cli,
     client: &mut grpc::Client,
     req: commanderpb::TableCreatePlanRequest,
     progress: ProgressBar,
-    timeout: time::Duration,
 ) -> anyhow::Result<(String, bool)> {
-    let resp = client.table_create_plan(req).await?.into_inner();
+    let resp = client
+        .table_create_plan(cli.traced(req))
+        .await?
+        .into_inner();
     let Some(commanderpb::JobResponseCommon { job_id, .. }) = resp.job_response_common else {
         bail!("response missing job ID");
     };
@@ -396,13 +401,13 @@ async fn create_plan(
 
     let mut res = Err(anyhow!("job completed without producing a plan"));
 
-    super::run::monitor_job_progress(
+    monitor_job_progress(
+        &cli,
         client,
         job_id,
         "import planning job",
         progress.clone(),
         ctrl_c,
-        timeout,
         |event| {
             if let RunnerEvent::TableCreatePlanDoneEvent(ev) = event {
                 if !ev.error_message.is_empty() {
@@ -425,13 +430,13 @@ async fn create_plan(
 }
 
 async fn apply_plan(
+    cli: &Cli,
     client: &mut grpc::Client,
     req: commanderpb::TableCreatePlanApplyRequest,
     progress: &indicatif::ProgressBar,
-    timeout: time::Duration,
 ) -> anyhow::Result<()> {
     let resp = client
-        .table_create_plan_apply(req)
+        .table_create_plan_apply(cli.traced(req))
         .await
         .map_err(format_grpc_status)?;
 
@@ -443,13 +448,13 @@ async fn apply_plan(
     let ctrl_c = tokio::signal::ctrl_c();
     futures::pin_mut!(ctrl_c);
 
-    super::run::monitor_job_progress(
+    monitor_job_progress(
+        &cli,
         client,
         job_id,
         "import job",
         progress.clone(),
         ctrl_c,
-        timeout,
         |_| {},
     )
     .await?;
@@ -486,7 +491,7 @@ async fn handle_create_plan(cli: &Cli, args: TableCreatePlanArgs) -> anyhow::Res
 
     let progress = cli.new_spinner().with_message("Creating plan...");
 
-    let yaml = match create_plan(&mut client, req, progress.clone(), timeout).await {
+    let yaml = match create_plan(cli, &mut client, req, progress.clone()).await {
         Ok((yaml, _)) => yaml,
         Err(e) => {
             progress.finish_with_failed();
@@ -535,7 +540,7 @@ async fn handle_apply_plan(cli: &Cli, args: TableCreatePlanApplyArgs) -> anyhow:
 
     let progress = cli.new_spinner().with_message("Applying plan...");
 
-    if let Err(e) = apply_plan(&mut client, req, &progress, timeout).await {
+    if let Err(e) = apply_plan(cli, &mut client, req, &progress).await {
         progress.finish_with_failed();
         return Err(e);
     }
@@ -576,7 +581,7 @@ async fn handle_create_table(cli: &Cli, args: TableCreateArgs) -> anyhow::Result
     let progress = cli.new_spinner().with_message("Creating plan...");
 
     let (yaml, can_auto_apply) =
-        match create_plan(&mut client, plan_req, progress.clone(), timeout).await {
+        match create_plan(cli, &mut client, plan_req, progress.clone()).await {
             Ok(v) => v,
             Err(e) => {
                 progress.finish_with_failed();
@@ -602,7 +607,7 @@ async fn handle_create_table(cli: &Cli, args: TableCreateArgs) -> anyhow::Result
         plan_yaml: yaml,
     };
 
-    if let Err(e) = apply_plan(&mut client, apply_req, &progress, timeout).await {
+    if let Err(e) = apply_plan(cli, &mut client, apply_req, &progress).await {
         progress.finish_with_failed();
         return Err(e);
     }
@@ -645,7 +650,7 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
 
     let progress = cli.new_spinner().with_message("Importing data...");
 
-    let resp = match client.table_data_import(req).await {
+    let resp = match client.table_data_import(cli.traced(req)).await {
         Ok(v) => v.into_inner(),
         Err(e) => {
             progress.finish_with_failed();
@@ -667,13 +672,13 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
     let ctrl_c = tokio::signal::ctrl_c();
     futures::pin_mut!(ctrl_c);
 
-    if let Err(e) = super::run::monitor_job_progress(
+    if let Err(e) = monitor_job_progress(
+        &cli,
         &mut client,
         job_id,
         "job",
         progress.clone(),
         ctrl_c,
-        timeout,
         |_| {},
     )
     .await
@@ -727,7 +732,7 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
 
     let progress = cli.new_spinner().with_message("Creating external table...");
 
-    let resp = match client.external_table_create(req).await {
+    let resp = match client.external_table_create(cli.traced(req)).await {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             progress.finish_and_clear();
@@ -751,13 +756,13 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
     let ctrl_c = tokio::signal::ctrl_c();
     futures::pin_mut!(ctrl_c);
 
-    super::run::monitor_job_progress(
+    monitor_job_progress(
+        &cli,
         &mut client,
         job_id,
         "job",
         progress.clone(),
         ctrl_c,
-        timeout,
         |_| {},
     )
     .await?;
@@ -809,7 +814,7 @@ fn handle_create_external_from_metadata(
         namespace: &namespace,
     };
 
-    let resp = super::roundtrip(cli, req)?;
+    let resp = cli.roundtrip(req)?;
 
     let table_id = resp.metadata.uuid();
     info!(
@@ -844,7 +849,7 @@ fn handle_revert_table(
         },
     };
 
-    let r#ref = super::roundtrip(cli, req)?;
+    let r#ref = cli.roundtrip(req)?;
     tracing::debug!(?r#ref, "Created ref");
     info!(source_ref, into_branch, "table reverted");
 

@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::{Context as _, anyhow, bail};
 use bauplan::{
-    grpc,
+    grpc::{self, generated as commanderpb},
     project::{ParameterDefault, ParameterType, ParameterValue, ProjectFile},
 };
 use resolve_path::PathResolveExt as _;
@@ -171,8 +171,9 @@ fn set_parameter(cli: &Cli, args: ParameterSetArgs) -> anyhow::Result<()> {
                 let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(5));
                 let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
+                let req = cli.traced(commanderpb::GetBauplanInfoRequest::default());
                 let (key_name, key) =
-                    with_rt(client.org_default_public_key(timeout)).map_err(format_grpc_status)?;
+                    with_rt(client.org_default_public_key(req)).map_err(format_grpc_status)?;
                 ParameterValue::encrypt_secret(key_name, &key, project.project.id, v)?
             }
             _ => parse_parameter(param.param_type, &v)?,

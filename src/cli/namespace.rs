@@ -92,7 +92,7 @@ fn list_namespaces(
         filter_by_name: namespace.as_deref(),
     };
 
-    let namespaces = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+    let namespaces = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
@@ -138,7 +138,7 @@ fn create_namespace(
         },
     };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(_) => {
             info!(namespace, branch, "namespace created");
@@ -175,7 +175,7 @@ fn delete_namespace(
         },
     };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(_) => {
             info!(namespace, branch, "namespace deleted");

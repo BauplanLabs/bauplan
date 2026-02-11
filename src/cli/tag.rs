@@ -79,7 +79,7 @@ fn list_tags(cli: &Cli, TagLsArgs { name, limit }: TagLsArgs) -> anyhow::Result<
         filter_by_name: name.as_deref(),
     };
 
-    let tags = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+    let tags = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
@@ -120,7 +120,7 @@ fn create_tag(
         from_ref,
     };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(tag) => {
             info!(tag = tag.name, "created tag");
@@ -143,7 +143,7 @@ fn delete_tag(
 ) -> anyhow::Result<()> {
     let req = DeleteTag { name: &tag_name };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(tag) => {
             info!(tag = tag.name, "deleted tag");
@@ -169,7 +169,7 @@ fn rename_tag(
         new_name: &new_tag_name,
     };
 
-    let tag = super::roundtrip(cli, req)?;
+    let tag = cli.roundtrip(req)?;
     info!(
         tag = tag_name,
         new_tag = tag.name,

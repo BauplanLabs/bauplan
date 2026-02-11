@@ -610,7 +610,13 @@ impl Client {
     ///     id: A job ID
     #[pyo3(signature = (id, /) -> "None")]
     fn cancel_job(&mut self, id: &str) -> PyResult<()> {
-        rt().block_on(self.grpc.cancel(id))
+        let req = commanderpb::CancelJobRequest {
+            job_id: Some(commanderpb::JobId {
+                id: id.to_owned(),
+                ..Default::default()
+            }),
+        };
+        rt().block_on(self.grpc.cancel(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         Ok(())

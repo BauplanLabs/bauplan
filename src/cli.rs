@@ -24,6 +24,8 @@ use bauplan::{
     grpc::{self, generated as commanderpb},
 };
 use clap::{Parser, Subcommand};
+use opentelemetry::trace::{SpanId, TraceFlags, TraceId};
+use tracing::debug;
 use yansi::Paint as _;
 
 #[derive(Debug, Parser)]
@@ -168,6 +170,7 @@ pub(crate) struct Cli {
     pub(crate) timeout: Option<time::Duration>,
     pub(crate) agent: ureq::Agent,
     pub(crate) multiprogress: indicatif::MultiProgress,
+    pub(crate) trace_id: TraceId,
 }
 
 pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow::Result<()> {
@@ -200,12 +203,16 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
     cfg = cfg.timeout_global(timeout);
     let agent = ureq::Agent::new_with_config(cfg.build());
 
+    let trace_id = TraceId::from(rand::random::<u128>());
+    debug!(%trace_id, command = ?args.command, "cli invocation");
+
     let cli = Cli {
         profile,
         global: args.global,
         timeout,
         agent,
         multiprogress,
+        trace_id,
     };
 
     match args.command {
@@ -234,10 +241,36 @@ fn with_rt<T, F: Future<Output = T>>(f: F) -> T {
     rt.block_on(f)
 }
 
-fn roundtrip<T: ApiRequest>(cli: &Cli, req: T) -> anyhow::Result<T::Response> {
-    let resp = cli.agent.run(req.into_request(&cli.profile)?)?;
-    let resp = <T::Response as ApiResponse>::from_response(resp.map(ureq::Body::into_reader))?;
-    Ok(resp)
+impl Cli {
+    /// Formats a W3C `traceparent` header value using this invocation's trace
+    /// ID and a fresh span ID.
+    /// See <https://www.w3.org/TR/trace-context/#traceparent-header>.
+    pub(crate) fn traceparent(&self) -> String {
+        let span_id = SpanId::from(rand::random::<u64>());
+        format!(
+            "00-{}-{}-{:02x}",
+            self.trace_id,
+            span_id,
+            TraceFlags::SAMPLED.to_u8()
+        )
+    }
+
+    pub(crate) fn roundtrip<T: ApiRequest>(&self, req: T) -> anyhow::Result<T::Response> {
+        let mut req = req.into_request(&self.profile)?;
+        req.headers_mut()
+            .insert("traceparent", self.traceparent().parse().unwrap());
+        let resp = self.agent.run(req)?;
+        let resp = <T::Response as ApiResponse>::from_response(resp.map(ureq::Body::into_reader))?;
+        Ok(resp)
+    }
+
+    /// Wraps a gRPC request message with a `traceparent` metadata header.
+    pub(crate) fn traced<T>(&self, msg: T) -> tonic::Request<T> {
+        let mut req = tonic::Request::new(msg);
+        req.metadata_mut()
+            .insert("traceparent", self.traceparent().parse().unwrap());
+        req
+    }
 }
 
 fn is_api_err_kind(e: &anyhow::Error, k: ApiErrorKind) -> bool {
@@ -260,7 +293,7 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
     )?;
 
     let resp = client
-        .get_bauplan_info(commanderpb::GetBauplanInfoRequest::default())
+        .get_bauplan_info(cli.traced(commanderpb::GetBauplanInfoRequest::default()))
         .await
         .map_err(format_grpc_status)?
         .into_inner();

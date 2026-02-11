@@ -35,14 +35,14 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
             from_ref,
         };
 
-        super::roundtrip(cli, req).context("Failed to create branch")?;
+        cli.roundtrip(req).context("Failed to create branch")?;
         info!(name = branch_name, "created branch");
     } else if from_ref.is_some() {
         bail!("--from-ref can only be used with -b");
     }
 
-    super::roundtrip(cli, GetBranch { name: &branch_name })?;
-    // if super::roundtrip(cli, GetBranch { name: &branch_name }).is_err() {
+    cli.roundtrip(GetBranch { name: &branch_name })?;
+    // if cli.roundtrip(GetBranch { name: &branch_name }).is_err() {
     //     bail!("Branch {branch_name:?} doesn't exist or is inaccessible");
     // }
 

@@ -14,7 +14,7 @@ use yansi::Paint as _;
 use commanderpb::runtime_log_event::{LogLevel, LogType};
 use futures::{Stream, StreamExt as _, TryStreamExt, stream};
 use tabwriter::TabWriter;
-use tonic::Request;
+
 use tracing::info;
 
 use crate::cli::{Cli, Output, format_grpc_status};
@@ -234,7 +234,7 @@ async fn handle_ls(cli: &Cli, args: JobLsArgs) -> anyhow::Result<()> {
                 return Ok::<_, tonic::Status>(None);
             }
 
-            let mut req = Request::new(commanderpb::GetJobsRequest {
+            let mut req = cli.traced(commanderpb::GetJobsRequest {
                 max_records: remaining as i32,
                 pagination_token: token.unwrap_or_default(),
                 ..base_request
@@ -324,7 +324,7 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
 
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
-    let mut request = Request::new(commanderpb::GetJobsRequest {
+    let mut request = cli.traced(commanderpb::GetJobsRequest {
         job_ids: vec![args.job_id.clone()],
         all_users: true,
         ..Default::default()
@@ -397,7 +397,7 @@ async fn handle_logs(cli: &Cli, args: JobLogsArgs) -> anyhow::Result<()> {
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(30));
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
-    let mut request = Request::new(commanderpb::GetLogsRequest {
+    let mut request = cli.traced(commanderpb::GetLogsRequest {
         job_id: args.job_id.clone(),
         ..Default::default()
     });
@@ -483,7 +483,14 @@ async fn handle_stop(cli: &Cli, args: JobStopArgs) -> anyhow::Result<()> {
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(30));
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
-    match client.cancel(&args.job_id).await {
+    let cancel_req = cli.traced(commanderpb::CancelJobRequest {
+        job_id: Some(commanderpb::JobId {
+            id: args.job_id.clone(),
+            ..Default::default()
+        }),
+    });
+
+    match client.cancel(cancel_req).await {
         Ok(()) => (),
         Err(CancelJobError::Transport(status)) => return Err(format_grpc_status(status)),
         Err(e) => return Err(e.into()),

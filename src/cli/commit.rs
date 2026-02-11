@@ -80,7 +80,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
         filter: None,
     };
 
-    let commits = bauplan::paginate(req, Some(args.max_count), |r| super::roundtrip(cli, r))?;
+    let commits = bauplan::paginate(req, Some(args.max_count), |r| cli.roundtrip(r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {

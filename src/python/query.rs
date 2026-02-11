@@ -72,7 +72,11 @@ impl Client {
         info!(job_id, "succesfully planned query");
 
         let mut client_clone = self.grpc.clone();
-        let stream = client_clone.monitor_job(job_id.clone(), timeout);
+        let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
+            job_id: job_id.clone(),
+        });
+        req.set_timeout(timeout);
+        let stream = client_clone.monitor_job(req);
         futures::pin_mut!(stream);
 
         let mut flight_event = None;
@@ -123,7 +127,7 @@ impl Client {
             .map_err(|_| BauplanError::new_err(format!("invalid flight endpoint: {endpoint}")))?;
 
         let (schema, batches) =
-            flight::fetch_flight_results(endpoint, magic_token, timeout, max_rows)
+            flight::fetch_flight_results(endpoint, magic_token, timeout, max_rows, None)
                 .await
                 .map_err(|_| query_err("failed to fetch query results"))?;
 
@@ -172,7 +176,14 @@ impl Client {
     }
 
     async fn cancel_query(&mut self, job_id: &str) -> PyResult<()> {
-        if let Err(err) = self.grpc.cancel(job_id).await {
+        let req = commanderpb::CancelJobRequest {
+            job_id: Some(commanderpb::JobId {
+                id: job_id.to_owned(),
+                ..Default::default()
+            }),
+        };
+
+        if let Err(err) = self.grpc.cancel(req).await {
             error!(?err, "failed to cancel timed out query");
             return Err(query_err(err));
         }

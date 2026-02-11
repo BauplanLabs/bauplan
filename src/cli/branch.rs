@@ -157,7 +157,7 @@ fn list_branches(
         filter_by_user,
     };
 
-    let branches = bauplan::paginate(req, limit, |r| super::roundtrip(cli, r))?;
+    let branches = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
@@ -194,7 +194,7 @@ fn get_branch(
         filter_by_namespace: namespace.as_deref(),
     };
 
-    let tables = bauplan::paginate(req, None, |r| super::roundtrip(cli, r))?;
+    let tables = bauplan::paginate(req, None, |r| cli.roundtrip(r))?;
 
     match cli.global.output.unwrap_or_default() {
         Output::Json => {
@@ -239,7 +239,7 @@ fn create_branch(
         from_ref,
     };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(branch) => {
             info!(branch = branch.name, "created branch");
@@ -266,7 +266,7 @@ fn delete_branch(
 ) -> anyhow::Result<()> {
     let req = DeleteBranch { name: &branch_name };
 
-    let result = super::roundtrip(cli, req);
+    let result = cli.roundtrip(req);
     match result {
         Ok(branch) => {
             info!(branch = branch.name, "deleted branch");
@@ -298,7 +298,7 @@ fn merge_branch(
         },
     };
 
-    super::roundtrip(cli, req)?;
+    cli.roundtrip(req)?;
     // Original prints to stdout, not log.
     println!("Merged branch \"{branch_name}\" into \"{into_branch}\"");
 
@@ -317,7 +317,7 @@ fn rename_branch(
         new_name: &new_branch_name,
     };
 
-    let branch = super::roundtrip(cli, req)?;
+    let branch = cli.roundtrip(req)?;
     info!(
         branch = branch_name,
         new_branch = branch.name,

@@ -144,8 +144,8 @@ pub(crate) fn job_request_common(
     }
 }
 
-/// Common handler for running a job and managing spinners for it. This handles
-/// the following common behavior:
+/// Runs a job and manages spinners for it. This handles the following common
+/// behavior:
 ///  - Cancelling a job on a cancel signal or a request timeout
 ///  - Monitoring job logs until a JobCompletion event is recieved.
 ///
@@ -153,12 +153,12 @@ pub(crate) fn job_request_common(
 ///
 /// The provided closure is called on every event except the final JobCompletion.
 pub(crate) async fn monitor_job_progress(
+    cli: &Cli,
     client: &mut grpc::Client,
     job_id: String,
     thing: &'static str,
     progress: ProgressBar,
     mut cancel_signal: impl Future + Unpin,
-    timeout: time::Duration,
     mut handler: impl FnMut(RunnerEvent),
 ) -> anyhow::Result<commanderpb::JobSuccess> {
     info!(job_id, "started {thing}");
@@ -170,7 +170,14 @@ pub(crate) async fn monitor_job_progress(
         progress.set_message(format!("Cancelling {thing}..."));
         progress.enable_steady_tick(time::Duration::from_millis(100));
 
-        if let Err(e) = client_clone.cancel(&job_id).await {
+        let cancel_req = commanderpb::CancelJobRequest {
+            job_id: Some(commanderpb::JobId {
+                id: job_id.clone(),
+                ..Default::default()
+            }),
+        };
+
+        if let Err(e) = client_clone.cancel(cli.traced(cancel_req)).await {
             error!(job_id, error = %e, "failed to cancel {thing}");
             progress.finish_with_failed();
         } else {
@@ -185,7 +192,19 @@ pub(crate) async fn monitor_job_progress(
     let mut ticker = tokio::time::interval(time::Duration::from_millis(100));
     ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
-    let stream = client.monitor_job(job_id.clone(), timeout);
+    let mut monitor_req = cli.traced(commanderpb::SubscribeLogsRequest {
+        job_id: job_id.clone(),
+    });
+
+    // Note: even though we set a channel timeout when creating the client,
+    // we need to set the timeout again here, because the channel timeout
+    // only affects the stream establishment (and not the duration of the
+    // stream).
+    if let Some(timeout) = cli.timeout {
+        monitor_req.set_timeout(timeout);
+    }
+
+    let stream = client.monitor_job(monitor_req);
     futures::pin_mut!(stream);
 
     loop {
@@ -287,7 +306,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     };
 
     let progress = cli.new_spinner().with_message("Planning job...");
-    let resp = match client.code_snapshot_run(req).await {
+    let resp = match client.code_snapshot_run(cli.traced(req)).await {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             progress.finish_with_failed();
@@ -331,12 +350,12 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     };
 
     let outcome = monitor_job_progress(
+        &cli,
         &mut client,
         job_id,
         "job",
         progress.clone(),
         &mut ctrl_c,
-        timeout,
         |event| match event {
             RunnerEvent::TaskStart(ev) => {
                 let Some(metadata) = ev.task_metadata else {
@@ -586,8 +605,9 @@ async fn resolve_parameters(
                 let (key_name, key) = if let Some((key_name, key)) = &key_cache {
                     (key_name.clone(), key)
                 } else {
+                    let req = cli.traced(commanderpb::GetBauplanInfoRequest::default());
                     let (key_name, key) = client
-                        .org_default_public_key(timeout)
+                        .org_default_public_key(req)
                         .await
                         .map_err(format_grpc_status)?;
                     let (_, key) = key_cache.insert((key_name.clone(), key));

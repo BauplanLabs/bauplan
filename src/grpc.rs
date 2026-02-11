@@ -7,6 +7,7 @@ use std::time;
 use futures::{Stream, StreamExt, TryStreamExt, stream};
 use rsa::{RsaPublicKey, pkcs8::DecodePublicKey as _};
 use tonic::{
+    IntoRequest,
     metadata::{Ascii, MetadataValue},
     service::{Interceptor, interceptor::InterceptedService},
     transport::{Channel, ClientTlsConfig},
@@ -24,7 +25,7 @@ pub mod generated {
 use crate::{
     Profile,
     grpc::generated::{
-        CancelJobRequest, GetBauplanInfoRequest, JobFailure, JobId, JobSuccess, OrganizationInfo,
+        CancelJobRequest, GetBauplanInfoRequest, JobFailure, JobSuccess, OrganizationInfo,
         SubscribeLogsRequest, cancel_job_response::CancelStatus, job_complete_event::Outcome,
         job_failure::ErrorCode, runner_event::Event as RunnerEvent,
     },
@@ -59,14 +60,10 @@ impl Client {
     }
 
     /// Cancels a running job.
-    pub async fn cancel(&mut self, job_id: &str) -> Result<(), CancelJobError> {
-        let req = CancelJobRequest {
-            job_id: Some(JobId {
-                id: job_id.to_owned(),
-                ..Default::default()
-            }),
-        };
-
+    pub async fn cancel(
+        &mut self,
+        req: impl IntoRequest<CancelJobRequest>,
+    ) -> Result<(), CancelJobError> {
         let resp = self.cancel_job(req).await?.into_inner();
 
         match CancelStatus::try_from(resp.status) {
@@ -80,15 +77,9 @@ impl Client {
     /// (usually the ARN).
     pub async fn org_default_public_key(
         &mut self,
-        timeout: time::Duration,
+        req: impl IntoRequest<GetBauplanInfoRequest>,
     ) -> Result<(String, RsaPublicKey), tonic::Status> {
-        let mut req = tonic::Request::new(GetBauplanInfoRequest::default());
-        req.set_timeout(timeout);
-
-        let resp = self
-            .get_bauplan_info(GetBauplanInfoRequest::default())
-            .await?
-            .into_inner();
+        let resp = self.get_bauplan_info(req).await?.into_inner();
 
         let Some(OrganizationInfo {
             default_parameter_secret_public_key: Some(pkey),
@@ -113,14 +104,9 @@ impl Client {
     /// first item returned from the stream.
     pub fn monitor_job(
         &mut self,
-        job_id: String,
-        timeout: time::Duration,
+        req: impl IntoRequest<SubscribeLogsRequest>,
     ) -> impl Stream<Item = Result<RunnerEvent, tonic::Status>> {
-        let mut req = tonic::Request::new(SubscribeLogsRequest {
-            job_id: job_id.clone(),
-        });
-        req.set_timeout(timeout);
-
+        let req = req.into_request();
         let mut client = self.clone();
         stream::once(async move {
             let stream = client.subscribe_logs(req).await?.into_inner();

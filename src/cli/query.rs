@@ -1,7 +1,8 @@
 use std::{fmt::Write as _, io::Write, path::PathBuf, time};
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Output, Priority, format_grpc_status, run::job_request_common,
+    Cli, KeyValue, OnOff, Output, Priority, format_grpc_status,
+    run::{job_request_common, monitor_job_progress},
     spinner::ProgressExt,
 };
 use anyhow::{Context as _, bail};
@@ -96,7 +97,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         namespace,
     };
 
-    let resp = match client.query_run(req).await {
+    let resp = match client.query_run(cli.traced(req)).await {
         Ok(resp) => resp.into_inner(),
         Err(e) => {
             progress.finish_with_failed();
@@ -114,13 +115,13 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     futures::pin_mut!(ctrl_c);
 
     let mut flight_event = None;
-    super::run::monitor_job_progress(
+    monitor_job_progress(
+        &cli,
         &mut client,
         job_id.clone(),
         "query",
         progress.clone(),
         &mut ctrl_c,
-        timeout,
         |event| {
             if let RunnerEvent::FlightServerStart(flight) = event {
                 flight_event = Some(flight);
@@ -149,9 +150,12 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     };
 
     progress.set_message("Fetching results...");
-    let (schema, batches) = fetch_flight_results(endpoint, magic_token, timeout, row_limit)
-        .await
-        .context("Failed to fetch query results")?;
+
+    let tp = cli.traceparent();
+    let (schema, batches) =
+        fetch_flight_results(endpoint, magic_token, timeout, row_limit, Some(&tp))
+            .await
+            .context("Failed to fetch query results")?;
     futures::pin_mut!(batches);
 
     progress.finish_with_done();

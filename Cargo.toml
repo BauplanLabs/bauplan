@@ -36,9 +36,11 @@ dateparser = "0.2"
 futures = "0.3"
 gethostname = "1"
 http = "1"
+humantime = "2"
 iceberg-catalog-rest = "0.8"
 indicatif = "0.18"
 nondestructive = { version = "0.0.28", features = ["serde", "yaml"] }
+opentelemetry = { version = "0.28", default-features = false, features = ["trace"] }
 prost = "0.14"
 prost-types = "0.14"
 parquet = { version = "57", optional = true }
@@ -66,7 +68,6 @@ uuid = { version = "1", features = ["serde"] }
 yansi = { version = "1", features = ["detect-tty"] }
 resolve-path = "0.1"
 zip = { version = "4", default-features = false, features = ["deflate"] }
-humantime = "2.3.0"
 
 [build-dependencies]
 anyhow = "1"
