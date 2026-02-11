@@ -19,13 +19,13 @@ pub enum ProjectError {
     ProjectFileNotFound(PathBuf),
     #[error("both bauplan_project.yml and .yaml found in {0}; remove one to avoid ambiguity")]
     ProjectFileAmbiguous(PathBuf),
-    #[error("failed to read project file: {0}")]
+    #[error("failed to read project file")]
     Io(#[from] std::io::Error),
-    #[error("failed to parse project file: {0}")]
+    #[error("failed to parse project file")]
     Parse(#[from] serde_yaml::Error),
-    #[error("failed to create archive: {0}")]
+    #[error("failed to create archive")]
     Zip(#[from] zip::result::ZipError),
-    #[error("encryption failed: {0}")]
+    #[error("encryption failed")]
     Encryption(#[from] rsa::Error),
     #[error("invalid value {0:?} of type {1}")]
     InvalidParameterValue(String, ParameterType),
