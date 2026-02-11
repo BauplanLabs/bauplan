@@ -66,6 +66,7 @@ uuid = { version = "1", features = ["serde"] }
 yansi = { version = "1", features = ["detect-tty"] }
 resolve-path = "0.1"
 zip = { version = "4", default-features = false, features = ["deflate"] }
+humantime = "2.3.0"
 
 [build-dependencies]
 anyhow = "1"

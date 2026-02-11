@@ -157,11 +157,28 @@ fn parse_datetime(s: &str, utc: bool) -> anyhow::Result<DateTime<Utc>> {
     .map_err(|e| anyhow::anyhow!("invalid date format: {}", e))
 }
 
-fn format_datetime(dt: Option<DateTime<Utc>>, utc: bool) -> String {
-    match dt {
-        Some(d) if utc => d.to_rfc3339(),
-        Some(d) => d.with_timezone(&Local).to_rfc3339(),
-        None => String::new(),
+fn format_datetime(dt: Option<DateTime<Utc>>, utc: bool, include_elapsed: bool) -> String {
+    let Some(dt) = dt else {
+        return "-".dim().to_string();
+    };
+
+    let rfc3339 = if utc {
+        dt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+    } else {
+        dt.with_timezone(&Local)
+            .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
+    };
+
+    let elapsed = Utc::now() - dt;
+    if include_elapsed && elapsed.num_days() < 1 {
+        // "Round" by splitting the string and taking the most significant
+        // "digit". For example, "23h 24m 10s" becomes "23h".
+        let elapsed_human = humantime::format_duration(elapsed.to_std().unwrap()).to_string();
+        let elapsed_short = elapsed_human.split_ascii_whitespace().next().unwrap();
+
+        format!("{rfc3339} {}", format!("[{elapsed_short} ago]").dim())
+    } else {
+        rfc3339
     }
 }
 
@@ -258,7 +275,10 @@ where
     while let Some(job) = stream.try_next().await? {
         if !headers_printed {
             headers_printed = true;
-            writeln!(&mut tw, "ID\tKIND\tUSER\tSTATUS\tCREATED\tFINISHED")?;
+            writeln!(
+                &mut tw,
+                "ID\tKIND\tUSER\tSTATUS\tCREATED\tFINISHED\tDURATION"
+            )?;
         }
 
         let status_colored = match job.status_type {
@@ -268,15 +288,25 @@ where
             _ => job.status.primary(),
         };
 
+        let duration = if let Some(start) = job.started_at
+            && let Some(end) = job.finished_at
+            && let Ok(elapsed_ms) = u64::try_from((end - start).num_milliseconds())
+        {
+            humantime::format_duration(time::Duration::from_millis(elapsed_ms)).to_string()
+        } else {
+            "-".to_string()
+        };
+
         writeln!(
             &mut tw,
-            "{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
             job.id,
             job.kind,
             job.user,
             status_colored,
-            format_datetime(job.created_at, utc),
-            format_datetime(job.finished_at, utc),
+            format_datetime(job.created_at, utc, false),
+            format_datetime(job.finished_at, utc, true),
+            duration
         )?;
     }
 
@@ -325,12 +355,12 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
             writeln!(
                 &mut tw,
                 "Created:\t{}",
-                format_datetime(job.created_at, false)
+                format_datetime(job.created_at, false, false)
             )?;
             writeln!(
                 &mut tw,
                 "Finished:\t{}",
-                format_datetime(job.finished_at, false)
+                format_datetime(job.finished_at, false, true)
             )?;
             tw.flush()?;
         }
