@@ -188,15 +188,17 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(ns) => Ok(ns),
-            Err(e) if e.is_api_err(ApiErrorKind::NamespaceExists) && if_not_exists => {
-                // Return the existing namespace.
-                let req = GetNamespace {
-                    name: namespace,
-                    at_ref: branch,
-                };
-                Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+            Err(e) => {
+                if if_not_exists
+                    && let Some(ApiErrorKind::NamespaceExists { namespace_name, .. }) = e.kind()
+                {
+                    Ok(Namespace {
+                        name: namespace_name.clone(),
+                    })
+                } else {
+                    Err(e.into())
+                }
             }
-            Err(e) => Err(e.into()),
         }
     }
 
@@ -267,10 +269,15 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(r) => Ok(r),
-            Err(e) if e.is_api_err(ApiErrorKind::NamespaceNotFound) && if_exists => {
-                todo!("context_ref")
+            Err(e) => {
+                if if_exists
+                    && let Some(ApiErrorKind::NamespaceNotFound { catalog_ref, .. }) = e.kind()
+                {
+                    Ok(catalog_ref.clone())
+                } else {
+                    Err(e.into())
+                }
             }
-            Err(e) => Err(e.into()),
         }
     }
 
@@ -311,8 +318,13 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
-            Err(e) if e.is_api_err(ApiErrorKind::NamespaceNotFound) => Ok(false),
-            Err(e) => Err(e.into()),
+            Err(e) => {
+                if matches!(e.kind(), Some(ApiErrorKind::NamespaceNotFound { .. })) {
+                    Ok(false)
+                } else {
+                    Err(e.into())
+                }
+            }
         }
     }
 }

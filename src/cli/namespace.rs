@@ -3,7 +3,7 @@ use std::io::{Write as _, stdout};
 use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, Output, is_api_err_kind};
+use crate::cli::{Cli, Output, api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceArgs {
@@ -137,17 +137,16 @@ fn create_namespace(
         },
     };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Created namespace {namespace:?}");
-        }
-        Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceExists) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_not_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::NamespaceExists { .. })) {
             eprintln!("Namespace {namespace:?} already exists");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
 
+    eprintln!("Created namespace {namespace:?}");
     Ok(())
 }
 
@@ -174,16 +173,20 @@ fn delete_namespace(
         },
     };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Deleted namespace {namespace:?}");
-        }
-        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::NamespaceNotFound) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_exists
+            && matches!(
+                api_err_kind(&e),
+                Some(ApiErrorKind::NamespaceNotFound { .. })
+            )
+        {
             eprintln!("Namespace {namespace:?} does not exist");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
 
+    eprintln!("Deleted namespace {namespace:?}");
     Ok(())
 }

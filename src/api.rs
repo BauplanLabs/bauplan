@@ -1,3 +1,6 @@
+// ApiError is just over the threshold.
+#![allow(clippy::result_large_err)]
+
 use std::io::Read;
 
 use serde::{Deserialize, Serialize};

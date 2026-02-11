@@ -23,6 +23,7 @@ use bauplan::{
     ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile,
     grpc::{self, generated as commanderpb},
 };
+
 use clap::{Parser, Subcommand};
 use opentelemetry::trace::{SpanId, TraceFlags, TraceId};
 use tracing::debug;
@@ -274,11 +275,8 @@ impl Cli {
     }
 }
 
-fn is_api_err_kind(e: &anyhow::Error, k: ApiErrorKind) -> bool {
-    match e.downcast_ref() {
-        Some(ApiError::ErrorResponse { kind, .. }) => *kind == k,
-        _ => false,
-    }
+pub(crate) fn api_err_kind(err: &anyhow::Error) -> Option<&ApiErrorKind> {
+    err.downcast_ref::<ApiError>()?.kind()
 }
 
 pub(crate) fn format_grpc_status(status: tonic::Status) -> anyhow::Error {

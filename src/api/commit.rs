@@ -204,8 +204,6 @@ impl ApiRequest for GetCommits<'_> {
 
 #[cfg(all(test, feature = "_integration-tests"))]
 mod test {
-    use assert_matches::assert_matches;
-
     use super::*;
     use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip, paginate};
 
@@ -286,14 +284,15 @@ mod test {
             filter: None,
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::RefNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::RefNotFound { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected RefNotFound");
+        };
+
+        assert_eq!(input_ref, "nonexistent_branch_12345");
 
         Ok(())
     }

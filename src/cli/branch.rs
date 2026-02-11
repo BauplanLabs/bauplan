@@ -4,7 +4,7 @@ use bauplan::{ApiErrorKind, branch::*, table::GetTables};
 use tabwriter::TabWriter;
 use yansi::Paint;
 
-use crate::cli::{Cli, Output, is_api_err_kind};
+use crate::cli::{Cli, Output, api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchArgs {
@@ -239,22 +239,21 @@ fn create_branch(
         from_ref,
     };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Created branch \"{branch_name}\"");
-            eprintln!(
-                "{} To create and switch to a branch in one command, run:",
-                "TIP:".green()
-            );
-            eprintln!("\tbauplan checkout -b {branch_name:?}");
-        }
-        Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::BranchExists) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_not_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::BranchExists { .. })) {
             eprintln!("Branch {branch_name:?} already exists");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
 
+    eprintln!("Created branch \"{branch_name}\"");
+    eprintln!(
+        "{} To create and switch to a branch in one command, run:",
+        "TIP:".green()
+    );
+    eprintln!("\tbauplan checkout -b {branch_name:?}");
     Ok(())
 }
 
@@ -267,16 +266,16 @@ fn delete_branch(
 ) -> anyhow::Result<()> {
     let req = DeleteBranch { name: &branch_name };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Deleted branch \"{branch_name}\"");
-        }
-        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::BranchNotFound) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::BranchNotFound { .. })) {
             eprintln!("Branch \"{branch_name}\" does not exist");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
+
+    eprintln!("Deleted branch \"{branch_name}\"");
 
     Ok(())
 }

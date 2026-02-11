@@ -208,6 +208,27 @@ impl<'py> IntoPyObject<'py> for CatalogRef {
     }
 }
 
+impl<'a, 'py> FromPyObject<'a, 'py> for CatalogRef {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        let r = ob.extract::<pyo3::PyRef<'_, PyRef>>()?;
+        Ok(match r.r#type {
+            PyRefType::Branch => CatalogRef::Branch {
+                name: r.name.clone(),
+                hash: r.hash.clone(),
+            },
+            PyRefType::Tag => CatalogRef::Tag {
+                name: r.name.clone(),
+                hash: r.hash.clone(),
+            },
+            PyRefType::Detached => CatalogRef::Detached {
+                hash: r.hash.clone(),
+            },
+        })
+    }
+}
+
 impl<'py> IntoPyObject<'py> for Branch {
     type Target = PyBranch;
     type Output = Bound<'py, PyBranch>;

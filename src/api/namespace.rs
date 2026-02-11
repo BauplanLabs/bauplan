@@ -157,10 +157,9 @@ impl ApiRequest for DeleteNamespace<'_> {
 
 #[cfg(all(test, feature = "_integration-tests"))]
 mod test {
-    use assert_matches::assert_matches;
-
     use super::*;
-    use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip};
+    use crate::api::testutil::{TestBranch, TestTag, roundtrip, test_name};
+    use crate::{ApiError, ApiErrorKind};
 
     #[test]
     fn get_namespace() -> anyhow::Result<()> {
@@ -182,14 +181,15 @@ mod test {
             at_ref: "main",
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::NamespaceNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NamespaceNotFound { namespace_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NAMESPACE_NOT_FOUND");
+        };
+
+        assert_eq!(namespace_name, "nonexistent_namespace_12345");
 
         Ok(())
     }
@@ -201,14 +201,15 @@ mod test {
             at_ref: "nonexistent_branch_12345",
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::RefNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::RefNotFound { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected REF_NOT_FOUND");
+        };
+
+        assert_eq!(input_ref, "nonexistent_branch_12345");
 
         Ok(())
     }
@@ -252,22 +253,21 @@ mod test {
             filter_by_name: None,
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::RefNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::RefNotFound { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected REF_NOT_FOUND");
+        };
+
+        assert_eq!(input_ref, "nonexistent_branch_12345");
 
         Ok(())
     }
 
     #[test]
     fn create_and_delete_namespace() -> anyhow::Result<()> {
-        use crate::api::testutil::{TestBranch, test_name};
-
         let branch = TestBranch::new("test_ns")?;
         let ns_name = test_name("test_namespace");
 
@@ -301,22 +301,68 @@ mod test {
             name: &ns_name,
             at_ref: &branch.name,
         };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::NamespaceNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NamespaceNotFound { namespace_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NAMESPACE_NOT_FOUND");
+        };
+
+        assert_eq!(namespace_name, ns_name);
+
+        Ok(())
+    }
+
+    #[test]
+    fn create_namespace_not_a_write_branch() -> anyhow::Result<()> {
+        let tag = TestTag::new("test_ns_write")?;
+
+        // Try to create a namespace on a tag (not a writable branch).
+        let req = CreateNamespace {
+            name: "test_ns",
+            branch: &tag.name,
+            commit: Default::default(),
+        };
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NotAWriteBranchRef { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NOT_A_WRITE_BRANCH_REF");
+        };
+
+        assert_eq!(input_ref, tag.name);
+
+        Ok(())
+    }
+
+    #[test]
+    fn delete_namespace_not_empty() -> anyhow::Result<()> {
+        // The 'bauplan' namespace on main has tables in it.
+        let branch = TestBranch::new("test_ns_notempty")?;
+        let req = DeleteNamespace {
+            name: "bauplan",
+            branch: &branch.name,
+            commit: Default::default(),
+        };
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NamespaceIsNotEmpty { namespace_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NAMESPACE_IS_NOT_EMPTY");
+        };
+
+        assert_eq!(namespace_name, "bauplan");
 
         Ok(())
     }
 
     #[test]
     fn create_namespace_already_exists() -> anyhow::Result<()> {
-        use crate::api::testutil::{TestBranch, test_name};
-
         let branch = TestBranch::new("test_ns_exists")?;
         let ns_name = test_name("test_namespace");
 
@@ -334,14 +380,15 @@ mod test {
             branch: &branch.name,
             commit: Default::default(),
         };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::NamespaceExists,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NamespaceExists { namespace_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NAMESPACE_EXISTS");
+        };
+
+        assert_eq!(namespace_name, ns_name);
 
         Ok(())
     }

@@ -3,7 +3,7 @@ use std::io::{Write as _, stdout};
 use bauplan::{ApiErrorKind, tag::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, Output, is_api_err_kind};
+use crate::cli::{Cli, Output, api_err_kind};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TagArgs {
@@ -119,17 +119,16 @@ fn create_tag(
         from_ref,
     };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Created tag {tag_name:?}");
-        }
-        Err(e) if if_not_exists && is_api_err_kind(&e, ApiErrorKind::TagExists) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_not_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TagExists { .. })) {
             eprintln!("Tag {tag_name:?} already exists");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
 
+    eprintln!("Created tag {tag_name:?}");
     Ok(())
 }
 
@@ -142,17 +141,16 @@ fn delete_tag(
 ) -> anyhow::Result<()> {
     let req = DeleteTag { name: &tag_name };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Deleted tag {tag_name:?}");
-        }
-        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TagNotFound) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TagNotFound { .. })) {
             eprintln!("Tag {tag_name:?} does not exist");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
 
+    eprintln!("Deleted tag {tag_name:?}");
     Ok(())
 }
 

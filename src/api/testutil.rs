@@ -95,3 +95,31 @@ impl Drop for TestBranch {
         }
     }
 }
+
+/// A temporary tag that is deleted when dropped.
+pub(crate) struct TestTag {
+    pub name: String,
+}
+
+impl TestTag {
+    /// Create a new temporary tag from main.
+    pub(crate) fn new(prefix: &str) -> Result<Self, ApiError> {
+        let name = test_name(prefix);
+        let req = crate::tag::CreateTag {
+            name: &name,
+            from_ref: "main",
+        };
+        roundtrip(req)?;
+
+        Ok(Self { name })
+    }
+}
+
+impl Drop for TestTag {
+    fn drop(&mut self) {
+        let req = crate::tag::DeleteTag { name: &self.name };
+        if let Err(e) = roundtrip(req) {
+            eprintln!("Warning: failed to delete test tag {}: {e}", self.name);
+        }
+    }
+}

@@ -334,10 +334,9 @@ where
 
 #[cfg(all(test, feature = "_integration-tests"))]
 mod test {
-    use assert_matches::assert_matches;
-
     use super::*;
-    use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip};
+    use crate::api::testutil::{TestBranch, roundtrip};
+    use crate::{ApiError, ApiErrorKind};
 
     #[test]
     fn get_table() -> anyhow::Result<()> {
@@ -383,14 +382,15 @@ mod test {
             namespace: Some("bauplan"),
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TableNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TableNotFound { table_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected TABLE_NOT_FOUND");
+        };
+
+        assert_eq!(table_name, "bauplan.nonexistent_table_12345");
 
         Ok(())
     }
@@ -403,14 +403,15 @@ mod test {
             namespace: Some("bauplan"),
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::RefNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::RefNotFound { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected REF_NOT_FOUND");
+        };
+
+        assert_eq!(input_ref, "nonexistent_branch_12345");
 
         Ok(())
     }
@@ -472,22 +473,21 @@ mod test {
             filter_by_namespace: None,
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::RefNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::RefNotFound { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected REF_NOT_FOUND");
+        };
+
+        assert_eq!(input_ref, "nonexistent_branch_12345");
 
         Ok(())
     }
 
     #[test]
     fn delete_table() -> anyhow::Result<()> {
-        use crate::api::testutil::TestBranch;
-
         let branch = TestBranch::new("test_table_delete")?;
 
         // The branch is a copy of main, so it already has the titanic table.
@@ -514,22 +514,22 @@ mod test {
             at_ref: &branch.name,
             namespace: Some("bauplan"),
         };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TableNotFound,
-                ..
-            })
-        );
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TableNotFound { table_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected TABLE_NOT_FOUND");
+        };
+
+        assert_eq!(table_name, "bauplan.titanic");
 
         Ok(())
     }
 
     #[test]
     fn revert_table() -> anyhow::Result<()> {
-        use crate::api::testutil::TestBranch;
-
         let branch = TestBranch::new("test_table_revert")?;
 
         // Delete the titanic table from our branch.
@@ -547,13 +547,16 @@ mod test {
             at_ref: &branch.name,
             namespace: Some("bauplan"),
         };
-        assert_matches!(
-            roundtrip(req),
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TableNotFound,
-                ..
-            })
-        );
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TableNotFound { table_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected TABLE_NOT_FOUND");
+        };
+
+        assert_eq!(table_name, "bauplan.titanic");
 
         // Revert the table from main back into our branch.
         let req = RevertTable {
@@ -579,9 +582,58 @@ mod test {
     }
 
     #[test]
-    fn revert_table_same_ref() -> anyhow::Result<()> {
-        use crate::api::testutil::TestBranch;
+    fn revert_table_destination_exists() -> anyhow::Result<()> {
+        let branch = TestBranch::new("test_revert_exists")?;
 
+        // Delete the table on our branch, then revert it back.
+        let req = DeleteTable {
+            name: "titanic",
+            branch: &branch.name,
+            namespace: Some("bauplan"),
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        let req = RevertTable {
+            name: "titanic",
+            source_ref: "main",
+            into_branch: &branch.name,
+            namespace: Some("bauplan"),
+            replace: false,
+            commit: Default::default(),
+        };
+        roundtrip(req)?;
+
+        // Now the table exists on the branch again. Try to revert without
+        // replace — should fail.
+        let req = RevertTable {
+            name: "titanic",
+            source_ref: "main",
+            into_branch: &branch.name,
+            namespace: Some("bauplan"),
+            replace: false,
+            commit: Default::default(),
+        };
+        let Err(ApiError::ErrorResponse {
+            kind:
+                ApiErrorKind::RevertDestinationTableExists {
+                    source_table_name,
+                    destination_table_name,
+                },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected REVERT_DESTINATION_TABLE_EXISTS");
+        };
+
+        assert_eq!(source_table_name, "bauplan.titanic");
+        assert_eq!(destination_table_name, "bauplan.titanic");
+
+        Ok(())
+    }
+
+    #[test]
+    fn revert_table_same_ref() -> anyhow::Result<()> {
         // A newly-created branch from main is on the same hash as main.
         let branch = TestBranch::new("test_table_revert_same")?;
 
@@ -594,14 +646,13 @@ mod test {
             replace: false,
             commit: Default::default(),
         };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::SameRef,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::SameRef { .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected SAME_REF");
+        };
 
         Ok(())
     }

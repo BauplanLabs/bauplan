@@ -210,7 +210,8 @@ mod test {
     use assert_matches::assert_matches;
 
     use super::*;
-    use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip};
+    use crate::api::testutil::{TestBranch, TestTag, roundtrip, test_name};
+    use crate::{ApiError, ApiErrorKind, CatalogRef};
 
     #[test]
     fn get_branch() -> anyhow::Result<()> {
@@ -229,14 +230,15 @@ mod test {
             name: "nonexistent_branch_12345",
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::BranchNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::BranchNotFound { branch_name },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected BRANCH_NOT_FOUND");
+        };
+
+        assert_eq!(branch_name, "nonexistent_branch_12345");
 
         Ok(())
     }
@@ -274,8 +276,6 @@ mod test {
 
     #[test]
     fn create_and_delete_branch() -> anyhow::Result<()> {
-        use crate::api::testutil::test_name;
-
         let branch_name = format!("colinmarc.{}", test_name("test_branch"));
 
         // Create the branch.
@@ -299,22 +299,22 @@ mod test {
 
         // Verify it's gone.
         let req = GetBranch { name: &branch_name };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::BranchNotFound,
-                ..
-            })
-        );
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::BranchNotFound { branch_name: name },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected BRANCH_NOT_FOUND");
+        };
+
+        assert_eq!(name, branch_name);
 
         Ok(())
     }
 
     #[test]
     fn create_branch_already_exists() -> anyhow::Result<()> {
-        use crate::api::testutil::TestBranch;
-
         let branch = TestBranch::new("test_exists")?;
 
         // Try to create it again.
@@ -322,22 +322,26 @@ mod test {
             name: &branch.name,
             from_ref: "main",
         };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::BranchExists,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind:
+                ApiErrorKind::BranchExists {
+                    catalog_ref: CatalogRef::Branch { name, .. },
+                    branch_name,
+                },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected BRANCH_EXISTS");
+        };
+
+        assert_eq!(name, branch.name);
+        assert_eq!(branch_name, branch.name);
 
         Ok(())
     }
 
     #[test]
     fn rename_branch() -> anyhow::Result<()> {
-        use crate::api::testutil::test_name;
-
         let old_name = format!("colinmarc.{}", test_name("test_rename_old"));
         let new_name = format!("colinmarc.{}", test_name("test_rename_new"));
 
@@ -358,21 +362,22 @@ mod test {
 
         // Verify old name is gone.
         let req = GetBranch { name: &old_name };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::BranchNotFound,
-                ..
-            })
-        );
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::BranchNotFound { branch_name },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected BRANCH_NOT_FOUND");
+        };
+
+        assert_eq!(branch_name, old_name);
 
         Ok(())
     }
 
     #[test]
     fn merge_branch() -> anyhow::Result<()> {
-        use crate::api::testutil::TestBranch;
         use crate::namespace::CreateNamespace;
 
         let source = TestBranch::new("test_merge_src")?;
@@ -419,11 +424,54 @@ mod test {
             commit: Default::default(),
         };
 
-        let result = roundtrip(req);
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::BranchNotFound { branch_name },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected BRANCH_NOT_FOUND");
+        };
+
+        assert_eq!(branch_name, "nonexistent_branch_12345");
+
+        Ok(())
+    }
+
+    #[test]
+    fn merge_not_a_write_branch_ref() -> anyhow::Result<()> {
+        let tag = TestTag::new("test_not_branch")?;
+
+        let req = MergeBranch {
+            source_ref: "main",
+            into_branch: &tag.name,
+            commit: Default::default(),
+        };
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NotAWriteBranchRef { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NOT_A_WRITE_BRANCH_REF");
+        };
+
+        assert_eq!(input_ref, tag.name);
+
+        Ok(())
+    }
+
+    #[test]
+    fn create_branch_invalid_ref() -> anyhow::Result<()> {
+        let branch_name = format!("colinmarc.{}", test_name("test_invalid_ref"));
+        let req = CreateBranch {
+            name: &branch_name,
+            from_ref: "not a valid ref!!!",
+        };
+
         assert_matches!(
-            result,
+            roundtrip(req),
             Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::BranchNotFound,
+                kind: ApiErrorKind::InvalidRef { .. } | ApiErrorKind::RefNotFound { .. },
                 ..
             })
         );

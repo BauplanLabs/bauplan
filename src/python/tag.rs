@@ -3,7 +3,7 @@
 use pyo3::prelude::*;
 
 use crate::{
-    ApiErrorKind, ApiRequest,
+    ApiErrorKind, ApiRequest, CatalogRef,
     python::{
         paginate::PyPaginator,
         refs::{RefArg, TagArg},
@@ -107,8 +107,10 @@ impl Client {
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
             Err(e)
-                if e.is_api_err(ApiErrorKind::TagNotFound)
-                    || e.is_api_err(ApiErrorKind::NotATagRef) =>
+                if matches!(
+                    e.kind(),
+                    Some(ApiErrorKind::TagNotFound { .. } | ApiErrorKind::NotATagRef { .. })
+                ) =>
             {
                 Ok(false)
             }
@@ -157,13 +159,22 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(t) => Ok(t),
-            Err(e) if e.is_api_err(ApiErrorKind::TagExists) && if_not_exists => {
-                // Return the existing tag.
-                let req = GetTag { name: &tag.0 };
-                let t = super::roundtrip(req, &self.profile, &self.agent)?;
-                Ok(t)
+
+            Err(e) => {
+                if if_not_exists
+                    && let Some(ApiErrorKind::TagExists {
+                        catalog_ref: CatalogRef::Tag { name, hash },
+                        ..
+                    }) = e.kind()
+                {
+                    Ok(Tag {
+                        name: name.clone(),
+                        hash: hash.clone(),
+                    })
+                } else {
+                    Err(e.into())
+                }
             }
-            Err(e) => Err(e.into()),
         }
     }
 
@@ -238,7 +249,9 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
-            Err(e) if e.is_api_err(ApiErrorKind::TagNotFound) && if_exists => Ok(false),
+            Err(e) if matches!(e.kind(), Some(ApiErrorKind::TagNotFound { .. })) && if_exists => {
+                Ok(false)
+            }
             Err(e) => Err(e.into()),
         }
     }

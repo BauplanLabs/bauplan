@@ -20,6 +20,7 @@ use crate::{
 };
 
 use super::Client;
+use super::exceptions::{TableCreatePlanApplyStatusError, TableCreatePlanStatusError};
 use super::run::job_status_strings;
 use crate::python::run::state::{
     ExternalTableCreateContext, ExternalTableCreateState, TableCreatePlanApplyState,
@@ -119,22 +120,25 @@ impl Client {
         )?;
 
         if plan_state.error.is_some() {
-            return Err(job_err(
-                plan_state
-                    .error
-                    .as_deref()
-                    .unwrap_or("table create plan failed"),
-            ));
+            let msg = plan_state
+                .error
+                .clone()
+                .unwrap_or_else(|| "table create plan failed".into());
+            return Err(TableCreatePlanStatusError::new_err(msg, plan_state));
         }
 
         let Some(ref plan_yaml) = plan_state.plan else {
-            return Err(job_err("plan completed without producing a plan"));
+            return Err(TableCreatePlanStatusError::new_err(
+                "plan completed without producing a plan".to_string(),
+                plan_state,
+            ));
         };
 
         if !plan_state.can_auto_apply {
-            return Err(job_err(
-                "plan has schema conflicts and cannot be auto-applied; \
-                 use plan_table_creation and apply_table_creation_plan instead",
+            return Err(TableCreatePlanStatusError::new_err(
+                "plan has schema conflicts and cannot be auto-applied; use plan_table_creation and apply_table_creation_plan instead"
+                    .to_string(),
+                plan_state,
             ));
         }
 
@@ -161,8 +165,17 @@ impl Client {
                 return Err(job_err("response missing job ID"));
             };
 
-            if let Err(e) = self.monitor_job(&job_id, timeout, |_| {}).await? {
-                return Err(job_err(e));
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let (job_status, error) = job_status_strings(res);
+
+            if let Some(err_msg) = error.clone() {
+                let state = TableCreatePlanApplyState {
+                    job_id: Some(job_id),
+                    job_status: Some(job_status),
+                    error,
+                };
+
+                return Err(TableCreatePlanApplyStatusError::new_err(err_msg, state));
             }
 
             Ok(())
@@ -391,6 +404,15 @@ impl Client {
 
             let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
+
+            if let Some(msg) = error.clone() {
+                let state = TableCreatePlanApplyState {
+                    job_id: Some(job_id),
+                    job_status: Some(job_status),
+                    error,
+                };
+                return Err(TableCreatePlanApplyStatusError::new_err(msg, state));
+            }
 
             Ok(TableCreatePlanApplyState {
                 job_id: Some(job_id),
@@ -798,11 +820,15 @@ impl Client {
             namespace,
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
-            Ok(_) => Ok(true),
-            Err(e) if e.is_api_err(ApiErrorKind::TableNotFound) => Ok(false),
-            Err(e) => Err(e.into()),
+        if let Err(e) = super::roundtrip(req, &self.profile, &self.agent) {
+            if matches!(e.kind(), Some(ApiErrorKind::TableNotFound { .. })) {
+                return Ok(false);
+            } else {
+                return Err(e.into());
+            }
         }
+
+        Ok(true)
     }
 
     /// Drop a table.
@@ -876,10 +902,14 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(r) => Ok(r),
-            Err(e) if e.is_api_err(ApiErrorKind::TableNotFound) && if_exists => {
-                todo!() // need context_ref
+            Err(e) => {
+                if if_exists && let Some(ApiErrorKind::TableNotFound { catalog_ref, .. }) = e.kind()
+                {
+                    Ok(catalog_ref.clone())
+                } else {
+                    Err(e.into())
+                }
             }
-            Err(e) => Err(e.into()),
         }
     }
 

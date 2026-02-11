@@ -149,10 +149,9 @@ impl ApiRequest for RenameTag<'_> {
 
 #[cfg(all(test, feature = "_integration-tests"))]
 mod test {
-    use assert_matches::assert_matches;
-
     use super::*;
-    use crate::{ApiError, ApiErrorKind, api::testutil::roundtrip};
+    use crate::api::testutil::{TestTag, roundtrip, test_name};
+    use crate::{ApiError, ApiErrorKind};
 
     #[test]
     fn get_tags() -> anyhow::Result<()> {
@@ -171,30 +170,21 @@ mod test {
 
     #[test]
     fn get_tags_with_filter() -> anyhow::Result<()> {
-        use crate::api::testutil::test_name;
-
-        let tag_name = test_name("filter_test_tag");
-        let req = CreateTag {
-            name: &tag_name,
-            from_ref: "main",
-        };
-        roundtrip(req)?;
+        let tag = TestTag::new("filter_test_tag")?;
 
         let req = GetTags {
-            filter_by_name: Some(&tag_name),
+            filter_by_name: Some(&tag.name),
         };
         let tags = crate::paginate(req, Some(10), |r| roundtrip(r))?
             .collect::<Result<Vec<Tag>, ApiError>>()?;
 
         assert!(!tags.is_empty());
-        assert!(tags.iter().all(|t| t.name.contains(&tag_name)));
+        assert!(tags.iter().all(|t| t.name.contains(&tag.name)));
         Ok(())
     }
 
     #[test]
     fn create_and_delete_tag() -> anyhow::Result<()> {
-        use crate::api::testutil::test_name;
-
         let tag_name = test_name("test_tag");
 
         // Create the tag.
@@ -218,14 +208,16 @@ mod test {
 
         // Verify it's gone.
         let req = GetTag { name: &tag_name };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TagNotFound,
-                ..
-            })
-        );
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TagNotFound { tag_name: name },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected TAG_NOT_FOUND");
+        };
+
+        assert_eq!(name, tag_name);
 
         Ok(())
     }
@@ -236,88 +228,87 @@ mod test {
             name: "nonexistent_tag_12345",
         };
 
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TagNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TagNotFound { tag_name },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected TAG_NOT_FOUND");
+        };
+
+        assert_eq!(tag_name, "nonexistent_tag_12345");
 
         Ok(())
     }
 
     #[test]
     fn create_tag_already_exists() -> anyhow::Result<()> {
-        use crate::api::testutil::test_name;
-
-        let tag_name = test_name("test_tag_exists");
-
-        // Create the tag first.
-        let req = CreateTag {
-            name: &tag_name,
-            from_ref: "main",
-        };
-        roundtrip(req)?;
+        let tag = TestTag::new("test_tag_exists")?;
 
         // Try to create it again.
         let req = CreateTag {
-            name: &tag_name,
+            name: &tag.name,
             from_ref: "main",
         };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TagExists,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TagExists { tag_name, .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected TAG_EXISTS");
+        };
 
-        // Clean up.
-        let req = DeleteTag { name: &tag_name };
-        roundtrip(req)?;
+        assert_eq!(tag_name, tag.name);
+
+        Ok(())
+    }
+
+    #[test]
+    fn rename_tag_not_a_tag() -> anyhow::Result<()> {
+        // Try to rename a branch as if it were a tag.
+        let req = RenameTag {
+            name: "main",
+            new_name: &test_name("not_a_tag"),
+        };
+
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::NotATagRef { input_ref },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected NOT_A_TAG_REF");
+        };
+
+        assert_eq!(input_ref, "main");
 
         Ok(())
     }
 
     #[test]
     fn rename_tag() -> anyhow::Result<()> {
-        use crate::api::testutil::test_name;
-
-        let old_name = test_name("test_rename_tag_old");
+        let mut tag = TestTag::new("test_rename_tag_old")?;
         let new_name = test_name("test_rename_tag_new");
 
-        // Create the tag.
-        let req = CreateTag {
-            name: &old_name,
-            from_ref: "main",
-        };
-        roundtrip(req)?;
-
-        // Rename it.
         let req = RenameTag {
-            name: &old_name,
+            name: &tag.name,
             new_name: &new_name,
         };
         let renamed = roundtrip(req)?;
         assert_eq!(renamed.name, new_name);
 
         // Verify old name is gone.
-        let req = GetTag { name: &old_name };
-        let result = roundtrip(req);
-        assert_matches!(
-            result,
-            Err(ApiError::ErrorResponse {
-                kind: ApiErrorKind::TagNotFound,
-                ..
-            })
-        );
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::TagNotFound { tag_name },
+            ..
+        }) = roundtrip(GetTag { name: &tag.name })
+        else {
+            panic!("expected TAG_NOT_FOUND");
+        };
 
-        // Clean up.
-        let req = DeleteTag { name: &new_name };
-        roundtrip(req)?;
+        assert_eq!(tag_name, tag.name);
+
+        // Update so Drop cleans up the right name.
+        tag.name = new_name;
 
         Ok(())
     }

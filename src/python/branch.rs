@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use std::collections::BTreeMap;
 
 use crate::{
-    ApiErrorKind, ApiRequest,
+    ApiErrorKind, ApiRequest, CatalogRef,
     branch::{
         Branch, CreateBranch, DeleteBranch, GetBranch, GetBranches, MergeBranch,
         MergeCommitOptions, RenameBranch,
@@ -120,8 +120,11 @@ impl Client {
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
             Err(e)
-                if e.is_api_err(ApiErrorKind::BranchNotFound)
-                    || e.is_api_err(ApiErrorKind::NotABranchRef) =>
+                if matches!(
+                    e.kind(),
+                    Some(ApiErrorKind::BranchNotFound { .. })
+                        | Some(ApiErrorKind::NotABranchRef { .. })
+                ) =>
             {
                 Ok(false)
             }
@@ -179,10 +182,21 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(b) => Ok(b),
-            Err(e) if e.is_api_err(ApiErrorKind::BranchExists) && if_not_exists => {
-                todo!("context_ref")
+            Err(e) => {
+                if let Some(ApiErrorKind::BranchExists {
+                    catalog_ref: CatalogRef::Branch { name, hash },
+                    ..
+                }) = e.kind()
+                    && if_not_exists
+                {
+                    Ok(Branch {
+                        name: name.clone(),
+                        hash: hash.clone(),
+                    })
+                } else {
+                    Err(e.into())
+                }
             }
-            Err(e) => Err(e.into()),
         }
     }
 
@@ -271,7 +285,7 @@ impl Client {
         commit_message: Option<&str>,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
-    ) -> PyResult<crate::CatalogRef> {
+    ) -> PyResult<CatalogRef> {
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -323,10 +337,14 @@ impl Client {
     fn delete_branch(&mut self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteBranch { name: &branch.0 };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
-            Ok(_) => Ok(true),
-            Err(e) if e.is_api_err(ApiErrorKind::BranchNotFound) && if_exists => Ok(false),
-            Err(e) => Err(e.into()),
+        if let Err(e) = super::roundtrip(req, &self.profile, &self.agent) {
+            if if_exists && matches!(e.kind(), Some(ApiErrorKind::BranchNotFound { .. })) {
+                return Ok(false);
+            } else {
+                return Err(e.into());
+            }
         }
+
+        Ok(true)
     }
 }

@@ -18,7 +18,7 @@ use tracing::info;
 use yansi::Paint;
 
 use crate::cli::{
-    Cli, KeyValue, Output, Priority, format_grpc_status, is_api_err_kind,
+    Cli, KeyValue, Output, Priority, api_err_kind, format_grpc_status,
     run::{job_request_common, monitor_job_progress},
     spinner::ProgressExt as _,
     with_rt,
@@ -368,17 +368,16 @@ fn handle_delete_table(
         },
     };
 
-    let result = cli.roundtrip(req);
-    match result {
-        Ok(_) => {
-            eprintln!("Deleted table {table_name:?}");
-        }
-        Err(e) if if_exists && is_api_err_kind(&e, ApiErrorKind::TableNotFound) => {
+    if let Err(e) = cli.roundtrip(req) {
+        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TableNotFound { .. })) {
             eprintln!("Table {table_name:?} does not exist");
+            return Ok(());
+        } else {
+            return Err(e);
         }
-        Err(e) => return Err(e),
     }
 
+    eprintln!("Deleted table {table_name:?}");
     Ok(())
 }
 

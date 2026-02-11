@@ -38,10 +38,10 @@ enum ClientError {
 }
 
 impl ClientError {
-    fn is_api_err(&self, k: ApiErrorKind) -> bool {
+    pub(crate) fn kind(&self) -> Option<&ApiErrorKind> {
         match self {
-            ClientError::Api(ApiError::ErrorResponse { kind, .. }) => k == *kind,
-            _ => false,
+            ClientError::Api(ae) => ae.kind(),
+            _ => None,
         }
     }
 }
@@ -88,7 +88,7 @@ impl ClientError {
 /// Catalog operations (branch/table methods) raise a subclass of `bauplan.exceptions.BauplanError` that mirror HTTP status codes.
 ///     - 400: `bauplan.exceptions.InvalidDataError`
 ///     - 401: `bauplan.exceptions.UnauthorizedError`
-///     - 403: `bauplan.exceptions.AccessDeniedError`
+///     - 403: `bauplan.exceptions.ForbiddenError`
 ///     - 404: `bauplan.exceptions.ResourceNotFoundError` e.g .ID doesn't match any records
 ///     - 404: `bauplan.exceptions.ApiRouteError` e.g. the given route doesn't exist
 ///     - 405: `bauplan.exceptions.ApiMethodError` e.g. POST on a route with only GET defined
@@ -184,6 +184,7 @@ impl Client {
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn roundtrip<T: ApiRequest>(
     req: T,
     profile: &Profile,
