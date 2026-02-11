@@ -98,7 +98,6 @@ impl Client {
     ///     A boolean for if the tag exists.
     ///
     /// Raises:
-    ///     NotATagRefError: if the object is not a tag.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "bool")]
@@ -107,7 +106,12 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
-            Err(e) if e.is_api_err(ApiErrorKind::TagNotFound) => Ok(false),
+            Err(e)
+                if e.is_api_err(ApiErrorKind::TagNotFound)
+                    || e.is_api_err(ApiErrorKind::NotATagRef) =>
+            {
+                Ok(false)
+            }
             Err(e) => Err(e.into()),
         }
     }

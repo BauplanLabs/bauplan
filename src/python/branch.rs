@@ -110,7 +110,6 @@ impl Client {
     ///     A boolean for if the branch exists.
     ///
     /// Raises:
-    ///     NotABranchRefError: if the object is not a branch.
     ///     ForbiddenError: if the user does not have access to the branch.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
@@ -120,7 +119,12 @@ impl Client {
 
         match super::roundtrip(req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
-            Err(e) if e.is_api_err(ApiErrorKind::BranchNotFound) => Ok(false),
+            Err(e)
+                if e.is_api_err(ApiErrorKind::BranchNotFound)
+                    || e.is_api_err(ApiErrorKind::NotABranchRef) =>
+            {
+                Ok(false)
+            }
             Err(e) => Err(e.into()),
         }
     }
