@@ -1,5 +1,5 @@
 use std::{
-    io::{Read as _, Write as _, stdout},
+    io::{IsTerminal as _, Read as _, Write as _, stdout},
     path::PathBuf,
     time,
 };
@@ -148,7 +148,7 @@ pub(crate) struct TableCreatePlanArgs {
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableCreatePlanApplyArgs {
-    /// apply this plan
+    /// Path to a plan YAML file; reads from stdin if not provided
     #[arg(long)]
     pub plan: Option<String>,
     /// Arguments to pass to the job.
@@ -515,6 +515,10 @@ async fn handle_apply_plan(cli: &Cli, args: TableCreatePlanApplyArgs) -> anyhow:
     let plan_yaml = match plan {
         Some(path) => std::fs::read_to_string(&path)?,
         None => {
+            if std::io::stdin().is_terminal() {
+                bail!("no plan provided; use --plan <file> or pipe YAML to stdin");
+            }
+
             let mut buf = String::new();
             std::io::stdin().read_to_string(&mut buf)?;
             buf
