@@ -90,16 +90,24 @@ where
         parts: http::response::Parts,
         body: impl Read,
     ) -> Result<Self, ApiError> {
-        let raw: RawApiResponse<Vec<T>> = serde_json::from_reader(body).map_err(|e| {
-            tracing::error!("Failed to parse API response: {e:#?}");
-            ApiError::InvalidResponse(parts.status)
-        })?;
+        let raw: RawApiResponse<serde_json::Value> =
+            serde_json::from_reader(body).map_err(|e| {
+                tracing::error!("Failed to parse API response: {e}");
+                ApiError::InvalidResponse(parts.status)
+            })?;
 
         match raw {
-            RawApiResponse::Data { data, metadata, .. } => Ok(PaginatedResponse {
-                page: data,
-                pagination_token: metadata.pagination_token,
-            }),
+            RawApiResponse::Data { data, metadata, .. } => {
+                let page: Vec<T> = serde_path_to_error::deserialize(data).map_err(|e| {
+                    tracing::error!("Failed to parse API response data: {e}");
+                    ApiError::InvalidResponse(parts.status)
+                })?;
+
+                Ok(PaginatedResponse {
+                    page,
+                    pagination_token: metadata.pagination_token,
+                })
+            }
             RawApiResponse::Error { error } => Err(ApiError::from_raw(parts.status, error)),
         }
     }

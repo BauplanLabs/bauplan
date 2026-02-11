@@ -4,6 +4,8 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use std::collections::BTreeMap;
+
 use crate::{
     CatalogRef, PaginatedResponse,
     api::{ApiRequest, DataResponse, commit::CommitOptions},
@@ -24,6 +26,19 @@ pub struct TableField {
     pub required: bool,
     /// The field type.
     pub r#type: String,
+}
+
+/// A partition field on a table.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(name = "PartitionField", module = "bauplan", get_all)
+)]
+pub struct PartitionField {
+    /// The partition field name.
+    pub name: String,
+    /// The partition transform (e.g. "day", "month", "identity").
+    pub transform: String,
 }
 
 /// The kind of table entry.
@@ -74,6 +89,18 @@ pub struct Table {
     pub fields: Vec<TableField>,
     /// The number of snapshots.
     pub snapshots: Option<u32>,
+    /// The partition fields on the table.
+    #[serde(default)]
+    pub partitions: Vec<PartitionField>,
+    /// The URI of the Iceberg metadata file.
+    pub metadata_location: String,
+    /// The current Iceberg snapshot ID.
+    pub current_snapshot_id: Option<i64>,
+    /// The current Iceberg schema ID.
+    pub current_schema_id: Option<i32>,
+    /// Table properties.
+    #[serde(default)]
+    pub properties: BTreeMap<String, String>,
 }
 
 #[cfg(feature = "python")]
@@ -94,6 +121,17 @@ impl TableField {
         format!(
             "TableField(name={:?}, type={:?}, required={})",
             self.name, self.r#type, self.required,
+        )
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl PartitionField {
+    fn __repr__(&self) -> String {
+        format!(
+            "PartitionField(name={:?}, transform={:?})",
+            self.name, self.transform,
         )
     }
 }

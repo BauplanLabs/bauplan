@@ -138,13 +138,19 @@ impl<T: DataResponse> ApiResponse for T {
         parts: http::response::Parts,
         body: impl Read,
     ) -> Result<Self, ApiError> {
-        let raw: RawApiResponse<Self> = serde_json::from_reader(body).map_err(|e| {
-            tracing::error!("Failed to parse API response: {e:#?}");
-            ApiError::InvalidResponse(parts.status)
-        })?;
+        let raw: RawApiResponse<serde_json::Value> =
+            serde_json::from_reader(body).map_err(|e| {
+                tracing::error!("Failed to parse API response: {e}");
+                ApiError::InvalidResponse(parts.status)
+            })?;
 
         match raw {
-            RawApiResponse::Data { data, .. } => Ok(data),
+            RawApiResponse::Data { data, .. } => {
+                serde_path_to_error::deserialize(data).map_err(|e| {
+                    tracing::error!("Failed to parse API response data: {e}");
+                    ApiError::InvalidResponse(parts.status)
+                })
+            }
             RawApiResponse::Error { error } => Err(ApiError::from_raw(parts.status, error)),
         }
     }
