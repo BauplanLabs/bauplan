@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{CatalogRef, PaginatedResponse, api::ApiRequest};
+use crate::{CatalogRef, PaginatedResponse, api::ApiRequest, branch::Branch};
 
 /// An actor (author or committer) in a commit.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -28,8 +28,7 @@ pub struct Actor {
 )]
 pub struct Commit {
     /// The ref (branch, tag, or detached) this commit is on.
-    #[serde(rename = "ref")]
-    pub catalog_ref: CatalogRef,
+    pub r#ref: CatalogRef,
     /// The commit message.
     pub message: Option<String>,
     /// The authors of the commit.
@@ -60,7 +59,7 @@ impl Commit {
 
     /// Returns the commit hash from the ref.
     pub fn hash(&self) -> &str {
-        match &self.catalog_ref {
+        match &self.r#ref {
             CatalogRef::Branch { hash, .. } => hash,
             CatalogRef::Tag { hash, .. } => hash,
             CatalogRef::Detached { hash } => hash,
@@ -79,11 +78,24 @@ impl Commit {
     pub fn body(&self) -> Option<&str> {
         self.message.as_ref().and_then(|m| {
             let trimmed = m.trim();
-            // Find the first newline - everything after is the body.
             let newline_pos = trimmed.find('\n')?;
             let body = trimmed[newline_pos + 1..].trim();
             if body.is_empty() { None } else { Some(body) }
         })
+    }
+
+    /// For merge commits, returns a Branch pointing to the second parent.
+    pub fn parent_merge_ref(&self) -> Option<Branch> {
+        if self.parent_hashes.len() > 1
+            && let CatalogRef::Branch { name, .. } = &self.parent_ref
+        {
+            return Some(Branch {
+                name: name.clone(),
+                hash: self.parent_hashes[1].clone(),
+            });
+        }
+
+        None
     }
 }
 
@@ -96,6 +108,26 @@ impl Commit {
         let subject = self.subject().unwrap_or_default();
         let author = self.author().map(|a| a.name.as_str()).unwrap_or_default();
         format!("Commit(hash={short_hash:?}, author={author:?}, message={subject:?})")
+    }
+
+    #[getter(author)]
+    fn py_author(&self) -> Option<Actor> {
+        self.author().cloned()
+    }
+
+    #[getter(subject)]
+    fn py_subject(&self) -> Option<&str> {
+        self.subject()
+    }
+
+    #[getter(body)]
+    fn py_body(&self) -> Option<&str> {
+        self.body()
+    }
+
+    #[getter(parent_merge_ref)]
+    fn py_parent_merge_ref(&self) -> Option<Branch> {
+        self.parent_merge_ref()
     }
 }
 
