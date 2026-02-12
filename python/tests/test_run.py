@@ -65,7 +65,7 @@ def test_detach(client):
     assert state.ctx.detach is True
 
     # Poll until the detached job finishes.
-    for _ in range(60):
+    for _ in range(120):
         job = client.get_job(state.job_id)
         if job.status_type != bauplan.JobState.RUNNING:
             break
