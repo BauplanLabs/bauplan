@@ -7,6 +7,7 @@ use yansi::Paint as _;
 mod cli {
     mod branch;
     mod import;
+    mod job;
     mod query;
     mod run;
     mod table;
