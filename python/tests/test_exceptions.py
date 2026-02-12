@@ -122,6 +122,23 @@ class TestNamespaceNotFoundContext:
         assert e.kind.catalog_ref is not None
 
 
+class TestExceptionInstantiation:
+    def test_bauplan_error_instantiation(self):
+        e = exceptions.BauplanError("test error")
+        assert isinstance(e, exceptions.BauplanError)
+
+    def test_query_error_instantiation(self):
+        e = exceptions.BauplanQueryError("test error")
+        assert isinstance(e, exceptions.BauplanQueryError)
+        assert isinstance(e, exceptions.BauplanJobError)
+        assert isinstance(e, exceptions.BauplanError)
+
+    def test_job_error_instantiation(self):
+        e = exceptions.BauplanJobError("test error")
+        assert isinstance(e, exceptions.BauplanJobError)
+        assert isinstance(e, exceptions.BauplanError)
+
+
 class TestHttpErrorProperties:
     def test_table_not_found_has_code(self, client):
         with pytest.raises(exceptions.TableNotFoundError) as exc_info:

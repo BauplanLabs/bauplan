@@ -158,6 +158,15 @@ pub mod exceptions {
 #[pyclass(extends=pyo3::exceptions::PyException, subclass, module="bauplan.exceptions")]
 pub(crate) struct BauplanError;
 
+#[pymethods]
+impl BauplanError {
+    #[new]
+    #[pyo3(signature = (*_args))]
+    fn new(_args: &Bound<'_, pyo3::types::PyTuple>) -> Self {
+        Self
+    }
+}
+
 impl BauplanError {
     pub(crate) fn new_err(msg: impl std::fmt::Display) -> PyErr {
         PyErr::new::<Self, _>(msg.to_string())
