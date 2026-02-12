@@ -96,10 +96,10 @@ pub(crate) struct JobLsArgs {
     #[arg(short, long, action = clap::ArgAction::Append)]
     pub user: Vec<String>,
     /// Filter by job kind
-    #[arg(short, long, action = clap::ArgAction::Append)]
+    #[arg(short, long, ignore_case = true, action = clap::ArgAction::Append)]
     pub kind: Vec<JobKindArg>,
     /// Filter by status
-    #[arg(short, long, action = clap::ArgAction::Append)]
+    #[arg(short, long, ignore_case = true, action = clap::ArgAction::Append)]
     pub status: Vec<JobStatusArg>,
     /// Filter jobs created after this date (e.g., 2024-01-15 or 2024-01-15T10:30:00Z)
     #[arg(long)]

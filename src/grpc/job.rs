@@ -42,14 +42,15 @@ impl std::str::FromStr for JobState {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Unspecified" => Ok(Self::Unspecified),
-            "Not Started" => Ok(Self::NotStarted),
-            "Running" => Ok(Self::Running),
-            "Complete" => Ok(Self::Complete),
-            "Abort" => Ok(Self::Abort),
-            "Fail" => Ok(Self::Fail),
-            "Other" => Ok(Self::Other),
+        // Accept PascalCase, lowercase, kebab-case, and SCREAMING_SNAKE_CASE.
+        match s.to_ascii_lowercase().replace('_', "-").as_str() {
+            "unspecified" => Ok(Self::Unspecified),
+            "not-started" | "not started" => Ok(Self::NotStarted),
+            "running" => Ok(Self::Running),
+            "complete" => Ok(Self::Complete),
+            "abort" => Ok(Self::Abort),
+            "fail" => Ok(Self::Fail),
+            "other" => Ok(Self::Other),
             _ => Err(format!("invalid job state: {s}")),
         }
     }
@@ -152,15 +153,16 @@ impl std::str::FromStr for JobKind {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "Unknown" => Ok(Self::Unspecified),
-            "Run" | "CodeSnapshotRun" => Ok(Self::Run),
-            "Query" => Ok(Self::Query),
-            "ImportPlanCreate" => Ok(Self::ImportPlanCreate),
-            "ImportPlanApply" => Ok(Self::ImportPlanApply),
-            "TablePlanCreate" => Ok(Self::TablePlanCreate),
-            "TablePlanCreateApply" => Ok(Self::TablePlanCreateApply),
-            "TableImport" => Ok(Self::TableImport),
+        // Accept PascalCase, lowercase, kebab-case, and SCREAMING_SNAKE_CASE.
+        match s.to_ascii_lowercase().replace('_', "-").as_str() {
+            "unknown" | "unspecified" => Ok(Self::Unspecified),
+            "run" | "codesnapshotrun" | "code-snapshot-run" => Ok(Self::Run),
+            "query" => Ok(Self::Query),
+            "import-plan-create" | "importplancreate" => Ok(Self::ImportPlanCreate),
+            "import-plan-apply" | "importplanapply" => Ok(Self::ImportPlanApply),
+            "table-plan-create" | "tableplancreate" => Ok(Self::TablePlanCreate),
+            "table-plan-create-apply" | "tableplancreateapply" => Ok(Self::TablePlanCreateApply),
+            "table-import" | "tableimport" | "table-data-import" => Ok(Self::TableImport),
             _ => Err(format!("invalid job kind: {s}")),
         }
     }
