@@ -253,22 +253,6 @@ impl TryFrom<commanderpb::RuntimeLogEvent> for JobLogEvent {
     }
 }
 
-/// A collection of log events from a job.
-#[derive(Debug, Clone, Serialize)]
-#[pyclass(name = "JobLogList", module = "bauplan", get_all)]
-pub(crate) struct JobLogList {
-    events: Vec<JobLogEvent>,
-}
-
-#[pymethods]
-impl JobLogList {
-    /// Return only the log events (alias for events).
-    #[getter]
-    fn log_events(&self) -> Vec<JobLogEvent> {
-        self.events.clone()
-    }
-}
-
 /// A node in the job DAG (a model).
 #[derive(Debug, Clone, Serialize)]
 #[pyclass(module = "bauplan", get_all)]
@@ -499,8 +483,8 @@ impl Client {
     ///
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
-    #[pyo3(signature = (job) -> "JobLogList")]
-    fn get_logs(&mut self, job: JobArg) -> PyResult<JobLogList> {
+    #[pyo3(signature = (job) -> "list[JobLogEvent]")]
+    fn get_job_logs(&mut self, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
         let mut req = Request::new(commanderpb::GetLogsRequest {
             job_id: job.0,
             ..Default::default()
@@ -524,7 +508,7 @@ impl Client {
             })
             .collect();
 
-        Ok(JobLogList { events })
+        Ok(events)
     }
 
     /// EXPERIMENTAL: Get context for a job by ID.

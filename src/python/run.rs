@@ -225,10 +225,8 @@ impl Client {
     ///     dry_run: Whether to enable or disable dry-run mode for the run; models are not materialized.
     ///     strict: Whether to enable or disable strict schema validation.
     ///     preview: Whether to enable or disable preview mode for the run.
-    ///     debug: Whether to enable or disable debug mode for the run.
     ///     args: Additional arguments (optional).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode for the run.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     ///     detach: Whether to detach the run and return immediately instead of blocking on log streaming.
     /// Returns:
@@ -239,10 +237,10 @@ impl Client {
         r#ref: "str | Ref | None" = None,
         namespace: "str | Namespace | None" = None,
         parameters: "dict[str, str | int | float | bool | None] | None" = None,
-        cache: "str | None" = None,
-        transaction: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        transaction: "Literal['on', 'off'] | None" = None,
         dry_run: "bool | None" = None,
-        strict: "str | None" = None,
+        strict: "Literal['on', 'off'] | None" = None,
         preview: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,

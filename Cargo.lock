@@ -1608,9 +1608,9 @@ dependencies = [
 
 [[package]]
 name = "goblin"
-version = "0.10.4"
+version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4db6758c546e6f81f265638c980e5e84dfbda80cfd8e89e02f83454c8e8124bd"
+checksum = "983a6aafb3b12d4c41ea78d39e189af4298ce747353945ff5105b54a056e5cd9"
 dependencies = [
  "log",
  "plain",
@@ -2107,15 +2107,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indoc"
-version = "2.0.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79cf5c93f93228cf8efb3ba362535fb11199ac548a09ce117c9b1adc3030d706"
-dependencies = [
- "rustversion",
-]
-
-[[package]]
 name = "integer-encoding"
 version = "3.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2420,15 +2411,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
-name = "memoffset"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
-dependencies = [
- "autocfg",
-]
-
-[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2624,9 +2606,9 @@ dependencies = [
 
 [[package]]
 name = "numpy"
-version = "0.27.1"
+version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aac2e6a6e4468ffa092ad43c39b81c79196c2bb773b8db4085f695efe3bba17"
+checksum = "778da78c64ddc928ebf5ad9df5edf0789410ff3bdbf3619aed51cd789a6af1e2"
 dependencies = [
  "half",
  "libc",
@@ -3143,31 +3125,27 @@ dependencies = [
 
 [[package]]
 name = "pyo3"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab53c047fcd1a1d2a8820fe84f05d6be69e9526be40cb03b73f86b6b03e6d87d"
+version = "0.28.0"
+source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
 dependencies = [
  "chrono",
  "chrono-tz",
  "indexmap 2.13.0",
- "indoc",
  "inventory",
  "libc",
- "memoffset",
  "once_cell",
  "portable-atomic",
  "pyo3-build-config",
  "pyo3-ffi",
  "pyo3-macros",
- "unindent",
  "uuid",
 ]
 
 [[package]]
 name = "pyo3-arrow"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36b9f03cb749b0326951ebb30e39eda2f32b0b9205dce67e947e65779b8faffc"
+checksum = "4ccbc2a42954bd442382c59617c548153e98716dba78f22679d1370ae538f822"
 dependencies = [
  "arrow-array",
  "arrow-buffer",
@@ -3186,18 +3164,16 @@ dependencies = [
 
 [[package]]
 name = "pyo3-build-config"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b455933107de8642b4487ed26d912c2d899dec6114884214a0b3bb3be9261ea6"
+version = "0.28.0"
+source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
 dependencies = [
  "target-lexicon",
 ]
 
 [[package]]
 name = "pyo3-ffi"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1c85c9cbfaddf651b1221594209aed57e9e5cff63c4d11d1feead529b872a089"
+version = "0.28.0"
+source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
 dependencies = [
  "libc",
  "pyo3-build-config",
@@ -3205,22 +3181,19 @@ dependencies = [
 
 [[package]]
 name = "pyo3-introspection"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6cd5679197d3cfdd7d9d241edf688ec13efd4fc302b35e8596f2831a0be5109"
+version = "0.28.0"
+source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
 dependencies = [
  "anyhow",
  "goblin",
  "serde",
  "serde_json",
- "unicode-ident",
 ]
 
 [[package]]
 name = "pyo3-macros"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a5b10c9bf9888125d917fb4d2ca2d25c8df94c7ab5a52e13313a07e050a3b02"
+version = "0.28.0"
+source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
 dependencies = [
  "proc-macro2",
  "pyo3-macros-backend",
@@ -3230,9 +3203,8 @@ dependencies = [
 
 [[package]]
 name = "pyo3-macros-backend"
-version = "0.27.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03b51720d314836e53327f5871d4c0cfb4fb37cc2c4a11cc71907a86342c40f9"
+version = "0.28.0"
+source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -4799,12 +4771,6 @@ name = "unicode-width"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254"
-
-[[package]]
-name = "unindent"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7264e107f553ccae879d21fbea1d6724ac785e8c3bfc762137959b5802826ef3"
 
 [[package]]
 name = "unit-prefix"

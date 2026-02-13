@@ -50,7 +50,5 @@ pub mod schema {
     #[pymodule_export]
     use crate::python::job::JobLogLevel;
     #[pymodule_export]
-    use crate::python::job::JobLogList;
-    #[pymodule_export]
     use crate::python::job::JobLogStream;
 }

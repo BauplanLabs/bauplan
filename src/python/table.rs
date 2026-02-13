@@ -71,10 +71,8 @@ impl Client {
     ///     namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
     ///     partitioned_by: Optional argument specifying the table partitioning.
     ///     replace: Replace the table if it already exists.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     Table
@@ -221,10 +219,8 @@ impl Client {
     ///     namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
     ///     partitioned_by: Optional argument specifying the table partitioning.
     ///     replace: Replace the table if it already exists.
-    ///     debug: Whether to enable or disable debug mode.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     ///
     /// Returns:
@@ -342,10 +338,8 @@ impl Client {
     ///
     /// Parameters:
     ///     plan: The plan to apply.
-    ///     debug: Whether to enable or disable debug mode for the query.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
     ///     The plan state.
@@ -448,10 +442,8 @@ impl Client {
     ///     import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
     ///     best_effort: Don't fail if schema of table does not match.
     ///     preview: Whether to enable or disable preview mode for the import.
-    ///     debug: Whether to enable or disable debug mode for the import.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
     /// Returns:
@@ -576,10 +568,8 @@ impl Client {
     ///     branch: Branch in which to create the table.
     ///     namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
     ///     overwrite: Whether to delete and recreate the table if it already exists.
-    ///     debug: Whether to enable or disable debug mode for the operation.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     verbose: Whether to enable or disable verbose mode.
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
     ///
@@ -855,7 +845,7 @@ impl Client {
     ///     commit_properties: Optional, a list of properties to attach to the commit.
     ///     if_exists: If set to `True`, the table will not raise an error if it does not exist.
     /// Returns:
-    ///     The deleted `bauplan.schema.Table` object.
+    ///     A `bauplan.schema.Branch` object pointing to the new head.
     ///
     /// Raises:
     ///     DeleteTableForbiddenError: if the user does not have access to delete the table.

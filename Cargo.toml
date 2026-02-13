@@ -7,9 +7,19 @@ version = "0.1.0"
 edition = "2024"
 authors = ["Colin Marc <colin.marc@bauplanlabs.com>"]
 description = "The client SDK and CLI for Bauplan"
-homepage = "docs.bauplanlabs.com"
+homepage = "https://docs.bauplanlabs.com"
 repository = "https://github.com/bauplanlabs/bauplan"
 license = "Apache-2.0 OR MIT"
+publish = false
+exclude = [
+    ".github/",
+    "python",
+    "tests/",
+    "Justfile",
+    "mise.toml",
+    "pyproject.toml",
+    "uv.lock",
+]
 
 [lib]
 name = "bauplan"
@@ -44,8 +54,8 @@ opentelemetry = { version = "0.28", default-features = false, features = ["trace
 prost = "0.14"
 prost-types = "0.14"
 parquet = { version = "57", optional = true }
-pyo3 = { version = "0.27", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
-pyo3-arrow = { version = "0.15", optional = true }
+pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
+pyo3-arrow = { version = "0.16", optional = true }
 rand = "0.8"
 regex = "1"
 rsa = { version = "0.9", features = ["pem", "sha2"] }
@@ -85,6 +95,17 @@ similar = { version = "2", features = ["bytes"] }
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 yansi = "1.0.1"
+
+# TODO: we're temporarily pulling in a PR that includes docstrings in the built
+# dylib and updates pyo3-introspection to pull the back out when generating pyi
+# stubs.
+# https://github.com/PyO3/pyo3/pull/5782
+[patch.crates-io]
+pyo3 = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
+pyo3-build-config = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
+pyo3-ffi = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
+pyo3-macros = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
+pyo3-macros-backend = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
 
 [profile.release]
 strip = true

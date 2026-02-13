@@ -232,7 +232,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -294,7 +294,6 @@ impl Client {
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
     ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
-    ///     as_json: Whether to return the results as a JSON-compatible string (default: `False`).
     ///     args: Additional arguments to pass to the query (default: `None`).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
@@ -306,7 +305,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -370,7 +369,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -440,7 +439,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -509,10 +508,10 @@ impl Client {
         path: "str",
         query: "str",
         *,
-        file_format: "str | None" = None,
+        file_format: "Literal['json', 'jsonl'] | None" = None,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -613,7 +612,7 @@ impl Client {
         columns: "list[str] | None" = None,
         filters: "str | None" = None,
         limit: "int | None" = None,
-        cache: "str | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,

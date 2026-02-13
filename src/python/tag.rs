@@ -20,10 +20,10 @@ impl Client {
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
     /// Parameters:
-    ///     filter_by_name: Optional, filter the commits by message.
-    ///     limit: Optional, max number of commits to get.
+    ///     filter_by_name: Optional, filter the tags by name.
+    ///     limit: Optional, max number of tags to get.
     /// Returns:
-    ///     A `bauplan.schema.GetTagsResponse` object.
+    ///     An iterator over `Tag` objects.
     ///
     /// Raises:
     ///     UnauthorizedError: if the user's credentials are invalid.
