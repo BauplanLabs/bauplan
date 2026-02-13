@@ -103,6 +103,13 @@ pub struct Table {
     pub properties: BTreeMap<String, String>,
 }
 
+impl Table {
+    /// Returns the fully qualified name: `namespace.name`.
+    pub fn fqn(&self) -> String {
+        format!("{}.{}", self.namespace, self.name)
+    }
+}
+
 #[cfg(feature = "python")]
 #[pyo3::pymethods]
 impl Table {

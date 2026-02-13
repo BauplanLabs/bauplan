@@ -40,13 +40,17 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
         bail!("--from-ref can only be used with -b");
     }
 
-    if cli.roundtrip(GetBranch { name: &branch_name }).is_err() {
+    switch_branch(cli, &branch_name)
+}
+
+pub(crate) fn switch_branch(cli: &Cli, branch_name: &str) -> anyhow::Result<()> {
+    if cli.roundtrip(GetBranch { name: branch_name }).is_err() {
         bail!("branch {branch_name:?} doesn't exist or is inaccessible");
     }
 
     yaml::edit(&cli.profile.config_path, |doc| {
         let mut profile = yaml::mapping_at_path(doc, &["profiles", &cli.profile.name])?;
-        yaml::upsert_str(&mut profile, "active_branch", &branch_name);
+        yaml::upsert_str(&mut profile, "active_branch", branch_name);
         Ok(())
     })?;
 

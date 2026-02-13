@@ -1,10 +1,18 @@
-use std::io::{Write as _, stdout};
+use std::{
+    collections::BTreeMap,
+    io::{Write as _, stdout},
+};
 
-use bauplan::{ApiErrorKind, branch::*, table::GetTables};
+use anyhow::bail;
+use bauplan::{
+    ApiErrorKind,
+    branch::*,
+    table::{GetTables, Table},
+};
 use tabwriter::TabWriter;
 use yansi::Paint;
 
-use crate::cli::{Cli, Output, api_err_kind};
+use crate::cli::{Cli, Output, api_err_kind, checkout};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchArgs {
@@ -116,29 +124,34 @@ pub(crate) struct BranchRenameArgs {
     pub new_branch_name: String,
 }
 
+#[derive(serde::Serialize)]
+struct JsonDiff<'a> {
+    added: Vec<&'a Table>,
+    removed: Vec<&'a Table>,
+}
+
 pub(crate) fn handle(cli: &Cli, args: BranchArgs) -> anyhow::Result<()> {
     match args.command {
         BranchCommand::Ls(args) => list_branches(cli, args),
         BranchCommand::Create(args) => create_branch(cli, args),
         BranchCommand::Rm(args) => delete_branch(cli, args),
         BranchCommand::Get(args) => get_branch(cli, args),
-        BranchCommand::Checkout(_) => todo!(),
-        BranchCommand::Diff(_) => todo!(),
+        BranchCommand::Checkout(args) => checkout_branch(cli, args),
+        BranchCommand::Diff(args) => diff_branch(cli, args),
         BranchCommand::Merge(args) => merge_branch(cli, args),
         BranchCommand::Rename(args) => rename_branch(cli, args),
     }
 }
 
-fn list_branches(
-    cli: &Cli,
-    BranchLsArgs {
+fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
+    let BranchLsArgs {
         branch_name,
         all_zones,
         name,
         user,
         limit,
-    }: BranchLsArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
     // The branch_name positional arg acts as a name filter.
     let filter_by_name = name.as_deref().or(branch_name.as_deref());
 
@@ -181,13 +194,12 @@ fn list_branches(
     Ok(())
 }
 
-fn get_branch(
-    cli: &Cli,
-    BranchGetArgs {
+fn get_branch(cli: &Cli, args: BranchGetArgs) -> anyhow::Result<()> {
+    let BranchGetArgs {
         branch_name,
         namespace,
-    }: BranchGetArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
     let req = GetTables {
         at_ref: &branch_name,
         filter_by_name: None,
@@ -221,14 +233,13 @@ fn get_branch(
     Ok(())
 }
 
-fn create_branch(
-    cli: &Cli,
-    BranchCreateArgs {
+fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
+    let BranchCreateArgs {
         branch_name,
         from_ref,
         if_not_exists,
-    }: BranchCreateArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
     let from_ref = from_ref
         .as_deref()
         .or(cli.profile.active_branch.as_deref())
@@ -257,13 +268,12 @@ fn create_branch(
     Ok(())
 }
 
-fn delete_branch(
-    cli: &Cli,
-    BranchRmArgs {
+fn delete_branch(cli: &Cli, args: BranchRmArgs) -> anyhow::Result<()> {
+    let BranchRmArgs {
         branch_name,
         if_exists,
-    }: BranchRmArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
     let req = DeleteBranch { name: &branch_name };
 
     if let Err(e) = cli.roundtrip(req) {
@@ -280,13 +290,12 @@ fn delete_branch(
     Ok(())
 }
 
-fn merge_branch(
-    cli: &Cli,
-    BranchMergeArgs {
+fn merge_branch(cli: &Cli, args: BranchMergeArgs) -> anyhow::Result<()> {
+    let BranchMergeArgs {
         branch_name,
         commit_message,
-    }: BranchMergeArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
     let into_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
 
     let req = MergeBranch {
@@ -304,13 +313,12 @@ fn merge_branch(
     Ok(())
 }
 
-fn rename_branch(
-    cli: &Cli,
-    BranchRenameArgs {
+fn rename_branch(cli: &Cli, args: BranchRenameArgs) -> anyhow::Result<()> {
+    let BranchRenameArgs {
         branch_name,
         new_branch_name,
-    }: BranchRenameArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
     let req = RenameBranch {
         name: &branch_name,
         new_name: &new_branch_name,
@@ -320,4 +328,98 @@ fn rename_branch(
     eprintln!("Renamed branch \"{branch_name}\" to \"{new_branch_name}\"");
 
     Ok(())
+}
+
+fn checkout_branch(cli: &Cli, args: BranchCheckoutArgs) -> anyhow::Result<()> {
+    let BranchCheckoutArgs { branch_name } = args;
+    checkout::switch_branch(cli, &branch_name)
+}
+
+fn diff_branch(cli: &Cli, args: BranchDiffArgs) -> anyhow::Result<()> {
+    let BranchDiffArgs {
+        branch_name_a,
+        branch_name_b,
+        namespace,
+    } = args;
+
+    let branch_a = branch_name_a.as_str();
+    let branch_b = branch_name_b
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    if branch_a == branch_b {
+        bail!("can not compare branch {branch_a:?} with itself");
+    }
+
+    let tables_a = collect_tables(cli, branch_a, namespace.as_deref())?;
+    let tables_b = collect_tables(cli, branch_b, namespace.as_deref())?;
+
+    match cli.global.output.unwrap_or_default() {
+        Output::Json => {
+            let added: Vec<_> = tables_b
+                .iter()
+                .filter_map(|(fqn, table)| {
+                    if !tables_a.contains_key(fqn.as_str()) {
+                        Some(table)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            let removed: Vec<_> = tables_a
+                .iter()
+                .filter_map(|(fqn, table)| {
+                    if !tables_b.contains_key(fqn.as_str()) {
+                        Some(table)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            serde_json::to_writer(stdout(), &JsonDiff { added, removed })?;
+            println!();
+        }
+        Output::Tty => {
+            eprintln!(
+                "{}",
+                format!("diff --bauplan a/{branch_name_a} b/{branch_b}").bold()
+            );
+
+            for (k, t) in &tables_b {
+                if !tables_a.contains_key(k.as_str()) {
+                    eprintln!("{}", format!("+{} {}", t.kind, t.fqn()).green());
+                }
+            }
+
+            for (k, t) in &tables_a {
+                if !tables_b.contains_key(k.as_str()) {
+                    eprintln!("{}", format!("-{} {}", t.kind, t.fqn()).red());
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn collect_tables(
+    cli: &Cli,
+    at_ref: &str,
+    filter_by_namespace: Option<&str>,
+) -> anyhow::Result<BTreeMap<String, Table>> {
+    let req = GetTables {
+        at_ref,
+        filter_by_namespace,
+        filter_by_name: None,
+    };
+
+    let mut out = BTreeMap::new();
+    for table in bauplan::paginate(req, None, |r| cli.roundtrip(r))? {
+        let table = table?;
+        out.insert(table.fqn(), table);
+    }
+
+    Ok(out)
 }
