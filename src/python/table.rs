@@ -10,6 +10,7 @@ use crate::{
     api::table::Table,
     commit::CommitOptions,
     grpc::generated as commanderpb,
+    iceberg::RegisterTable,
     python::{
         job_err,
         paginate::PyPaginator,
@@ -936,7 +937,7 @@ impl Client {
     ///     table: The name of the table to create.
     ///     metadata_json_uri: The S3 URI pointing to the Iceberg table's metadata.json file.
     ///     namespace: The namespace for the table (required).
-    ///     branch: The branch name in which to create the table. Defaults to '-' if not specified.
+    ///     branch: The branch name in which to create the table. Defaults to the active branch, or 'main'.
     ///     overwrite: Whether to overwrite an existing table with the same name (default: False).
     ///
     /// Returns:
@@ -954,20 +955,39 @@ impl Client {
         table: "str | Table",
         metadata_json_uri: "str",
         *,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | Namespace",
         branch: "str | Branch | None" = None,
-        overwrite: "bool | None" = None,
+        overwrite: "bool" = false,
     ) -> "Table")]
     fn create_external_table_from_metadata(
         &mut self,
         table: &str,
         metadata_json_uri: &str,
-        namespace: Option<&str>,
+        namespace: &str,
         branch: Option<&str>,
-        overwrite: Option<bool>,
-    ) -> PyResult<Py<PyAny>> {
-        let _ = (table, metadata_json_uri, namespace, branch, overwrite);
-        todo!("create_external_table_from_metadata")
+        overwrite: bool,
+    ) -> PyResult<Table> {
+        let branch = branch
+            .or(self.profile.active_branch.as_deref())
+            .unwrap_or("-");
+
+        let req = RegisterTable {
+            name: table,
+            metadata_location: metadata_json_uri,
+            overwrite,
+            branch,
+            namespace,
+        };
+
+        super::roundtrip(req, &self.profile, &self.agent)?;
+
+        let req = GetTable {
+            name: table,
+            at_ref: branch,
+            namespace: Some(namespace),
+        };
+
+        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
     }
 
     /// Revert a table to a previous state.
