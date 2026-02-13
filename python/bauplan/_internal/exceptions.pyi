@@ -1,6 +1,6 @@
 import typing
 
-from bauplan._internal import TableCreatePlanApplyState, TableCreationPlanState
+from bauplan._internal.state import TableCreatePlanApplyState, TableCreationPlanState
 
 class ApiErrorKind:
     def __getattr__(self, name: str, /) -> typing.Any: ...

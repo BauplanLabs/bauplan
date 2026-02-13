@@ -36,19 +36,9 @@ fn main() -> Result<()> {
     let stubs = module_stub_files(&module);
 
     let mut out = stdout().lock();
-    for (name, content) in stubs {
+    for (name, content) in &stubs {
         writeln!(&mut out, "# {}", name.display())?;
-
-        // Fix pyo3-introspection issues:
-        // - Remove circular `import bauplan` (this module IS bauplan via re-export)
-        // - Remove `bauplan.` prefix from type references (they're defined locally)
-        for line in content.lines() {
-            if line == "import bauplan" {
-                continue;
-            }
-
-            writeln!(&mut out, "{}", line.replace("bauplan.", ""))?;
-        }
+        writeln!(&mut out, "{content}")?;
     }
 
     Ok(())

@@ -15,6 +15,8 @@ mod paginate;
 mod query;
 mod refs;
 mod run;
+mod schema;
+mod state;
 mod table;
 mod tag;
 
@@ -207,79 +209,19 @@ fn optional_on_off<'a>(name: &'static str, v: Option<&'a str>) -> PyResult<Optio
 
 #[pymodule]
 mod _internal {
+    use pyo3::prelude::*;
+
     // Client
     #[pymodule_export]
     use super::Client;
+
+    // Submodules
     #[pymodule_export]
     use super::exceptions::exceptions;
-
-    // Refs
     #[pymodule_export]
-    use super::refs::PyBranch as Branch;
+    use super::schema::schema;
     #[pymodule_export]
-    use super::refs::PyDetachedRef as DetachedRef;
-    #[pymodule_export]
-    use super::refs::PyRef as Ref;
-    #[pymodule_export]
-    use super::refs::PyRefType;
-    #[pymodule_export]
-    use super::refs::PyTag as Tag;
-
-    // Commits
-    #[pymodule_export]
-    use crate::commit::Actor;
-    #[pymodule_export]
-    use crate::commit::Commit;
-
-    // Catalog
-    #[pymodule_export]
-    use crate::namespace::Namespace;
-    #[pymodule_export]
-    use crate::table::Table;
-    #[pymodule_export]
-    use crate::table::TableField;
-    #[pymodule_export]
-    use crate::table::TableKind;
-
-    // Jobs
-    #[pymodule_export]
-    use super::job::JobContext;
-    #[pymodule_export]
-    use super::job::JobLogEvent;
-    #[pymodule_export]
-    use super::job::JobLogLevel;
-    #[pymodule_export]
-    use super::job::JobLogList;
-    #[pymodule_export]
-    use super::job::JobLogStream;
-    #[pymodule_export]
-    use crate::grpc::job::Job;
-    #[pymodule_export]
-    use crate::grpc::job::JobKind;
-    #[pymodule_export]
-    use crate::grpc::job::JobState;
-
-    // Run state
-    #[pymodule_export]
-    use super::run::state::RunExecutionContext;
-    #[pymodule_export]
-    use super::run::state::RunState;
-
-    // Table state
-    #[pymodule_export]
-    use super::run::state::ExternalTableCreateContext;
-    #[pymodule_export]
-    use super::run::state::ExternalTableCreateState;
-    #[pymodule_export]
-    use super::run::state::TableCreatePlanApplyState;
-    #[pymodule_export]
-    use super::run::state::TableCreatePlanContext;
-    #[pymodule_export]
-    use super::run::state::TableCreationPlanState;
-    #[pymodule_export]
-    use super::run::state::TableDataImportContext;
-    #[pymodule_export]
-    use super::run::state::TableDataImportState;
+    use super::state::state;
 
     // Info
     #[pymodule_export]
@@ -290,6 +232,22 @@ mod _internal {
     use super::info::PyRunnerNodeInfo as RunnerNodeInfo;
     #[pymodule_export]
     use super::info::PyUserInfo as UserInfo;
+
+    // Register submodules in sys.modules so that
+    // `from bauplan._internal.schema import X` works.
+    #[pymodule_init]
+    fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        let sys = m.py().import("sys")?;
+        let modules = sys.getattr("modules")?;
+        let name = m.name()?;
+
+        for sub in ["exceptions", "schema", "state"] {
+            let submod = m.getattr(sub)?;
+            modules.set_item(format!("{name}.{sub}"), &submod)?;
+        }
+
+        Ok(())
+    }
 }
 
 // Copied from delta-rs:

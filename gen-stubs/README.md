@@ -25,11 +25,9 @@ Build the extension and run the generator:
     cargo build --release --features python
     cargo run -p gen-stubs
 
-This outputs the auto-generated stubs to stdout, with `# filename` headers
-separating each file. The output can be piped to a file or diff tool:
-
-    cargo run -p gen-stubs > /tmp/generated.pyi
-    diff python/bauplan/_internal/__init__.pyi /tmp/generated.pyi
+This outputs the auto-generated stubs to stdout, with `# filename`
+headers separating each file. The module has submodules (`schema`, `state`,
+`exceptions`), so the output includes stubs for each.
 
 ### Refining types
 
@@ -75,6 +73,8 @@ Common patterns from Rust to Python stubs:
 Rust sources to consult:
 
 - `src/python.rs` - Module structure and re-exports
+- `src/python/schema.rs` - Schema submodule (refs, catalog, job types)
+- `src/python/state.rs` - State submodule (run/import/plan state types)
 - `src/python/client.rs` - Client class definition
 - `src/python/query.rs` - Query methods
 - `src/python/run.rs` - Run/rerun methods and state types
@@ -92,11 +92,21 @@ Original SDK (for interface compatibility):
 
 ## Common Fixes
 
-### Remove circular import
+### Fix type references
 
-The auto-generated stubs include `import bauplan` at the top, but this is
-circular since this file IS the bauplan module (via re-export). Remove that
-import line and change all `bauplan.X` references to just `X`.
+The auto-generated stubs use fully-qualified names like `bauplan.X` or
+`bauplan.schema.X`. These need to be fixed per file:
+
+- In `schema.pyi` and `state.pyi`: strip the `bauplan.` prefix so
+  `bauplan.Actor` becomes `Actor` (the type is local to the submodule).
+- In `exceptions.pyi`: strip `bauplan.exceptions.` for self-references (e.g.
+  `bauplan.exceptions.ApiErrorKind` -> `ApiErrorKind`). Cross-references to
+  other submodules like `bauplan.TableCreatePlanApplyState` need an import
+  from the sibling submodule (e.g.
+  `from bauplan._internal.state import TableCreatePlanApplyState`).
+- In `__init__.pyi`: types that live in submodules (like `Branch`, `Table`)
+  appear as bare names without imports. Add imports from
+  `bauplan._internal.schema` / `bauplan._internal.state` as needed.
 
 ### Properties that typically need fixing from `typing.Any`
 
@@ -127,14 +137,12 @@ properties -> dict[str, str]
 
 ## Stub-Only Types
 
-Some types from the original SDK exist only in Python (not implemented in Rust).
-These belong in pure Python modules under `python/bauplan/`, not in
-`_internal`. Examples from the original SDK:
+Some types exist only in Python (not implemented in Rust). These belong in pure
+Python modules under `python/bauplan/`, not in `_internal`. Examples:
 
 - `bauplan.Model` (decorator infrastructure)
 - `bauplan.Parameter`
-- `bauplan.schema.*` types
-- `bauplan.state.*` context types
 
-If these are needed, create them as pure Python in `python/bauplan/` with their
-own `.py` and `.pyi` files.
+The `schema`, `state`, and `exceptions` submodules are implemented in Rust
+as `_internal` submodules. They are imported directly as submodule attributes
+in `__init__.py` (no wrapper `.py` files needed).
