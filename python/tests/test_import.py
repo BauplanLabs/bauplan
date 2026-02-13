@@ -15,8 +15,13 @@ def client():
 
 
 @pytest.fixture
-def temp_branch(client):
-    name = f"bauplan-e2e-check.pysdk_import_{uuid.uuid4().hex[:8]}"
+def username(client):
+    return client.info().user.username
+
+
+@pytest.fixture
+def temp_branch(client, username):
+    name = f"{username}.pysdk_import_{uuid.uuid4().hex[:8]}"
     client.create_branch(name, from_ref="main")
     yield name
     client.delete_branch(name, if_exists=True)
@@ -47,6 +52,94 @@ def test_create_table_and_import(client, temp_branch):
     )
 
     assert result.num_rows > 0
+
+
+def test_detached_import(client, temp_branch):
+    client.create_table(
+        table="my_detached_table",
+        search_uri=SEARCH_URI,
+        branch=temp_branch,
+    )
+
+    state = client.import_data(
+        table="my_detached_table",
+        search_uri=SEARCH_URI,
+        branch=temp_branch,
+        detach=True,
+    )
+
+    assert state.job_id is not None
+    assert state.job_status is None
+
+    for _ in range(120):
+        job = client.get_job(state.job_id)
+        if job.status_type != bauplan.JobState.RUNNING:
+            break
+        time.sleep(1)
+
+    assert job.status_type == bauplan.JobState.COMPLETE
+
+
+def test_create_external_table_from_parquet(client, temp_branch):
+    search_patterns = ["s3://bauplan-openlake-db87a23/stage/taxi_fhvhv/*2023*"]
+
+    state = client.create_external_table_from_parquet(
+        table="ext_parquet_table",
+        search_patterns=search_patterns,
+        branch=temp_branch,
+        overwrite=True,
+    )
+
+    assert state.error is None
+
+    result = client.query(
+        query="SELECT COUNT(*) AS row_count FROM ext_parquet_table",
+        ref=temp_branch,
+    )
+
+    assert result["row_count"][0].as_py() == 134344870
+
+    # Importing into a read-only external table should fail.
+    import_state = client.import_data(
+        table="ext_parquet_table",
+        search_uri=search_patterns[0],
+        branch=temp_branch,
+    )
+
+    assert "Cannot import files to read-only table" in import_state.error
+
+
+def test_create_external_table_from_metadata(client, temp_branch):
+    metadata_uri = (
+        "s3://bauplan-openlake-db87a23/iceberg/tpch_1/"
+        "customer_e53c682c-36c4-4e3d-9ded-1214d0ee157f/"
+        "metadata/00000-b6f502e1-5140-499e-bf83-22f943067e36.metadata.json"
+    )
+
+    client.create_external_table_from_metadata(
+        table="ext_metadata_table",
+        metadata_json_uri=metadata_uri,
+        namespace="bauplan",
+        branch=temp_branch,
+        overwrite=True,
+    )
+
+    result = client.query(
+        query="SELECT * FROM ext_metadata_table LIMIT 10",
+        ref=temp_branch,
+    )
+
+    assert result.num_rows == 10
+
+    # Creating the same table without overwrite should raise.
+    with pytest.raises(Exception):
+        client.create_external_table_from_metadata(
+            table="ext_metadata_table",
+            metadata_json_uri=metadata_uri,
+            namespace="bauplan",
+            branch=temp_branch,
+            overwrite=False,
+        )
 
 
 def test_plan_and_apply(client, temp_branch):
