@@ -12,14 +12,14 @@ use crate::{
 
 use super::Client;
 
-#[pyclass(name = "RunnerNodeInfo", module = "bauplan")]
+#[pyclass(name = "RunnerNodeInfo", module = "bauplan", skip_from_py_object)]
 #[derive(Debug, Clone)]
 pub(crate) struct PyRunnerNodeInfo {
     #[pyo3(get)]
     hostname: String,
 }
 
-#[pyclass(name = "OrganizationInfo", module = "bauplan")]
+#[pyclass(name = "OrganizationInfo", module = "bauplan", skip_from_py_object)]
 #[derive(Debug, Clone)]
 pub(crate) struct PyOrganizationInfo {
     #[pyo3(get)]
@@ -34,7 +34,7 @@ pub(crate) struct PyOrganizationInfo {
     default_parameter_secret_public_key: Option<String>,
 }
 
-#[pyclass(name = "UserInfo", module = "bauplan")]
+#[pyclass(name = "UserInfo", module = "bauplan", skip_from_py_object)]
 #[derive(Debug, Clone)]
 pub(crate) struct PyUserInfo {
     #[pyo3(get)]
@@ -94,7 +94,7 @@ impl PyInfoState {
     }
 }
 
-#[pyclass(name = "InfoState", module = "bauplan")]
+#[pyclass(name = "InfoState", module = "bauplan", skip_from_py_object)]
 #[derive(Debug, Clone)]
 pub(crate) struct PyInfoState {
     #[pyo3(get)]

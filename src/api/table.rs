@@ -15,7 +15,7 @@ use crate::{
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "TableField", module = "bauplan", get_all)
+    pyo3::pyclass(name = "TableField", module = "bauplan", from_py_object, get_all)
 )]
 pub struct TableField {
     /// The field ID.
@@ -32,7 +32,7 @@ pub struct TableField {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "PartitionField", module = "bauplan", get_all)
+    pyo3::pyclass(name = "PartitionField", module = "bauplan", from_py_object, get_all)
 )]
 pub struct PartitionField {
     /// The partition field name.
@@ -44,7 +44,10 @@ pub struct PartitionField {
 /// The kind of table entry.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[cfg_attr(feature = "python", pyo3::pyclass(eq, eq_int, module = "bauplan"))]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(module = "bauplan", from_py_object, eq, eq_int)
+)]
 pub enum TableKind {
     /// A managed table.
     #[default]
@@ -66,7 +69,7 @@ impl std::fmt::Display for TableKind {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "Table", module = "bauplan", get_all)
+    pyo3::pyclass(name = "Table", module = "bauplan", from_py_object, get_all)
 )]
 pub struct Table {
     /// The table ID.

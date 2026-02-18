@@ -11,7 +11,7 @@ use crate::{CatalogRef, PaginatedResponse, api::ApiRequest, branch::Branch};
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "Actor", module = "bauplan", get_all)
+    pyo3::pyclass(name = "Actor", module = "bauplan", from_py_object, get_all)
 )]
 pub struct Actor {
     /// The actor's name.
@@ -24,7 +24,7 @@ pub struct Actor {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "Commit", module = "bauplan", get_all)
+    pyo3::pyclass(name = "Commit", module = "bauplan", from_py_object, get_all)
 )]
 pub struct Commit {
     /// The ref (branch, tag, or detached) this commit is on.

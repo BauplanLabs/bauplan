@@ -13,9 +13,10 @@ use crate::tag::Tag;
 #[pyclass(
     name = "RefType",
     module = "bauplan",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    from_py_object,
     eq,
-    str,
-    rename_all = "SCREAMING_SNAKE_CASE"
+    str
 )]
 pub enum PyRefType {
     Branch,
@@ -36,7 +37,14 @@ impl std::fmt::Display for PyRefType {
 
 /// A reference to a branch, tag, or commit, as returned by API operations.
 #[derive(Debug, Clone)]
-#[pyclass(name = "Ref", module = "bauplan", str, get_all, subclass)]
+#[pyclass(
+    name = "Ref",
+    module = "bauplan",
+    subclass,
+    from_py_object,
+    str,
+    get_all
+)]
 pub struct PyRef {
     pub name: String,
     pub hash: String,
@@ -109,17 +117,17 @@ impl PyRefType {
 
 /// A branch reference returned by the API.
 #[derive(Debug, Clone, Copy)]
-#[pyclass(name = "Branch", module = "bauplan", extends = PyRef)]
+#[pyclass(name = "Branch", module = "bauplan", extends = PyRef, from_py_object)]
 pub struct PyBranch;
 
 /// A tag reference returned by the API.
 #[derive(Debug, Clone, Copy)]
-#[pyclass(name = "Tag", module = "bauplan", extends = PyRef)]
+#[pyclass(name = "Tag", module = "bauplan", extends = PyRef, from_py_object)]
 pub struct PyTag;
 
 /// A detached reference (a specific commit, not on any branch) returned by the API.
 #[derive(Debug, Clone, Copy)]
-#[pyclass(name = "DetachedRef", module = "bauplan", extends = PyRef)]
+#[pyclass(name = "DetachedRef", module = "bauplan", extends = PyRef, from_py_object)]
 pub(crate) struct PyDetachedRef;
 
 /// Accepts a ref hash, a tag/branch name, or any ref object (Ref, Branch,

@@ -10,7 +10,13 @@ use crate::{grpc::generated as commanderpb, project};
 #[allow(missing_docs)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(module = "bauplan", eq, str, rename_all = "SCREAMING_SNAKE_CASE")
+    pyo3::pyclass(
+        module = "bauplan",
+        rename_all = "SCREAMING_SNAKE_CASE",
+        from_py_object,
+        eq,
+        str
+    )
 )]
 pub enum JobState {
     #[default]
@@ -89,7 +95,13 @@ impl From<JobState> for commanderpb::JobStateType {
 #[allow(missing_docs)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(module = "bauplan", eq, str, rename_all = "SCREAMING_SNAKE_CASE")
+    pyo3::pyclass(
+        module = "bauplan",
+        rename_all = "SCREAMING_SNAKE_CASE",
+        from_py_object,
+        eq,
+        str
+    )
 )]
 pub enum JobKind {
     #[default]
@@ -170,7 +182,10 @@ impl std::str::FromStr for JobKind {
 
 /// A bauplan job, representing a unit of work such as a query, run, or import.
 #[derive(Debug, Clone, Serialize)]
-#[cfg_attr(feature = "python", pyo3::pyclass(module = "bauplan", get_all))]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(module = "bauplan", from_py_object, get_all)
+)]
 pub struct Job {
     /// The unique identifier for this job.
     pub id: String,

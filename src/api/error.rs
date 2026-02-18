@@ -7,7 +7,10 @@ use crate::CatalogRef;
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "type", content = "context", rename_all = "SCREAMING_SNAKE_CASE")]
-#[cfg_attr(feature = "python", pyo3::pyclass(module = "bauplan.exceptions"))]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(module = "bauplan.exceptions", from_py_object)
+)]
 pub enum ApiErrorKind {
     // 400
     InvalidRef {

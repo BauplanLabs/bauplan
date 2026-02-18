@@ -174,7 +174,7 @@ impl BauplanError {
 }
 
 /// An HTTP error from the API.
-#[pyclass(extends=BauplanError, subclass, module="bauplan.exceptions")]
+#[pyclass(extends=BauplanError, module="bauplan.exceptions", subclass, skip_from_py_object)]
 #[derive(Clone)]
 pub(crate) struct BauplanHTTPError {
     #[pyo3(get)]

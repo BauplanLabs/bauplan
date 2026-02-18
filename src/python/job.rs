@@ -134,7 +134,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for JobKindListArg {
 
 /// The output stream for a log event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[pyclass(name = "JobLogStream", module = "bauplan", eq)]
+#[pyclass(name = "JobLogStream", module = "bauplan", from_py_object, eq)]
 pub(crate) enum JobLogStream {
     #[pyo3(name = "STDOUT")]
     Stdout,
@@ -171,7 +171,7 @@ impl TryFrom<i32> for JobLogStream {
 
 /// The log level for a log event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[pyclass(name = "JobLogLevel", module = "bauplan", eq)]
+#[pyclass(name = "JobLogLevel", module = "bauplan", skip_from_py_object, eq)]
 pub(crate) enum JobLogLevel {
     #[pyo3(name = "ERROR")]
     Error,
@@ -215,7 +215,7 @@ impl TryFrom<i32> for JobLogLevel {
 
 /// A log event from a job.
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(name = "JobLogEvent", module = "bauplan", get_all)]
+#[pyclass(name = "JobLogEvent", module = "bauplan", skip_from_py_object, get_all)]
 pub(crate) struct JobLogEvent {
     /// The output stream (STDOUT, STDERR).
     pub stream: JobLogStream,
@@ -255,7 +255,7 @@ impl TryFrom<commanderpb::RuntimeLogEvent> for JobLogEvent {
 
 /// A node in the job DAG (a model).
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(module = "bauplan", get_all)]
+#[pyclass(module = "bauplan", skip_from_py_object, get_all)]
 pub(crate) struct DAGNode {
     id: String,
     name: String,
@@ -272,7 +272,7 @@ impl From<commanderpb::ModelNode> for DAGNode {
 
 /// An edge in the job DAG (a dependency).
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(module = "bauplan", get_all)]
+#[pyclass(module = "bauplan", skip_from_py_object, get_all)]
 pub(crate) struct DAGEdge {
     source_model: Option<String>,
     destination_model: String,
@@ -289,7 +289,7 @@ impl From<commanderpb::ModelEdge> for DAGEdge {
 
 /// Context for a job, including logs, DAG, and code snapshot.
 #[derive(Debug, Clone)]
-#[pyclass(module = "bauplan", get_all)]
+#[pyclass(module = "bauplan", skip_from_py_object, get_all)]
 pub(crate) struct JobContext {
     pub id: String,
     pub project_id: Option<String>,
