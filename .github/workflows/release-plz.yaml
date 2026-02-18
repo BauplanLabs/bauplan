@@ -1,0 +1,74 @@
+name: Release-plz
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Release unpublished packages.
+  release-plz-release:
+    name: Release-plz release
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'BauplanLabs' }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@v3
+
+      - name: release-plz release
+        id: release-plz
+        uses: release-plz/action@v0.5
+        with:
+          # Note that we don't currently publish any crates to crates.io,
+          # so this just tags the current commit. If we set `publish = true` in
+          # Cargo.toml, this will also release the crate.
+          command: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # We do this here instead of in a separate workflow because it's not
+      # trivial for bot workflows to trigger other workflows (you need a PAT).
+      - name: cargo build
+        if: ${{ steps.release-plz.outputs.releases_created }}
+        run: mise x -- cargo build --release
+      - name: create release tarball
+        if: ${{ steps.release-plz.outputs.releases_created }}
+        run: |-
+          VERSION=${{ fromJSON(steps.release-plz.outputs.releases)[0].tag }}
+          mkdir "${RUNNER_TEMP}/${VERSION}"
+          cp -r target/release/bauplan README.md CHANGELOG.md LICENSE* \
+            "${RUNNER_TEMP}/${VERSION}"
+          tar -C "${RUNNER_TEMP}" --numeric-owner \
+            -cvzf "bauplan-${VERSION}-linux-amd64.tar.gz" "$VERSION"
+          gh release upload "$VERSION" "bauplan-${VERSION}-linux-amd64.tar.gz"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Create a PR with the new versions and changelog, preparing the next release.
+  release-plz-pr:
+    name: Release-plz PR
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'BauplanLabs' }}
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: release-plz-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@v3
+      - name: release-plz PR
+        uses: release-plz/action@v0.5
+        with:
+          command: release-pr
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
