@@ -7,7 +7,7 @@ This repo contains the CLI and SDK code for interacting with the platform.
 For more information about Bauplan or the SDK, you can check out:
 
  - Our website: [bauplanlabs.com](https://bauplanlabs.com)
- - The documentation, including SDK docs: [docs.bauplanlabs.com](https://bauplanlabs.com)
+ - The documentation, including SDK docs: [docs.bauplanlabs.com](https://docs.bauplanlabs.com)
 
 ## Contributing
 
