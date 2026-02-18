@@ -105,7 +105,7 @@ impl Client {
         priority: Option<i64>,
         client_timeout: Option<i64>,
     ) -> PyResult<Table> {
-        // Step 1: create the plan.
+        // Create the plan.
         let plan_state = self.plan_table_creation(
             table,
             search_uri,
@@ -141,7 +141,7 @@ impl Client {
             ));
         }
 
-        // Step 2: apply the plan.
+        // Apply the plan.
         let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
         let common =
             self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
@@ -180,12 +180,11 @@ impl Client {
             Ok(())
         })?;
 
-        // Step 3: fetch the created table from the catalog.
-        let ctx = &plan_state.ctx;
+        // Fetch the created table from the catalog.
         let req = GetTable {
-            name: &ctx.table_name,
-            at_ref: &ctx.branch_name,
-            namespace: None,
+            name: &plan_state.ctx.table_name,
+            at_ref: &plan_state.ctx.branch_name,
+            namespace: Some(&plan_state.ctx.namespace),
         };
 
         Ok(super::roundtrip(req, &self.profile, &self.agent)?)
