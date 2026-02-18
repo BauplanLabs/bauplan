@@ -17,7 +17,7 @@ We're not really looking for external contributions at the moment. However, feel
 
 Running `BAUPLAN_PROFILE=... just test` will run the tests.
 
-> !IMPORTANT
+> [!IMPORTANT]
 > Running the tests requires a valid API key, and will create (and hopefully also clean up) a bunch of garbage, so you shouldn't run it against production!
 
 The tests cover both the code in this repo and the behavior of the platform altogether. There are three types of tests:
