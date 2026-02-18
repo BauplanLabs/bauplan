@@ -68,7 +68,7 @@ class TestTableNotFoundContext:
             client.get_table("nonexistent_table_xyz", "main")
 
         e = exc_info.value
-        assert e.kind is not None
+        assert isinstance(e.kind, exceptions.ApiErrorKind.TableNotFound)
         assert "nonexistent_table_xyz" in e.kind.table_name
         assert e.kind.catalog_ref is not None
         assert e.kind.catalog_ref.type == bauplan.RefType.BRANCH
@@ -78,7 +78,7 @@ class TestTableNotFoundContext:
             client.delete_table("nonexistent_table_xyz", temp_branch)
 
         e = exc_info.value
-        assert e.kind is not None
+        assert isinstance(e.kind, exceptions.ApiErrorKind.TableNotFound)
         assert "nonexistent_table_xyz" in e.kind.table_name
 
     def test_delete_table_if_exists(self, client, temp_branch):
@@ -97,7 +97,7 @@ class TestBranchExistsContext:
             client.create_branch(branch=temp_branch, from_ref="main")
 
         e = exc_info.value
-        assert e.kind is not None
+        assert isinstance(e.kind, exceptions.ApiErrorKind.BranchExists)
         assert e.kind.catalog_ref is not None
         assert e.kind.catalog_ref.type == bauplan.RefType.BRANCH
 
@@ -117,7 +117,7 @@ class TestNamespaceNotFoundContext:
             )
 
         e = exc_info.value
-        assert e.kind is not None
+        assert isinstance(e.kind, exceptions.ApiErrorKind.NamespaceNotFound)
         assert e.kind.namespace_name == "nonexistent_ns_xyz"
         assert e.kind.catalog_ref is not None
 
