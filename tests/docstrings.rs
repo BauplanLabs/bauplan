@@ -87,8 +87,9 @@ fn extract_snippets(path: &Path, snippets: &mut Vec<Snippet>) -> Result<()> {
 }
 
 fn write_fixtures(out: &mut impl Write, tag: &str) -> Result<()> {
-    // Handle "fixtures" — directives for doctests elsewhere that refer to
-    // pytest fixtures. We handle the common cases.
+    // These "fixture:foo" tags are actually defined for the doctests, where we
+    // run the tests (in all-events). We can use them to circumvent some
+    // undefined references.
     for part in tag.split_whitespace() {
         match part.strip_prefix("fixture:") {
             None => continue,
