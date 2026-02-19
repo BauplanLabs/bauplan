@@ -13,6 +13,7 @@ use crate::{
     iceberg::RegisterTable,
     python::{
         job_err,
+        namespace::NamespaceArg,
         paginate::PyPaginator,
         refs::{BranchArg, RefArg},
         rt,
@@ -748,18 +749,19 @@ impl Client {
         table: "str | Table",
         r#ref: "str | Ref",
         *,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
     ) -> "Table")]
     fn get_table(
         &mut self,
         table: TableArg,
         r#ref: RefArg,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
     ) -> PyResult<Table> {
+        let namespace = namespace.map(|a| a.0);
         let req = GetTable {
             name: &table.0,
             at_ref: &r#ref.0,
-            namespace,
+            namespace: namespace.as_deref(),
         };
 
         Ok(super::roundtrip(req, &self.profile, &self.agent)?)
@@ -796,18 +798,19 @@ impl Client {
         table: "str | Table",
         r#ref: "str | Ref",
         *,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
     ) -> "bool")]
     fn has_table(
         &mut self,
         table: TableArg,
         r#ref: RefArg,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
     ) -> PyResult<bool> {
+        let namespace = namespace.map(|a| a.0);
         let req = GetTable {
             name: &table.0,
             at_ref: &r#ref.0,
-            namespace,
+            namespace: namespace.as_deref(),
         };
 
         if let Err(e) = super::roundtrip(req, &self.profile, &self.agent) {
@@ -859,7 +862,7 @@ impl Client {
         table: "str | Table",
         branch: "str | Branch",
         *,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         if_exists: "bool" = false,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
@@ -869,11 +872,12 @@ impl Client {
         &mut self,
         table: TableArg,
         branch: BranchArg,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         if_exists: bool,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
     ) -> PyResult<CatalogRef> {
+        let namespace = namespace.map(|a| a.0);
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -883,7 +887,7 @@ impl Client {
         let req = DeleteTable {
             name: &table.0,
             branch: &branch.0,
-            namespace,
+            namespace: namespace.as_deref(),
             commit: CommitOptions {
                 body: commit_body,
                 properties,
@@ -1019,7 +1023,7 @@ impl Client {
     #[pyo3(signature = (
         table: "str | Table",
         *,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         source_ref: "str | Ref",
         into_branch: "str | Branch",
         replace: "bool | None" = None,
@@ -1030,13 +1034,14 @@ impl Client {
     fn revert_table(
         &mut self,
         table: TableArg,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         source_ref: RefArg,
         into_branch: BranchArg,
         replace: Option<bool>,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
     ) -> PyResult<CatalogRef> {
+        let namespace = namespace.map(|a| a.0);
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -1047,7 +1052,7 @@ impl Client {
             name: &table.0,
             source_ref: &source_ref.0,
             into_branch: &into_branch.0,
-            namespace,
+            namespace: namespace.as_deref(),
             replace: replace.unwrap_or_default(),
             commit: CommitOptions {
                 body: commit_body,

@@ -2,11 +2,30 @@
 
 use std::collections::BTreeMap;
 
-use pyo3::prelude::*;
+use pyo3::{exceptions::PyTypeError, prelude::*};
 
 use crate::{ApiRequest, commit::GetCommits};
 
 use super::{Client, paginate::PyPaginator, refs::RefArg};
+
+struct DatetimeArg(String);
+
+impl<'a, 'py> FromPyObject<'a, 'py> for DatetimeArg {
+    type Error = PyErr;
+
+    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        if let Ok(s) = ob.extract::<String>() {
+            Ok(DatetimeArg(s))
+        } else if let Ok(s) = ob
+            .call_method0("isoformat")
+            .and_then(|v| v.extract::<String>())
+        {
+            Ok(DatetimeArg(s))
+        } else {
+            Err(PyTypeError::new_err("expected str or datetime"))
+        }
+    }
+}
 
 #[pymethods]
 impl Client {
@@ -40,12 +59,12 @@ impl Client {
         filter_by_author_username: "str | None" = None,
         filter_by_author_name: "str | None" = None,
         filter_by_author_email: "str | None" = None,
-        filter_by_authored_date: "str | None" = None,
-        filter_by_authored_date_start_at: "str | None" = None,
-        filter_by_authored_date_end_at: "str | None" = None,
+        filter_by_authored_date: "str | datetime | None" = None,
+        filter_by_authored_date_start_at: "str | datetime | None" = None,
+        filter_by_authored_date_end_at: "str | datetime | None" = None,
         filter_by_parent_hash: "str | None" = None,
         filter_by_properties: "dict[str, str] | None" = None,
-        filter_: "str | None" = None,
+        filter: "str | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Commit]")]
     #[allow(clippy::too_many_arguments)]
@@ -56,17 +75,20 @@ impl Client {
         filter_by_author_username: Option<String>,
         filter_by_author_name: Option<String>,
         filter_by_author_email: Option<String>,
-        filter_by_authored_date: Option<String>,
-        filter_by_authored_date_start_at: Option<String>,
-        filter_by_authored_date_end_at: Option<String>,
+        filter_by_authored_date: Option<DatetimeArg>,
+        filter_by_authored_date_start_at: Option<DatetimeArg>,
+        filter_by_authored_date_end_at: Option<DatetimeArg>,
         filter_by_parent_hash: Option<String>,
         filter_by_properties: Option<BTreeMap<String, String>>,
-        filter_: Option<String>,
+        filter: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
         let profile = self.profile.clone();
         let agent = self.agent.clone();
         let r#ref = r#ref.0;
+        let filter_by_authored_date = filter_by_authored_date.map(|a| a.0);
+        let filter_by_authored_date_start_at = filter_by_authored_date_start_at.map(|a| a.0);
+        let filter_by_authored_date_end_at = filter_by_authored_date_end_at.map(|a| a.0);
 
         PyPaginator::new(limit, move |token, limit| {
             let req = GetCommits {
@@ -80,7 +102,7 @@ impl Client {
                 filter_by_authored_date_end_at: filter_by_authored_date_end_at.as_deref(),
                 filter_by_parent_hash: filter_by_parent_hash.as_deref(),
                 filter_by_properties: filter_by_properties.as_ref(),
-                filter: filter_.as_deref(),
+                filter: filter.as_deref(),
             }
             .paginate(token, limit);
 

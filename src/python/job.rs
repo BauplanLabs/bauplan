@@ -408,7 +408,7 @@ impl Client {
     ///     An iterator over `Job` objects.
     #[pyo3(signature = (
         *,
-        all_users=None,
+        all_users=false,
         filter_by_ids=None,
         filter_by_users=None,
         filter_by_kinds=None,
@@ -420,7 +420,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn get_jobs(
         &mut self,
-        all_users: Option<bool>,
+        all_users: bool,
         filter_by_ids: Option<JobListArg>,
         filter_by_users: Option<JobListArg>,
         filter_by_kinds: Option<JobKindListArg>,
@@ -439,7 +439,6 @@ impl Client {
         });
 
         let job_ids = filter_by_ids.unwrap_or_default().0;
-        let all_users = all_users.unwrap_or(false);
         let filter_users = filter_by_users.unwrap_or_default().0;
         let filter_kinds: Vec<i32> = filter_by_kinds.unwrap_or_default().into();
         let filter_statuses: Vec<i32> = filter_by_statuses.unwrap_or_default().into();
@@ -518,18 +517,18 @@ impl Client {
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
-    #[pyo3(signature = (job, *, include_logs=None, include_snapshot=None) -> "JobContext")]
+    #[pyo3(signature = (job, *, include_logs=false, include_snapshot=false) -> "JobContext")]
     fn get_job_context(
         &mut self,
         job: JobArg,
-        include_logs: Option<bool>,
-        include_snapshot: Option<bool>,
+        include_logs: bool,
+        include_snapshot: bool,
     ) -> PyResult<JobContext> {
         let job_id = job.0;
         let mut req = Request::new(commanderpb::GetJobContextRequest {
             job_ids: vec![job_id.clone()],
-            include_logs: include_logs.unwrap_or(false),
-            include_snapshot: include_snapshot.unwrap_or(false),
+            include_logs,
+            include_snapshot,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
@@ -563,17 +562,17 @@ impl Client {
     ///     jobs: list[Union[str, Job]]: A list of job IDs or Job instances.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
-    #[pyo3(signature = (jobs, *, include_logs=None, include_snapshot=None) -> "list[JobContext]")]
+    #[pyo3(signature = (jobs, *, include_logs=false, include_snapshot=false) -> "list[JobContext]")]
     fn get_job_contexts(
         &mut self,
         jobs: JobListArg,
-        include_logs: Option<bool>,
-        include_snapshot: Option<bool>,
+        include_logs: bool,
+        include_snapshot: bool,
     ) -> PyResult<Vec<JobContext>> {
         let mut req = Request::new(commanderpb::GetJobContextRequest {
             job_ids: jobs.0,
-            include_logs: include_logs.unwrap_or(false),
-            include_snapshot: include_snapshot.unwrap_or(false),
+            include_logs,
+            include_snapshot,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
@@ -602,12 +601,12 @@ impl Client {
     /// EXPERIMENTAL: Cancel a job by ID.
     ///
     /// Parameters:
-    ///     id: A job ID
-    #[pyo3(signature = (id, /) -> "None")]
-    fn cancel_job(&mut self, id: &str) -> PyResult<()> {
+    ///     job_id: A job ID
+    #[pyo3(signature = (job_id, /) -> "None")]
+    fn cancel_job(&mut self, job_id: &str) -> PyResult<()> {
         let req = commanderpb::CancelJobRequest {
             job_id: Some(commanderpb::JobId {
-                id: id.to_owned(),
+                id: job_id.to_owned(),
                 ..Default::default()
             }),
         };

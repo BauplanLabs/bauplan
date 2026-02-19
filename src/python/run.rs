@@ -245,7 +245,7 @@ impl Client {
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-        detach: "bool | None" = None,
+        detach: "bool" = false,
     ) -> "RunState")]
     #[allow(clippy::too_many_arguments)]
     fn run(
@@ -262,14 +262,13 @@ impl Client {
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
-        detach: Option<bool>,
+        detach: bool,
     ) -> PyResult<RunState> {
         let timeout = self.job_timeout(client_timeout);
         let common = self.job_request_common(priority, args.unwrap_or_default())?;
         let cache = optional_on_off("cache", cache)?;
         let transaction = optional_on_off("transaction", transaction)?;
         let strict = optional_on_off("strict", strict)?;
-        let detach = detach.unwrap_or(false);
 
         let dry_run = match dry_run {
             Some(true) => commanderpb::JobRequestOptionalBool::True,

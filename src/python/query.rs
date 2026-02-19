@@ -18,6 +18,7 @@ use crate::{
     grpc::{self, generated as commanderpb},
     python::{
         exceptions::{BauplanError, BauplanQueryError},
+        namespace::NamespaceArg,
         optional_on_off,
         refs::RefArg,
         rt,
@@ -233,7 +234,7 @@ impl Client {
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -246,11 +247,12 @@ impl Client {
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> Result<Py<PyAny>, PyErr> {
+        let namespace = namespace.map(|a| a.0);
         rt().block_on(async {
             let (schema, stream) = self
                 .run_query(
@@ -258,7 +260,7 @@ impl Client {
                     r#ref,
                     max_rows,
                     cache,
-                    namespace,
+                    namespace.as_deref(),
                     args.unwrap_or_default(),
                     priority,
                     client_timeout,
@@ -306,7 +308,7 @@ impl Client {
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -319,17 +321,18 @@ impl Client {
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
+        let namespace = namespace.map(|a| a.0);
         let (_schema, batches) = rt().block_on(self.run_query(
             query,
             r#ref,
             max_rows,
             cache,
-            namespace,
+            namespace.as_deref(),
             args.unwrap_or_default(),
             priority,
             client_timeout,
@@ -370,7 +373,7 @@ impl Client {
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -383,19 +386,20 @@ impl Client {
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<PathBuf> {
         use parquet::arrow::ArrowWriter;
 
+        let namespace = namespace.map(|a| a.0);
         rt().block_on(self.query_to_file(
             query,
             r#ref,
             max_rows,
             cache,
-            namespace,
+            namespace.as_deref(),
             args.unwrap_or_default(),
             priority,
             client_timeout,
@@ -440,7 +444,7 @@ impl Client {
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -453,19 +457,20 @@ impl Client {
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<PathBuf> {
         use arrow_csv::WriterBuilder;
 
+        let namespace = namespace.map(|a| a.0);
         rt().block_on(self.query_to_file(
             query,
             r#ref,
             max_rows,
             cache,
-            namespace,
+            namespace.as_deref(),
             args.unwrap_or_default(),
             priority,
             client_timeout,
@@ -508,11 +513,11 @@ impl Client {
         path: "str",
         query: "str",
         *,
-        file_format: "Literal['json', 'jsonl'] | None" = None,
+        file_format: "Literal['json', 'jsonl']" = "json",
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | None" = None,
+        namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -522,21 +527,22 @@ impl Client {
         &mut self,
         path: PathBuf,
         query: &str,
-        file_format: Option<&str>,
+        file_format: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<PathBuf> {
         use arrow::json::{ArrayWriter, LineDelimitedWriter};
 
+        let namespace = namespace.map(|a| a.0);
         let jsonl = match file_format {
-            None | Some("json") => false,
-            Some("jsonl") => true,
-            Some(other) => {
+            "json" => false,
+            "jsonl" => true,
+            other => {
                 return Err(PyValueError::new_err(format!(
                     "file_format must be 'json' or 'jsonl', got '{other}'"
                 )));
@@ -549,7 +555,7 @@ impl Client {
                 r#ref,
                 max_rows,
                 cache,
-                namespace,
+                namespace.as_deref(),
                 args.unwrap_or_default(),
                 priority,
                 client_timeout,
@@ -561,7 +567,7 @@ impl Client {
                 r#ref,
                 max_rows,
                 cache,
-                namespace,
+                namespace.as_deref(),
                 args.unwrap_or_default(),
                 priority,
                 client_timeout,
@@ -628,14 +634,15 @@ impl Client {
         filters: Option<&str>,
         limit: Option<i64>,
         cache: Option<&str>,
-        namespace: Option<&str>,
+        namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
         use sql_query_builder as sql;
 
-        let full_table = match namespace {
+        let namespace = namespace.map(|a| a.0);
+        let full_table = match namespace.as_deref() {
             Some(ns) => format!("{ns}.{table}"),
             None => table.to_owned(),
         };
@@ -667,7 +674,7 @@ impl Client {
                     r#ref,
                     None,
                     cache,
-                    namespace,
+                    namespace.as_deref(),
                     args.unwrap_or_default(),
                     priority,
                     client_timeout,
