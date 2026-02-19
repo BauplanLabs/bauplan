@@ -66,9 +66,9 @@ impl ClientError {
 /// #### Notes on authentication
 ///
 /// ```python notest
-/// # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.config/bauplan.yml
+/// # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yml
 /// client = bauplan.Client()
-/// # client used ~/.config/bauplan.yml profile 'default'
+/// # client used ~/.bauplan/config.yml profile 'default'
 ///
 /// os.environ['BAUPLAN_PROFILE'] = "someprofile"
 /// client = bauplan.Client()
@@ -81,7 +81,7 @@ impl ClientError {
 /// # specify authentication directly - this supercedes BAUPLAN_API_KEY in the environment
 /// client = bauplan.Client(api_key='MY_KEY')
 ///
-/// # specify a profile from ~/.config/bauplan.yml - this supercedes BAUPLAN_PROFILE in the environment
+/// # specify a profile from ~/.bauplan/config.yml - this supercedes BAUPLAN_PROFILE in the environment
 /// client = bauplan.Client(profile='default')
 /// ```
 ///
@@ -117,7 +117,7 @@ impl ClientError {
 ///     profile: The Bauplan config profile name to use to determine api_key.
 ///     api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) .bauplan/config.yml
 ///     client_timeout: The client timeout in seconds for all the requests.
-///     config_file_path: The path to the Bauplan config file to use. If not provided, ~/.config/bauplan.yaml will be used. Note that this disables any environment-based configuration.
+///     config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
 ///
 ///     feature_flags: A dictionary of feature flags to enable or disable during the use of this client instance.
 #[pyclass]

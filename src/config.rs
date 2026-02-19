@@ -78,7 +78,7 @@ struct Config {
 
 impl Profile {
     /// Load the given profile from the Bauplan configuration file (usually
-    /// ~/.config/bauplan.yaml). If no configuration file is present, then the
+    /// ~/.bauplan/config.yaml). If no configuration file is present, then the
     /// configuration will be loaded solely from the environment.
     ///
     /// If `BAUPLAN_PROFILE` is set, that will be used to select the profile.
@@ -100,7 +100,7 @@ impl Profile {
     }
 
     /// Load the given profile from the Bauplan configuration file (usually
-    /// ~/.config/bauplan.yaml). If no configuration file is present, then the
+    /// ~/.bauplan/config.yaml). If no configuration file is present, then the
     /// configuration will be loaded solely from the environment.
     ///
     /// The following environment variables can override the corresponding
@@ -159,7 +159,7 @@ impl Profile {
     }
 
     /// Load the given profile (or 'default') from the Bauplan configuration
-    /// file (usually ~/.config/bauplan.yaml). Does not read any environment
+    /// file (usually ~/.bauplan/config.yaml). Does not read any environment
     /// variables.
     ///
     /// Usually, you will want to use [Profile::from_env] instead.
@@ -169,7 +169,7 @@ impl Profile {
     }
 
     /// Iterate through all profiles in the Bauplan configuration file (usually
-    /// ~/.config/bauplan.yaml). Does not read any environment variables.
+    /// ~/.bauplan/config.yaml). Does not read any environment variables.
     pub fn load_all() -> Result<impl Iterator<Item = Self>, Error> {
         let path = find_config()?;
         let file = File::open(&path)?;
@@ -244,18 +244,14 @@ fn find_config() -> Result<PathBuf, Error> {
         )));
     };
 
-    let canonical = home.join(".config/bauplan.yaml");
+    let canonical = home.join(".bauplan/config.yaml");
     if canonical.exists() {
         return Ok(canonical);
     }
 
     // Try some fallback paths, and if that doesn't work, return the error from
     // the canonical location.
-    for fallback in [
-        ".config/bauplan.yml",
-        ".bauplan/config.yaml",
-        ".bauplan/config.yml",
-    ] {
+    for fallback in [".bauplan/config.yml"] {
         let path = home.join(fallback);
         if path.exists() {
             return Ok(path);
