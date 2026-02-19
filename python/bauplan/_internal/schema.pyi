@@ -344,6 +344,19 @@ class Table:
     """
     A table in the lake.
     """
+    @property
+    def fqn(self, /) -> str:
+        """
+        The fully qualified name: `namespace.name`.
+        """
+    def is_managed(self, /) -> bool:
+        """
+        Whether this is a managed table.
+        """
+    def is_external(self, /) -> bool:
+        """
+        Whether this is an external table.
+        """
     def __repr__(self, /) -> str: ...
     @property
     def current_schema_id(self, /) -> int |None:

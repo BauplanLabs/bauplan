@@ -116,6 +116,22 @@ impl Table {
 #[cfg(feature = "python")]
 #[pyo3::pymethods]
 impl Table {
+    /// The fully qualified name: `namespace.name`.
+    #[getter(fqn)]
+    fn py_fqn(&self) -> String {
+        self.fqn()
+    }
+
+    /// Whether this is a managed table.
+    fn is_managed(&self) -> bool {
+        self.kind == TableKind::Table
+    }
+
+    /// Whether this is an external table.
+    fn is_external(&self) -> bool {
+        self.kind == TableKind::ExternalTable
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "Table(name={:?}, namespace={:?}, kind={})",
