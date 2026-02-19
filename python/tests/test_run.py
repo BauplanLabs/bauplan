@@ -67,7 +67,7 @@ def test_detach(client):
     # Poll until the detached job finishes.
     for _ in range(120):
         job = client.get_job(state.job_id)
-        if job.status_type != bauplan.JobState.RUNNING:
+        if job.status_type not in (bauplan.JobState.RUNNING, bauplan.JobState.NOT_STARTED):
             break
         time.sleep(1)
 
