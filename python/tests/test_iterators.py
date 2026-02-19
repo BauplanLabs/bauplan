@@ -86,17 +86,17 @@ def test_get_jobs_pagination(client):
         assert hasattr(job, "id")
         assert hasattr(job, "status")
         assert hasattr(job, "kind")
-        assert hasattr(job, "status_type")
-        assert hasattr(job, "kind_type")
+        assert hasattr(job, "status")
+        assert hasattr(job, "kind")
 
 
 def test_get_jobs_filter_by_kind_lowercase(client):
     jobs = list(client.get_jobs(filter_by_kinds="query", limit=5))
     for job in jobs:
-        assert job.kind_type == bauplan.JobKind.QUERY
+        assert job.kind == bauplan.JobKind.QUERY
 
 
 def test_get_jobs_filter_by_status_lowercase(client):
     jobs = list(client.get_jobs(filter_by_statuses="complete", limit=5))
     for job in jobs:
-        assert job.status_type == bauplan.JobState.COMPLETE
+        assert job.status == bauplan.JobState.COMPLETE

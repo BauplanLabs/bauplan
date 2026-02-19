@@ -73,11 +73,11 @@ def test_detached_import(client, temp_branch):
 
     for _ in range(120):
         job = client.get_job(state.job_id)
-        if job.status_type not in (bauplan.JobState.RUNNING, bauplan.JobState.NOT_STARTED):
+        if job.status not in (bauplan.JobState.RUNNING, bauplan.JobState.NOT_STARTED):
             break
         time.sleep(1)
 
-    assert job.status_type == bauplan.JobState.COMPLETE
+    assert job.status == bauplan.JobState.COMPLETE
 
 
 def test_create_external_table_from_parquet(client, temp_branch):
