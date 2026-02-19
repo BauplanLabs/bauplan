@@ -100,8 +100,8 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// if client.has_branch('my_branch_name')
-    ///     # do something
+    /// if client.has_branch('my_branch_name'):
+    ///     ...
     /// ```
     ///
     /// Parameters:
@@ -138,7 +138,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_branch
+    /// ```python notest
     /// import bauplan
     ///
     /// client = bauplan.Client()
@@ -146,7 +146,7 @@ impl Client {
     ///
     /// branch = client.create_branch(
     ///     branch = username+'.feature_branch',
-    ///     from_ref = 'branch_name@hash',
+    ///     from_ref = 'branch_name@abcd1234',
     ///     if_not_exists = True,
     /// )
     /// ```
@@ -313,8 +313,8 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// if client.delete_branch('my_branch_name')
-    ///     #do something
+    /// if client.delete_branch('my_branch_name'):
+    ///     ...
     /// ```
     ///
     /// Parameters:

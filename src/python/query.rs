@@ -208,7 +208,7 @@ impl Client {
     ///
     /// # query the table and return result set as an arrow Table
     /// my_table = client.query(
-    ///     query='SELECT avg(age) as average_age FROM bauplan.titanic',
+    ///     query='SELECT avg(Age) as average_age FROM bauplan.titanic',
     ///     ref='my_ref_or_branch_name',
     /// )
     ///
@@ -280,7 +280,7 @@ impl Client {
     ///
     /// # query the table and iterate through the results one row at a time
     /// res = client.query_to_generator(
-    ///     query='SELECT name, age FROM bauplan.titanic LIMIT 100',
+    ///     query='SELECT Name, Age FROM bauplan.titanic LIMIT 100',
     ///     ref='my_ref_or_branch_name',
     /// )
     ///
@@ -347,7 +347,7 @@ impl Client {
     /// # query the table and iterate through the results one row at a time
     /// client.query_to_parquet_file(
     ///     path='/tmp/out.parquet',
-    ///     query='SELECT name, age FROM bauplan.titanic LIMIT 100',
+    ///     query='SELECT Name, Age FROM bauplan.titanic LIMIT 100',
     ///     ref='my_ref_or_branch_name',
     /// )
     /// ```
@@ -417,7 +417,7 @@ impl Client {
     /// # query the table and iterate through the results one row at a time
     /// client.query_to_csv_file(
     ///     path='/tmp/out.csv',
-    ///     query='SELECT name, age FROM bauplan.titanic LIMIT 100',
+    ///     query='SELECT Name, Age FROM bauplan.titanic LIMIT 100',
     ///     ref='my_ref_or_branch_name',
     /// )
     /// ```
@@ -487,7 +487,7 @@ impl Client {
     /// # query the table and iterate through the results one row at a time
     /// client.query_to_json_file(
     ///     path='/tmp/out.json',
-    ///     query='SELECT name, age FROM bauplan.titanic LIMIT 100',
+    ///     query='SELECT Name, Age FROM bauplan.titanic LIMIT 100',
     ///     ref='my_ref_or_branch_name',
     /// )
     /// ```
@@ -588,7 +588,7 @@ impl Client {
     ///     ref='my_ref_or_branch_name',
     ///     namespace='bauplan',
     ///     columns=['name'],
-    ///     filters='age < 30',
+    ///     filters='Age < 30',
     /// )
     /// ```
     ///

@@ -28,7 +28,7 @@ class Parameter:
 
     Then, to use them in a model, use `bauplan.Parameter`:
 
-    ```python
+    ```python fixture:bauplan
     def a_model_using_params(
         # parent models are passed as inputs, using bauplan.Model
         interest_rate=bauplan.Parameter('interest_rate'),
