@@ -375,6 +375,7 @@ impl Client {
     fn get_job(&mut self, job_id: &str) -> PyResult<Job> {
         let mut req = Request::new(commanderpb::GetJobsRequest {
             job_ids: vec![job_id.to_string()],
+            all_users: true,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
