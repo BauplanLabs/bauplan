@@ -233,7 +233,7 @@ pub(crate) struct TableRevertArgs {
     pub source_ref: String,
     /// Branch to revert the table into [default: active branch]
     #[arg(short, long)]
-    pub into_branch: String,
+    pub into_branch: Option<String>,
     /// Replace the destination table if it exists
     #[arg(long)]
     pub replace: bool,
@@ -825,21 +825,25 @@ fn handle_create_external_from_metadata(
     Ok(())
 }
 
-fn handle_revert_table(
-    cli: &Cli,
-    TableRevertArgs {
+fn handle_revert_table(cli: &Cli, args: TableRevertArgs) -> anyhow::Result<()> {
+    let TableRevertArgs {
         table_name,
         source_ref,
         into_branch,
         replace,
         commit_body,
         commit_property,
-    }: TableRevertArgs,
-) -> anyhow::Result<()> {
+    } = args;
+
+    let into_branch = into_branch
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
     let req = RevertTable {
         name: &table_name,
         source_ref: &source_ref,
-        into_branch: &into_branch,
+        into_branch,
         namespace: None,
         replace,
         commit: CommitOptions {
