@@ -120,12 +120,12 @@ pub(crate) struct TableCreatePlanContext {
 
 #[derive(Clone)]
 #[pyclass(
-    name = "TableCreationPlanState",
+    name = "TableCreatePlanState",
     module = "bauplan",
     from_py_object,
     get_all
 )]
-pub(crate) struct TableCreationPlanState {
+pub(crate) struct TableCreatePlanState {
     pub job_id: Option<String>,
     pub ctx: TableCreatePlanContext,
     pub job_status: Option<String>,
@@ -136,18 +136,18 @@ pub(crate) struct TableCreationPlanState {
 }
 
 #[pymethods]
-impl TableCreationPlanState {
+impl TableCreatePlanState {
     fn __repr__(&self) -> String {
         format!(
-            "TableCreationPlanState(job_id={:?}, status={:?}, can_auto_apply={})",
+            "TableCreatePlanState(job_id={:?}, status={:?}, can_auto_apply={})",
             self.job_id, self.job_status, self.can_auto_apply,
         )
     }
 }
 
-impl fmt::Debug for TableCreationPlanState {
+impl fmt::Debug for TableCreatePlanState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TableCreationPlanState")
+        f.debug_struct("TableCreatePlanState")
             .field("job_id", &self.job_id)
             .field("job_status", &self.job_status)
             .field("can_auto_apply", &self.can_auto_apply)

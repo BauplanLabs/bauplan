@@ -25,7 +25,7 @@ use super::exceptions::{TableCreatePlanApplyStatusError, TableCreatePlanStatusEr
 use super::run::job_status_strings;
 use crate::python::run::state::{
     ExternalTableCreateContext, ExternalTableCreateState, TableCreatePlanApplyState,
-    TableCreatePlanContext, TableCreationPlanState, TableDataImportContext, TableDataImportState,
+    TableCreatePlanContext, TableCreatePlanState, TableDataImportContext, TableDataImportState,
 };
 
 /// Accepts a table name or Table object (from which the name is extracted).
@@ -238,7 +238,7 @@ impl Client {
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "TableCreationPlanState")]
+    ) -> "TableCreatePlanState")]
     #[allow(clippy::too_many_arguments)]
     fn plan_table_creation(
         &mut self,
@@ -251,7 +251,7 @@ impl Client {
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
         client_timeout: Option<i64>,
-    ) -> PyResult<TableCreationPlanState> {
+    ) -> PyResult<TableCreatePlanState> {
         let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
         let common =
             self.job_request_common(priority.map(|p| p as u32), args.unwrap_or_default())?;
@@ -288,7 +288,7 @@ impl Client {
                 search_string: resp.search_string,
             };
 
-            let mut state = TableCreationPlanState {
+            let mut state = TableCreatePlanState {
                 job_id: Some(job_id.clone()),
                 ctx,
                 job_status: None,
@@ -346,7 +346,7 @@ impl Client {
     /// Raises:
     ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
     #[pyo3(signature = (
-        plan: "TableCreationPlanState | str",
+        plan: "TableCreatePlanState | str",
         *,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -360,8 +360,8 @@ impl Client {
         priority: Option<i64>,
         client_timeout: Option<i64>,
     ) -> PyResult<TableCreatePlanApplyState> {
-        // Accept either a TableCreationPlanState or a string YAML.
-        let plan_yaml = if let Ok(state) = plan.extract::<TableCreationPlanState>(py) {
+        // Accept either a TableCreatePlanState or a string YAML.
+        let plan_yaml = if let Ok(state) = plan.extract::<TableCreatePlanState>(py) {
             state
                 .plan
                 .ok_or_else(|| job_err("plan state has no plan YAML"))?
@@ -369,7 +369,7 @@ impl Client {
             s
         } else {
             return Err(PyTypeError::new_err(
-                "expected str or TableCreationPlanState",
+                "expected str or TableCreatePlanState",
             ));
         };
 

@@ -10,7 +10,7 @@ from bauplan._internal.schema import (
 )
 from bauplan._internal.state import (
     ExternalTableCreateState, RunState,
-    TableCreatePlanApplyState, TableCreationPlanState,
+    TableCreatePlanApplyState, TableCreatePlanState,
     TableDataImportState,
 )
 
@@ -89,7 +89,7 @@ class Client:
         config_file_path: The path to the Bauplan config file to use. If not provided, ~/.config/bauplan.yaml will be used. Note that this disables any environment-based configuration.
     """
     def __new__(cls, /, profile: str |None = None, api_key: str |None = None, client_timeout: int |None = None, config_file_path: str |None = None) -> Client: ...
-    def apply_table_creation_plan(self, /, plan: "TableCreationPlanState | str", *, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "TableCreatePlanApplyState":
+    def apply_table_creation_plan(self, /, plan: "TableCreatePlanState | str", *, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "TableCreatePlanApplyState":
         """
         Apply a plan for creating a table. It is done automaticaly during th
         table plan creation if no schema conflicts exist. Otherwise, if schema

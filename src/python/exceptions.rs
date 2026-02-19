@@ -464,7 +464,7 @@ pyo3::create_exception!(bauplan.exceptions, BauplanJobError, BauplanError);
 pyo3::create_exception!(bauplan.exceptions, BauplanQueryError, BauplanJobError);
 pyo3::create_exception!(bauplan.exceptions, NoResultsFoundError, BauplanError);
 pyo3::create_exception!(bauplan.exceptions, InvalidPlanError, BauplanError);
-use crate::python::run::state::{TableCreatePlanApplyState, TableCreationPlanState};
+use crate::python::run::state::{TableCreatePlanApplyState, TableCreatePlanState};
 
 #[pyclass(extends=BauplanError, subclass, module="bauplan.exceptions")]
 pub(crate) struct TableCreatePlanError;
@@ -482,11 +482,11 @@ pub(crate) struct TableCreatePlanStatusError {
     #[pyo3(get)]
     message: String,
     #[pyo3(get)]
-    state: TableCreationPlanState,
+    state: TableCreatePlanState,
 }
 
 impl TableCreatePlanStatusError {
-    pub(crate) fn new_err(message: String, state: TableCreationPlanState) -> PyErr {
+    pub(crate) fn new_err(message: String, state: TableCreatePlanState) -> PyErr {
         PyErr::new::<Self, _>((message, state))
     }
 }
@@ -494,7 +494,7 @@ impl TableCreatePlanStatusError {
 #[pymethods]
 impl TableCreatePlanStatusError {
     #[new]
-    fn new(message: String, state: TableCreationPlanState) -> PyClassInitializer<Self> {
+    fn new(message: String, state: TableCreatePlanState) -> PyClassInitializer<Self> {
         PyClassInitializer::from(BauplanError)
             .add_subclass(TableCreatePlanError)
             .add_subclass(Self { message, state })

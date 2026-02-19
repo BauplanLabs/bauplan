@@ -1,5 +1,5 @@
 from bauplan._internal.schema import Ref
-from bauplan._internal.state import TableCreatePlanApplyState, TableCreationPlanState
+from bauplan._internal.state import TableCreatePlanApplyState, TableCreatePlanState
 from typing import Final, final
 
 class ApiErrorKind:
@@ -256,11 +256,11 @@ class TableCreatePlanError(BauplanError):
 
 @final
 class TableCreatePlanStatusError(TableCreatePlanError):
-    def __new__(cls, /, message: str, state: TableCreationPlanState) -> TableCreatePlanStatusError: ...
+    def __new__(cls, /, message: str, state: TableCreatePlanState) -> TableCreatePlanStatusError: ...
     @property
     def message(self, /) -> str: ...
     @property
-    def state(self, /) -> TableCreationPlanState: ...
+    def state(self, /) -> TableCreatePlanState: ...
 
 # 400 Bad Request
 class BadRequestError(BauplanHTTPError): ...

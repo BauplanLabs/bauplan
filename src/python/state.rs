@@ -15,7 +15,7 @@ pub mod state {
     #[pymodule_export]
     use crate::python::run::state::TableCreatePlanContext;
     #[pymodule_export]
-    use crate::python::run::state::TableCreationPlanState;
+    use crate::python::run::state::TableCreatePlanState;
     #[pymodule_export]
     use crate::python::run::state::TableDataImportContext;
     #[pymodule_export]
