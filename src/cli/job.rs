@@ -281,11 +281,11 @@ where
             )?;
         }
 
-        let status_colored = match job.status_type {
-            JobState::Complete => job.status.green(),
-            JobState::Fail | JobState::Abort => job.status.red(),
-            JobState::Running => job.status.yellow(),
-            _ => job.status.primary(),
+        let status_colored = match job.status {
+            JobState::Complete => job.human_readable_status.green(),
+            JobState::Fail | JobState::Abort => job.human_readable_status.red(),
+            JobState::Running => job.human_readable_status.yellow(),
+            _ => job.human_readable_status.primary(),
         };
 
         let duration = if let Some(start) = job.started_at

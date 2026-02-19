@@ -189,14 +189,12 @@ impl std::str::FromStr for JobKind {
 pub struct Job {
     /// The unique identifier for this job.
     pub id: String,
+    /// The job's current state.
+    pub status: JobState,
     /// A human-readable status string (e.g. "running", "complete").
-    pub status: String,
-    /// A human-readable job kind string.
-    pub kind: String,
-    /// The job's current state as an enum.
-    pub status_type: JobState,
-    /// The type of job (query, run, import, etc.) as an enum.
-    pub kind_type: JobKind,
+    pub human_readable_status: String,
+    /// The type of job (query, run, import, etc.).
+    pub kind: JobKind,
     /// The user who submitted the job.
     pub user: String,
     /// When the job was created.
@@ -214,7 +212,7 @@ pub struct Job {
 impl Job {
     fn __repr__(&self) -> String {
         format!(
-            "Job(id={:?}, kind={:?}, status={:?}, user={:?})",
+            "Job(id={:?}, kind={:?}, status={}, user={:?})",
             self.id, self.kind, self.status, self.user,
         )
     }
@@ -224,12 +222,11 @@ impl From<commanderpb::JobInfo> for Job {
     fn from(info: commanderpb::JobInfo) -> Self {
         Self {
             id: info.id,
-            status: info.human_readable_status,
-            kind: info.kind,
-            status_type: commanderpb::JobStateType::try_from(info.status)
+            status: commanderpb::JobStateType::try_from(info.status)
                 .map(JobState::from)
                 .unwrap_or_default(),
-            kind_type: commanderpb::JobKind::try_from(info.kind_type)
+            human_readable_status: info.human_readable_status,
+            kind: commanderpb::JobKind::try_from(info.kind_type)
                 .map(JobKind::from)
                 .unwrap_or_default(),
             user: info.user,

@@ -138,14 +138,9 @@ class Job:
         The unique identifier for this job.
         """
     @property
-    def kind(self, /) -> str:
+    def kind(self, /) -> JobKind:
         """
-        A human-readable job kind string.
-        """
-    @property
-    def kind_type(self, /) -> JobKind:
-        """
-        The type of job (query, run, import, etc.) as an enum.
+        The type of job (query, run, import, etc.).
         """
     @property
     def runner(self, /) -> str:
@@ -158,14 +153,14 @@ class Job:
         When the job started executing.
         """
     @property
-    def status(self, /) -> str:
+    def status(self, /) -> JobState:
         """
-        A human-readable status string (e.g. "running", "complete").
+        The job's current state.
         """
     @property
-    def status_type(self, /) -> JobState:
+    def human_readable_status(self, /) -> str:
         """
-        The job's current state as an enum.
+        A human-readable status string (e.g. "running", "complete").
         """
     @property
     def user(self, /) -> str:
