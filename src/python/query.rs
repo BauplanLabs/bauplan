@@ -593,7 +593,7 @@ impl Client {
     ///     table='titanic',
     ///     ref='my_ref_or_branch_name',
     ///     namespace='bauplan',
-    ///     columns=['name'],
+    ///     columns=['Name'],
     ///     filters='Age < 30',
     /// )
     /// ```
