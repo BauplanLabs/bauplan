@@ -211,6 +211,7 @@ mod test {
 
     use super::*;
     use crate::api::testutil::{TestBranch, TestTag, roundtrip, test_name};
+    use crate::testutil::test_username;
     use crate::{ApiError, ApiErrorKind, CatalogRef};
 
     #[test]
@@ -276,7 +277,7 @@ mod test {
 
     #[test]
     fn create_and_delete_branch() -> anyhow::Result<()> {
-        let branch_name = format!("colinmarc.{}", test_name("test_branch"));
+        let branch_name = format!("{}.{}", test_username(), test_name("test_branch"));
 
         // Create the branch.
         let req = CreateBranch {
@@ -342,8 +343,8 @@ mod test {
 
     #[test]
     fn rename_branch() -> anyhow::Result<()> {
-        let old_name = format!("colinmarc.{}", test_name("test_rename_old"));
-        let new_name = format!("colinmarc.{}", test_name("test_rename_new"));
+        let old_name = format!("{}.{}", test_username(), test_name("test_rename_old"));
+        let new_name = format!("{}.{}", test_username(), test_name("test_rename_new"));
 
         // Create the branch.
         let req = CreateBranch {

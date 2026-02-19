@@ -30,7 +30,7 @@ pub(crate) fn roundtrip<T: ApiRequest>(req: T) -> Result<T::Response, ApiError> 
 }
 
 /// Get the username for the test profile via the gRPC info endpoint.
-fn test_username() -> &'static str {
+pub(crate) fn test_username() -> &'static str {
     use crate::grpc::{self, generated::GetBauplanInfoRequest};
 
     static USERNAME: OnceLock<String> = OnceLock::new();
