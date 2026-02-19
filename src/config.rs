@@ -251,11 +251,10 @@ fn find_config() -> Result<PathBuf, Error> {
 
     // Try some fallback paths, and if that doesn't work, return the error from
     // the canonical location.
-    for fallback in [".bauplan/config.yml"] {
-        let path = home.join(fallback);
-        if path.exists() {
-            return Ok(path);
-        }
+    let fallback = ".bauplan/config.yml";
+    let path = home.join(fallback);
+    if path.exists() {
+        return Ok(path);
     }
 
     Ok(canonical)
