@@ -274,8 +274,13 @@ fn handle_list_tables(
         limit,
     }: TableLsArgs,
 ) -> anyhow::Result<()> {
+    let at_ref = r#ref
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
     let req = GetTables {
-        at_ref: r#ref.as_deref().unwrap_or("main"),
+        at_ref,
         filter_by_name: name.as_deref(),
         filter_by_namespace: namespace.as_deref(),
     };
