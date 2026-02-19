@@ -35,5 +35,5 @@ exclude = ["tests/fixtures"]
 cache-keys = [
     { file = "pyproject.toml" },
     { file = "rust/Cargo.toml" },
-    { file = "**/*.rs" },
+    { file = "src/**/*.rs" },
 ]

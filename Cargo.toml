@@ -93,7 +93,11 @@ predicates = "3"
 reqwest = { version = "0.12", features = ["json"] }
 similar = { version = "2", features = ["bytes"] }
 tempfile = "3"
+textwrap = "0.16"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tree-sitter = "0.26"
+tree-sitter-md = "0.5"
+tree-sitter-python = "0.25"
 yansi = "1.0.1"
 
 # TODO: we're temporarily pulling in a PR that includes docstrings in the built

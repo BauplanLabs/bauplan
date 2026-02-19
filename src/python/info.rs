@@ -150,8 +150,10 @@ impl Client {
     /// client = bauplan.Client()
     ///
     /// info = client.info()
-    /// print(info.user.username)
-    /// print(info.organization.name)
+    /// if info.user:
+    ///     print(info.user.username)
+    /// if info.organization:
+    ///     print(info.organization.name)
     /// ```
     ///
     /// Parameters:

@@ -142,7 +142,9 @@ impl Client {
     /// import bauplan
     ///
     /// client = bauplan.Client()
-    /// username = client.info().user.username
+    /// user = client.info().user
+    /// assert user is not None
+    /// username = user.username
     ///
     /// branch = client.create_branch(
     ///     branch = username+'.feature_branch',

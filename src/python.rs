@@ -65,11 +65,12 @@ impl ClientError {
 ///
 /// #### Notes on authentication
 ///
-/// ```python notest
+/// ```python notest fixture:bauplan
 /// # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yml
 /// client = bauplan.Client()
 /// # client used ~/.bauplan/config.yml profile 'default'
 ///
+/// import os
 /// os.environ['BAUPLAN_PROFILE'] = "someprofile"
 /// client = bauplan.Client()
 /// # >> client now uses profile 'someprofile'
@@ -107,7 +108,7 @@ impl ClientError {
 ///
 /// ## Examples
 ///
-/// ```python notest
+/// ```python notest fixture:client
 /// state = client.run(...)
 /// if state.job_status != "SUCCESS":
 ///     ...

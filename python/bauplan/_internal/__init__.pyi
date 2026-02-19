@@ -34,11 +34,12 @@ class Client:
 
     #### Notes on authentication
 
-    ```python notest
+    ```python notest fixture:bauplan
     # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yml
     client = bauplan.Client()
     # client used ~/.bauplan/config.yml profile 'default'
 
+    import os
     os.environ['BAUPLAN_PROFILE'] = "someprofile"
     client = bauplan.Client()
     # >> client now uses profile 'someprofile'
@@ -76,7 +77,7 @@ class Client:
 
     ## Examples
 
-    ```python notest
+    ```python notest fixture:client
     state = client.run(...)
     if state.job_status != "SUCCESS":
         ...
@@ -127,7 +128,9 @@ class Client:
         import bauplan
 
         client = bauplan.Client()
-        username = client.info().user.username
+        user = client.info().user
+        assert user is not None
+        username = user.username
 
         branch = client.create_branch(
             branch = username+'.feature_branch',
@@ -205,7 +208,7 @@ class Client:
         )
 
         if state.error:
-            handle_error(state.error)
+            print(f"Error: {state.error}")
         else:
             print(f"External table created: {state.ctx.table_name}")
         ```
@@ -844,14 +847,15 @@ class Client:
         import bauplan
         client = bauplan.Client()
 
-        plan_state = client.import_data(
+        state = client.import_data(
             table='my_table_name',
             search_uri='s3://path/to/my/files/*.parquet',
             branch='my_branch_name',
         )
-        if plan_state.error:
-            plan_error_action(...)
-        success_action(plan_state.plan)
+        if state.error:
+            print(f"Import failed: {state.error}")
+        else:
+            print(f"Import succeeded: {state.job_status}")
         ```
 
         Parameters:
@@ -879,8 +883,10 @@ class Client:
         client = bauplan.Client()
 
         info = client.info()
-        print(info.user.username)
-        print(info.organization.name)
+        if info.user:
+            print(info.user.username)
+        if info.organization:
+            print(info.organization.name)
         ```
 
         Parameters:
@@ -941,8 +947,9 @@ class Client:
             branch='my_branch_name',
         )
         if plan_state.error:
-            plan_error_action(...)
-        success_action(plan_state.plan)
+            print(f"Plan failed: {plan_state.error}")
+        else:
+            print(plan_state.plan)
         ```
 
         Parameters:
@@ -1219,6 +1226,9 @@ class Client:
         ## Examples
 
         ```python notest
+        import bauplan
+        client = bauplan.Client()
+
         # Run a daily sales pipeline on a dev branch, and if successful and data is good, merge to main
         run_state = client.run(
             project_dir='./etl_pipelines/daily_sales',

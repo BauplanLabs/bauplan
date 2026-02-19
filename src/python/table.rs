@@ -208,8 +208,9 @@ impl Client {
     ///     branch='my_branch_name',
     /// )
     /// if plan_state.error:
-    ///     plan_error_action(...)
-    /// success_action(plan_state.plan)
+    ///     print(f"Plan failed: {plan_state.error}")
+    /// else:
+    ///     print(plan_state.plan)
     /// ```
     ///
     /// Parameters:
@@ -423,14 +424,15 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// plan_state = client.import_data(
+    /// state = client.import_data(
     ///     table='my_table_name',
     ///     search_uri='s3://path/to/my/files/*.parquet',
     ///     branch='my_branch_name',
     /// )
-    /// if plan_state.error:
-    ///     plan_error_action(...)
-    /// success_action(plan_state.plan)
+    /// if state.error:
+    ///     print(f"Import failed: {state.error}")
+    /// else:
+    ///     print(f"Import succeeded: {state.job_status}")
     /// ```
     ///
     /// Parameters:
@@ -557,7 +559,7 @@ impl Client {
     /// )
     ///
     /// if state.error:
-    ///     handle_error(state.error)
+    ///     print(f"Error: {state.error}")
     /// else:
     ///     print(f"External table created: {state.ctx.table_name}")
     /// ```
