@@ -38,7 +38,7 @@ pub(crate) enum TableCommand {
     /// Get information about a table
     Get(TableGetArgs),
     /// Drop a table from the data catalog (does not free up storage)
-    #[clap(alias = "delete")]
+    #[clap(alias = "delete", alias = "drop")]
     Rm(TableRmArgs),
     /// create a new table
     Create(TableCreateArgs),
