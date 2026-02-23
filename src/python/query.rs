@@ -368,7 +368,7 @@ impl Client {
     /// Returns:
     ///     The path of the file written.
     #[pyo3(signature = (
-        path: "str",
+        path: "str | pathlib.Path",
         query: "str",
         *,
         r#ref: "str | Ref | None" = None,
@@ -378,7 +378,7 @@ impl Client {
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "str")]
+    ) -> "pathlib.Path")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_parquet_file(
         &mut self,
@@ -439,7 +439,7 @@ impl Client {
     /// Returns:
     ///     The path of the file written.
     #[pyo3(signature = (
-        path: "str",
+        path: "str | pathlib.Path",
         query: "str",
         *,
         r#ref: "str | Ref | None" = None,
@@ -449,7 +449,7 @@ impl Client {
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "str")]
+    ) -> "pathlib.Path")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_csv_file(
         &mut self,
@@ -511,7 +511,7 @@ impl Client {
     /// Returns:
     ///     The path of the file written.
     #[pyo3(signature = (
-        path: "str",
+        path: "str | pathlib.Path",
         query: "str",
         *,
         file_format: "Literal['json', 'jsonl']" = "json",
@@ -522,7 +522,7 @@ impl Client {
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
-    ) -> "str")]
+    ) -> "pathlib.Path")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_json_file(
         &mut self,

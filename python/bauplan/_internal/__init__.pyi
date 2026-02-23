@@ -1,3 +1,4 @@
+import pathlib
 import typing
 from datetime import datetime
 from typing import Literal, final
@@ -1005,7 +1006,7 @@ class Client:
         Returns:
             The query results as a `pyarrow.Table`.
         """
-    def query_to_csv_file(self, /, path: "str", query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "str":
+    def query_to_csv_file(self, /, path: "str | pathlib.Path", query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pathlib.Path":
         """
         Export the results of a SQL query to a file in CSV format.
 
@@ -1065,7 +1066,7 @@ class Client:
         Yields:
             A dictionary representing a row of query results.
         """
-    def query_to_json_file(self, /, path: "str", query: "str", *, file_format: "Literal['json', 'jsonl']" = "json", ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "str":
+    def query_to_json_file(self, /, path: "str | pathlib.Path", query: "str", *, file_format: "Literal['json', 'jsonl']" = "json", ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pathlib.Path":
         """
         Export the results of a SQL query to a file in JSON format.
 
@@ -1094,7 +1095,7 @@ class Client:
         Returns:
             The path of the file written.
         """
-    def query_to_parquet_file(self, /, path: "str", query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "str":
+    def query_to_parquet_file(self, /, path: "str | pathlib.Path", query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pathlib.Path":
         """
         Export the results of a SQL query to a file in Parquet format.
 
