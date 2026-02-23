@@ -22,7 +22,7 @@ regex=^[Ww]ip(.*)
 
 [contrib-title-conventional-commits]
 types = fix,feat,chore,docs,style,refactor,perf,test,revert,build
-scopes = monorepo,docs,web-ui,commander,code-intelligence,python-dep-solver,catalog,runner,runtime,infra-common-local,infra-common-global,openlake,twingate,nessie,dremio,pysdk,cli,e2e,bi-proxy,gosdk
+scopes = pysdk,cli
 
 [ignore-by-author-name]
 regex=dependabot
