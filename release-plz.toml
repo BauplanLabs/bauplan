@@ -1,5 +1,6 @@
 [workspace]
 git_only = true
+publish = false
 
 [changelog]
 header = ""
