@@ -667,7 +667,6 @@ impl Client {
         }
 
         let sql = query.to_sql();
-        eprintln!("{sql}");
         debug!(sql, "built SQL query");
 
         rt().block_on(async {
