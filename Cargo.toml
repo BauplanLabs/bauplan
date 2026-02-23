@@ -1,6 +1,3 @@
-[workspace]
-members = [".", "gen-stubs"]
-
 [package]
 name = "bauplan"
 version = "0.1.0"
