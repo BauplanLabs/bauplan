@@ -28,6 +28,10 @@ scopes = pysdk,cli
 regex=dependabot
 ignore=all
 
+[ignore-by-author-name]
+regex=github-actions
+ignore=all
+
 [ignore-by-body]
 regex=^\s*https?:\/\/
 ignore=body-max-line-length
