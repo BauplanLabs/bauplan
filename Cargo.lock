@@ -570,6 +570,7 @@ dependencies = [
  "nondestructive",
  "opentelemetry",
  "parquet",
+ "polyglot-sql",
  "predicates",
  "prost",
  "prost-types",
@@ -586,7 +587,6 @@ dependencies = [
  "serde_qs",
  "serde_yaml",
  "similar",
- "sql_query_builder",
  "tabwriter",
  "tempfile",
  "textwrap",
@@ -2938,6 +2938,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
+name = "polyglot-sql"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "50787ca43ba1cd7aa4092ac5e5669aef59ebb273c960755a6bd01cd8df0eaa20"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4130,12 +4142,6 @@ dependencies = [
  "base64ct",
  "der",
 ]
-
-[[package]]
-name = "sql_query_builder"
-version = "2.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2651412ae7213fc4eb36349c204614c0aee7d7cef23328e10101413781b4b200"
 
 [[package]]
 name = "stable_deref_trait"

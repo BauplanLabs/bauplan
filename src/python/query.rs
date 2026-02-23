@@ -10,8 +10,9 @@ use arrow::{
 };
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, TryStreamExt};
+use polyglot_sql::{Expression, Parser, builder, expressions::TableRef};
 use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
     flight,
@@ -632,40 +633,42 @@ impl Client {
         r#ref: Option<RefArg>,
         columns: Option<Vec<String>>,
         filters: Option<&str>,
-        limit: Option<i64>,
+        limit: Option<usize>,
         cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
-        use sql_query_builder as sql;
-
         let namespace = namespace.map(|a| a.0);
-        let full_table = match namespace.as_deref() {
-            Some(ns) => format!("{ns}.{table}"),
-            None => table.to_owned(),
+        let table_expr = match namespace.as_deref() {
+            Some(ns) => TableRef::new_with_schema(table, ns),
+            None => TableRef::new(table),
         };
 
-        let mut query = sql::Select::new().from(&full_table);
+        let mut query = match columns.as_deref() {
+            Some([]) => return Err(PyValueError::new_err("Empty column list")),
+            Some(cols) => builder::select(cols.iter().map(String::as_str)),
+            _ => builder::select([builder::star()]),
+        };
 
-        if let Some(cols) = &columns {
-            for col in cols {
-                query = query.select(col);
-            }
-        } else {
-            query = query.select("*");
-        }
+        query = query.from_expr(builder::Expr(Expression::Table(table_expr)));
 
         if let Some(f) = filters {
-            query = query.where_clause(f);
+            let Some(expr) = parse_expr(f) else {
+                return Err(PyValueError::new_err("Invalid SQL filter"));
+            };
+
+            query = query.where_(builder::Expr(expr))
         }
 
         if let Some(n) = limit {
-            query = query.limit(&n.to_string());
+            query = query.limit(n);
         }
 
-        let sql = query.to_string();
+        let sql = query.to_sql();
+        eprintln!("{sql}");
+        debug!(sql, "built SQL query");
 
         rt().block_on(async {
             let (schema, stream) = self
@@ -685,5 +688,21 @@ impl Client {
             let table = pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))?;
             Ok(table.into_pyarrow(py)?.unbind())
         })
+    }
+}
+
+// Adapted from polyglot_sql::builder::parse_expr (which panics).
+fn parse_expr(sql: &str) -> Option<Expression> {
+    let wrapped = format!("SELECT {}", sql);
+    let ast = Parser::parse_sql(&wrapped).ok()?;
+
+    if ast.len() != 1 {
+        return None;
+    }
+
+    if let Expression::Select(s) = ast.into_iter().next()? {
+        Some(s.expressions.into_iter().next()?)
+    } else {
+        None
     }
 }

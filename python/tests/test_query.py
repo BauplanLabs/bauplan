@@ -78,6 +78,20 @@ def test_query_with_max_rows(client):
     assert result.num_rows == 3
 
 
+def test_scan_empty_columns(client):
+    with pytest.raises(ValueError) as exc_info:
+       client.scan(
+            table="titanic",
+            namespace="bauplan",
+            ref="main",
+            columns=[],
+            filters="Survived = 1",
+            limit=5,
+        )
+
+    assert "Empty column list" in str(exc_info.value)
+
+
 def test_scan_returns_arrow_table(client):
     result = client.scan(
         table="titanic",
@@ -91,3 +105,42 @@ def test_scan_returns_arrow_table(client):
     assert result.num_rows == 5
     assert "PassengerId" in result.column_names
     assert "Name" in result.column_names
+
+
+INVALID_FILTERS = [
+    "",
+    " ",
+    ";",
+    ";;;",
+    "DROP TABLE titanic",
+    "1; DROP TABLE titanic",
+    "SELECT * FROM titanic",
+    "Survived = 1 UNION SELECT * FROM titanic",
+    "(((((",
+    "))))",
+    "Survived =",
+    "= 1",
+    "Survived = 1 AND",
+    "Survived = 1 OR",
+    "Survived BETWEEN",
+    "Survived IN",
+    "Survived LIKE",
+    "NOT",
+    "1 = 1; SELECT 1",
+    "\x00",
+    "Survived = '",
+    "Survived = \"",
+]
+
+
+@pytest.mark.parametrize("bad_filter", INVALID_FILTERS)
+def test_scan_invalid_filter(client, bad_filter):
+    with pytest.raises(ValueError):
+        client.scan(
+            table="titanic",
+            namespace="bauplan",
+            ref="main",
+            columns=["PassengerId"],
+            filters=bad_filter,
+            limit=1,
+        )
