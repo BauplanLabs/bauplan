@@ -1,22 +1,22 @@
 syntax = "proto3";
 package bpln_proto.commander.service.v2;
 
-import "bauplan_info.proto";
-import "cancel_job.proto";
-import "code_snapshot_re_run.proto";
-import "code_snapshot_run.proto";
-import "external_table_create.proto";
-import "get_jobs.proto";
-import "get_logs.proto";
-import "job_context.proto";
-import "push_runner_status.proto";
-import "query_run.proto";
-import "snapshot_info.proto";
-import "subscribe_logs.proto";
-import "subscribe_runner.proto";
-import "table_create_plan.proto";
-import "table_create_plan_apply.proto";
-import "table_data_import.proto";
+import "bpln_proto/commander/service/v2/bauplan_info.proto";
+import "bpln_proto/commander/service/v2/cancel_job.proto";
+import "bpln_proto/commander/service/v2/code_snapshot_re_run.proto";
+import "bpln_proto/commander/service/v2/code_snapshot_run.proto";
+import "bpln_proto/commander/service/v2/external_table_create.proto";
+import "bpln_proto/commander/service/v2/get_jobs.proto";
+import "bpln_proto/commander/service/v2/get_logs.proto";
+import "bpln_proto/commander/service/v2/job_context.proto";
+import "bpln_proto/commander/service/v2/push_runner_status.proto";
+import "bpln_proto/commander/service/v2/query_run.proto";
+import "bpln_proto/commander/service/v2/snapshot_info.proto";
+import "bpln_proto/commander/service/v2/subscribe_logs.proto";
+import "bpln_proto/commander/service/v2/subscribe_runner.proto";
+import "bpln_proto/commander/service/v2/table_create_plan.proto";
+import "bpln_proto/commander/service/v2/table_create_plan_apply.proto";
+import "bpln_proto/commander/service/v2/table_data_import.proto";
 
 service V2CommanderService {
   rpc GetJobs(GetJobsRequest) returns (GetJobsResponse) {}

@@ -1,7 +1,7 @@
 syntax = "proto3";
 package bpln_proto.commander.service.v2;
 
-import "runner_events.proto";
+import "bpln_proto/commander/service/v2/runner_events.proto";
 
 message GetLogsRequest {
   string job_id = 1;

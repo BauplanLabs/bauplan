@@ -2,7 +2,10 @@ use std::env::consts::{ARCH, OS};
 use std::process::Command;
 
 fn main() -> anyhow::Result<()> {
-    tonic_prost_build::compile_protos("src/proto/bpln_proto/commander/service/v2/service.proto")?;
+    tonic_prost_build::configure().compile_protos(
+        &["src/proto/bpln_proto/commander/service/v2/service.proto"],
+        &["src/proto"],
+    )?;
 
     // Build a version string to use in the user-agent and `--version` flag for the CLI.
     #[cfg(debug_assertions)]

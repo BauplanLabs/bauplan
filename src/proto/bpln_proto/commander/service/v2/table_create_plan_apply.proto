@@ -1,7 +1,7 @@
 syntax = "proto3";
 package bpln_proto.commander.service.v2;
 
-import "common.proto";
+import "bpln_proto/commander/service/v2/common.proto";
 
 message TableCreatePlanApplyRequest {
   JobRequestCommon job_request_common = 1;

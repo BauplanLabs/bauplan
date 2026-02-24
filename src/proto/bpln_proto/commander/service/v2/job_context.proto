@@ -1,7 +1,7 @@
 syntax = "proto3";
 package bpln_proto.commander.service.v2;
 
-import "runner_events.proto";
+import "bpln_proto/commander/service/v2/runner_events.proto";
 
 // A Ref corresponds to any bauplan commit. `hash` is optional because obtaining its value may be
 // deferred (assigned by, or accessed from, "the system")

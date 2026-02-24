@@ -1,8 +1,8 @@
 syntax = "proto3";
 package bpln_proto.commander.service.v2;
 
-import "runner_comm.proto";
-import "runner_events.proto";
+import "bpln_proto/commander/service/v2/runner_comm.proto";
+import "bpln_proto/commander/service/v2/runner_events.proto";
 
 message SubscribeRunnerResponse {
   RunnerAction action = 1;
