@@ -1,0 +1,114 @@
+name: Build and publish
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.2)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - runner: blacksmith-16vcpu-ubuntu-2404
+            os: linux
+            arch: amd64
+          - runner: blacksmith-16vcpu-ubuntu-2404-arm
+            os: linux
+            arch: arm64
+          - runner: macos-latest
+            os: macos
+            arch: arm64
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: jdx/mise-action@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            ~/.local/share/uv/
+            ~/Library/Caches/uv/
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+
+      - name: Install Python versions
+        run: uv python install 3.10 3.11 3.12 3.13 3.14
+
+      - name: Build CLI binary
+        run: |
+          cargo build --release --bin bauplan
+          rm -f python/data/scripts/.gitkeep python/data/scripts/.gitignore
+          cp target/release/bauplan python/data/scripts/
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          args: >-
+            --release --out dist
+            -i python3.10 python3.11 python3.12 python3.13 python3.14
+          docker-options: -v ~/.cargo:/root/.cargo
+          before-script-linux: |
+            ARCH=$(uname -m | sed 's/aarch64/aarch_64/')
+            curl -sL "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-${ARCH}.zip" -o /tmp/protoc.zip
+            unzip -qj /tmp/protoc.zip bin/protoc -d /tmp
+            export PATH="/tmp:$PATH"
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v5
+        with:
+          name: wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist
+
+      - name: Create CLI tarball
+        run: |
+          mkdir -p "${RUNNER_TEMP}/${{ inputs.tag }}"
+          cp target/release/bauplan README.md CHANGELOG.md LICENSE* \
+            "${RUNNER_TEMP}/${{ inputs.tag }}"
+          tar -C "${RUNNER_TEMP}" --numeric-owner \
+            -cvzf "bauplan-${{ inputs.tag }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" "${{ inputs.tag }}"
+
+      - name: Upload CLI tarball
+        uses: actions/upload-artifact@v5
+        with:
+          name: cli-tarball-${{ matrix.os }}-${{ matrix.arch }}
+          path: "bauplan-${{ inputs.tag }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    needs: build
+    environment: release
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v3
+      - name: Download artifacts
+        uses: actions/download-artifact@v6
+
+      - name: Publish wheels to PyPI
+        run: uv publish 'wheels-*/*'
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Upload CLI tarballs to GitHub release
+        run: gh release upload "${{ inputs.tag }}" cli-tarball-*/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
