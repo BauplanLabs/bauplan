@@ -1,0 +1,1 @@
+This directory needs to be present because maturin expects to add it as a data direction in the wheel. This file is removed (and replaced with the built CLI) when the wheel is actually built.

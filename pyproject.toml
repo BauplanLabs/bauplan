@@ -26,6 +26,7 @@ python-source = "python"
 module-name = "bauplan._internal"
 bindings = "pyo3"
 features = ["pyo3/extension-module", "python"]
+data = "python/data"
 use_base_python = true
 
 [tool.ty.src]
