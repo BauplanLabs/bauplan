@@ -64,7 +64,7 @@ def test_get_tables_pagination(client):
 
 
 def test_get_tables_with_limit(client):
-    all_tables = list(client.get_tables(ref="main", filter_by_namespace="bauplan"))
+    all_tables = list(client.get_tables(ref="main", filter_by_namespace="bauplan", limit=5))
 
     if len(all_tables) < 2:
         pytest.skip("Need at least 2 tables to test limit")
@@ -74,7 +74,7 @@ def test_get_tables_with_limit(client):
 
 
 def test_get_jobs_pagination(client):
-    jobs = client.get_jobs()
+    jobs = client.get_jobs(limit=5)
 
     assert hasattr(jobs, "__iter__")
     assert hasattr(jobs, "__next__")
