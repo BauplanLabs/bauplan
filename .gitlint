@@ -25,11 +25,7 @@ types = fix,feat,chore,docs,style,refactor,perf,test,revert,build
 scopes = pysdk,cli
 
 [ignore-by-author-name]
-regex=dependabot
-ignore=all
-
-[ignore-by-author-name]
-regex=github-actions
+regex=(dependabot|github-actions)
 ignore=all
 
 [ignore-by-body]

@@ -16,6 +16,7 @@ dev = [
     "pyarrow>=17.0.0",
     "pyarrow-stubs>=20.0.0",
     "pytest>=8.3.5",
+    "gitlint-core",
     "ruff>=0.14.14",
     "ty>=0.0.15",
 ]
@@ -37,3 +38,6 @@ cache-keys = [
     { file = "rust/Cargo.toml" },
     { file = "src/**/*.rs" },
 ]
+
+[tool.uv.sources]
+gitlint-core = { git = "https://github.com/colinmarc/gitlint", branch = "conventional-options", subdirectory = "gitlint-core" }
