@@ -157,8 +157,12 @@ impl Client {
             .map_err(|e| PyValueError::new_err(e.to_string()))?
             .with_ua_product("bauplan-pysdk");
         if let Some(api_key) = api_key {
-            profile.api_key = api_key;
+            profile = profile.with_api_key(api_key);
         }
+
+        profile
+            .validate()
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
 
         // TODO: The old PySDK had DEFAULT_API_CALL_TIMEOUT_SECONDS = 30.
         // This is almost certainly way too long.

@@ -193,6 +193,7 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
     };
 
     let profile = profile?.with_ua_product("bauplan-cli");
+    profile.validate()?;
 
     // Allows error responses to be parsed.
     let mut cfg = ureq::config::Config::builder().http_status_as_error(false);

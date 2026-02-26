@@ -12,6 +12,7 @@ use tonic::{
     service::{Interceptor, interceptor::InterceptedService},
     transport::{Channel, ClientTlsConfig},
 };
+use tracing::warn;
 
 #[allow(dead_code)]
 #[allow(unreachable_pub)]
@@ -48,9 +49,14 @@ impl Client {
             .user_agent(&profile.user_agent)?
             .connect_lazy();
 
-        // We check that the key is ascii when constructing the profile.
-        let auth_header: MetadataValue<Ascii> =
-            format!("Bearer {}", profile.api_key).parse().unwrap();
+        let auth_header = profile
+            .api_key
+            .as_ref()
+            .and_then(|key| format!("Bearer {}", key).parse().ok());
+        if auth_header.is_none() {
+            warn!("API key missing or not ASCII");
+        }
+
         let inner = V2CommanderServiceClient::with_interceptor(
             channel,
             AuthInterceptor { value: auth_header },
@@ -125,7 +131,7 @@ impl Client {
 #[doc(hidden)]
 #[derive(Debug, Clone)]
 pub struct AuthInterceptor {
-    value: MetadataValue<Ascii>,
+    value: Option<MetadataValue<Ascii>>,
 }
 
 impl Interceptor for AuthInterceptor {
@@ -133,9 +139,12 @@ impl Interceptor for AuthInterceptor {
         &mut self,
         mut request: tonic::Request<()>,
     ) -> Result<tonic::Request<()>, tonic::Status> {
-        request
-            .metadata_mut()
-            .insert("authorization", self.value.clone());
+        if let Some(value) = &self.value {
+            request
+                .metadata_mut()
+                .insert("authorization", value.clone());
+        }
+
         Ok(request)
     }
 }

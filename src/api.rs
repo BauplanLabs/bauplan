@@ -4,6 +4,7 @@
 use std::io::Read;
 
 use serde::{Deserialize, Serialize};
+use tracing::warn;
 
 use crate::{CatalogRef, Profile};
 
@@ -84,14 +85,16 @@ pub trait ApiRequest: Sized {
         parts.path_and_query = Some(path.parse()?);
 
         let uri = http::Uri::from_parts(parts).unwrap();
-        let req = http::Request::builder()
+        let mut req = http::Request::builder()
             .method(method)
             .uri(uri)
-            .header(
-                http::header::AUTHORIZATION,
-                format!("Bearer {}", profile.api_key),
-            )
             .header(http::header::USER_AGENT, &profile.user_agent);
+
+        if let Some(key) = &profile.api_key {
+            req = req.header(http::header::AUTHORIZATION, format!("Bearer {}", key));
+        } else {
+            warn!("no API key provided");
+        }
 
         if let Some(body) = self.body() {
             let body_str =

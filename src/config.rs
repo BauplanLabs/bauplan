@@ -37,7 +37,8 @@ pub struct Profile {
     #[serde(skip)]
     pub api_endpoint: http::Uri,
     /// The API key to use for authentication.
-    pub api_key: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
     /// The default branch for CLI operations. Set by `bauplan checkout`.
     /// Intended for internal use.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -77,6 +78,19 @@ struct Config {
 }
 
 impl Profile {
+    /// Validate the profile.
+    pub fn validate(&self) -> Result<(), Error> {
+        let Some(api_key) = &self.api_key else {
+            return Err(Error::NoApiKey);
+        };
+
+        if !api_key.is_ascii() {
+            return Err(Error::InvalidApiKey);
+        }
+
+        Ok(())
+    }
+
     /// Load the given profile from the Bauplan configuration file (usually
     /// ~/.bauplan/config.yaml). If no configuration file is present, then the
     /// configuration will be loaded solely from the environment.
@@ -130,13 +144,7 @@ impl Profile {
             .unwrap_or(DEFAULT_API_ENDPOINT)
             .parse()?;
 
-        let Some(api_key) = api_key.or(profile.api_key) else {
-            return Err(Error::NoApiKey);
-        };
-
-        if !api_key.is_ascii() {
-            return Err(Error::InvalidApiKey);
-        }
+        let api_key = api_key.or(profile.api_key);
 
         Ok(Self {
             name: name.to_owned(),
@@ -146,6 +154,12 @@ impl Profile {
             user_agent: make_ua(None),
             config_path,
         })
+    }
+
+    /// Sets the API key on the profile.
+    pub fn with_api_key(mut self, api_key: String) -> Self {
+        self.api_key = Some(api_key);
+        self
     }
 
     /// Modifies the user-agent to have a different prefix. Intended for
@@ -221,10 +235,6 @@ impl Profile {
         let api_endpoint = api_endpoint
             .unwrap_or(DEFAULT_API_ENDPOINT.to_string())
             .parse()?;
-        let api_key = api_key.ok_or(Error::NoApiKey)?;
-        if !api_key.is_ascii() {
-            return Err(Error::InvalidApiKey);
-        }
 
         Ok(Self {
             name,
