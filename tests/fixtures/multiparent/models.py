@@ -4,7 +4,7 @@ import bauplan
     columns=['col_2'],
     materialization_strategy='NONE',
 )
-@bauplan.python('3.11')
+@bauplan.python('3.11', pip={'numpy': '2.4.2'})
 def model_2(
     model_0=bauplan.Model('model_0', columns=['col_0']),
     model_1=bauplan.Model('model_1', columns=['col_1'])
@@ -20,7 +20,7 @@ def model_2(
     columns=['col_4'],
     materialization_strategy='NONE',
 )
-@bauplan.python('3.11')
+@bauplan.python('3.11', pip={'numpy': '2.4.2'})
 def model_4(
     model_0=bauplan.Model('model_0', columns=['col_0']),
     model_1=bauplan.Model('model_1', columns=['col_1']),
