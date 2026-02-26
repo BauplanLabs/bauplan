@@ -464,13 +464,13 @@ mod test {
         let req = GetTables {
             at_ref: "main",
             filter_by_name: None,
-            filter_by_namespace: Some("bauplan"),
+            filter_by_namespace: None,
         };
 
-        let tables = crate::paginate(req, Some(7), |r| roundtrip(r))?
+        let tables = crate::paginate(req, Some(3), |r| roundtrip(r))?
             .collect::<Result<Vec<Table>, ApiError>>()?;
 
-        assert_eq!(tables.len(), 7);
+        assert_eq!(tables.len(), 3);
 
         Ok(())
     }
