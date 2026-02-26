@@ -134,9 +134,7 @@ pub(crate) fn job_request_common(
     let args = args.into_iter().map(KeyValue::into_strings).collect();
 
     commanderpb::JobRequestCommon {
-        // module_version: env!("CARGO_PKG_VERSION").to_owned(),
-        // TODO: the new sdk isn't on codeartifact yet, so the above fails.
-        module_version: "".to_string(),
+        module_version: env!("CARGO_PKG_VERSION").to_owned(),
         hostname,
         args,
         debug: 0,
