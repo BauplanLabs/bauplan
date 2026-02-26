@@ -179,12 +179,26 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
             println!();
         }
         Output::Tty => {
-            let mut tw = TabWriter::new(stdout());
+            let mut tw = TabWriter::new(stdout()).ansi(true);
             writeln!(&mut tw, "NAME\tZONE\tHASH")?;
             for branch in branches {
                 let branch = branch?;
                 let zone = branch.name.split('.').next().unwrap_or("");
-                writeln!(&mut tw, "{}\t{}\t{}", branch.name, zone, branch.hash)?;
+
+                if let Some(active_branch) = &cli.profile.active_branch
+                    && &branch.name == active_branch
+                {
+                    writeln!(
+                        &mut tw,
+                        "{} {}\t{}\t{}",
+                        branch.name.bold().green(),
+                        "[active]".dim(),
+                        zone,
+                        branch.hash
+                    )?;
+                } else {
+                    writeln!(&mut tw, "{}\t{}\t{}", branch.name, zone, branch.hash)?;
+                }
             }
 
             tw.flush()?;
