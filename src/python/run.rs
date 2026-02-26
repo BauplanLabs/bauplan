@@ -59,7 +59,7 @@ impl Client {
 
         let hostname = gethostname().to_string_lossy().into_owned();
         Ok(commanderpb::JobRequestCommon {
-            module_version: Default::default(),
+            module_version: env!("CARGO_PKG_VERSION").to_owned(),
             hostname,
             args,
             debug: 0,
