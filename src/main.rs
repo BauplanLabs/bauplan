@@ -17,14 +17,16 @@ fn main() -> anyhow::Result<()> {
     // progress bars and tracing log lines play nicely with each other.
     let mp = indicatif::MultiProgress::new();
 
-    init_logging(args.global.verbose, mp.clone());
+    init_logging(args.global.verbose, mp.clone())?;
 
     cli::run(args, mp)
 }
 
-fn init_logging(verbose: bool, mp: indicatif::MultiProgress) {
+fn init_logging(verbose: bool, mp: indicatif::MultiProgress) -> anyhow::Result<()> {
     let level = if verbose { "debug" } else { "info" };
-    let filter = EnvFilter::new(format!("bauplan={level}"));
+    let filter = EnvFilter::builder()
+        .with_default_directive(format!("bauplan={level}").parse()?)
+        .from_env()?;
 
     let timer = fmt::time::ChronoUtc::new("%Y-%m-%dT%H:%M:%SZ".to_owned());
     let format = fmt::format()
@@ -38,4 +40,6 @@ fn init_logging(verbose: bool, mp: indicatif::MultiProgress) {
         .event_format(format)
         .with_env_filter(filter)
         .init();
+
+    Ok(())
 }
