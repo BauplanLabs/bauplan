@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - colin/publish-wheel
 
 jobs:
   # Tag and create a GitHub release for unpublished versions.
@@ -37,6 +38,8 @@ jobs:
     name: Publish release artifacts
     needs: release-plz-release
     if: ${{ needs.release-plz-release.outputs.releases_created == 'true' }}
+    permissions:
+      contents: write
     uses: ./.github/workflows/publish.yaml
     with:
       tag: ${{ needs.release-plz-release.outputs.tag }}
