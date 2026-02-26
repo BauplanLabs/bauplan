@@ -11,7 +11,7 @@ from bauplan._internal import (  # noqa: F401
 )
 
 # Submodules.
-from bauplan import standard_expectations, store
+from bauplan import standard_expectations
 from bauplan._internal.schema import JobKind, JobState, RefType  # noqa: F401
 from bauplan._classes import Model
 from bauplan._decorators import (
@@ -34,7 +34,6 @@ __all__ = [
     "schema",
     "standard_expectations",
     "state",
-    "store",
     # From _internal.
     "Client",
     "InfoState",

@@ -1,7 +1,0 @@
-project:
-  id: 641d33d8-a6c2-4525-90d5-d54e7f27c26f
-  name: bauplan_prophet
-
-defaults:
-  python:
-    version: "3.11"

@@ -228,20 +228,6 @@ fn multiparent() {
 //         .stderr(contains("you don't have write access to"));
 // }
 
-#[test]
-fn object_store_save_load_pass() {
-    bauplan()
-        .args([
-            "run",
-            "--dry-run",
-            "--cache",
-            "off",
-            "-p",
-            "tests/fixtures/object_store_pass",
-        ])
-        .assert()
-        .success();
-}
 // Disabled - this depends on careful timing to make sure a node fails during a
 // model write, and producing that timing is easier in unit tests.
 // See: service-runner-poc-go/service/bauplan_runner_poc/test/integration/physical_plan/physical_plan_test.go
