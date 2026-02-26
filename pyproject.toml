@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "bauplan"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = [
     "pyarrow>=23.0.0",
