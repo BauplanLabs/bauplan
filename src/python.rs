@@ -79,10 +79,10 @@ impl ClientError {
 /// client = bauplan.Client()
 /// # >> client now authenticates with api_key value "mykey", because api key > profile
 ///
-/// # specify authentication directly - this supercedes BAUPLAN_API_KEY in the environment
+/// # specify authentication directly - this supersedes BAUPLAN_API_KEY in the environment
 /// client = bauplan.Client(api_key='MY_KEY')
 ///
-/// # specify a profile from ~/.bauplan/config.yml - this supercedes BAUPLAN_PROFILE in the environment
+/// # specify a profile from ~/.bauplan/config.yml - this supersedes BAUPLAN_PROFILE in the environment
 /// client = bauplan.Client(profile='default')
 /// ```
 ///
@@ -92,18 +92,18 @@ impl ClientError {
 ///     - 400: `bauplan.exceptions.InvalidDataError`
 ///     - 401: `bauplan.exceptions.UnauthorizedError`
 ///     - 403: `bauplan.exceptions.ForbiddenError`
-///     - 404: `bauplan.exceptions.ResourceNotFoundError` e.g .ID doesn't match any records
+///     - 404: `bauplan.exceptions.ResourceNotFoundError` e.g. ID doesn't match any records
 ///     - 404: `bauplan.exceptions.ApiRouteError` e.g. the given route doesn't exist
 ///     - 405: `bauplan.exceptions.ApiMethodError` e.g. POST on a route with only GET defined
 ///     - 409: `bauplan.exceptions.UpdateConflictError` e.g. creating a record with a name that already exists
 ///     - 429: `bauplan.exceptions.TooManyRequestsError`
 ///
-/// Run/Query/Scan/Import operations raise a subclass of `bauplan.exceptions.BauplanError` that represents, and also return a `bauplan.state.RunState` object containing details and logs:
-///     - `bauplan.exceptions.JobError` e.g. something went wrong in a run/query/import/scan; includes error details
+/// Run/Query/Scan/Import operations raise a subclass of `bauplan.exceptions.BauplanError` that represents the error, and also return a `bauplan.state.RunState` object containing details and logs:
+///     - `bauplan.exceptions.BauplanJobError` e.g. something went wrong in a run/query/import/scan; includes error details
 ///
 /// Run/import operations also return a state object that includes a `job_status` and other details.
 /// There are two ways to check status for run/import operations:
-///     1. try/except `bauplan.exceptions.JobError`
+///     1. try/except `bauplan.exceptions.BauplanJobError`
 ///     2. check the `state.job_status` attribute
 ///
 /// ## Examples
@@ -119,8 +119,6 @@ impl ClientError {
 ///     api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) .bauplan/config.yml
 ///     client_timeout: The client timeout in seconds for all the requests.
 ///     config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
-///
-///     feature_flags: A dictionary of feature flags to enable or disable during the use of this client instance.
 #[pyclass]
 pub(crate) struct Client {
     pub(crate) profile: Profile,
