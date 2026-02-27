@@ -1,6 +1,6 @@
 use anyhow::{Context as _, bail};
 use bauplan::branch::{CreateBranch, GetBranch};
-use crate::cli::{CliExamples, Cli, yaml};
+use crate::cli::{Cli, color::CliExamples, yaml};
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
