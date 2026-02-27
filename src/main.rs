@@ -7,12 +7,6 @@ use tracing_subscriber::{EnvFilter, fmt};
 fn main() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
-    if std::env::var_os("NO_COLOR").is_none() && yansi::Condition::stdouterr_are_tty() {
-        yansi::enable();
-    } else {
-        yansi::disable();
-    }
-
     // Tracks global progress bar state. This is necessary so that indicatif
     // progress bars and tracing log lines play nicely with each other.
     let mp = indicatif::MultiProgress::new();

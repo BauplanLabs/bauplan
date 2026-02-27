@@ -1,5 +1,5 @@
 use std::{
-    io::{Write, stdout},
+    io::Write,
     path::{Path, PathBuf},
     time,
 };
@@ -11,9 +11,7 @@ use bauplan::{
 };
 use resolve_path::PathResolveExt as _;
 use tabwriter::TabWriter;
-use yansi::Paint;
-
-use crate::cli::{CliExamples, Cli, format_grpc_status, with_rt, yaml};
+use crate::cli::{Cli, color::*, format_grpc_status, with_rt, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum ParameterTypeArg {
@@ -355,24 +353,22 @@ fn parse_bool(s: &str) -> anyhow::Result<bool> {
 }
 
 fn print_parameters(project: &ProjectFile) -> anyhow::Result<()> {
-    let mut tw = TabWriter::new(stdout().lock()).ansi(true);
+    let mut tw = TabWriter::new(anstream::stdout().lock()).ansi(true);
     writeln!(&mut tw, "NAME\tTYPE\tREQUIRED\tDEFAULT\tDESCRIPTION")?;
 
     for (name, param) in &project.parameters {
-        let required = if param.required {
-            "required".blue()
+        let (req_style, req_label) = if param.required {
+            (BLUE, "required")
         } else {
-            "optional".dim()
+            (DIM, "optional")
         };
 
         writeln!(
             &mut tw,
-            "{}\t{}\t{}\t{}\t{}",
-            name.bold(),
+            "{BOLD}{name}{BOLD:#}\t{}\t{req_style}{req_label}{req_style:#}\t{}\t{DIM}{}{DIM:#}",
             param.param_type,
-            required,
             param.display_default(),
-            param.description.as_deref().unwrap_or("-").dim(),
+            param.description.as_deref().unwrap_or("-"),
         )?;
     }
 

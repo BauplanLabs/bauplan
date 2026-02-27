@@ -1,5 +1,6 @@
 mod branch;
 mod checkout;
+mod color;
 mod commit;
 mod config;
 mod job;
@@ -12,11 +13,9 @@ mod table;
 mod tag;
 mod yaml;
 
-use std::{
-    io::{Write as _, stdout},
-    str::FromStr,
-    time,
-};
+use std::{io::Write as _, str::FromStr, time};
+
+use color::*;
 
 use anyhow::bail;
 use bauplan::{
@@ -27,7 +26,6 @@ use bauplan::{
 use clap::{Parser, Subcommand};
 use opentelemetry::trace::{SpanId, TraceFlags, TraceId};
 use tracing::debug;
-use yansi::Paint as _;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -285,7 +283,7 @@ pub(crate) fn format_grpc_status(status: tonic::Status) -> anyhow::Error {
 }
 
 async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
-    let mut stdout = stdout().lock();
+    let mut out = anstream::stdout().lock();
 
     let mut client = grpc::Client::new_lazy(
         &cli.profile,
@@ -301,82 +299,56 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
     let profile_name = &cli.profile.name;
     let active_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
 
-    writeln!(&mut stdout, "{:<35} {profile_name}", "Profile".green())?;
+    writeln!(&mut out, "{GREEN}{:<35}{GREEN:#} {profile_name}", "Profile")?;
     writeln!(
-        &mut stdout,
-        "{:<35} {active_branch}",
-        "Active branch".green()
+        &mut out,
+        "{GREEN}{:<35}{GREEN:#} {active_branch}",
+        "Active branch"
     )?;
-
     writeln!(
-        &mut stdout,
-        "{:<35} {}",
-        "Client Version".green(),
-        env!("BPLN_VERSION"),
+        &mut out,
+        "{GREEN}{:<35}{GREEN:#} {}",
+        "Client Version",
+        env!("BPLN_VERSION")
     )?;
 
     if let Some(user) = resp.user_info {
-        writeln!(&mut stdout, "\n{}", "User".white().bold())?;
-        writeln!(&mut stdout, "{:<35} {}", "ID".blue(), user.id)?;
-        writeln!(&mut stdout, "{:<35} {}", "Username".blue(), user.username)?;
+        writeln!(&mut out, "\n{HEADER}User{HEADER:#}")?;
+        writeln!(&mut out, "{BLUE}{:<35}{BLUE:#} {}", "ID", user.id)?;
         writeln!(
-            &mut stdout,
-            "{:<35} {} {}",
-            "Full Name".blue(),
-            user.first_name,
-            user.last_name
+            &mut out,
+            "{BLUE}{:<35}{BLUE:#} {}",
+            "Username", user.username
+        )?;
+        writeln!(
+            &mut out,
+            "{BLUE}{:<35}{BLUE:#} {} {}",
+            "Full Name", user.first_name, user.last_name
         )?;
     } else if !resp.user.is_empty() {
-        writeln!(&mut stdout, "{:<35} {}", "Username".blue(), resp.user)?;
+        writeln!(&mut out, "{BLUE}{:<35}{BLUE:#} {}", "Username", resp.user)?;
     }
 
     if let Some(org) = resp.organization_info {
-        writeln!(&mut stdout, "\n{}", "Organization".white().bold())?;
-        writeln!(&mut stdout, "{:<35} {}", "ID".blue(), org.id)?;
-        writeln!(&mut stdout, "{:<35} {}", "Name".blue(), org.name)?;
+        writeln!(&mut out, "\n{HEADER}Organization{HEADER:#}")?;
+        writeln!(&mut out, "{BLUE}{:<35}{BLUE:#} {}", "ID", org.id)?;
+        writeln!(&mut out, "{BLUE}{:<35}{BLUE:#} {}", "Name", org.name)?;
         if let Some(key) = &org.default_parameter_secret_key {
-            writeln!(&mut stdout, "{:<35} {key}", "Default Secret Key".blue())?;
+            writeln!(&mut out, "{BLUE}{:<35}{BLUE:#} {key}", "Default Secret Key")?;
             if let Some(pkey) = &org.default_parameter_secret_public_key {
                 writeln!(
-                    &mut stdout,
-                    "{:<35} {pkey}",
-                    "Default Secret Public Key".blue()
+                    &mut out,
+                    "{BLUE}{:<35}{BLUE:#} {pkey}",
+                    "Default Secret Public Key"
                 )?;
             }
         }
     }
 
-    writeln!(&mut stdout, "\n{}", "Runners".white().bold())?;
+    writeln!(&mut out, "\n{HEADER}Runners{HEADER:#}")?;
     for runner in resp.runners {
-        writeln!(&mut stdout, "╰ {}", runner.hostname)?;
+        writeln!(&mut out, "╰ {}", runner.hostname)?;
     }
 
     Ok(())
-}
-
-pub(crate) struct CliExamples(pub &'static str);
-
-impl From<CliExamples> for clap::builder::StyledStr {
-    fn from(ex: CliExamples) -> Self {
-        use clap::builder::styling::Style;
-        use std::fmt::Write;
-
-        const BOLD: Style = Style::new().bold();
-        const DIM: Style = Style::new().dimmed();
-        const HEADING: Style = Style::new().bold().underline();
-
-        let mut s = clap::builder::StyledStr::new();
-        write!(s, "{HEADING}Examples{HEADING:#}").unwrap();
-        for line in ex.0.trim_matches('\n').lines() {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with('#') {
-                write!(s, "{DIM}\n{line}{DIM:#}").unwrap();
-            } else if !trimmed.is_empty() {
-                write!(s, "{BOLD}\n{line}{BOLD:#}").unwrap();
-            } else {
-                writeln!(s).unwrap();
-            }
-        }
-        s
-    }
 }
