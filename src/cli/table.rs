@@ -40,15 +40,15 @@ pub(crate) enum TableCommand {
     /// Drop a table from the data catalog (does not free up storage)
     #[clap(alias = "delete", alias = "drop")]
     Rm(TableRmArgs),
-    /// create a new table
+    /// Create a new table
     Create(TableCreateArgs),
-    /// create a plan for a new table
+    /// Create a plan for a new table
     CreatePlan(TableCreatePlanArgs),
-    /// apply a table create plan manually
+    /// Apply a table create plan manually
     CreatePlanApply(TableCreatePlanApplyArgs),
-    /// Create an external read-only Iceberg table from existing data with any copies
+    /// Create an external read-only Iceberg table from existing data without any copies
     CreateExternal(TableCreateExternalArgs),
-    /// import data to an existing table. Use `bauplan table create` to create
+    /// Import data to an existing table. Use `bauplan table create` to create the table first
     Import(TableImportArgs),
     /// Revert a table to a previous state from a source ref
     Revert(TableRevertArgs),
@@ -89,7 +89,7 @@ pub(crate) struct TableRmArgs {
     /// Do not fail if the table does not exist
     #[arg(long)]
     pub if_exists: bool,
-    /// Optinal commit body to append to the commit message
+    /// Optional commit body to append to the commit message
     #[arg(long)]
     pub commit_body: Option<String>,
 }
@@ -207,7 +207,7 @@ pub(crate) struct TableImportArgs {
     /// Don't fail the command even if 1/N files fails to import
     #[arg(long)]
     pub continue_on_error: bool,
-    /// Force importing of files without checking what was already imported. likely result in duplicate rows being imported
+    /// Force importing of files without checking what was already imported. This will likely result in duplicate rows being imported
     #[arg(long)]
     pub import_duplicate_files: bool,
     /// Set to ignore new columns. if an import file  has column aa, bb, and parquet has col aa, bb, cc, columns aa and bb will be imported

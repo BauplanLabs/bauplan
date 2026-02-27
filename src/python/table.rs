@@ -50,9 +50,9 @@ impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
 impl Client {
     /// Create a table from an S3 location.
     ///
-    /// This operation will attempt to create a table based of schemas of N
+    /// This operation will attempt to create a table based on schemas of N
     /// parquet files found by a given search uri. This is a two step operation using
-    /// `plan_table_creation ` and  `apply_table_creation_plan`.
+    /// `plan_table_creation` and `apply_table_creation_plan`.
     ///
     /// ```python notest
     /// import bauplan
@@ -68,7 +68,7 @@ impl Client {
     /// Parameters:
     ///     table: The table which will be created.
     ///     search_uri: The location of the files to scan for schema.
-    ///     branch: The branch name in which to create the table in.
+    ///     branch: The branch name in which to create the table.
     ///     namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
     ///     partitioned_by: Optional argument specifying the table partitioning.
     ///     replace: Replace the table if it already exists.
@@ -193,9 +193,9 @@ impl Client {
 
     /// Create a table import plan from an S3 location.
     ///
-    /// This operation will attempt to create a table based of schemas of N
+    /// This operation will attempt to create a table based on schemas of N
     /// parquet files found by a given search uri. A YAML file containing the
-    /// schema and plan is returns and if there are no conflicts, it is
+    /// schema and plan is returned and if there are no conflicts, it is
     /// automatically applied.
     ///
     /// ```python notest
@@ -216,7 +216,7 @@ impl Client {
     /// Parameters:
     ///     table: The table which will be created.
     ///     search_uri: The location of the files to scan for schema.
-    ///     branch: The branch name in which to create the table in.
+    ///     branch: The branch name in which to create the table.
     ///     namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
     ///     partitioned_by: Optional argument specifying the table partitioning.
     ///     replace: Replace the table if it already exists.
@@ -331,11 +331,11 @@ impl Client {
         })
     }
 
-    /// Apply a plan for creating a table. It is done automaticaly during th
+    /// Apply a plan for creating a table. It is done automatically during the
     /// table plan creation if no schema conflicts exist. Otherwise, if schema
     /// conflicts exist, then this function is used to apply them after the
-    /// schema conflicts are resolved. Most common schema conflict is a two
-    /// parquet files with the same column name but different datatype
+    /// schema conflicts are resolved. The most common schema conflict is two
+    /// parquet files with the same column name but different datatypes.
     ///
     /// Parameters:
     ///     plan: The plan to apply.
@@ -436,10 +436,10 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     table: Previously created table in into which data will be imported.
-    ///     search_uri: Uri which to scan for files to import.
+    ///     table: Previously created table into which data will be imported.
+    ///     search_uri: URI to scan for files to import.
     ///     branch: Branch in which to import the table.
-    ///     namespace: Namespace of the table. If not specified, namespace will be infered from table name or default settings.
+    ///     namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
     ///     continue_on_error: Do not fail the import even if 1 data import fails.
     ///     import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
     ///     best_effort: Don't fail if schema of table does not match.

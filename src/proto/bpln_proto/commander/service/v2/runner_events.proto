@@ -52,12 +52,12 @@ message JobFailure {
     // orchestration of a job
     ERROR_CODE_UNSPECIFIED = 0;
 
-    // Sent when the failure is due a user error. It can be used to know when
+    // Sent when the failure is due to a user error. It can be used to know when
     // to provide more information to the user.
     ERROR_CODE_RUNTIME_TASK_USER_ERROR = 1;
 
     // This is specific to a runtime task failure. If it is unspecified, it
-    // means something wrong happend on scheduler/executor side and should be
+    // means something wrong happened on scheduler/executor side and should be
     // treated as different than a runtime task failure
     ERROR_CODE_RUNTIME_INTERNAL_ERROR = 2;
   }

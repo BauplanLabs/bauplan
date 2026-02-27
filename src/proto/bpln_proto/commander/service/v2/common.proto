@@ -56,7 +56,7 @@ message PlannerLog {
 }
 
 // TODO: consider renaming this to something generic, as this seems to be specific to `bauplan run`
-// but is used else where
+// but is used elsewhere
 message TriggerRunOpts {
   bool cache = 1;
 }

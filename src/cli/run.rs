@@ -71,7 +71,7 @@ pub(crate) struct RunArgs {
     /// Exit upon encountering runtime warnings (e.g., invalid column output)
     #[arg(long)]
     pub strict: Option<OnOff>,
-    /// Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to branch in which this run is happenning in
+    /// Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to the branch in which this run is happening
     #[arg(short, long)]
     pub transaction: Option<OnOff>,
     /// Dry run the job without materializing any models.
@@ -145,7 +145,7 @@ pub(crate) fn job_request_common(
 /// Runs a job and manages spinners for it. This handles the following common
 /// behavior:
 ///  - Cancelling a job on a cancel signal or a request timeout
-///  - Monitoring job logs until a JobCompletion event is recieved.
+///  - Monitoring job logs until a JobCompletion event is received.
 ///
 /// `thing` influences the format of the spinner message ("Running {thing}...").
 ///

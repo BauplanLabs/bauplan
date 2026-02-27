@@ -37,7 +37,7 @@ pub(crate) struct QueryArgs {
     /// Limit number of returned rows. (use --all-rows to disable this)
     #[arg(long, default_value = "10")]
     pub max_rows: Option<u64>,
-    /// Do not limit returned rows. Supercedes --max-rows
+    /// Do not limit returned rows. Supersedes --max-rows
     #[arg(long)]
     pub all_rows: bool,
     /// Do not truncate output
