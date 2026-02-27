@@ -242,6 +242,8 @@ mod _internal {
     // `from bauplan._internal.schema import X` works.
     #[pymodule_init]
     fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+
         let sys = m.py().import("sys")?;
         let modules = sys.getattr("modules")?;
         let name = m.name()?;

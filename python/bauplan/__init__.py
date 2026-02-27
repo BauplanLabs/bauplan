@@ -1,5 +1,7 @@
+from bauplan._internal import __version__
+
 # Re-export everything from the extension module.
-from bauplan._internal import (  # noqa: F401
+from bauplan._internal import (
     Client,
     InfoState,
     OrganizationInfo,
@@ -12,7 +14,7 @@ from bauplan._internal import (  # noqa: F401
 
 # Submodules.
 from bauplan import standard_expectations
-from bauplan._internal.schema import JobKind, JobState, RefType  # noqa: F401
+from bauplan._internal.schema import JobKind, JobState, RefType
 from bauplan._classes import Model
 from bauplan._decorators import (
     ModelCacheStrategy,
@@ -29,6 +31,7 @@ from ._parameters import Parameter
 
 
 __all__ = [
+    "__version__",
     # Submodules.
     "exceptions",
     "schema",
