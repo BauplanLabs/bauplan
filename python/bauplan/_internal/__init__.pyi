@@ -15,6 +15,8 @@ from bauplan._internal.state import (
     TableDataImportState,
 )
 
+__version__: str
+
 @final
 class Client:
     """

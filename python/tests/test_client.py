@@ -3,6 +3,10 @@
 import bauplan
 
 
+def test_version():
+    assert bauplan.__version__
+
+
 def test_api_key_param(tmp_path):
     config = tmp_path / "config.yaml"
     config.write_text(
