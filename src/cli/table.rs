@@ -4,6 +4,14 @@ use std::{
     time,
 };
 
+use crate::cli::{
+    Cli, KeyValue, Output, Priority, api_err_kind,
+    color::*,
+    format_grpc_status,
+    run::{job_request_common, monitor_job_progress},
+    spinner::{self, ProgressExt as _},
+    with_rt,
+};
 use anyhow::{anyhow, bail};
 use bauplan::{
     ApiErrorKind,
@@ -15,14 +23,6 @@ use commanderpb::runner_event::Event as RunnerEvent;
 use indicatif::ProgressBar;
 use tabwriter::TabWriter;
 use tracing::info;
-use yansi::Paint as _;
-
-use crate::cli::{
-    Cli, CliExamples, KeyValue, Output, Priority, api_err_kind, format_grpc_status,
-    run::{job_request_common, monitor_job_progress},
-    spinner::ProgressExt as _,
-    with_rt,
-};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TableArgs {
@@ -763,7 +763,7 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
     };
 
     if detach {
-        progress.finish_with_append("started".yellow());
+        progress.finish_with_status(spinner::STARTED);
         eprintln!("\nJob {job_id} is now running in detached mode.\n");
         eprintln!("Tip: use \"bauplan job <command>\" to list and inspect running jobs.");
         return Ok(());

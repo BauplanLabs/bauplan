@@ -3,6 +3,7 @@ use std::{
     io::{Write as _, stdout},
 };
 
+use crate::cli::{Cli, Output, api_err_kind, checkout, color::*};
 use anyhow::bail;
 use bauplan::{
     ApiErrorKind,
@@ -10,9 +11,6 @@ use bauplan::{
     table::{GetTables, Table},
 };
 use tabwriter::TabWriter;
-use yansi::Paint as _;
-
-use crate::cli::{Cli, CliExamples, Output, api_err_kind, checkout};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct BranchArgs {
@@ -324,9 +322,8 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
     }
 
     eprintln!("Created branch \"{branch_name}\"");
-    eprintln!(
-        "{} To create and switch to a branch in one command, run:",
-        "TIP:".green()
+    anstream::eprintln!(
+        "{GREEN}TIP:{GREEN:#} To create and switch to a branch in one command, run:",
     );
     eprintln!("\tbauplan checkout -b {branch_name:?}");
     Ok(())
@@ -446,20 +443,17 @@ fn diff_branch(cli: &Cli, args: BranchDiffArgs) -> anyhow::Result<()> {
             println!();
         }
         Output::Tty => {
-            eprintln!(
-                "{}",
-                format!("diff --bauplan a/{branch_name_a} b/{branch_b}").bold()
-            );
+            anstream::eprintln!("{BOLD}diff --bauplan a/{branch_name_a} b/{branch_b}{BOLD:#}");
 
             for (k, t) in &tables_b {
                 if !tables_a.contains_key(k.as_str()) {
-                    eprintln!("{}", format!("+{} {}", t.kind, t.fqn()).green());
+                    anstream::eprintln!("{GREEN}+{} {}{GREEN:#}", t.kind, t.fqn());
                 }
             }
 
             for (k, t) in &tables_a {
                 if !tables_b.contains_key(k.as_str()) {
-                    eprintln!("{}", format!("-{} {}", t.kind, t.fqn()).red());
+                    anstream::eprintln!("{RED}-{} {}{RED:#}", t.kind, t.fqn());
                 }
             }
         }

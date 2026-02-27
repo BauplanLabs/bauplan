@@ -2,9 +2,8 @@ use std::collections::BTreeMap;
 use std::io::{Write, stdout};
 
 use bauplan::commit::{Commit, GetCommits};
-use yansi::Paint as _;
 
-use crate::cli::{CliExamples, Cli, Output};
+use crate::cli::{Cli, Output, color::*};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Format {
@@ -108,7 +107,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
             println!();
         }
         Output::Tty => {
-            let mut out = stdout().lock();
+            let mut out = anstream::stdout().lock();
             for commit in commits {
                 let commit = commit?;
                 print_commit(&mut out, &commit, args.format.unwrap_or_default())?;
@@ -126,7 +125,7 @@ fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::i
             writeln!(out, "{}\t{}", commit.hash(), subject)?;
         }
         Format::Short => {
-            writeln!(out, "{}", format!("commit {}", commit.hash()).yellow())?;
+            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
             if let Some(author) = commit.author() {
                 writeln!(out, "Author: {}", format_actor(author))?;
             }
@@ -137,7 +136,7 @@ fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::i
             writeln!(out)?;
         }
         Format::Medium => {
-            writeln!(out, "{}", format!("commit {}", commit.hash()).yellow())?;
+            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
             if let Some(author) = commit.author() {
                 writeln!(out, "Author: {}", format_actor(author))?;
             }
@@ -155,7 +154,7 @@ fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::i
             writeln!(out)?;
         }
         Format::Full => {
-            writeln!(out, "{}", format!("commit {}", commit.hash()).yellow())?;
+            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
             if let Some(author) = commit.author() {
                 writeln!(out, "Author: {}", format_actor(author))?;
             }
@@ -173,7 +172,7 @@ fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::i
             writeln!(out)?;
         }
         Format::Fuller => {
-            writeln!(out, "{}", format!("commit {}", commit.hash()).yellow())?;
+            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
             if let Some(author) = commit.author() {
                 writeln!(out, "Author: {}", format_actor(author))?;
             }

@@ -1,8 +1,8 @@
+use anstyle::{AnsiColor, Style};
 use bstr::{BStr, BString, ByteSlice as _};
 use predicates::reflection::{Case, Product};
 use similar::{ChangeTag, TextDiff};
 use std::fmt::Write as _;
-use yansi::Paint as _;
 
 mod cli {
     mod branch;
@@ -77,16 +77,20 @@ impl predicates::Predicate<[u8]> for Lines {
                 .iter_all_changes()
                 .collect::<Vec<_>>();
 
+            const RED: Style = AnsiColor::BrightRed.on_default();
+            const GREEN: Style = AnsiColor::BrightGreen.on_default();
+            const DIM: Style = Style::new().dimmed();
+
             let mut diff = "\n".to_string();
             for change in changes {
                 match change.tag() {
                     ChangeTag::Delete => {
-                        write!(&mut diff, "{}", format!("- {change}").bright_red())
+                        write!(&mut diff, "{RED}- {change}{RED:#}")
                     }
                     ChangeTag::Insert => {
-                        write!(&mut diff, "{}", format!("+ {change}").bright_green())
+                        write!(&mut diff, "{GREEN}+ {change}{GREEN:#}")
                     }
-                    ChangeTag::Equal => write!(&mut diff, "{}", format!("  {change}").dim()),
+                    ChangeTag::Equal => write!(&mut diff, "{DIM}  {change}{DIM:#}"),
                 }
                 .unwrap();
             }

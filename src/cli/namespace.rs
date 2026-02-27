@@ -3,7 +3,7 @@ use std::io::{Write as _, stdout};
 use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, CliExamples, Output, api_err_kind};
+use crate::cli::{Cli, Output, api_err_kind, color::CliExamples};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceArgs {
