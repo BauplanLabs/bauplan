@@ -27,7 +27,7 @@ class Client:
     client = bauplan.Client()
 
     # query the table and return result set as an arrow Table
-    my_table = client.query('SELECT avg(Age) AS average_age FROM bauplan.titanic limit 1', ref='main')
+    my_table = client.query('SELECT avg(age) AS average_age FROM bauplan.titanic limit 1', ref='main')
 
     # efficiently cast the table to a pandas DataFrame
     df = my_table.to_pandas()
@@ -49,10 +49,10 @@ class Client:
     client = bauplan.Client()
     # >> client now authenticates with api_key value "mykey", because api key > profile
 
-    # specify authentication directly - this supercedes BAUPLAN_API_KEY in the environment
+    # specify authentication directly - this supersedes BAUPLAN_API_KEY in the environment
     client = bauplan.Client(api_key='MY_KEY')
 
-    # specify a profile from ~/.bauplan/config.yml - this supercedes BAUPLAN_PROFILE in the environment
+    # specify a profile from ~/.bauplan/config.yml - this supersedes BAUPLAN_PROFILE in the environment
     client = bauplan.Client(profile='default')
     ```
 
@@ -62,18 +62,18 @@ class Client:
         - 400: `bauplan.exceptions.InvalidDataError`
         - 401: `bauplan.exceptions.UnauthorizedError`
         - 403: `bauplan.exceptions.ForbiddenError`
-        - 404: `bauplan.exceptions.ResourceNotFoundError` e.g .ID doesn't match any records
+        - 404: `bauplan.exceptions.ResourceNotFoundError` e.g. ID doesn't match any records
         - 404: `bauplan.exceptions.ApiRouteError` e.g. the given route doesn't exist
         - 405: `bauplan.exceptions.ApiMethodError` e.g. POST on a route with only GET defined
         - 409: `bauplan.exceptions.UpdateConflictError` e.g. creating a record with a name that already exists
         - 429: `bauplan.exceptions.TooManyRequestsError`
 
-    Run/Query/Scan/Import operations raise a subclass of `bauplan.exceptions.BauplanError` that represents, and also return a `bauplan.state.RunState` object containing details and logs:
-        - `bauplan.exceptions.JobError` e.g. something went wrong in a run/query/import/scan; includes error details
+    Run/Query/Scan/Import operations raise a subclass of `bauplan.exceptions.BauplanError` that represents the error, and also return a `bauplan.state.RunState` object containing details and logs:
+        - `bauplan.exceptions.BauplanJobError` e.g. something went wrong in a run/query/import/scan; includes error details
 
     Run/import operations also return a state object that includes a `job_status` and other details.
     There are two ways to check status for run/import operations:
-        1. try/except `bauplan.exceptions.JobError`
+        1. try/except `bauplan.exceptions.BauplanJobError`
         2. check the `state.job_status` attribute
 
     ## Examples
@@ -93,11 +93,11 @@ class Client:
     def __new__(cls, /, profile: str |None = None, api_key: str |None = None, client_timeout: int |None = None, config_file_path: str |None = None) -> Client: ...
     def apply_table_creation_plan(self, /, plan: "TableCreatePlanState | str", *, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "TableCreatePlanApplyState":
         """
-        Apply a plan for creating a table. It is done automaticaly during th
+        Apply a plan for creating a table. It is done automatically during the
         table plan creation if no schema conflicts exist. Otherwise, if schema
         conflicts exist, then this function is used to apply them after the
-        schema conflicts are resolved. Most common schema conflict is a two
-        parquet files with the same column name but different datatype
+        schema conflicts are resolved. The most common schema conflict is two
+        parquet files with the same column name but different datatypes.
 
         Parameters:
             plan: The plan to apply.
@@ -115,7 +115,7 @@ class Client:
         EXPERIMENTAL: Cancel a job by ID.
 
         Parameters:
-            id: A job ID
+            job_id: A job ID
         """
     def create_branch(self, /, branch: "str | Branch", from_ref: "str | Ref", *, if_not_exists: "bool" = False) -> "Branch":
         """
@@ -267,9 +267,9 @@ class Client:
         """
         Create a table from an S3 location.
 
-        This operation will attempt to create a table based of schemas of N
+        This operation will attempt to create a table based on schemas of N
         parquet files found by a given search uri. This is a two step operation using
-        `plan_table_creation ` and  `apply_table_creation_plan`.
+        `plan_table_creation` and `apply_table_creation_plan`.
 
         ```python notest
         import bauplan
@@ -285,7 +285,7 @@ class Client:
         Parameters:
             table: The table which will be created.
             search_uri: The location of the files to scan for schema.
-            branch: The branch name in which to create the table in.
+            branch: The branch name in which to create the table.
             namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
             partitioned_by: Optional argument specifying the table partitioning.
             replace: Replace the table if it already exists.
@@ -860,10 +860,10 @@ class Client:
         ```
 
         Parameters:
-            table: Previously created table in into which data will be imported.
-            search_uri: Uri which to scan for files to import.
+            table: Previously created table into which data will be imported.
+            search_uri: URI to scan for files to import.
             branch: Branch in which to import the table.
-            namespace: Namespace of the table. If not specified, namespace will be infered from table name or default settings.
+            namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
             continue_on_error: Do not fail the import even if 1 data import fails.
             import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
             best_effort: Don't fail if schema of table does not match.
@@ -933,9 +933,9 @@ class Client:
         """
         Create a table import plan from an S3 location.
 
-        This operation will attempt to create a table based of schemas of N
+        This operation will attempt to create a table based on schemas of N
         parquet files found by a given search uri. A YAML file containing the
-        schema and plan is returns and if there are no conflicts, it is
+        schema and plan is returned and if there are no conflicts, it is
         automatically applied.
 
         ```python notest
@@ -956,7 +956,7 @@ class Client:
         Parameters:
             table: The table which will be created.
             search_uri: The location of the files to scan for schema.
-            branch: The branch name in which to create the table in.
+            branch: The branch name in which to create the table.
             namespace: Optional argument specifying the namespace. If not specified, it will be inferred based on table location or the default.
             partitioned_by: Optional argument specifying the table partitioning.
             replace: Replace the table if it already exists.

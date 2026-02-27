@@ -36,7 +36,7 @@ exclude = ["tests/fixtures"]
 [tool.uv]
 cache-keys = [
     { file = "pyproject.toml" },
-    { file = "rust/Cargo.toml" },
+    { file = "Cargo.toml" },
     { file = "src/**/*.rs" },
 ]
 

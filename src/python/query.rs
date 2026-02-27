@@ -71,7 +71,7 @@ impl Client {
             return Err(query_err("response missing job ID"));
         };
 
-        info!(job_id, "succesfully planned query");
+        info!(job_id, "successfully planned query");
 
         let mut client_clone = self.grpc.clone();
         let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
