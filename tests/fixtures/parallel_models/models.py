@@ -90,11 +90,11 @@ def parallel_grand_child_1(
 ):
     print('grand child 1 row count:', table_in.num_rows)
     if grand_child_1_should_sleep:
-        print('child 3 sleep')
+        print('grand child 1 sleep')
         time.sleep(1.5)
 
     if grand_child_1_should_fail:
-        raise Exception('child_3 threw exception')
+        raise Exception('grand_child_1 threw exception')
 
     return table_in
 
@@ -107,5 +107,5 @@ def parallel_great_grand_child_1(
         columns=['*'],
     ),
 ):
-    print('greate grand child 1 row count:', table_in.num_rows)
+    print('great grand child 1 row count:', table_in.num_rows)
     return table_in

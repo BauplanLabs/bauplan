@@ -1,5 +1,5 @@
 """
-This module contains standard expectations that can be used to test data artifact in a
+This module contains standard expectations that can be used to test data artifacts in a
 Bauplan pipeline. Using these expectations instead of hand-made ones will make your
 pipeline easier to maintain, and significantly faster and more memory-efficient.
 
@@ -16,7 +16,7 @@ import pyarrow.compute as pc
 def _calculate_string_concatenation(table: pa.Table, columns: list, separator: str = '') -> Any:
     """
     Given a pyarrow table and a list of column names, concatenate the columns into a new column.
-    The caller of the function can then used the column to compare it with an existing column or add it.
+    The caller of the function can then use the column to compare it with an existing column or add it.
 
     The function does attempt type conversion to string if a column is not of type pa.string().
 

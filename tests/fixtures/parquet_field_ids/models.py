@@ -22,7 +22,7 @@ def parent(
     # the scan should not have field ids either
     assert_no_parquet_field_ids(trips)
 
-    # now let's simlate as if the table somehow ended having field ids added by the user
+    # now let's simulate as if the table somehow ended having field ids added by the user
     # (even though this will likely never happen in practice)
 
     import pyarrow as pa

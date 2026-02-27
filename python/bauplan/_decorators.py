@@ -79,7 +79,7 @@ def expectation(
 
     An expectation is a function from one (or more) dataframe-like object(s) to a boolean: it
     is commonly used to perform data validation and data quality checks when running a pipeline.
-    Expectations takes as input the table(s) they are validating and return a boolean indicating
+    Expectations take as input the table(s) they are validating and return a boolean indicating
     whether the expectation is met or not. A Python expectation needs a Python environment to run,
     which is defined using the `python` decorator, e.g.:
 
