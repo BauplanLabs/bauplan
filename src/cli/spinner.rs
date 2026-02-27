@@ -1,5 +1,6 @@
 use indicatif::{ProgressBar, ProgressState, ProgressStyle};
-use yansi::Paint as _;
+
+use super::color::*;
 
 impl super::Cli {
     /// Creates a progress spinner that plays nicely with logging.
@@ -27,22 +28,30 @@ impl super::Cli {
     }
 }
 
+pub(crate) const DONE: Styled = Styled(GREEN, "done");
+pub(crate) const FAILED: Styled = Styled(RED, "failed");
+pub(crate) const FAILED_WARN: Styled = Styled(YELLOW, "failed");
+pub(crate) const CANCELLED: Styled = Styled(RED, "cancelled");
+pub(crate) const TIMEOUT: Styled = Styled(RED, "timeout");
+pub(crate) const SKIPPED: Styled = Styled(YELLOW, "skipped");
+pub(crate) const STARTED: Styled = Styled(YELLOW, "started");
+
 pub(crate) trait ProgressExt {
     fn finish_with_failed(&self);
     fn finish_with_done(&self);
-    fn finish_with_append(&self, msg: impl std::fmt::Display);
+    fn finish_with_status(&self, msg: impl std::fmt::Display);
 }
 
 impl ProgressExt for ProgressBar {
     fn finish_with_failed(&self) {
-        self.finish_with_append("failed".red())
+        self.finish_with_status(FAILED)
     }
 
     fn finish_with_done(&self) {
-        self.finish_with_append("done".green())
+        self.finish_with_status(DONE)
     }
 
-    fn finish_with_append(&self, msg: impl std::fmt::Display) {
-        self.finish_with_message(format!("{} {msg}", self.message()));
+    fn finish_with_status(&self, st: impl std::fmt::Display) {
+        self.finish_with_message(format!("{} {st}", self.message()));
     }
 }

@@ -1,10 +1,5 @@
 use std::{
-    cell::RefCell,
-    collections::BTreeMap,
-    fmt::Display,
-    io::{Write as _, stderr, stdout},
-    path::PathBuf,
-    time,
+    cell::RefCell, collections::BTreeMap, fmt::Display, io::Write as _, path::PathBuf, time,
 };
 
 use anyhow::{Context as _, bail};
@@ -22,12 +17,13 @@ use rsa::RsaPublicKey;
 use serde::Serialize;
 use tabwriter::TabWriter;
 use tracing::{debug, error, info};
-use yansi::Paint;
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Priority, format_grpc_status,
+    Cli, KeyValue, OnOff, Priority,
+    color::*,
+    format_grpc_status,
     parameter::{parse_parameter, resolve_project_dir},
-    spinner::ProgressExt,
+    spinner::{self, ProgressExt},
 };
 use commanderpb::runner_event::Event as RunnerEvent;
 
@@ -52,6 +48,22 @@ impl Display for Preview {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = crate::cli::CliExamples("
+  # Run pipeline in current directory
+  bauplan run
+
+  # Dry run without materializing models
+  bauplan run --dry-run
+
+  # Run with strict mode and preview
+  bauplan run --strict --preview head
+
+  # Run on specific branch with parameters
+  bauplan run --ref main --param env=prod
+
+  # Run in background
+  bauplan run --detach
+"))]
 pub(crate) struct RunArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
@@ -377,11 +389,11 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                 // TODO: maybe we can replicate the DAG hierarchy here a bit?
                 let name = if metadata.task_type == "USER_CODE_EXPECTATION" {
                     let name = metadata.function_name.unwrap_or(ev.task_name);
-                    task_spinner.set_message(format!("  {name} [expectation]").cyan().to_string());
+                    task_spinner.set_message(format!("{CYAN}  {name} [expectation]{CYAN:#}"));
                     name
                 } else {
                     let name = metadata.model_name.unwrap_or(ev.task_name);
-                    task_spinner.set_message(format!("  {}", name.blue()));
+                    task_spinner.set_message(format!("{BLUE}  {name}{BLUE:#}"));
                     name
                 };
 
@@ -404,16 +416,16 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
 
                 // Finish the task spinner.
                 if let Some(task_spinner) = spinners.borrow().get(ev.task_id.as_str()) {
-                    let suffix = match &outcome {
-                        Outcome::Success(_) => "done".green(),
-                        Outcome::Failure(f) if !f.is_fatal => "failed".yellow(),
-                        Outcome::Failure(_) => "failed".red(),
-                        Outcome::Cancel(_) => "cancelled".red(),
-                        Outcome::Timeout(_) => "timeout".red(),
-                        Outcome::Skipped(_) => "skipped".yellow(),
+                    let status = match &outcome {
+                        Outcome::Success(_) => spinner::DONE,
+                        Outcome::Failure(f) if !f.is_fatal => spinner::FAILED_WARN,
+                        Outcome::Failure(_) => spinner::FAILED,
+                        Outcome::Cancel(_) => spinner::CANCELLED,
+                        Outcome::Timeout(_) => spinner::TIMEOUT,
+                        Outcome::Skipped(_) => spinner::SKIPPED,
                     };
 
-                    task_spinner.finish_with_append(suffix);
+                    task_spinner.finish_with_status(status);
                 }
 
                 // Print a preview(s), if relevant.
@@ -466,15 +478,15 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         }
         Err(e) => {
             if let Some(job_err) = e.downcast_ref::<grpc::JobError>() {
-                let (outcome, suffix) = match job_err {
-                    grpc::JobError::Cancelled => (SummaryOutcome::Cancelled, "cancelled".red()),
-                    grpc::JobError::Rejected(_) => (SummaryOutcome::Skipped, "skipped".yellow()),
-                    grpc::JobError::Timeout => (SummaryOutcome::Timeout, "timeout".red()),
-                    _ => (SummaryOutcome::Failed, "failed".red()),
+                let (outcome, status) = match job_err {
+                    grpc::JobError::Cancelled => (SummaryOutcome::Cancelled, spinner::CANCELLED),
+                    grpc::JobError::Rejected(_) => (SummaryOutcome::Skipped, spinner::SKIPPED),
+                    grpc::JobError::Timeout => (SummaryOutcome::Timeout, spinner::TIMEOUT),
+                    _ => (SummaryOutcome::Failed, spinner::FAILED),
                 };
 
                 summary.outcome = outcome;
-                progress.finish_with_append(suffix);
+                progress.finish_with_status(status);
                 Err(e)
             } else {
                 // Exit now.
@@ -485,7 +497,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
 
     for sp in spinners.borrow().values() {
         if !sp.is_finished() {
-            sp.finish_with_message(format!("{} {}", sp.message(), "cancelled".red()));
+            sp.finish_with_status(spinner::CANCELLED);
         }
     }
 
@@ -495,7 +507,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         cli.multiprogress
             .set_draw_target(ProgressDrawTarget::hidden());
 
-        let mut out = stdout().lock();
+        let mut out = std::io::stdout().lock();
         serde_json::to_writer(&mut out, &summary)?;
         writeln!(&mut out)?;
     }
@@ -504,17 +516,16 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
 }
 
 fn print_dag(job_id: &str, dag_ascii: String) -> anyhow::Result<()> {
-    let mut stderr = stderr().lock();
+    let mut stderr = anstream::stderr().lock();
 
-    writeln!(&mut stderr, "{}", "=> DAG".dim())?;
-    let arrow = "=>".dim();
+    writeln!(&mut stderr, "{DIM}=> DAG{DIM:#}")?;
     for line in dag_ascii.lines() {
-        writeln!(&mut stderr, "{arrow} {line}")?;
+        writeln!(&mut stderr, "{DIM}=>{DIM:#} {line}")?;
     }
 
     writeln!(
         &mut stderr,
-        "{arrow} View this job in the app: https://app.bauplanlabs.com/jobs/{job_id}"
+        "{DIM}=>{DIM:#} View this job in the app: https://app.bauplanlabs.com/jobs/{job_id}"
     )?;
 
     Ok(())
@@ -530,21 +541,17 @@ fn print_user_log(
         .or(metadata.function_name)
         .unwrap_or(metadata.human_readable_task_type);
 
-    let color = match stream {
-        commanderpb::runtime_log_event::OutputStream::Stderr => yansi::Color::Yellow,
-        _ => yansi::Color::Blue,
+    let style = match stream {
+        commanderpb::runtime_log_event::OutputStream::Stderr => YELLOW,
+        _ => BLUE,
     };
 
     if let Some(file_name) = metadata.file_name
         && let Some(line_number) = metadata.line_number
     {
-        eprintln!(
-            "{} | {}",
-            format!("{model_name}: @ {file_name}:{line_number}").paint(color),
-            msg
-        );
+        anstream::eprintln!("{style}{model_name}: @ {file_name}:{line_number}{style:#} | {msg}");
     } else {
-        eprintln!("{} | {}", format!("{model_name}:").paint(color), msg);
+        anstream::eprintln!("{style}{model_name}:{style:#} | {msg}");
     }
 }
 
@@ -553,23 +560,21 @@ fn print_preview(preview: &commanderpb::RuntimeTablePreview) -> anyhow::Result<(
         return Ok(());
     }
 
-    let arrow = "=>".dim();
-    println!(
-        "{arrow} {} {}",
-        "PREVIEW".blue().bold(),
-        preview.table_name.blue()
+    anstream::println!(
+        "{DIM}=>{DIM:#} {BLUE}{BOLD}PREVIEW{BOLD:#} {}{BLUE:#}",
+        preview.table_name
     );
 
-    let mut tw = TabWriter::new(std::io::stderr().lock()).ansi(true);
-    write!(tw, "{arrow} ")?;
+    let mut tw = TabWriter::new(anstream::stderr()).ansi(true);
+    write!(tw, "{DIM}=>{DIM:#} ")?;
     for col in &preview.columns {
-        write!(tw, "{}\t", col.column_name.to_uppercase().dim())?;
+        write!(tw, "{DIM}{}{DIM:#}\t", col.column_name.to_uppercase())?;
     }
     writeln!(tw)?;
 
     let num_rows = preview.columns[0].values.len();
     for i in 0..num_rows {
-        write!(tw, "{arrow} ")?;
+        write!(tw, "{DIM}=>{DIM:#} ")?;
         for col in &preview.columns {
             let val = col.values.get(i).map(String::as_str).unwrap_or_default();
             write!(tw, "{val}\t")?;

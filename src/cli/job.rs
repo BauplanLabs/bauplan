@@ -9,7 +9,6 @@ use bauplan::grpc::{
 };
 use chrono::{DateTime, Local, Utc};
 use clap::ValueEnum;
-use yansi::Paint as _;
 
 use commanderpb::runtime_log_event::{LogLevel, LogType};
 use futures::{Stream, StreamExt as _, TryStreamExt, stream};
@@ -17,7 +16,7 @@ use tabwriter::TabWriter;
 
 use tracing::info;
 
-use crate::cli::{Cli, Output, format_grpc_status};
+use crate::cli::{Cli, Output, color::*, format_grpc_status};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum JobKindArg {
@@ -85,6 +84,34 @@ pub(crate) enum JobCommand {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # List recent jobs for current user
+  bauplan job ls
+
+  # List more jobs
+  bauplan job ls --max-count 20
+
+  # List all jobs from all users
+  bauplan job ls --all-users --max-count 50
+
+  # Filter by status
+  bauplan job ls --status running
+
+  # Filter by job kind
+  bauplan job ls --kind run --kind query
+
+  # Filter by specific user
+  bauplan job ls --user username
+
+  # Filter by date range
+  bauplan job ls --created-after 2024-01-01 --created-before 2024-01-31
+
+  # Filter by job ID
+  bauplan job ls --id abc123 --id def456
+
+  # Filter failed jobs
+  bauplan job ls --status fail --max-count 10
+"))]
 pub(crate) struct JobLsArgs {
     /// Show jobs from all users, not just your own
     #[arg(long)]
@@ -116,12 +143,23 @@ pub(crate) struct JobLsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get job details
+  bauplan job get abc123def456
+"))]
 pub(crate) struct JobGetArgs {
     /// Job id
     pub job_id: String,
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get job logs
+  bauplan job logs abc123def456
+
+  # Get all logs including system logs
+  bauplan job logs abc123def456 --all --system
+"))]
 pub(crate) struct JobLogsArgs {
     /// Job id
     pub job_id: String,
@@ -134,6 +172,10 @@ pub(crate) struct JobLogsArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Stop a running job
+  bauplan job stop abc123def456
+"))]
 pub(crate) struct JobStopArgs {
     /// Job id
     pub job_id: String,
@@ -159,7 +201,7 @@ fn parse_datetime(s: &str, utc: bool) -> anyhow::Result<DateTime<Utc>> {
 
 fn format_datetime(dt: Option<DateTime<Utc>>, utc: bool, include_elapsed: bool) -> String {
     let Some(dt) = dt else {
-        return "-".dim().to_string();
+        return format!("{DIM}-{DIM:#}");
     };
 
     let rfc3339 = if utc {
@@ -176,7 +218,7 @@ fn format_datetime(dt: Option<DateTime<Utc>>, utc: bool, include_elapsed: bool) 
         let elapsed_human = humantime::format_duration(elapsed.to_std().unwrap()).to_string();
         let elapsed_short = elapsed_human.split_ascii_whitespace().next().unwrap();
 
-        format!("{rfc3339} {}", format!("[{elapsed_short} ago]").dim())
+        format!("{rfc3339} {DIM}[{elapsed_short} ago]{DIM:#}")
     } else {
         rfc3339
     }
@@ -268,7 +310,7 @@ async fn print_jobs_stream<S>(stream: S, utc: bool) -> anyhow::Result<()>
 where
     S: Stream<Item = Result<Job, tonic::Status>>,
 {
-    let mut tw = TabWriter::new(stdout()).ansi(true);
+    let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
     let mut headers_printed = false;
 
     futures::pin_mut!(stream);
@@ -281,11 +323,11 @@ where
             )?;
         }
 
-        let status_colored = match job.status {
-            JobState::Complete => job.human_readable_status.green(),
-            JobState::Fail | JobState::Abort => job.human_readable_status.red(),
-            JobState::Running => job.human_readable_status.yellow(),
-            _ => job.human_readable_status.primary(),
+        let status_style = match job.status {
+            JobState::Complete => GREEN,
+            JobState::Fail | JobState::Abort => RED,
+            JobState::Running => YELLOW,
+            _ => anstyle::Style::new(),
         };
 
         let duration = if let Some(start) = job.started_at
@@ -299,11 +341,11 @@ where
 
         writeln!(
             &mut tw,
-            "{}\t{}\t{}\t{}\t{}\t{}\t{}",
+            "{}\t{}\t{}\t{status_style}{}{status_style:#}\t{}\t{}\t{}",
             job.id,
             job.kind,
             job.user,
-            status_colored,
+            job.human_readable_status,
             format_datetime(job.created_at, utc, false),
             format_datetime(job.finished_at, utc, true),
             duration
@@ -346,7 +388,7 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
             println!();
         }
         Output::Tty => {
-            let mut tw = TabWriter::new(stdout()).ansi(true);
+            let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
             writeln!(&mut tw, "Job ID:\t{}", job.id)?;
             writeln!(&mut tw, "Status:\t{}", job.status)?;
             writeln!(&mut tw, "Kind:\t{}", job.kind)?;
@@ -443,31 +485,29 @@ async fn handle_logs(cli: &Cli, args: JobLogsArgs) -> anyhow::Result<()> {
                 eprintln!("No log entries matched filter.");
             }
 
-            let mut tw = TabWriter::new(stdout()).ansi(true);
+            let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
             writeln!(&mut tw, "TIMESTAMP\tLEVEL\tTYPE\tMESSAGE")?;
 
             for entry in entries {
                 let level = match entry.level {
-                    LogLevel::Error => "ERROR".red(),
-                    LogLevel::Warning => "WARNING".yellow(),
-                    LogLevel::Debug => "DEBUG".blue(),
-                    LogLevel::Info => "INFO".green(),
-                    LogLevel::Trace => "TRACE".cyan(),
-                    LogLevel::Unspecified => "UNKNOWN".dim(),
+                    LogLevel::Error => format!("{RED}ERROR{RED:#}"),
+                    LogLevel::Warning => format!("{YELLOW}WARNING{YELLOW:#}"),
+                    LogLevel::Debug => format!("{BLUE}DEBUG{BLUE:#}"),
+                    LogLevel::Info => format!("{GREEN}INFO{GREEN:#}"),
+                    LogLevel::Trace => format!("{CYAN}TRACE{CYAN:#}"),
+                    LogLevel::Unspecified => format!("{DIM}UNKNOWN{DIM:#}"),
                 };
 
                 let log_type = match entry.log_type {
-                    LogType::System => "SYSTEM".dim(),
-                    LogType::User => "USER".green(),
-                    LogType::Unspecified => "UNKNOWN".dim(),
+                    LogType::System => format!("{DIM}SYSTEM{DIM:#}"),
+                    LogType::User => format!("{GREEN}USER{GREEN:#}"),
+                    LogType::Unspecified => format!("{DIM}UNKNOWN{DIM:#}"),
                 };
 
                 writeln!(
                     &mut tw,
-                    "{}\t{}\t{}\t{}",
-                    entry.timestamp.to_rfc3339().dim(),
-                    level,
-                    log_type,
+                    "{DIM}{}{DIM:#}\t{level}\t{log_type}\t{}",
+                    entry.timestamp.to_rfc3339(),
                     entry.message.replace('\n', "\\n")
                 )?;
             }

@@ -1,9 +1,21 @@
 use anyhow::{Context as _, bail};
 use bauplan::branch::{CreateBranch, GetBranch};
-
-use crate::cli::{Cli, yaml};
+use crate::cli::{Cli, color::CliExamples, yaml};
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Checkout existing branch
+  bauplan checkout main
+
+  # Checkout user branch
+  bauplan checkout username.dev_branch
+
+  # Create and checkout new branch from main
+  bauplan checkout -b username.new_feature --from-ref main
+
+  # Create and checkout from active branch
+  bauplan checkout -b username.new_feature
+"))]
 pub(crate) struct CheckoutArgs {
     /// Branch name
     pub branch_name: String,

@@ -1,10 +1,9 @@
-use std::io::{Write, stdout};
+use std::io::Write;
 
 use bauplan::Profile;
 use tabwriter::TabWriter;
-use yansi::Paint as _;
 
-use crate::cli::{GlobalArgs, Output, yaml};
+use crate::cli::{GlobalArgs, Output, color::*, yaml};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct ConfigArgs {
@@ -37,6 +36,10 @@ impl std::fmt::Display for ConfigSetting {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Set configuration value
+  bauplan config set api_key your_key
+"))]
 pub(crate) struct ConfigSetArgs {
     /// Setting name
     pub name: ConfigSetting,
@@ -45,6 +48,13 @@ pub(crate) struct ConfigSetArgs {
 }
 
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get specific configuration
+  bauplan config get api_key
+
+  # Get all profiles
+  bauplan config get --all
+"))]
 pub(crate) struct ConfigGetArgs {
     /// Show all the available profiles
     #[arg(short, long)]
@@ -91,7 +101,7 @@ fn config_set(args: ConfigSetArgs, global: GlobalArgs) -> anyhow::Result<()> {
 }
 
 fn config_get(args: ConfigGetArgs, global: GlobalArgs) -> anyhow::Result<()> {
-    let mut out = stdout().lock();
+    let mut out = anstream::stdout().lock();
 
     match (global.output.unwrap_or_default(), args.all) {
         (Output::Tty, false) => {
@@ -132,18 +142,11 @@ fn config_get(args: ConfigGetArgs, global: GlobalArgs) -> anyhow::Result<()> {
 }
 
 fn print_profile(out: &mut impl Write, profile: &bauplan::Profile) -> anyhow::Result<()> {
-    writeln!(
-        out,
-        "{}",
-        format!("Profile {:?}", profile.name).white().bold()
-    )?;
-    writeln!(out, "{}\t*********", "API Key".green())?;
-    writeln!(
-        out,
-        "{}\t{}",
-        "Active Branch".green(),
-        profile.active_branch.as_deref().unwrap_or("main"),
-    )?;
+    let active_branch = profile.active_branch.as_deref().unwrap_or("main");
+
+    writeln!(out, "{HEADER}Profile {:?}{HEADER:#}", profile.name)?;
+    writeln!(out, "{GREEN}API Key{GREEN:#}\t*********")?;
+    writeln!(out, "{GREEN}Active Branch{GREEN:#}\t{active_branch}",)?;
 
     Ok(())
 }
