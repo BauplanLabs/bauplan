@@ -16,7 +16,30 @@ pub(crate) enum Format {
     Fuller,
 }
 
+fn commit_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Show recent commits on active branch".dim(),
+            "bauplan commit".bold(),
+            "# Show commits from specific branch".dim(),
+            "bauplan commit main".bold(),
+            "# Show more commits".dim(),
+            "bauplan commit --max-count 20".bold(),
+            "# Show commits by specific author".dim(),
+            "bauplan commit --author-username john_doe".bold(),
+            "# Show commits matching message pattern".dim(),
+            r#"bauplan commit --message "^fix.*" --max-count 5"#.bold(),
+            "# Show commits in oneline format".dim(),
+            "bauplan commit --format oneline".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = commit_help())]
 pub(crate) struct CommitArgs {
     /// Ref or branch name to get commits from [default: active branch]
     pub ref_name: Option<String>,

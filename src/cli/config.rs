@@ -36,7 +36,20 @@ impl std::fmt::Display for ConfigSetting {
     }
 }
 
+fn config_set_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Set configuration value".dim(),
+            "bauplan config set api_key your_key".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = config_set_help())]
 pub(crate) struct ConfigSetArgs {
     /// Setting name
     pub name: ConfigSetting,
@@ -44,7 +57,22 @@ pub(crate) struct ConfigSetArgs {
     pub value: String,
 }
 
+fn config_get_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Get specific configuration".dim(),
+            "bauplan config get api_key".bold(),
+            "# Get all profiles".dim(),
+            "bauplan config get --all".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = config_get_help())]
 pub(crate) struct ConfigGetArgs {
     /// Show all the available profiles
     #[arg(short, long)]

@@ -2,6 +2,7 @@ use std::io::{Write as _, stdout};
 
 use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
 use tabwriter::TabWriter;
+use yansi::Paint as _;
 
 use crate::cli::{Cli, Output, api_err_kind};
 
@@ -23,7 +24,24 @@ pub(crate) enum NamespaceCommand {
     Rm(NamespaceRmArgs),
 }
 
+fn namespace_ls_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# List namespaces on active branch".dim(),
+            "bauplan namespace ls".bold(),
+            "# List namespaces on specific branch".dim(),
+            "bauplan namespace ls --ref main".bold(),
+            "# Limit results".dim(),
+            "bauplan namespace ls --limit 10".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = namespace_ls_help())]
 pub(crate) struct NamespaceLsArgs {
     /// Filter namespaces by name
     pub namespace: Option<String>,
@@ -35,7 +53,24 @@ pub(crate) struct NamespaceLsArgs {
     pub limit: Option<usize>,
 }
 
+fn namespace_create_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Create namespace on active branch".dim(),
+            "bauplan namespace create raw_data".bold(),
+            "# Create namespace on specific branch".dim(),
+            "bauplan namespace create transformed_data --branch main".bold(),
+            "# Create without failing if exists".dim(),
+            "bauplan namespace create my_namespace --if-not-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = namespace_create_help())]
 pub(crate) struct NamespaceCreateArgs {
     /// Namespace
     pub namespace: String,
@@ -50,7 +85,24 @@ pub(crate) struct NamespaceCreateArgs {
     pub commit_body: Option<String>,
 }
 
+fn namespace_rm_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Delete namespace from active branch".dim(),
+            "bauplan namespace rm old_namespace".bold(),
+            "# Delete from specific branch".dim(),
+            "bauplan namespace rm old_namespace --branch main".bold(),
+            "# Delete without failing if not exists".dim(),
+            "bauplan namespace rm maybe_namespace --if-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = namespace_rm_help())]
 pub(crate) struct NamespaceRmArgs {
     /// Namespace
     pub namespace: String,

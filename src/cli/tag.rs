@@ -2,6 +2,7 @@ use std::io::{Write as _, stdout};
 
 use bauplan::{ApiErrorKind, tag::*};
 use tabwriter::TabWriter;
+use yansi::Paint as _;
 
 use crate::cli::{Cli, Output, api_err_kind};
 
@@ -25,7 +26,24 @@ pub(crate) enum TagCommand {
     Rename(TagRenameArgs),
 }
 
+fn tag_ls_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# List all tags".dim(),
+            "bauplan tag ls".bold(),
+            "# Filter by name pattern".dim(),
+            r#"bauplan tag ls --name "v.*""#.bold(),
+            "# Limit results".dim(),
+            "bauplan tag ls --limit 10".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = tag_ls_help())]
 pub(crate) struct TagLsArgs {
     /// Filter by name (can be a regex)
     #[arg(long)]
@@ -35,7 +53,24 @@ pub(crate) struct TagLsArgs {
     pub limit: Option<usize>,
 }
 
+fn tag_create_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Create tag from active branch".dim(),
+            "bauplan tag create v1.0".bold(),
+            "# Create tag from specific ref".dim(),
+            "bauplan tag create v1.0 --from-ref main".bold(),
+            "# Create without failing if exists".dim(),
+            "bauplan tag create v1.0 --if-not-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = tag_create_help())]
 pub(crate) struct TagCreateArgs {
     /// Tag name
     pub tag_name: String,
@@ -47,7 +82,22 @@ pub(crate) struct TagCreateArgs {
     pub if_not_exists: bool,
 }
 
+fn tag_rm_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Delete a tag".dim(),
+            "bauplan tag rm v1.0".bold(),
+            "# Delete without failing if not exists".dim(),
+            "bauplan tag rm v1.0 --if-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = tag_rm_help())]
 pub(crate) struct TagRmArgs {
     /// Tag name
     pub tag_name: String,
@@ -56,7 +106,19 @@ pub(crate) struct TagRmArgs {
     pub if_exists: bool,
 }
 
+fn tag_rename_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n",
+            "Examples".bold().underline(),
+            "bauplan tag rename v1.0 v1.0-stable".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = tag_rename_help())]
 pub(crate) struct TagRenameArgs {
     /// Tag name
     pub tag_name: String,

@@ -15,7 +15,7 @@ use commanderpb::runner_event::Event as RunnerEvent;
 use indicatif::ProgressBar;
 use tabwriter::TabWriter;
 use tracing::info;
-use yansi::Paint;
+use yansi::Paint as _;
 
 use crate::cli::{
     Cli, KeyValue, Output, Priority, api_err_kind, format_grpc_status,
@@ -54,7 +54,26 @@ pub(crate) enum TableCommand {
     Revert(TableRevertArgs),
 }
 
+fn table_ls_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# List tables on active branch".dim(),
+            "bauplan table ls".bold(),
+            "# List tables in specific namespace".dim(),
+            "bauplan table ls --namespace raw_data".bold(),
+            "# List tables from specific branch".dim(),
+            "bauplan table ls --ref main".bold(),
+            "# Limit results".dim(),
+            "bauplan table ls --limit 20".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_ls_help())]
 pub(crate) struct TableLsArgs {
     /// Filter tables by name (exact match or regex)
     #[arg(long)]
@@ -70,7 +89,24 @@ pub(crate) struct TableLsArgs {
     pub limit: Option<usize>,
 }
 
+fn table_get_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Get table info from active branch".dim(),
+            "bauplan table get customers".bold(),
+            "# Get table info from specific branch".dim(),
+            "bauplan table get customers --ref main".bold(),
+            "# Get table info with namespace prefix".dim(),
+            "bauplan table get raw_data.customers".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_get_help())]
 pub(crate) struct TableGetArgs {
     /// Table name
     pub table_name: String,
@@ -79,7 +115,24 @@ pub(crate) struct TableGetArgs {
     pub r#ref: Option<String>,
 }
 
+fn table_rm_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Delete table from active branch".dim(),
+            "bauplan table rm old_table".bold(),
+            "# Delete from specific branch".dim(),
+            "bauplan table rm old_table --branch main".bold(),
+            "# Delete without failing if not exists".dim(),
+            "bauplan table rm maybe_table --if-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_rm_help())]
 pub(crate) struct TableRmArgs {
     /// Table name
     pub table_name: String,
@@ -94,7 +147,26 @@ pub(crate) struct TableRmArgs {
     pub commit_body: Option<String>,
 }
 
+fn table_create_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Create table from S3 data".dim(),
+            "bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --namespace raw_data".bold(),
+            "# Create table with partitioning".dim(),
+            "bauplan table create --name orders --search-uri s3://mybucket/orders/*.parquet --partitioned-by date_column".bold(),
+            "# Create table on specific branch".dim(),
+            "bauplan table create --name products --search-uri s3://mybucket/products/*.parquet --branch main".bold(),
+            "# Replace existing table".dim(),
+            "bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --replace".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_create_help())]
 pub(crate) struct TableCreateArgs {
     /// Name of the table to create
     pub table_name: String,
@@ -121,7 +193,22 @@ pub(crate) struct TableCreateArgs {
     pub priority: Option<Priority>,
 }
 
+fn table_create_plan_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Create plan and save to file".dim(),
+            "bauplan table create-plan --name customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json".bold(),
+            "# Create plan without saving".dim(),
+            "bauplan table create-plan --name products --search-uri s3://mybucket/products/*.parquet".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_create_plan_help())]
 pub(crate) struct TableCreatePlanArgs {
     /// Name of the table to create
     pub table_name: String,
@@ -148,7 +235,20 @@ pub(crate) struct TableCreatePlanArgs {
     pub arg: Vec<KeyValue>,
 }
 
+fn table_create_plan_apply_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Apply previously created plan".dim(),
+            "bauplan table create-plan-apply --plan plan.json".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_create_plan_apply_help())]
 pub(crate) struct TableCreatePlanApplyArgs {
     /// Path to a plan YAML file; reads from stdin if not provided
     #[arg(long)]
@@ -161,7 +261,26 @@ pub(crate) struct TableCreatePlanApplyArgs {
     pub priority: Option<Priority>,
 }
 
+fn table_create_external_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Create external table from Iceberg metadata".dim(),
+            "bauplan table create-external --name events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data".bold(),
+            "# Create external table from parquet files".dim(),
+            r#"bauplan table create-external --name events --search-pattern "s3://bucket/data/*.parquet" --namespace raw_data"#.bold(),
+            "# Create external table with multiple search patterns".dim(),
+            r#"bauplan table create-external --name events --search-pattern "s3://bucket/2024/*.parquet" --search-pattern "s3://bucket/2025/*.parquet" --namespace raw_data"#.bold(),
+            "# Create and overwrite existing table".dim(),
+            r#"bauplan table create-external --name events --search-pattern "s3://bucket/data/*.parquet" --overwrite"#.bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_create_external_help())]
 pub(crate) struct TableCreateExternalArgs {
     /// Name of the external table to create
     pub table_name: String,
@@ -191,7 +310,26 @@ pub(crate) struct TableCreateExternalArgs {
     pub priority: Option<Priority>,
 }
 
+fn table_import_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Import data to existing table".dim(),
+            "bauplan table import --name customers --search-uri s3://bucket/customers/new_data/*.parquet".bold(),
+            "# Import with continue on error flag".dim(),
+            "bauplan table import --name events --search-uri s3://bucket/events/*.parquet --continue-on-error".bold(),
+            "# Import in best-effort mode (ignore new columns)".dim(),
+            "bauplan table import --name products --search-uri s3://bucket/products/*.parquet --best-effort".bold(),
+            "# Import in background".dim(),
+            "bauplan table import --name logs --search-uri s3://bucket/logs/*.parquet --detach".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_import_help())]
 pub(crate) struct TableImportArgs {
     /// Name of table where data will be imported into
     pub table_name: String,
@@ -224,7 +362,26 @@ pub(crate) struct TableImportArgs {
     pub priority: Option<Priority>,
 }
 
+fn table_revert_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Revert table from another branch".dim(),
+            "bauplan table revert customers --source-ref main".bold(),
+            "# Revert table to specific branch".dim(),
+            "bauplan table revert customers --source-ref main --into-branch username.dev_branch".bold(),
+            "# Revert and replace if exists".dim(),
+            "bauplan table revert customers --source-ref v1.0 --replace".bold(),
+            "# Revert with commit message".dim(),
+            r#"bauplan table revert customers --source-ref main --commit-body "Reverted due to data issue""#.bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = table_revert_help())]
 pub(crate) struct TableRevertArgs {
     /// Table name
     pub table_name: String,

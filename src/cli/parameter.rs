@@ -54,14 +54,44 @@ pub(crate) enum ParameterCommand {
     Set(ParameterSetArgs),
 }
 
+fn parameter_ls_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# List parameters in current directory".dim(),
+            "bauplan parameter ls".bold(),
+            "# List parameters in specific project directory".dim(),
+            "bauplan parameter ls --project-dir /path/to/project".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = parameter_ls_help())]
 pub(crate) struct ParameterLsArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
     pub project_dir: Option<PathBuf>,
 }
 
+fn parameter_rm_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Remove parameter from current project".dim(),
+            "bauplan parameter rm db_connection".bold(),
+            "# Remove parameter from specific project".dim(),
+            "bauplan parameter rm api_key --project-dir /path/to/project".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = parameter_rm_help())]
 pub(crate) struct ParameterRmArgs {
     /// Name of the parameter to remove
     pub name: String,
@@ -70,7 +100,30 @@ pub(crate) struct ParameterRmArgs {
     pub project_dir: Option<PathBuf>,
 }
 
+fn parameter_set_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Set string parameter".dim(),
+            "bauplan parameter set env production --type str".bold(),
+            "# Set integer parameter".dim(),
+            "bauplan parameter set max_rows 1000 --type int".bold(),
+            "# Set boolean parameter".dim(),
+            "bauplan parameter set debug true --type bool".bold(),
+            "# Set secret parameter".dim(),
+            "bauplan parameter set api_key mysecretkey --type secret --required".bold(),
+            "# Set parameter from file".dim(),
+            "bauplan parameter set config --type str --file config.json".bold(),
+            "# Set parameter with description".dim(),
+            r#"bauplan parameter set db_host localhost --type str --description "Database host""#.bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = parameter_set_help())]
 pub(crate) struct ParameterSetArgs {
     /// Name
     pub name: String,

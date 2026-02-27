@@ -10,7 +10,7 @@ use bauplan::{
     table::{GetTables, Table},
 };
 use tabwriter::TabWriter;
-use yansi::Paint;
+use yansi::Paint as _;
 
 use crate::cli::{Cli, Output, api_err_kind, checkout};
 
@@ -42,7 +42,28 @@ pub(crate) enum BranchCommand {
     Rename(BranchRenameArgs),
 }
 
+fn branch_ls_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# List user's own branches".dim(),
+            "bauplan branch ls".bold(),
+            "# List all branches".dim(),
+            "bauplan branch ls --all-zones".bold(),
+            "# Filter by name".dim(),
+            r#"bauplan branch ls --name "dev""#.bold(),
+            "# Filter by user".dim(),
+            "bauplan branch ls --user username".bold(),
+            "# Limit results".dim(),
+            "bauplan branch ls --limit 5".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_ls_help())]
 pub(crate) struct BranchLsArgs {
     /// Branch name
     pub branch_name: Option<String>,
@@ -60,7 +81,24 @@ pub(crate) struct BranchLsArgs {
     pub limit: Option<usize>,
 }
 
+fn branch_create_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Create branch from active branch".dim(),
+            "bauplan branch create username.dev_branch".bold(),
+            "# Create branch from specific ref".dim(),
+            "bauplan branch create username.new_feature --from-ref main".bold(),
+            "# Create branch without failing if exists".dim(),
+            "bauplan branch create username.my_branch --if-not-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_create_help())]
 pub(crate) struct BranchCreateArgs {
     /// Branch name
     pub branch_name: String,
@@ -72,7 +110,22 @@ pub(crate) struct BranchCreateArgs {
     pub if_not_exists: bool,
 }
 
+fn branch_rm_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Delete a branch".dim(),
+            "bauplan branch rm username.old_branch".bold(),
+            "# Delete without failing if not exists".dim(),
+            "bauplan branch rm username.maybe_branch --if-exists".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_rm_help())]
 pub(crate) struct BranchRmArgs {
     /// Branch name
     pub branch_name: String,
@@ -81,7 +134,22 @@ pub(crate) struct BranchRmArgs {
     pub if_exists: bool,
 }
 
+fn branch_get_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Get branch information".dim(),
+            "bauplan branch get username.dev_branch".bold(),
+            "# Get with namespace filter".dim(),
+            "bauplan branch get username.branch --namespace raw_data".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_get_help())]
 pub(crate) struct BranchGetArgs {
     /// Branch name
     pub branch_name: String,
@@ -90,13 +158,43 @@ pub(crate) struct BranchGetArgs {
     pub namespace: Option<String>,
 }
 
+fn branch_checkout_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "bauplan branch checkout main".bold(),
+            "bauplan branch checkout username.dev_branch".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_checkout_help())]
 pub(crate) struct BranchCheckoutArgs {
     /// Branch name
     pub branch_name: String,
 }
 
+fn branch_diff_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Diff between active branch and another".dim(),
+            "bauplan branch diff username.dev_branch".bold(),
+            "# Diff between two specific branches".dim(),
+            "bauplan branch diff main username.dev_branch".bold(),
+            "# Diff with namespace filter".dim(),
+            "bauplan branch diff username.branch1 username.branch2 --namespace raw_data".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_diff_help())]
 pub(crate) struct BranchDiffArgs {
     /// Branch name a
     pub branch_name_a: String,
@@ -107,7 +205,23 @@ pub(crate) struct BranchDiffArgs {
     pub namespace: Option<String>,
 }
 
+fn branch_merge_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n  {}\n\n  {}\n  {}\n",
+            "Examples".bold().underline(),
+            "# Merge branch into active branch".dim(),
+            "bauplan branch merge username.dev_branch".bold(),
+            "# Merge with custom commit message".dim(),
+            r#"bauplan branch merge username.feature --commit-message "Merge feature updates""#
+                .bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_merge_help())]
 pub(crate) struct BranchMergeArgs {
     /// Branch name
     pub branch_name: String,
@@ -116,7 +230,19 @@ pub(crate) struct BranchMergeArgs {
     pub commit_message: Option<String>,
 }
 
+fn branch_rename_help() -> &'static str {
+    static HELP: std::sync::LazyLock<String> = std::sync::LazyLock::new(|| {
+        format!(
+            "{}\n\n  {}\n",
+            "Examples".bold().underline(),
+            "bauplan branch rename username.old_name username.new_name".bold(),
+        )
+    });
+    HELP.as_str()
+}
+
 #[derive(Debug, clap::Args)]
+#[command(after_long_help = branch_rename_help())]
 pub(crate) struct BranchRenameArgs {
     /// Branch name
     pub branch_name: String,
