@@ -8,6 +8,7 @@ mod cli {
     mod branch;
     mod import;
     mod job;
+    mod parameter;
     mod query;
     mod run;
     mod table;
