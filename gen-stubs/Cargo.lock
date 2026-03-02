@@ -62,8 +62,8 @@ dependencies = [
 
 [[package]]
 name = "pyo3-introspection"
-version = "0.28.0"
-source = "git+https://github.com/Tpt/pyo3.git?branch=tpt%2Fstub-doc#dbb5711d25c0fd4960bb41b118d3924f142882b6"
+version = "0.28.2"
+source = "git+https://github.com/pyo3/pyo3?rev=f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d#f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d"
 dependencies = [
  "anyhow",
  "goblin",
