@@ -1,4 +1,11 @@
 
+## [0.1.4] - 2026-03-02
+
+### Bugfixes
+
+- [cli] In 'config set', create the config file if it doesn't exist (b36ad4b8a59bc775c42059d1066712eba5da0a0e)
+- [cli] Add missing committer and parent hashes to commit output (346d1a20fc9503444cf4be29626149160f711e8f)
+
 ## [0.1.3] - 2026-03-02
 
 ### New Features
