@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{io, path::Path};
 
 use anyhow::bail;
 use nondestructive::yaml;
@@ -12,12 +12,26 @@ pub(crate) fn edit(
     path: &Path,
     f: impl FnOnce(&mut yaml::Document) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    let content = std::fs::read_to_string(path)?;
-    let mut doc = yaml::from_slice(&content)?;
+    let mut doc = match std::fs::read_to_string(path) {
+        Ok(content) => yaml::from_slice(&content)?,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => yaml::Document::new(),
+        Err(e) => return Err(e.into()),
+    };
 
     f(&mut doc)?;
 
-    std::fs::write(path, doc.to_string())?;
+    let mut res = doc.to_string();
+    if !res.ends_with('\n') {
+        res.push('\n');
+    }
+
+    if let Some(parent) = path.parent()
+        && !parent.exists()
+    {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    std::fs::write(path, res)?;
     Ok(())
 }
 
@@ -33,8 +47,9 @@ pub(crate) fn mapping_at_path<'a>(
 ) -> anyhow::Result<yaml::MappingMut<'a>> {
     assert!(!path.is_empty());
 
-    let Some(mut current) = doc.as_mut().into_mapping_mut() else {
-        bail!("invalid file: not a dictionary");
+    let mut current = match doc.as_ref().as_any() {
+        yaml::Any::Null | yaml::Any::Mapping(_) => doc.as_mut().make_mapping(),
+        _ => bail!("invalid file: not a dictionary"),
     };
 
     for &key in path {
@@ -87,6 +102,19 @@ pub(crate) fn upsert_f64(m: &mut yaml::MappingMut<'_>, key: &str, value: f64) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mapping_at_path_start_empty() -> anyhow::Result<()> {
+        let mut doc = yaml::from_slice("null")?;
+        let mut m = mapping_at_path(&mut doc, &["a", "b", "c"])?;
+        m.insert_str("key", "value");
+
+        let output = doc.to_string();
+        let parsed: serde_yaml::Value = serde_yaml::from_str(&output)?;
+        assert_eq!(parsed["a"]["b"]["c"]["key"].as_str(), Some("value"));
+
+        Ok(())
+    }
 
     #[test]
     fn mapping_at_path_create() -> anyhow::Result<()> {
