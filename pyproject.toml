@@ -7,7 +7,7 @@ name = "bauplan"
 requires-python = ">=3.10"
 dynamic = ["version"]
 dependencies = [
-    "pyarrow>=23.0.0",
+    "pyarrow>=15.0.0",
 ]
 
 [dependency-groups]
