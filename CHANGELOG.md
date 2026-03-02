@@ -1,4 +1,16 @@
 
+## [0.1.3] - 2026-03-02
+
+### New Features
+
+- [pysdk] Add __version__ (ceb6237c6de933e1ab94b469604f2dadbfd76b45)
+- [cli] Highlight the active branch (62daba8389601b39d6642a5c04001aa628ff6b98)
+- [cli] Allow overriding verbosity with RUST_LOG (f1bab4fe2cc9e8ceebc02fc2673b7a66ad9b39d9)
+
+### Bugfixes
+
+- [cli] Fix a runtime error in 'parameter set --type secret' (997a7ec5ad43a294db0bdcd9eb24cc6b307879c9)
+
 ## [0.1.2] - 2026-02-26
 
 ### Bugfixes
