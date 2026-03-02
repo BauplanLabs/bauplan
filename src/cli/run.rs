@@ -56,7 +56,7 @@ impl Display for Preview {
   bauplan run --dry-run
 
   # Run with strict mode and preview
-  bauplan run --strict --preview head
+  bauplan run --strict on --preview head
 
   # Run on specific branch with parameters
   bauplan run --ref main --param env=prod
