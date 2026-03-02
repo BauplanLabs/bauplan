@@ -99,16 +99,14 @@ tree-sitter = "0.26"
 tree-sitter-md = "0.5"
 tree-sitter-python = "0.25"
 
-# TODO: we're temporarily pulling in a PR that includes docstrings in the built
-# dylib and updates pyo3-introspection to pull them back out when generating pyi
-# stubs.
+# TODO: replace this with >=0.28.3 (here and in gen-stubs) when it lands.
 # https://github.com/PyO3/pyo3/pull/5782
 [patch.crates-io]
-pyo3 = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
-pyo3-build-config = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
-pyo3-ffi = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
-pyo3-macros = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
-pyo3-macros-backend = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
+pyo3 = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
+pyo3-build-config = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
+pyo3-ffi = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
+pyo3-macros = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
+pyo3-macros-backend = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
 
 [profile.release]
 strip = true

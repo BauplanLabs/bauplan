@@ -8,4 +8,4 @@ publish = false
 
 [dependencies]
 anyhow = "1"
-pyo3-introspection = { git = "https://github.com/Tpt/pyo3.git", branch = "tpt/stub-doc" }
+pyo3-introspection = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d"  }
