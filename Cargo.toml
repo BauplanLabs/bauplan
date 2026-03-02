@@ -90,6 +90,7 @@ bstr = "1.12.1"
 http-body-util = "0.1"
 predicates = "3"
 reqwest = { version = "0.12", features = ["json"] }
+shlex = "1"
 similar = { version = "2", features = ["bytes"] }
 tempfile = "3"
 textwrap = "0.16"

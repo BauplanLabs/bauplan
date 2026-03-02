@@ -130,16 +130,16 @@ pub(crate) struct TableRmArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Create table from S3 data
-  bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --namespace raw_data
+  bauplan table create customers --search-uri s3://mybucket/customers/*.parquet --namespace raw_data
 
   # Create table with partitioning
-  bauplan table create --name orders --search-uri s3://mybucket/orders/*.parquet --partitioned-by date_column
+  bauplan table create orders --search-uri s3://mybucket/orders/*.parquet --partitioned-by date_column
 
   # Create table on specific branch
-  bauplan table create --name products --search-uri s3://mybucket/products/*.parquet --branch main
+  bauplan table create products --search-uri s3://mybucket/products/*.parquet --branch main
 
   # Replace existing table
-  bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --replace
+  bauplan table create customers --search-uri s3://mybucket/customers/*.parquet --replace
 "))]
 pub(crate) struct TableCreateArgs {
     /// Name of the table to create
@@ -170,10 +170,10 @@ pub(crate) struct TableCreateArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Create plan and save to file
-  bauplan table create-plan --name customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json
+  bauplan table create-plan customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json
 
   # Create plan without saving
-  bauplan table create-plan --name products --search-uri s3://mybucket/products/*.parquet
+  bauplan table create-plan products --search-uri s3://mybucket/products/*.parquet
 "))]
 pub(crate) struct TableCreatePlanArgs {
     /// Name of the table to create
@@ -221,16 +221,16 @@ pub(crate) struct TableCreatePlanApplyArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Create external table from Iceberg metadata
-  bauplan table create-external --name events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data
+  bauplan table create-external events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data
 
   # Create external table from parquet files
-  bauplan table create-external --name events --search-pattern \"s3://bucket/data/*.parquet\" --namespace raw_data
+  bauplan table create-external events --search-pattern \"s3://bucket/data/*.parquet\" --namespace raw_data
 
   # Create external table with multiple search patterns
-  bauplan table create-external --name events --search-pattern \"s3://bucket/2024/*.parquet\" --search-pattern \"s3://bucket/2025/*.parquet\" --namespace raw_data
+  bauplan table create-external events --search-pattern \"s3://bucket/2024/*.parquet\" --search-pattern \"s3://bucket/2025/*.parquet\" --namespace raw_data
 
   # Create and overwrite existing table
-  bauplan table create-external --name events --search-pattern \"s3://bucket/data/*.parquet\" --overwrite
+  bauplan table create-external events --search-pattern \"s3://bucket/data/*.parquet\" --overwrite
 "))]
 pub(crate) struct TableCreateExternalArgs {
     /// Name of the external table to create
@@ -264,16 +264,16 @@ pub(crate) struct TableCreateExternalArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Import data to existing table
-  bauplan table import --name customers --search-uri s3://bucket/customers/new_data/*.parquet
+  bauplan table import customers --search-uri s3://bucket/customers/new_data/*.parquet
 
   # Import with continue on error flag
-  bauplan table import --name events --search-uri s3://bucket/events/*.parquet --continue-on-error
+  bauplan table import events --search-uri s3://bucket/events/*.parquet --continue-on-error
 
   # Import in best-effort mode (ignore new columns)
-  bauplan table import --name products --search-uri s3://bucket/products/*.parquet --best-effort
+  bauplan table import products --search-uri s3://bucket/products/*.parquet --best-effort
 
   # Import in background
-  bauplan table import --name logs --search-uri s3://bucket/logs/*.parquet --detach
+  bauplan table import logs --search-uri s3://bucket/logs/*.parquet --detach
 "))]
 pub(crate) struct TableImportArgs {
     /// Name of table where data will be imported into

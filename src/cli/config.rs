@@ -49,10 +49,10 @@ pub(crate) struct ConfigSetArgs {
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
-  # Get specific configuration
-  bauplan config get api_key
+  # Show the current profile
+  bauplan config get
 
-  # Get all profiles
+  # Show all profiles
   bauplan config get --all
 "))]
 pub(crate) struct ConfigGetArgs {

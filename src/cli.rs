@@ -352,3 +352,57 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use anyhow::bail;
+    use clap::{CommandFactory, Parser};
+
+    /// Collect all example invocations from `after_long_help` across every
+    /// subcommand, then run it through the arg parsing.
+    #[test]
+    fn parse_examples() -> anyhow::Result<()> {
+        let cmd = super::Args::command();
+        let mut examples = Vec::new();
+        collect_examples(&cmd, &mut examples);
+
+        assert!(!examples.is_empty(), "found no examples to validate");
+
+        let mut failures = Vec::new();
+        for (path, line) in &examples {
+            let Some(args) = shlex::split(line) else {
+                bail!("{path}: failed to shell-split: {line}");
+            };
+
+            if let Err(e) = super::Args::try_parse_from(&args) {
+                failures.push(format!("{path}: {line}\n  {e}"));
+            }
+        }
+
+        if !failures.is_empty() {
+            panic!(
+                "{} example(s) failed to parse:\n\n{}",
+                failures.len(),
+                failures.join("\n\n")
+            );
+        }
+
+        Ok(())
+    }
+
+    fn collect_examples(cmd: &clap::Command, out: &mut Vec<(String, String)>) {
+        if let Some(help) = cmd.get_after_long_help() {
+            let help = help.to_string();
+            for line in help.lines() {
+                let trimmed = line.trim();
+                if trimmed.starts_with("bauplan") {
+                    out.push((cmd.get_name().to_string(), trimmed.to_string()));
+                }
+            }
+        }
+
+        for sub in cmd.get_subcommands() {
+            collect_examples(sub, out);
+        }
+    }
+}
