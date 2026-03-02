@@ -158,7 +158,11 @@ fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::i
             if let Some(author) = commit.author() {
                 writeln!(out, "Author: {}", format_actor(author))?;
             }
+            if !commit.committer.name.is_empty() {
+                writeln!(out, "Commit: {}", format_actor(&commit.committer))?;
+            }
             print_properties(out, commit)?;
+            print_parent_commits(out, commit)?;
             writeln!(out)?;
             if let Some(subject) = commit.subject() {
                 writeln!(out, "    {subject}")?;
@@ -177,8 +181,12 @@ fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::i
                 writeln!(out, "Author: {}", format_actor(author))?;
             }
             writeln!(out, "Author Date: {}", format_date(&commit.authored_date))?;
+            if !commit.committer.name.is_empty() {
+                writeln!(out, "Commit: {}", format_actor(&commit.committer))?;
+            }
             writeln!(out, "Commit Date: {}", format_date(&commit.committed_date))?;
             print_properties(out, commit)?;
+            print_parent_commits(out, commit)?;
             writeln!(out)?;
             if let Some(subject) = commit.subject() {
                 writeln!(out, "    {subject}")?;
@@ -201,6 +209,16 @@ fn print_properties(out: &mut impl Write, commit: &Commit) -> std::io::Result<()
         writeln!(out, "Properties:")?;
         for (k, v) in &commit.properties {
             writeln!(out, "    {k} = {v}")?;
+        }
+    }
+    Ok(())
+}
+
+fn print_parent_commits(out: &mut impl Write, commit: &Commit) -> std::io::Result<()> {
+    if commit.parent_hashes.len() > 1 {
+        writeln!(out, "Parent Commits:")?;
+        for hash in &commit.parent_hashes {
+            writeln!(out, "    {hash}")?;
         }
     }
     Ok(())
