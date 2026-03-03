@@ -7,14 +7,11 @@ from bauplan._internal import (
     OrganizationInfo,
     RunnerNodeInfo,
     UserInfo,
-    exceptions,
-    schema,
-    state,
 )
 
 # Submodules.
-from bauplan import standard_expectations
-from bauplan._internal.schema import JobKind, JobState, RefType
+from bauplan import exceptions, schema, state, standard_expectations
+from bauplan.schema import JobKind, JobState, RefType
 from bauplan._classes import Model
 from bauplan._decorators import (
     ModelCacheStrategy,

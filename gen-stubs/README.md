@@ -16,7 +16,11 @@ module, but it has limitations:
 
 ## Workflow
 
-The stubs live in `python/bauplan/_internal/` and are committed to the repo.
+The stubs are committed to the repo. The `_internal/__init__.pyi` stub lives at
+`python/bauplan/_internal/`, while the submodule stubs (`schema.pyi`,
+`exceptions.pyi`, `state.pyi`) live at the public path `python/bauplan/`.
+This ensures tools like griffe resolve base classes through `bauplan.schema`
+rather than `bauplan._internal.schema`.
 
 ### Generating stubs
 
@@ -101,12 +105,11 @@ The auto-generated stubs use fully-qualified names like `bauplan.X` or
   `bauplan.Actor` becomes `Actor` (the type is local to the submodule).
 - In `exceptions.pyi`: strip `bauplan.exceptions.` for self-references (e.g.
   `bauplan.exceptions.ApiErrorKind` -> `ApiErrorKind`). Cross-references to
-  other submodules like `bauplan.TableCreatePlanApplyState` need an import
-  from the sibling submodule (e.g.
-  `from bauplan._internal.state import TableCreatePlanApplyState`).
+  other submodules need an import from the sibling (e.g.
+  `from bauplan.schema import Ref`).
 - In `__init__.pyi`: types that live in submodules (like `Branch`, `Table`)
   appear as bare names without imports. Add imports from
-  `bauplan._internal.schema` / `bauplan._internal.state` as needed.
+  `bauplan.schema` / `bauplan.state` as needed.
 
 ### Properties that typically need fixing from `typing.Any`
 
@@ -144,5 +147,6 @@ Python modules under `python/bauplan/`, not in `_internal`. Examples:
 - `bauplan.Parameter`
 
 The `schema`, `state`, and `exceptions` submodules are implemented in Rust
-as `_internal` submodules. They are imported directly as submodule attributes
-in `__init__.py` (no wrapper `.py` files needed).
+as `_internal` submodules. Thin forwarding `.py` files at the public path
+(e.g. `bauplan/schema.py`) re-export everything from `bauplan._internal.schema`
+at runtime. The `.pyi` stubs sit alongside them at the public path.

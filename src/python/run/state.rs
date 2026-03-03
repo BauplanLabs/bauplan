@@ -11,7 +11,7 @@ use crate::python::job::JobLogEvent;
 #[derive(Clone)]
 #[pyclass(
     name = "RunExecutionContext",
-    module = "bauplan",
+    module = "bauplan.state",
     skip_from_py_object,
     get_all
 )]
@@ -57,7 +57,7 @@ impl fmt::Debug for RunExecutionContext {
 /// The state of a completed (or failed) run, including logs, timing, and
 /// per-task lifecycle events.
 #[derive(Debug, Clone)]
-#[pyclass(name = "RunState", module = "bauplan", skip_from_py_object, get_all)]
+#[pyclass(name = "RunState", module = "bauplan.state", skip_from_py_object, get_all)]
 pub(crate) struct RunState {
     /// The job ID assigned by the server.
     pub job_id: Option<String>,
@@ -105,7 +105,7 @@ impl RunState {
 #[derive(Clone, Debug)]
 #[pyclass(
     name = "TableCreatePlanContext",
-    module = "bauplan",
+    module = "bauplan.state",
     skip_from_py_object,
     get_all
 )]
@@ -121,7 +121,7 @@ pub(crate) struct TableCreatePlanContext {
 #[derive(Clone)]
 #[pyclass(
     name = "TableCreatePlanState",
-    module = "bauplan",
+    module = "bauplan.state",
     from_py_object,
     get_all
 )]
@@ -159,7 +159,7 @@ impl fmt::Debug for TableCreatePlanState {
 #[derive(Clone)]
 #[pyclass(
     name = "TableCreatePlanApplyState",
-    module = "bauplan",
+    module = "bauplan.state",
     from_py_object,
     get_all
 )]
@@ -191,7 +191,7 @@ impl fmt::Debug for TableCreatePlanApplyState {
 #[derive(Clone, Debug)]
 #[pyclass(
     name = "TableDataImportContext",
-    module = "bauplan",
+    module = "bauplan.state",
     skip_from_py_object,
     get_all
 )]
@@ -211,7 +211,7 @@ pub(crate) struct TableDataImportContext {
 #[derive(Clone)]
 #[pyclass(
     name = "TableDataImportState",
-    module = "bauplan",
+    module = "bauplan.state",
     skip_from_py_object,
     get_all
 )]
@@ -244,7 +244,7 @@ impl fmt::Debug for TableDataImportState {
 #[derive(Clone, Debug)]
 #[pyclass(
     name = "ExternalTableCreateContext",
-    module = "bauplan",
+    module = "bauplan.state",
     skip_from_py_object,
     get_all
 )]
@@ -257,7 +257,7 @@ pub(crate) struct ExternalTableCreateContext {
 #[derive(Clone)]
 #[pyclass(
     name = "ExternalTableCreateState",
-    module = "bauplan",
+    module = "bauplan.state",
     skip_from_py_object,
     get_all
 )]

@@ -1,5 +1,5 @@
-from bauplan._internal.schema import Ref
-from bauplan._internal.state import TableCreatePlanApplyState, TableCreatePlanState
+from bauplan.schema import Ref
+from bauplan.state import TableCreatePlanApplyState, TableCreatePlanState
 from typing import Final, final
 
 class ApiErrorKind:

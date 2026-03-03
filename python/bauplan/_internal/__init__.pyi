@@ -5,11 +5,11 @@ from typing import Literal, final
 
 import pyarrow
 
-from bauplan._internal.schema import (
+from bauplan.schema import (
     Branch, Commit, Job, JobContext, JobKind, JobLogEvent, JobState,
     Namespace, Ref, Table, Tag,
 )
-from bauplan._internal.state import (
+from bauplan.state import (
     ExternalTableCreateState, RunState,
     TableCreatePlanApplyState, TableCreatePlanState,
     TableDataImportState,
