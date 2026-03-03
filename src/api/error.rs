@@ -6,7 +6,7 @@ use crate::CatalogRef;
 /// of an error response.
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "type", content = "context", rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[cfg_attr(
     feature = "python",
     pyo3::pyclass(module = "bauplan.exceptions", from_py_object)
@@ -32,45 +32,17 @@ pub enum ApiErrorKind {
     },
 
     // 403
-    CreateBranchForbidden {
-        branch_name: String,
-    },
-    CreateNamespaceForbidden {
-        namespace_name: String,
-    },
-    CreateTagForbidden {
-        tag_name: String,
-    },
-    DeleteBranchForbidden {
-        branch_name: String,
-    },
-    DeleteNamespaceForbidden {
-        namespace_name: String,
-    },
-    DeleteTableForbidden {
-        table_name: String,
-    },
-    DeleteTagForbidden {
-        tag_name: String,
-    },
-    MergeForbidden {
-        source_ref: String,
-        destination_branch: String,
-    },
-    RenameBranchForbidden {
-        old_branch_name: String,
-        new_branch_name: String,
-    },
-    RenameTagForbidden {
-        old_tag_name: String,
-        new_tag_name: String,
-    },
-    RevertTableForbidden {
-        table_name: String,
-        source_ref: String,
-        destination_branch: String,
-    },
-
+    CreateBranchForbidden {},
+    CreateNamespaceForbidden {},
+    CreateTagForbidden {},
+    DeleteBranchForbidden {},
+    DeleteNamespaceForbidden {},
+    DeleteTableForbidden {},
+    DeleteTagForbidden {},
+    MergeForbidden {},
+    RenameBranchForbidden {},
+    RenameTagForbidden {},
+    RevertTableForbidden {},
     // 404
     BranchNotFound {
         branch_name: String,
@@ -177,9 +149,10 @@ impl std::fmt::Display for ApiErrorKind {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct RawApiError {
-    pub message: Option<String>,
-    #[serde(flatten)]
-    pub kind: ApiErrorKind,
+    message: Option<String>,
+    r#type: String,
+    #[serde(default)]
+    context: Option<serde_json::Value>,
 }
 
 /// An error response from the API.
@@ -223,10 +196,31 @@ impl std::fmt::Display for ApiError {
 
 impl ApiError {
     pub(crate) fn from_raw(status: http::StatusCode, raw: RawApiError) -> Self {
-        ApiError::ErrorResponse {
-            status,
-            kind: raw.kind,
-            message: raw.message,
+        use serde::de::value::{MapAccessDeserializer, MapDeserializer};
+
+        // The API is inconsistent about whether `context` is present.
+        // Here we reshape the json (in a zero-copy way) into {TYPE: context},
+        // which serde can deserialize better than the adjacently-tagged shape.
+        // This way, the empty/unit variants still deserialize when `context`
+        // is absent.
+        //
+        // https://github.com/serde-rs/serde/issues/2233
+        let context = raw
+            .context
+            .unwrap_or_else(|| serde_json::Value::Object(Default::default()));
+        let map_de = MapDeserializer::new(std::iter::once((raw.r#type.as_str(), context)));
+        let de = MapAccessDeserializer::new(map_de);
+
+        match serde_path_to_error::deserialize(de) {
+            Ok(kind) => ApiError::ErrorResponse {
+                status,
+                kind,
+                message: raw.message,
+            },
+            Err(e) => {
+                tracing::warn!("Failed to parse API error kind: {e}");
+                ApiError::InvalidResponse(status)
+            }
         }
     }
 
@@ -245,5 +239,57 @@ impl ApiError {
             ApiError::ErrorResponse { kind, .. } => Some(kind),
             _ => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use anyhow::bail;
+    use assert_matches::assert_matches;
+
+    // The API is not currently consistent about whether the field 'context' is
+    // present on error responses. These tests make sure we can handle that
+    // inconsistency.
+
+    #[test]
+    fn raw_forbidden_with_context() -> anyhow::Result<()> {
+        let raw: RawApiError = serde_json::from_str(
+            r#"{
+                "message": "foo",
+                "type": "CREATE_BRANCH_FORBIDDEN",
+                "context": { "branch_name": "bar" }
+            }"#,
+        )?;
+
+        let err = ApiError::from_raw(http::StatusCode::FORBIDDEN, raw);
+        let ApiError::ErrorResponse { kind, message, .. } = &err else {
+            bail!("expected ErrorResponse, got {err:?}");
+        };
+
+        assert_matches!(kind, ApiErrorKind::CreateBranchForbidden { .. });
+        assert_eq!(message.as_deref(), Some("foo"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn raw_forbidden_no_context() -> anyhow::Result<()> {
+        let raw: RawApiError = serde_json::from_str(
+            r#"{
+                "message": "foo",
+                "type": "CREATE_BRANCH_FORBIDDEN"
+            }"#,
+        )?;
+
+        let err = ApiError::from_raw(http::StatusCode::FORBIDDEN, raw);
+        let ApiError::ErrorResponse { kind, message, .. } = &err else {
+            bail!("expected ErrorResponse, got {err:?}");
+        };
+
+        assert_matches!(kind, ApiErrorKind::CreateBranchForbidden { .. });
+        assert_eq!(message.as_deref(), Some("foo"));
+
+        Ok(())
     }
 }

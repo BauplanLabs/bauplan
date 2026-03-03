@@ -315,6 +315,20 @@ mod test {
     }
 
     #[test]
+    fn delete_branch_forbidden() -> anyhow::Result<()> {
+        let req = DeleteBranch { name: "main" };
+        let Err(ApiError::ErrorResponse {
+            kind: ApiErrorKind::DeleteBranchForbidden { .. },
+            ..
+        }) = roundtrip(req)
+        else {
+            panic!("expected DELETE_BRANCH_FORBIDDEN");
+        };
+
+        Ok(())
+    }
+
+    #[test]
     fn create_branch_already_exists() -> anyhow::Result<()> {
         let branch = TestBranch::new("test_exists")?;
 
