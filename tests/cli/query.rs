@@ -88,7 +88,7 @@ fn string_view() {
             "query",
             "--cache",
             "off",
-            "SELECT CONCAT(hvfhs_license_num, 'foobar') as license, FROM taxi_fhvhv LIMIT 5",
+            "SELECT CONCAT(hvfhs_license_num, 'foobar') as license FROM taxi_fhvhv LIMIT 5",
         ])
         .assert()
         .success()
