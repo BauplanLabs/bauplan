@@ -1,4 +1,4 @@
-from bauplan._internal.schema import JobLogEvent
+from bauplan.schema import JobLogEvent
 from datetime import datetime
 from typing import final
 

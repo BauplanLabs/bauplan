@@ -11,7 +11,7 @@ use crate::{grpc::generated as commanderpb, project};
 #[cfg_attr(
     feature = "python",
     pyo3::pyclass(
-        module = "bauplan",
+        module = "bauplan.schema",
         rename_all = "SCREAMING_SNAKE_CASE",
         from_py_object,
         eq,
@@ -96,7 +96,7 @@ impl From<JobState> for commanderpb::JobStateType {
 #[cfg_attr(
     feature = "python",
     pyo3::pyclass(
-        module = "bauplan",
+        module = "bauplan.schema",
         rename_all = "SCREAMING_SNAKE_CASE",
         from_py_object,
         eq,
@@ -184,7 +184,7 @@ impl std::str::FromStr for JobKind {
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(module = "bauplan", from_py_object, get_all)
+    pyo3::pyclass(module = "bauplan.schema", from_py_object, get_all)
 )]
 pub struct Job {
     /// The unique identifier for this job.

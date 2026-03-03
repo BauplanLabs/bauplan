@@ -3,11 +3,24 @@
 use std::{
     env,
     io::{Write as _, stdout},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use anyhow::{Context, Result, bail};
 use pyo3_introspection::{introspect_cdylib, module_stub_files};
+
+fn remap_path(path: &Path) -> PathBuf {
+    if path.file_name().is_some_and(|f| f != "__init__.pyi") {
+        if let Ok(stripped) = path.strip_prefix("_internal") {
+            return stripped.to_path_buf();
+        }
+    }
+    path.to_path_buf()
+}
+
+fn rewrite_imports(content: &str) -> String {
+    content.replace("from _internal.", "from bauplan.")
+}
 
 fn main() -> Result<()> {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
@@ -37,7 +50,9 @@ fn main() -> Result<()> {
 
     let mut out = stdout().lock();
     for (name, content) in &stubs {
-        writeln!(&mut out, "# {}", name.display())?;
+        let path = remap_path(name);
+        let content = rewrite_imports(content);
+        writeln!(&mut out, "# {}", path.display())?;
         writeln!(&mut out, "{content}")?;
     }
 
