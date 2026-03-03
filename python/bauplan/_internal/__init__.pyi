@@ -29,7 +29,7 @@ class Client:
     client = bauplan.Client()
 
     # query the table and return result set as an arrow Table
-    my_table = client.query('SELECT avg(age) AS average_age FROM bauplan.titanic limit 1', ref='main')
+    my_table = client.query('SELECT avg(Age) AS average_age FROM bauplan.titanic limit 1', ref='main')
 
     # efficiently cast the table to a pandas DataFrame
     df = my_table.to_pandas()
