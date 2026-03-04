@@ -35,7 +35,8 @@ pub async fn fetch_flight_results(
 
     // TODO: this is only supported by the legacy infra, and should be removed.
     let criteria = json!({"max_rows": row_limit}).to_string();
-    let (schema, batches) = fetch(channel, auth_token, criteria, traceparent).await?;
+    let (schema, batches) =
+        fetch(channel.clone(), auth_token.clone(), criteria, traceparent).await?;
 
     // We'll enforce the row limit on the client side. To do that, we allocate
     // rows from the total to each RecordBatch, using an atomic int to track it.
@@ -62,7 +63,19 @@ pub async fn fetch_flight_results(
             futures::future::ready(Ok(take))
         });
 
-    Ok((schema, batches))
+    // After all batches are consumed, tell the flight server to shut down.
+    //
+    // Note that this doesn't fire if the batches/limit aren't consumed,
+    // but we're moving away from this architecture anyway and the lack of async
+    // drop makes a more robust solution very difficult.
+    let shutdown = stream::unfold(Some((channel, auth_token)), |state| async {
+        if let Some((channel, token)) = state {
+            let _ = shutdown(channel, token).await;
+        }
+        None
+    });
+
+    Ok((schema, batches.chain(shutdown)))
 }
 
 async fn fetch(
@@ -123,4 +136,15 @@ async fn fetch_batches(
 
     let stream = client.do_get(endpoint.ticket.unwrap()).await?;
     Ok(stream)
+}
+
+async fn shutdown(channel: Channel, auth_token: String) -> FlightResult<()> {
+    let mut client = FlightClient::new(channel);
+    client.add_header("authorization", &format!("Bearer {auth_token}"))?;
+
+    let mut stream = client
+        .do_action(arrow_flight::Action::new("shutdown", ""))
+        .await?;
+    while stream.next().await.is_some() {}
+    Ok(())
 }
