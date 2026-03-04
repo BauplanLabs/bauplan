@@ -30,7 +30,7 @@ data = "python/data"
 use_base_python = true
 
 [tool.ruff]
-exclude = ["tests/fixtures"]
+exclude = ["tests/fixtures", "src/cli/init/models.py"]
 
 [tool.ruff.lint]
 select = [
