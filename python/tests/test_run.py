@@ -7,11 +7,11 @@ import bauplan
 
 
 @pytest.fixture
-def client():
+def client() -> bauplan.Client:
     return bauplan.Client()
 
 
-def test_dry_run(client):
+def test_dry_run(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
@@ -26,7 +26,7 @@ def test_dry_run(client):
     assert state.ctx.cache == "off"
 
 
-def test_dry_run_duration(client):
+def test_dry_run_duration(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
@@ -40,7 +40,7 @@ def test_dry_run_duration(client):
     assert state.duration_ns > 0
 
 
-def test_dry_run_tasks(client):
+def test_dry_run_tasks(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
@@ -51,7 +51,7 @@ def test_dry_run_tasks(client):
     assert len(state.tasks_stopped) > 0
 
 
-def test_detach(client):
+def test_detach(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
@@ -74,7 +74,7 @@ def test_detach(client):
     assert job.status == bauplan.JobState.COMPLETE
 
 
-def test_job_context_snapshot(client):
+def test_job_context_snapshot(client: bauplan.Client):
     # TODO: For some reason, this is timing out ocassionally in automated tests.
     client = bauplan.Client(client_timeout=60)
     state = client.run(

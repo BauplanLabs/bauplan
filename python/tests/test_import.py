@@ -10,24 +10,26 @@ SEARCH_URI = "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*"
 
 
 @pytest.fixture
-def client():
+def client() -> bauplan.Client:
     return bauplan.Client()
 
 
 @pytest.fixture
-def username(client):
-    return client.info().user.username
+def username(client: bauplan.Client):
+    user = client.info().user
+    assert user is not None
+    return user.username
 
 
 @pytest.fixture
-def temp_branch(client, username):
+def temp_branch(client: bauplan.Client, username: str):
     name = f"{username}.pysdk_import_{uuid.uuid4().hex[:8]}"
     client.create_branch(name, from_ref="main")
     yield name
     client.delete_branch(name, if_exists=True)
 
 
-def test_create_table_and_import(client, temp_branch):
+def test_create_table_and_import(client: bauplan.Client, temp_branch: str):
     table = client.create_table(
         table="my_import_table",
         search_uri=SEARCH_URI,
@@ -54,7 +56,7 @@ def test_create_table_and_import(client, temp_branch):
     assert result.num_rows > 0
 
 
-def test_detached_import(client, temp_branch):
+def test_detached_import(client: bauplan.Client, temp_branch: str):
     client.create_table(
         table="my_detached_table",
         search_uri=SEARCH_URI,
@@ -80,7 +82,7 @@ def test_detached_import(client, temp_branch):
     assert job.status == bauplan.JobState.COMPLETE
 
 
-def test_create_external_table_from_parquet(client, temp_branch):
+def test_create_external_table_from_parquet(client: bauplan.Client, temp_branch: str):
     search_patterns = ["s3://bauplan-openlake-db87a23/stage/taxi_fhvhv/*2023*"]
 
     state = client.create_external_table_from_parquet(
@@ -97,7 +99,7 @@ def test_create_external_table_from_parquet(client, temp_branch):
         ref=temp_branch,
     )
 
-    assert result["row_count"][0].as_py() == 134344870
+    assert result["row_count"].to_pylist()[0] == 134344870
 
     # Importing into a read-only external table should fail.
     import_state = client.import_data(
@@ -106,10 +108,11 @@ def test_create_external_table_from_parquet(client, temp_branch):
         branch=temp_branch,
     )
 
+    assert import_state.error is not None
     assert "Cannot import files to read-only table" in import_state.error
 
 
-def test_create_external_table_from_metadata(client, temp_branch):
+def test_create_external_table_from_metadata(client: bauplan.Client, temp_branch: str):
     metadata_uri = (
         "s3://bauplan-openlake-db87a23/iceberg/tpch_1/"
         "customer_e53c682c-36c4-4e3d-9ded-1214d0ee157f/"
@@ -142,7 +145,7 @@ def test_create_external_table_from_metadata(client, temp_branch):
         )
 
 
-def test_plan_and_apply(client, temp_branch):
+def test_plan_and_apply(client: bauplan.Client, temp_branch: str):
     plan_state = client.plan_table_creation(
         table="my_plan_table",
         search_uri=SEARCH_URI,

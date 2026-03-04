@@ -13,17 +13,19 @@ import bauplan
 
 
 @pytest.fixture
-def client():
+def client() -> bauplan.Client:
     return bauplan.Client()
 
 
 @pytest.fixture
-def username(client):
-    return client.info().user.username
+def username(client: bauplan.Client):
+    user = client.info().user
+    assert user is not None
+    return user.username
 
 
 @pytest.fixture
-def temp_branch(client, username):
+def temp_branch(client: bauplan.Client, username: str):
     """Create a temporary branch for testing, cleaned up after the test."""
     branch_name = f"{username}.test_{uuid.uuid4().hex[:8]}"
     branch = client.create_branch(branch=branch_name, from_ref="main")
@@ -32,7 +34,7 @@ def temp_branch(client, username):
 
 
 class TestBranchArg:
-    def test_get_branch(self, client):
+    def test_get_branch(self, client: bauplan.Client):
         """Branch object and string name should produce identical results."""
         branch = client.get_branch("main")
 
@@ -42,7 +44,7 @@ class TestBranchArg:
         assert result_str.name == result_obj.name
         assert result_str.hash == result_obj.hash
 
-    def test_has_branch(self, client):
+    def test_has_branch(self, client: bauplan.Client):
         branch = client.get_branch("main")
 
         result_str = client.has_branch("main")
@@ -51,7 +53,7 @@ class TestBranchArg:
         assert result_str is True
         assert result_obj is True
 
-    def test_delete_branch(self, client, username):
+    def test_delete_branch(self, client: bauplan.Client, username: str):
         name = f"{username}.test_{uuid.uuid4().hex[:8]}"
         branch = client.create_branch(branch=name, from_ref="main")
         client.delete_branch(branch)
@@ -60,7 +62,7 @@ class TestBranchArg:
 
 
 class TestRefArg:
-    def test_create_branch_ref(self, client, username, temp_branch):
+    def test_create_branch_ref(self, client: bauplan.Client, username: str, temp_branch: bauplan.schema.Branch):
         name = f"{username}.test_{uuid.uuid4().hex[:8]}"
 
         try:
@@ -71,7 +73,7 @@ class TestRefArg:
         finally:
             client.delete_branch(name, if_exists=True)
 
-    def test_get_table_ref(self, client):
+    def test_get_table_ref(self, client: bauplan.Client):
         """Branch object as ref should equal explicit name@hash string."""
         branch = client.get_branch("main")
 
@@ -90,7 +92,7 @@ class TestRefArg:
         assert table_str.name == table_obj.name
         assert table_str.namespace == table_obj.namespace
 
-    def test_get_tables_ref_object_equals_string(self, client):
+    def test_get_tables_ref_object_equals_string(self, client: bauplan.Client):
         """Branch object as ref should equal explicit name@hash string."""
         branch = client.get_branch("main")
 
@@ -113,22 +115,22 @@ class TestRefArg:
 class TestRefTypes:
     """Tests for ref type properties."""
 
-    def test_branch_type(self, client):
+    def test_branch_type(self, client: bauplan.Client):
         branch = client.get_branch("main")
         assert branch.type == bauplan.RefType.BRANCH
 
-    def test_branch_str_includes_hash(self, client):
+    def test_branch_str_includes_hash(self, client: bauplan.Client):
         branch = client.get_branch("main")
         s = str(branch)
         assert s == f"{branch.name}@{branch.hash}"
 
-    def test_tag_type(self, client):
+    def test_tag_type(self, client: bauplan.Client):
         tags = list(client.get_tags(limit=1))
         if not tags:
             pytest.skip("No tags available")
         assert tags[0].type == bauplan.RefType.TAG
 
-    def test_tag_str_includes_hash(self, client):
+    def test_tag_str_includes_hash(self, client: bauplan.Client):
         tags = list(client.get_tags(limit=1))
         if not tags:
             pytest.skip("No tags available")
