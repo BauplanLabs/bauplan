@@ -75,12 +75,15 @@ def test_detach(client):
 
 
 def test_job_context_snapshot(client):
+    # TODO: For some reason, this is timing out ocassionally in automated tests.
+    client = bauplan.Client(client_timeout=60)
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
         cache="off",
     )
 
+    assert state.job_id is not None
     ctx = client.get_job_context(state.job_id, include_snapshot=True)
 
     assert ctx.id == state.job_id
