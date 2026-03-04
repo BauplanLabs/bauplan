@@ -73,7 +73,7 @@ tracing-indicatif = "0.3"
 tracing-subscriber = { version = "0.3", features = ["chrono", "env-filter"] }
 ureq = "3"
 url = "2"
-uuid = { version = "1", features = ["serde"] }
+uuid = { version = "1", features = ["serde", "v4"] }
 anstyle = "1"
 anstream = "0.6"
 resolve-path = "0.1"

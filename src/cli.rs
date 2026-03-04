@@ -3,6 +3,7 @@ mod checkout;
 mod color;
 mod commit;
 mod config;
+mod init;
 mod job;
 mod namespace;
 mod parameter;
@@ -162,6 +163,8 @@ pub(crate) enum Command {
     Job(job::JobArgs),
     /// Set the active branch
     Checkout(checkout::CheckoutArgs),
+    /// Initialize a new bauplan project
+    Init(init::InitArgs),
 }
 
 pub(crate) struct Cli {
@@ -181,6 +184,7 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
             return Ok(());
         }
         Command::Config(config_args) => return config::handle(config_args, args.global),
+        Command::Init(init_args) => return init::handle(init_args),
         _ => (),
     }
 
@@ -219,6 +223,7 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
     match args.command {
         Command::Version => unreachable!(),
         Command::Config(_) => unreachable!(),
+        Command::Init(_) => unreachable!(),
         Command::Parameter(args) => parameter::handle(&cli, args),
         Command::Info => with_rt(handle_info(&cli)),
         Command::Run(args) => run::handle(&cli, args),

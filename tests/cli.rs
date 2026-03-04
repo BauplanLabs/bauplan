@@ -7,6 +7,7 @@ use std::fmt::Write as _;
 mod cli {
     mod branch;
     mod import;
+    mod init;
     mod job;
     mod parameter;
     mod query;
