@@ -1,11 +1,8 @@
 //! Support for fetching query results via Arrow Flight.
 
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicI64, Ordering},
-    },
-    time,
+use std::sync::{
+    Arc,
+    atomic::{AtomicI64, Ordering},
 };
 
 use arrow::{array::RecordBatch, datatypes::Schema};
@@ -14,25 +11,17 @@ use arrow_flight::{
     error::{FlightError, Result as FlightResult},
 };
 use futures::{Stream, StreamExt as _, TryStreamExt as _, stream};
-use http::Uri;
 use serde_json::json;
-use tonic::transport::{Channel, ClientTlsConfig};
+use tonic::transport::Channel;
 
 /// Connects to a given flight server and streams all the batches from all the
 /// endpoints. This is bauplan-specific and not generically useful.
 pub async fn fetch_flight_results(
-    endpoint: Uri,
+    channel: Channel,
     auth_token: String,
-    client_timeout: time::Duration,
     row_limit: Option<u64>,
     traceparent: Option<&str>,
 ) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>>)> {
-    let channel = Channel::builder(endpoint)
-        .tls_config(ClientTlsConfig::new().with_native_roots())
-        .unwrap()
-        .timeout(client_timeout)
-        .connect_lazy();
-
     // TODO: this is only supported by the legacy infra, and should be removed.
     let criteria = json!({"max_rows": row_limit}).to_string();
     let (schema, batches) = fetch(channel, auth_token, criteria, traceparent).await?;
@@ -123,4 +112,17 @@ async fn fetch_batches(
 
     let stream = client.do_get(endpoint.ticket.unwrap()).await?;
     Ok(stream)
+}
+
+/// Explicitly shuts down the flight server. This should be called once no
+/// more results remain or are needed.
+pub async fn shutdown(channel: Channel, auth_token: String) -> FlightResult<()> {
+    let mut client = FlightClient::new(channel);
+    client.add_header("authorization", &format!("Bearer {auth_token}"))?;
+
+    let mut stream = client
+        .do_action(arrow_flight::Action::new("shutdown", ""))
+        .await?;
+    while stream.next().await.is_some() {}
+    Ok(())
 }

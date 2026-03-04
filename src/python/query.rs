@@ -9,13 +9,14 @@ use arrow::{
     datatypes::Schema,
 };
 use commanderpb::runner_event::Event as RunnerEvent;
-use futures::{Stream, TryStreamExt};
+use futures::{Stream, StreamExt as _, TryStreamExt};
 use polyglot_sql::{Expression, Parser, builder, expressions::TableRef};
 use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
-use tracing::{debug, error, info};
+use tonic::transport::{Channel, ClientTlsConfig};
+use tracing::{debug, error, info, warn};
 
 use crate::{
-    flight,
+    flight::{self, shutdown},
     grpc::{self, generated as commanderpb},
     python::{
         exceptions::{BauplanError, BauplanQueryError},
@@ -130,12 +131,29 @@ impl Client {
             .parse()
             .map_err(|_| BauplanError::new_err(format!("invalid flight endpoint: {endpoint}")))?;
 
+        let channel = Channel::builder(endpoint)
+            .tls_config(ClientTlsConfig::new().with_native_roots())
+            .unwrap()
+            .timeout(timeout)
+            .connect_lazy();
+
         let (schema, batches) =
-            flight::fetch_flight_results(endpoint, magic_token, timeout, max_rows, None)
+            flight::fetch_flight_results(channel.clone(), magic_token.clone(), max_rows, None)
                 .await
                 .map_err(|_| query_err("failed to fetch query results"))?;
 
-        Ok((schema, batches.map_err(query_err)))
+        // After all batches are consumed, tell the flight server to shut down.
+        let shutdown = futures::stream::unfold(Some((channel, magic_token)), |state| async {
+            if let Some((channel, token)) = state
+                && let Err(err) = shutdown(channel, token).await
+            {
+                warn!(?err, "failed to shutdown flight server");
+            }
+
+            None
+        });
+
+        Ok((schema, batches.chain(shutdown).map_err(query_err)))
     }
 
     #[allow(clippy::too_many_arguments)]

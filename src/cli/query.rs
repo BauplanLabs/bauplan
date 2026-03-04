@@ -12,11 +12,13 @@ use arrow::{
     util::display::{ArrayFormatter, FormatOptions},
 };
 use arrow_flight::error::Result as FlightResult;
-use bauplan::flight::fetch_flight_results;
+use bauplan::flight::{fetch_flight_results, shutdown};
 use bauplan::grpc::{self, generated as commanderpb};
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, TryStreamExt};
 use tabwriter::TabWriter;
+use tonic::transport::{Channel, ClientTlsConfig};
+use tracing::warn;
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = crate::cli::CliExamples("
@@ -171,17 +173,28 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     progress.set_message("Fetching results...");
 
     let tp = cli.traceparent();
+    let channel = Channel::builder(endpoint)
+        .tls_config(ClientTlsConfig::new().with_native_roots())?
+        .timeout(timeout)
+        .connect_lazy();
+
     let (schema, batches) =
-        fetch_flight_results(endpoint, magic_token, timeout, row_limit, Some(&tp))
+        fetch_flight_results(channel.clone(), magic_token.clone(), row_limit, Some(&tp))
             .await
             .context("Failed to fetch query results")?;
     futures::pin_mut!(batches);
 
     progress.finish_with_done();
-    match cli.global.output.unwrap_or_default() {
+    let result = match cli.global.output.unwrap_or_default() {
         Output::Tty => print_tty(schema, batches, !no_trunc).await,
         Output::Json => print_json(batches, &job_id).await,
+    };
+
+    if let Err(err) = shutdown(channel, magic_token).await {
+        warn!(?err, "failed to shutdown flight server");
     }
+
+    result
 }
 
 async fn print_tty(
