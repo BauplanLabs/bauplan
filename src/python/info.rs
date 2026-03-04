@@ -162,7 +162,7 @@ impl Client {
     /// Returns:
     ///     An `InfoState` object containing organization, user, and runner information.
     #[pyo3(signature = (*, client_timeout: "int | None" = None) -> "InfoState")]
-    fn info(&mut self, client_timeout: Option<u64>) -> PyResult<PyInfoState> {
+    fn info(&self, client_timeout: Option<u64>) -> PyResult<PyInfoState> {
         let mut request = Request::new(GetBauplanInfoRequest::default());
         request.set_timeout(
             client_timeout
@@ -172,7 +172,7 @@ impl Client {
 
         let rt = super::rt();
         let info = rt
-            .block_on(self.grpc.get_bauplan_info(request))
+            .block_on(self.grpc.clone().get_bauplan_info(request))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         Ok(info.into_inner().into())

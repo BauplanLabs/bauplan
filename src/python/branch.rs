@@ -86,7 +86,7 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (branch: "str | Branch") -> "Branch")]
-    fn get_branch(&mut self, branch: BranchArg) -> PyResult<Branch> {
+    fn get_branch(&self, branch: BranchArg) -> PyResult<Branch> {
         let req = GetBranch { name: &branch.0 };
         let b = super::roundtrip(req, &self.profile, &self.agent)?;
         Ok(b)
@@ -114,7 +114,7 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (branch: "str | Branch") -> "bool")]
-    fn has_branch(&mut self, branch: BranchArg) -> PyResult<bool> {
+    fn has_branch(&self, branch: BranchArg) -> PyResult<bool> {
         let req = GetBranch { name: &branch.0 };
 
         match super::roundtrip(req, &self.profile, &self.agent) {
@@ -172,7 +172,7 @@ impl Client {
         if_not_exists: "bool" = false,
     ) -> "Branch")]
     fn create_branch(
-        &mut self,
+        &self,
         branch: BranchArg,
         from_ref: RefArg,
         if_not_exists: bool,
@@ -232,7 +232,7 @@ impl Client {
         branch: "str | Branch",
         new_branch: "str | Branch",
     ) -> "Branch")]
-    fn rename_branch(&mut self, branch: BranchArg, new_branch: BranchArg) -> PyResult<Branch> {
+    fn rename_branch(&self, branch: BranchArg, new_branch: BranchArg) -> PyResult<Branch> {
         let req = RenameBranch {
             name: &branch.0,
             new_name: &new_branch.0,
@@ -281,7 +281,7 @@ impl Client {
         commit_properties: "dict[str, str] | None" = None,
     ) -> "Branch")]
     fn merge_branch(
-        &mut self,
+        &self,
         source_ref: RefArg,
         into_branch: BranchArg,
         commit_message: Option<&str>,
@@ -336,7 +336,7 @@ impl Client {
         *,
         if_exists: "bool" = false,
     ) -> "bool")]
-    fn delete_branch(&mut self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
+    fn delete_branch(&self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteBranch { name: &branch.0 };
 
         if let Err(e) = super::roundtrip(req, &self.profile, &self.agent) {

@@ -171,7 +171,12 @@ impl TryFrom<i32> for JobLogStream {
 
 /// The log level for a log event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[pyclass(name = "JobLogLevel", module = "bauplan.schema", skip_from_py_object, eq)]
+#[pyclass(
+    name = "JobLogLevel",
+    module = "bauplan.schema",
+    skip_from_py_object,
+    eq
+)]
 pub(crate) enum JobLogLevel {
     #[pyo3(name = "ERROR")]
     Error,
@@ -215,7 +220,12 @@ impl TryFrom<i32> for JobLogLevel {
 
 /// A log event from a job.
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(name = "JobLogEvent", module = "bauplan.schema", skip_from_py_object, get_all)]
+#[pyclass(
+    name = "JobLogEvent",
+    module = "bauplan.schema",
+    skip_from_py_object,
+    get_all
+)]
 pub(crate) struct JobLogEvent {
     /// The output stream (STDOUT, STDERR).
     pub stream: JobLogStream,
@@ -372,7 +382,7 @@ impl Client {
     /// Parameters:
     ///     job_id: A job ID
     #[pyo3(signature = (job_id, /) -> "Job")]
-    fn get_job(&mut self, job_id: &str) -> PyResult<Job> {
+    fn get_job(&self, job_id: &str) -> PyResult<Job> {
         let mut req = Request::new(commanderpb::GetJobsRequest {
             job_ids: vec![job_id.to_string()],
             all_users: true,
@@ -381,7 +391,7 @@ impl Client {
         req.set_timeout(self.client_timeout);
 
         let response = rt()
-            .block_on(self.grpc.get_jobs(req))
+            .block_on(self.grpc.clone().get_jobs(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         let jobs = response.into_inner().jobs;
@@ -419,7 +429,7 @@ impl Client {
     ) -> "typing.Iterator[Job]")]
     #[allow(clippy::too_many_arguments)]
     fn get_jobs(
-        &mut self,
+        &self,
         all_users: bool,
         filter_by_ids: Option<JobListArg>,
         filter_by_users: Option<JobListArg>,
@@ -484,7 +494,7 @@ impl Client {
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
     #[pyo3(signature = (job) -> "list[JobLogEvent]")]
-    fn get_job_logs(&mut self, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
+    fn get_job_logs(&self, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
         let mut req = Request::new(commanderpb::GetLogsRequest {
             job_id: job.0,
             ..Default::default()
@@ -492,7 +502,7 @@ impl Client {
         req.set_timeout(self.client_timeout);
 
         let response = rt()
-            .block_on(self.grpc.get_logs(req))
+            .block_on(self.grpc.clone().get_logs(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         let events: Vec<JobLogEvent> = response
@@ -519,7 +529,7 @@ impl Client {
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
     #[pyo3(signature = (job, *, include_logs=false, include_snapshot=false) -> "JobContext")]
     fn get_job_context(
-        &mut self,
+        &self,
         job: JobArg,
         include_logs: bool,
         include_snapshot: bool,
@@ -534,7 +544,7 @@ impl Client {
         req.set_timeout(self.client_timeout);
 
         let response = rt()
-            .block_on(self.grpc.get_job_context(req))
+            .block_on(self.grpc.clone().get_job_context(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         let inner = response.into_inner();
@@ -564,7 +574,7 @@ impl Client {
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
     #[pyo3(signature = (jobs, *, include_logs=false, include_snapshot=false) -> "list[JobContext]")]
     fn get_job_contexts(
-        &mut self,
+        &self,
         jobs: JobListArg,
         include_logs: bool,
         include_snapshot: bool,
@@ -578,7 +588,7 @@ impl Client {
         req.set_timeout(self.client_timeout);
 
         let resp = rt()
-            .block_on(self.grpc.get_job_context(req))
+            .block_on(self.grpc.clone().get_job_context(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?
             .into_inner();
 
@@ -603,14 +613,14 @@ impl Client {
     /// Parameters:
     ///     job_id: A job ID
     #[pyo3(signature = (job_id, /) -> "None")]
-    fn cancel_job(&mut self, job_id: &str) -> PyResult<()> {
+    fn cancel_job(&self, job_id: &str) -> PyResult<()> {
         let req = commanderpb::CancelJobRequest {
             job_id: Some(commanderpb::JobId {
                 id: job_id.to_owned(),
                 ..Default::default()
             }),
         };
-        rt().block_on(self.grpc.cancel(req))
+        rt().block_on(self.grpc.clone().cancel(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         Ok(())

@@ -38,7 +38,7 @@ impl Client {
     /// Submits a query and runs it to completion, canceling on timeout.
     #[allow(clippy::too_many_arguments)]
     async fn run_query(
-        &mut self,
+        &self,
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
@@ -62,6 +62,7 @@ impl Client {
 
         let resp = self
             .grpc
+            .clone()
             .query_run(req)
             .await
             .map_err(query_err)?
@@ -73,12 +74,13 @@ impl Client {
 
         info!(job_id, "successfully planned query");
 
-        let mut client_clone = self.grpc.clone();
         let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
             job_id: job_id.clone(),
         });
         req.set_timeout(timeout);
-        let stream = client_clone.monitor_job(req);
+
+        let mut client = self.grpc.clone();
+        let stream = client.monitor_job(req);
         futures::pin_mut!(stream);
 
         let mut flight_event = None;
@@ -138,7 +140,7 @@ impl Client {
 
     #[allow(clippy::too_many_arguments)]
     async fn query_to_file<T: RecordBatchWriter>(
-        &mut self,
+        &self,
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
@@ -177,7 +179,7 @@ impl Client {
         Ok(())
     }
 
-    async fn cancel_query(&mut self, job_id: &str) -> PyResult<()> {
+    async fn cancel_query(&self, job_id: &str) -> PyResult<()> {
         let req = commanderpb::CancelJobRequest {
             job_id: Some(commanderpb::JobId {
                 id: job_id.to_owned(),
@@ -185,7 +187,7 @@ impl Client {
             }),
         };
 
-        if let Err(err) = self.grpc.cancel(req).await {
+        if let Err(err) = self.grpc.clone().cancel(req).await {
             error!(?err, "failed to cancel timed out query");
             return Err(query_err(err));
         }
@@ -242,7 +244,7 @@ impl Client {
     ) -> "pyarrow.Table")]
     #[allow(clippy::too_many_arguments)]
     fn query(
-        &mut self,
+        &self,
         py: Python<'_>,
         query: &str,
         r#ref: Option<RefArg>,
@@ -316,7 +318,7 @@ impl Client {
     ) -> "typing.Iterator[dict[str, typing.Any]]")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_generator(
-        &mut self,
+        &self,
         py: Python<'_>,
         query: &str,
         r#ref: Option<RefArg>,
@@ -381,7 +383,7 @@ impl Client {
     ) -> "pathlib.Path")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_parquet_file(
-        &mut self,
+        &self,
         path: PathBuf,
         query: &str,
         r#ref: Option<RefArg>,
@@ -452,7 +454,7 @@ impl Client {
     ) -> "pathlib.Path")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_csv_file(
-        &mut self,
+        &self,
         path: PathBuf,
         query: &str,
         r#ref: Option<RefArg>,
@@ -525,7 +527,7 @@ impl Client {
     ) -> "pathlib.Path")]
     #[allow(clippy::too_many_arguments)]
     fn query_to_json_file(
-        &mut self,
+        &self,
         path: PathBuf,
         query: &str,
         file_format: &str,
@@ -627,7 +629,7 @@ impl Client {
     ) -> "pyarrow.Table")]
     #[allow(clippy::too_many_arguments)]
     fn scan(
-        &mut self,
+        &self,
         py: Python<'_>,
         table: &str,
         r#ref: Option<RefArg>,

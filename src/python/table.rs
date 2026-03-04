@@ -17,6 +17,7 @@ use crate::{
         paginate::PyPaginator,
         refs::{BranchArg, RefArg},
         rt,
+        run::monitor_job,
     },
     table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
@@ -95,7 +96,7 @@ impl Client {
     ) -> "Table")]
     #[allow(clippy::too_many_arguments)]
     fn create_table(
-        &mut self,
+        &self,
         table: &str,
         search_uri: &str,
         branch: Option<&str>,
@@ -152,9 +153,9 @@ impl Client {
             plan_yaml: plan_yaml.clone(),
         };
 
+        let mut client = self.grpc.clone();
         rt().block_on(async {
-            let resp = self
-                .grpc
+            let resp = client
                 .table_create_plan_apply(req)
                 .await
                 .map_err(job_err)?
@@ -165,7 +166,7 @@ impl Client {
                 return Err(job_err("response missing job ID"));
             };
 
-            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             if let Some(err_msg) = error.clone() {
@@ -243,7 +244,7 @@ impl Client {
     ) -> "TableCreatePlanState")]
     #[allow(clippy::too_many_arguments)]
     fn plan_table_creation(
-        &mut self,
+        &self,
         table: &str,
         search_uri: &str,
         branch: Option<&str>,
@@ -268,9 +269,9 @@ impl Client {
             table_partitioned_by: partitioned_by.map(str::to_owned),
         };
 
+        let mut client = self.grpc.clone();
         rt().block_on(async {
-            let resp = self
-                .grpc
+            let resp = client
                 .table_create_plan(req)
                 .await
                 .map_err(job_err)?
@@ -300,19 +301,18 @@ impl Client {
                 files_to_be_imported: Vec::new(),
             };
 
-            let res = self
-                .monitor_job(&job_id, timeout, |event| {
-                    if let RunnerEvent::TableCreatePlanDoneEvent(ev) = event {
-                        if !ev.error_message.is_empty() {
-                            state.error = Some(ev.error_message);
-                        }
-
-                        state.plan = Some(ev.plan_as_yaml);
-                        state.can_auto_apply = ev.can_auto_apply;
-                        state.files_to_be_imported = ev.files_to_be_imported;
+            let res = monitor_job(&mut client, &job_id, timeout, |event| {
+                if let RunnerEvent::TableCreatePlanDoneEvent(ev) = event {
+                    if !ev.error_message.is_empty() {
+                        state.error = Some(ev.error_message);
                     }
-                })
-                .await?;
+
+                    state.plan = Some(ev.plan_as_yaml);
+                    state.can_auto_apply = ev.can_auto_apply;
+                    state.files_to_be_imported = ev.files_to_be_imported;
+                }
+            })
+            .await?;
 
             let (job_status, error) = job_status_strings(res);
             state.job_status = Some(job_status);
@@ -355,7 +355,7 @@ impl Client {
         client_timeout: "int | None" = None,
     ) -> "TableCreatePlanApplyState")]
     fn apply_table_creation_plan(
-        &mut self,
+        &self,
         py: Python<'_>,
         plan: Py<PyAny>,
         args: Option<std::collections::HashMap<String, String>>,
@@ -370,9 +370,7 @@ impl Client {
         } else if let Ok(s) = plan.extract::<String>(py) {
             s
         } else {
-            return Err(PyTypeError::new_err(
-                "expected str or TableCreatePlanState",
-            ));
+            return Err(PyTypeError::new_err("expected str or TableCreatePlanState"));
         };
 
         let timeout = self.job_timeout(client_timeout.map(|v| v as u64));
@@ -384,9 +382,9 @@ impl Client {
             plan_yaml,
         };
 
+        let mut client = self.grpc.clone();
         rt().block_on(async {
-            let resp = self
-                .grpc
+            let resp = client
                 .table_create_plan_apply(req)
                 .await
                 .map_err(job_err)?
@@ -398,7 +396,7 @@ impl Client {
                 .map(|c| c.job_id.clone())
                 .ok_or_else(|| job_err("response missing job ID"))?;
 
-            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             if let Some(msg) = error.clone() {
@@ -467,7 +465,7 @@ impl Client {
     ) -> "TableDataImportState")]
     #[allow(clippy::too_many_arguments)]
     fn import_data(
-        &mut self,
+        &self,
         table: &str,
         search_uri: &str,
         branch: Option<&str>,
@@ -498,9 +496,9 @@ impl Client {
             preview: preview.unwrap_or_default().to_owned(),
         };
 
+        let mut client = self.grpc.clone();
         rt().block_on(async {
-            let resp = self
-                .grpc
+            let resp = client
                 .table_data_import(req)
                 .await
                 .map_err(job_err)?
@@ -533,7 +531,7 @@ impl Client {
                 });
             }
 
-            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             Ok(TableDataImportState {
@@ -591,7 +589,7 @@ impl Client {
     ) -> "ExternalTableCreateState")]
     #[allow(clippy::too_many_arguments)]
     fn create_external_table_from_parquet(
-        &mut self,
+        &self,
         table: &str,
         search_patterns: Vec<String>,
         branch: Option<&str>,
@@ -621,9 +619,9 @@ impl Client {
             overwrite,
         };
 
+        let mut client = self.grpc.clone();
         rt().block_on(async {
-            let resp = self
-                .grpc
+            let resp = client
                 .external_table_create(req)
                 .await
                 .map_err(job_err)?
@@ -650,7 +648,7 @@ impl Client {
                 });
             }
 
-            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
+            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             Ok(ExternalTableCreateState {
@@ -754,7 +752,7 @@ impl Client {
         namespace: "str | Namespace | None" = None,
     ) -> "Table")]
     fn get_table(
-        &mut self,
+        &self,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<NamespaceArg>,
@@ -803,7 +801,7 @@ impl Client {
         namespace: "str | Namespace | None" = None,
     ) -> "bool")]
     fn has_table(
-        &mut self,
+        &self,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<NamespaceArg>,
@@ -871,7 +869,7 @@ impl Client {
     ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn delete_table(
-        &mut self,
+        &self,
         table: TableArg,
         branch: BranchArg,
         namespace: Option<NamespaceArg>,
@@ -955,7 +953,7 @@ impl Client {
         overwrite: "bool" = false,
     ) -> "Table")]
     fn create_external_table_from_metadata(
-        &mut self,
+        &self,
         table: &str,
         metadata_json_uri: &str,
         namespace: &str,
@@ -1034,7 +1032,7 @@ impl Client {
     ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn revert_table(
-        &mut self,
+        &self,
         table: TableArg,
         namespace: Option<NamespaceArg>,
         source_ref: RefArg,
