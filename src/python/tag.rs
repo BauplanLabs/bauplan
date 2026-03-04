@@ -73,7 +73,7 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
-    fn get_tag(&mut self, tag: TagArg) -> PyResult<Tag> {
+    fn get_tag(&self, tag: TagArg) -> PyResult<Tag> {
         let req = GetTag { name: &tag.0 };
         let t = super::roundtrip(req, &self.profile, &self.agent)?;
         Ok(t)
@@ -101,7 +101,7 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "bool")]
-    fn has_tag(&mut self, tag: TagArg) -> PyResult<bool> {
+    fn has_tag(&self, tag: TagArg) -> PyResult<bool> {
         let req = GetTag { name: &tag.0 };
 
         match super::roundtrip(req, &self.profile, &self.agent) {
@@ -151,7 +151,7 @@ impl Client {
         *,
         if_not_exists: "bool" = false,
     ) -> "Tag")]
-    fn create_tag(&mut self, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
+    fn create_tag(&self, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
         let req = CreateTag {
             name: &tag.0,
             from_ref: &from_ref.0,
@@ -206,7 +206,7 @@ impl Client {
         tag: "str | Tag",
         new_tag: "str | Tag",
     ) -> "Tag")]
-    fn rename_tag(&mut self, tag: TagArg, new_tag: TagArg) -> PyResult<Tag> {
+    fn rename_tag(&self, tag: TagArg, new_tag: TagArg) -> PyResult<Tag> {
         let req = RenameTag {
             name: &tag.0,
             new_name: &new_tag.0,
@@ -244,7 +244,7 @@ impl Client {
         *,
         if_exists: "bool" = false,
     ) -> "bool")]
-    fn delete_tag(&mut self, tag: TagArg, if_exists: bool) -> PyResult<bool> {
+    fn delete_tag(&self, tag: TagArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteTag { name: &tag.0 };
 
         match super::roundtrip(req, &self.profile, &self.agent) {
