@@ -5,11 +5,11 @@ import bauplan
 
 
 @pytest.fixture
-def client():
+def client() -> bauplan.Client:
     return bauplan.Client()
 
 
-def test_query_returns_arrow_table(client):
+def test_query_returns_arrow_table(client: bauplan.Client):
     result = client.query(
         "SELECT PassengerId, Name FROM bauplan.titanic LIMIT 5",
     )
@@ -19,7 +19,7 @@ def test_query_returns_arrow_table(client):
     assert "Name" in result.column_names
 
 
-def test_query_taxi_fhvhv(client):
+def test_query_taxi_fhvhv(client: bauplan.Client):
     result = client.query(
         query=(
             "SELECT trip_time, trip_miles FROM taxi_fhvhv"
@@ -33,7 +33,7 @@ def test_query_taxi_fhvhv(client):
     assert len(result) == 448004
 
 
-def test_parallel_query_correctness(client):
+def test_parallel_query_correctness(client: bauplan.Client):
     """Verify row numbering is sequential across parallel query endpoints."""
     result = client.query(
         query=(
@@ -59,17 +59,18 @@ def test_parallel_query_correctness(client):
     assert column == list(range(1, 25162))
 
 
-def test_query_with_ref(client):
+def test_query_with_ref(client: bauplan.Client):
     result = client.query(
         "SELECT count(*) AS cnt FROM bauplan.titanic",
         ref="main",
     )
 
     assert result.num_rows == 1
-    assert result.column("cnt")[0].as_py() > 0
+    count = result.column("cnt").to_pylist()[0]
+    assert count is not None and count > 0
 
 
-def test_query_with_max_rows(client):
+def test_query_with_max_rows(client: bauplan.Client):
     result = client.query(
         "SELECT * FROM bauplan.titanic",
         max_rows=3,
@@ -78,7 +79,7 @@ def test_query_with_max_rows(client):
     assert result.num_rows == 3
 
 
-def test_scan_empty_columns(client):
+def test_scan_empty_columns(client: bauplan.Client):
     with pytest.raises(ValueError) as exc_info:
        client.scan(
             table="titanic",
@@ -92,7 +93,7 @@ def test_scan_empty_columns(client):
     assert "Empty column list" in str(exc_info.value)
 
 
-def test_scan_returns_arrow_table(client):
+def test_scan_returns_arrow_table(client: bauplan.Client):
     result = client.scan(
         table="titanic",
         namespace="bauplan",
@@ -134,7 +135,7 @@ INVALID_FILTERS = [
 
 
 @pytest.mark.parametrize("bad_filter", INVALID_FILTERS)
-def test_scan_invalid_filter(client, bad_filter):
+def test_scan_invalid_filter(client: bauplan.Client, bad_filter: str):
     with pytest.raises(ValueError):
         client.scan(
             table="titanic",

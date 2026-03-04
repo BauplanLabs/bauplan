@@ -5,11 +5,11 @@ import bauplan
 
 
 @pytest.fixture
-def client():
+def client() -> bauplan.Client:
     return bauplan.Client()
 
 
-def test_query_to_generator(client):
+def test_query_to_generator(client: bauplan.Client):
     """Verify row contents match expected schema."""
     gen = client.query_to_generator(
         "SELECT PassengerId, Name, Age FROM bauplan.titanic ORDER BY PassengerId"
@@ -23,7 +23,7 @@ def test_query_to_generator(client):
     assert rows[-1]["PassengerId"] == len(rows)
 
 
-def test_get_tags_pagination(client):
+def test_get_tags_pagination(client: bauplan.Client):
     tags = client.get_tags()
 
     assert hasattr(tags, "__iter__")
@@ -36,7 +36,7 @@ def test_get_tags_pagination(client):
         assert hasattr(t, "hash")
 
 
-def test_get_namespaces_pagination(client):
+def test_get_namespaces_pagination(client: bauplan.Client):
     namespaces = client.get_namespaces(ref="main")
 
     assert hasattr(namespaces, "__iter__")
@@ -49,7 +49,7 @@ def test_get_namespaces_pagination(client):
         assert hasattr(ns, "name")
 
 
-def test_get_tables_pagination(client):
+def test_get_tables_pagination(client: bauplan.Client):
     tables = client.get_tables(ref="main", filter_by_namespace="bauplan")
 
     assert hasattr(tables, "__iter__")
@@ -63,7 +63,7 @@ def test_get_tables_pagination(client):
     assert "titanic" in table_names
 
 
-def test_get_tables_with_limit(client):
+def test_get_tables_with_limit(client: bauplan.Client):
     all_tables = list(client.get_tables(ref="main", filter_by_namespace="bauplan", limit=5))
 
     if len(all_tables) < 2:
@@ -73,7 +73,7 @@ def test_get_tables_with_limit(client):
     assert len(limited) == 1
 
 
-def test_get_jobs_pagination(client):
+def test_get_jobs_pagination(client: bauplan.Client):
     jobs = client.get_jobs(limit=5)
 
     assert hasattr(jobs, "__iter__")
@@ -90,13 +90,13 @@ def test_get_jobs_pagination(client):
         assert hasattr(job, "kind")
 
 
-def test_get_jobs_filter_by_kind_lowercase(client):
+def test_get_jobs_filter_by_kind_lowercase(client: bauplan.Client):
     jobs = list(client.get_jobs(filter_by_kinds="query", limit=5))
     for job in jobs:
         assert job.kind == bauplan.JobKind.QUERY
 
 
-def test_get_jobs_filter_by_status_lowercase(client):
+def test_get_jobs_filter_by_status_lowercase(client: bauplan.Client):
     jobs = list(client.get_jobs(filter_by_statuses="complete", limit=5))
     for job in jobs:
         assert job.status == bauplan.JobState.COMPLETE
