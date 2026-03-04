@@ -1,4 +1,12 @@
 
+## [0.1.5] - 2026-03-04
+
+### Bugfixes
+
+- [pysdk] Make the client thread-safe (211f7cd2fb93cee81b8b99d7b456498262a0585c)
+- [pysdk] Remove `_internal` from `__module__`, fix public stubs (da37f1e7d561d620db0e9fa51f6723af5b22d82e)
+- Handle missing context in "forbidden errors" (016d4d830ead788af6e6d252eebf3e71a3ad4051)
+
 ## [0.1.4] - 2026-03-02
 
 ### Bugfixes
