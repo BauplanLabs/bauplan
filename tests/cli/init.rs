@@ -15,8 +15,8 @@ fn init_generates_valid_dag() -> Result<()> {
 
     let models = dir.path().join("models.py");
 
-    let output = Command::new("uv")
-        .args(["run", "ruff", "check", "--isolated"])
+    let output = Command::new("uvx")
+        .args(["--isolated", "ruff", "check", "--isolated"])
         .arg(&models)
         .output()?;
     if !output.status.success() {
