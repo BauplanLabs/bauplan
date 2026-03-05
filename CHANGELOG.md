@@ -1,4 +1,15 @@
 
+## [0.1.6] - 2026-03-05
+
+### New Features
+
+- [cli] Bauplan init (7dd53354c366e80c6643fe0fd5ab7384e192f4fa)
+
+### Bugfixes
+
+- [cli] Don't print user logs from system tasks (ce8381e197fafe5d3d09c2d3a2ad1c6e5d1aea80)
+- Send a "shutdown" request after fetching query results (5276a36569cbc5120ae125e96c2405a5dbff8ae5)
+
 ## [0.1.5] - 2026-03-04
 
 ### Bugfixes
