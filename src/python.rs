@@ -2,7 +2,7 @@
 
 use std::{sync::OnceLock, time};
 
-use pyo3::{exceptions::PyValueError, prelude::*};
+use pyo3::{exceptions::PyValueError, marker::Ungil, prelude::*};
 use tokio::runtime::Runtime;
 
 mod branch;
@@ -191,14 +191,19 @@ impl Client {
 
 #[allow(clippy::result_large_err)]
 fn roundtrip<T: ApiRequest>(
+    py: Python<'_>,
     req: T,
     profile: &Profile,
     agent: &ureq::Agent,
-) -> Result<T::Response, ClientError> {
+) -> Result<T::Response, ClientError>
+where
+    T::Response: Send,
+{
     let req = req.into_request(profile)?;
-    let resp = agent.run(req)?;
-    let resp = <T::Response as ApiResponse>::from_response(resp.map(ureq::Body::into_reader))?;
-    Ok(resp)
+    py.detach(|| {
+        let resp = agent.run(req)?.map(ureq::Body::into_reader);
+        Ok(<T::Response as ApiResponse>::from_response(resp)?)
+    })
 }
 
 fn optional_on_off<'a>(name: &'static str, v: Option<&'a str>) -> PyResult<Option<&'a str>> {
@@ -255,9 +260,11 @@ mod _internal {
     }
 }
 
-// Copied from delta-rs:
-// https://github.com/delta-io/delta-rs/blob/d4d75cc06dcdc02338a8a5222a3949312f330d8f/python/src/utils.rs#L14
-#[inline]
+/// Releases the GIL and does some async work.
+pub(crate) fn detach<T: Ungil>(py: Python<'_>, f: impl Future<Output = T> + Send) -> T {
+    py.detach(|| rt().block_on(f))
+}
+
 pub(crate) fn rt() -> &'static Runtime {
     static TOKIO_RT: OnceLock<Runtime> = OnceLock::new();
     static PID: OnceLock<u32> = OnceLock::new();

@@ -18,11 +18,11 @@ use crate::{
     flight,
     grpc::{self, generated as commanderpb},
     python::{
+        detach,
         exceptions::{BauplanError, BauplanQueryError},
         namespace::NamespaceArg,
         optional_on_off,
         refs::RefArg,
-        rt,
     },
 };
 
@@ -256,7 +256,7 @@ impl Client {
         client_timeout: Option<u64>,
     ) -> Result<Py<PyAny>, PyErr> {
         let namespace = namespace.map(|a| a.0);
-        rt().block_on(async {
+        let table = detach(py, async {
             let (schema, stream) = self
                 .run_query(
                     query,
@@ -271,9 +271,10 @@ impl Client {
                 .await?;
 
             let batches: Vec<RecordBatch> = stream.try_collect().await?;
-            let table = pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))?;
-            Ok(table.into_pyarrow(py)?.unbind())
-        })
+            pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))
+        })?;
+
+        Ok(table.into_pyarrow(py)?.unbind())
     }
 
     /// Execute a SQL query and return the results as a generator, where each row is
@@ -330,16 +331,19 @@ impl Client {
         client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
         let namespace = namespace.map(|a| a.0);
-        let (_schema, batches) = rt().block_on(self.run_query(
-            query,
-            r#ref,
-            max_rows,
-            cache,
-            namespace.as_deref(),
-            args.unwrap_or_default(),
-            priority,
-            client_timeout,
-        ))?;
+        let (_schema, batches) = detach(
+            py,
+            self.run_query(
+                query,
+                r#ref,
+                max_rows,
+                cache,
+                namespace.as_deref(),
+                args.unwrap_or_default(),
+                priority,
+                client_timeout,
+            ),
+        )?;
 
         BatchStreamRowIterator::new(Box::pin(batches)).into_py_any(py)
     }
@@ -384,6 +388,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn query_to_parquet_file(
         &self,
+        py: Python<'_>,
         path: PathBuf,
         query: &str,
         r#ref: Option<RefArg>,
@@ -397,20 +402,23 @@ impl Client {
         use parquet::arrow::ArrowWriter;
 
         let namespace = namespace.map(|a| a.0);
-        rt().block_on(self.query_to_file(
-            query,
-            r#ref,
-            max_rows,
-            cache,
-            namespace.as_deref(),
-            args.unwrap_or_default(),
-            priority,
-            client_timeout,
-            |schema| {
-                let file = File::create(&path)?;
-                Ok(ArrowWriter::try_new(file, schema, None)?)
-            },
-        ))?;
+        detach(
+            py,
+            self.query_to_file(
+                query,
+                r#ref,
+                max_rows,
+                cache,
+                namespace.as_deref(),
+                args.unwrap_or_default(),
+                priority,
+                client_timeout,
+                |schema| {
+                    let file = File::create(&path)?;
+                    Ok(ArrowWriter::try_new(file, schema, None)?)
+                },
+            ),
+        )?;
 
         Ok(path)
     }
@@ -455,6 +463,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn query_to_csv_file(
         &self,
+        py: Python<'_>,
         path: PathBuf,
         query: &str,
         r#ref: Option<RefArg>,
@@ -468,20 +477,23 @@ impl Client {
         use arrow_csv::WriterBuilder;
 
         let namespace = namespace.map(|a| a.0);
-        rt().block_on(self.query_to_file(
-            query,
-            r#ref,
-            max_rows,
-            cache,
-            namespace.as_deref(),
-            args.unwrap_or_default(),
-            priority,
-            client_timeout,
-            |_| {
-                let file = File::create(&path)?;
-                Ok(WriterBuilder::new().with_header(true).build(file))
-            },
-        ))?;
+        detach(
+            py,
+            self.query_to_file(
+                query,
+                r#ref,
+                max_rows,
+                cache,
+                namespace.as_deref(),
+                args.unwrap_or_default(),
+                priority,
+                client_timeout,
+                |_| {
+                    let file = File::create(&path)?;
+                    Ok(WriterBuilder::new().with_header(true).build(file))
+                },
+            ),
+        )?;
 
         Ok(path)
     }
@@ -528,6 +540,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn query_to_json_file(
         &self,
+        py: Python<'_>,
         path: PathBuf,
         query: &str,
         file_format: &str,
@@ -553,29 +566,35 @@ impl Client {
         };
 
         if jsonl {
-            rt().block_on(self.query_to_file(
-                query,
-                r#ref,
-                max_rows,
-                cache,
-                namespace.as_deref(),
-                args.unwrap_or_default(),
-                priority,
-                client_timeout,
-                |_| Ok(LineDelimitedWriter::new(File::create(&path)?)),
-            ))?;
+            detach(
+                py,
+                self.query_to_file(
+                    query,
+                    r#ref,
+                    max_rows,
+                    cache,
+                    namespace.as_deref(),
+                    args.unwrap_or_default(),
+                    priority,
+                    client_timeout,
+                    |_| Ok(LineDelimitedWriter::new(File::create(&path)?)),
+                ),
+            )?;
         } else {
-            rt().block_on(self.query_to_file(
-                query,
-                r#ref,
-                max_rows,
-                cache,
-                namespace.as_deref(),
-                args.unwrap_or_default(),
-                priority,
-                client_timeout,
-                |_| Ok(ArrayWriter::new(File::create(&path)?)),
-            ))?;
+            detach(
+                py,
+                self.query_to_file(
+                    query,
+                    r#ref,
+                    max_rows,
+                    cache,
+                    namespace.as_deref(),
+                    args.unwrap_or_default(),
+                    priority,
+                    client_timeout,
+                    |_| Ok(ArrayWriter::new(File::create(&path)?)),
+                ),
+            )?;
         }
 
         Ok(path)
@@ -671,7 +690,7 @@ impl Client {
         let sql = query.to_sql();
         debug!(sql, "built SQL query");
 
-        rt().block_on(async {
+        let table = detach(py, async {
             let (schema, stream) = self
                 .run_query(
                     &sql,
@@ -686,9 +705,10 @@ impl Client {
                 .await?;
 
             let batches: Vec<RecordBatch> = stream.try_collect().await?;
-            let table = pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))?;
-            Ok(table.into_pyarrow(py)?.unbind())
-        })
+            pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))
+        })?;
+
+        Ok(table.into_pyarrow(py)?.unbind())
     }
 }
 

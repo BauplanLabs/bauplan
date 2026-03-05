@@ -65,6 +65,7 @@ impl Client {
     ) -> "typing.Iterator[Namespace]")]
     fn get_namespaces(
         &self,
+        py: Python<'_>,
         r#ref: RefArg,
         filter_by_name: Option<String>,
         limit: Option<usize>,
@@ -72,14 +73,14 @@ impl Client {
         let r#ref = r#ref.0;
         let profile = self.profile.clone();
         let agent = self.agent.clone();
-        PyPaginator::new(limit, move |token, limit| {
+        PyPaginator::new(py, limit, move |py, token, limit| {
             let req = GetNamespaces {
                 at_ref: &r#ref,
                 filter_by_name: filter_by_name.as_deref(),
             }
             .paginate(token, limit);
 
-            Ok(super::roundtrip(req, &profile, &agent)?)
+            Ok(super::roundtrip(py, req, &profile, &agent)?)
         })
     }
 
@@ -112,13 +113,13 @@ impl Client {
         namespace: "str | Namespace",
         r#ref: "str | Ref",
     ) -> "Namespace")]
-    fn get_namespace(&self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<Namespace> {
+    fn get_namespace(&self, py: Python<'_>, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<Namespace> {
         let req = GetNamespace {
             name: &namespace.0,
             at_ref: &r#ref.0,
         };
 
-        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
     }
 
     /// Create a new namespace at a given branch.
@@ -162,7 +163,7 @@ impl Client {
         if_not_exists: "bool" = false,
     ) -> "Namespace")]
     fn create_namespace(
-        &self,
+        &self, py: Python<'_>,
         namespace: NamespaceArg,
         branch: BranchArg,
         commit_body: Option<&str>,
@@ -186,7 +187,7 @@ impl Client {
             },
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(ns) => Ok(ns),
             Err(e) => {
                 if if_not_exists
@@ -243,7 +244,7 @@ impl Client {
         commit_properties: "dict[str, str] | None" = None,
     ) -> "Branch")]
     fn delete_namespace(
-        &self,
+        &self, py: Python<'_>,
         namespace: NamespaceArg,
         branch: BranchArg,
         if_exists: bool,
@@ -267,7 +268,7 @@ impl Client {
             },
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(r) => Ok(r),
             Err(e) => {
                 if if_exists
@@ -310,13 +311,13 @@ impl Client {
         namespace: "str | Namespace",
         r#ref: "str | Ref",
     ) -> "bool")]
-    fn has_namespace(&self, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<bool> {
+    fn has_namespace(&self, py: Python<'_>, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<bool> {
         let req = GetNamespace {
             name: &namespace.0,
             at_ref: &r#ref.0,
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
             Err(e) => {
                 if matches!(e.kind(), Some(ApiErrorKind::NamespaceNotFound { .. })) {

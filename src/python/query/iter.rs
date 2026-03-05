@@ -6,7 +6,7 @@ use futures::{Stream, TryStreamExt};
 use pyo3::prelude::*;
 use pyo3::types::PyList;
 
-use crate::python::rt;
+use crate::python::detach;
 
 type BatchStream = Pin<Box<dyn Stream<Item = Result<RecordBatch, PyErr>> + Send>>;
 
@@ -68,7 +68,8 @@ impl BatchStreamRowIterator {
             return Ok(Some(item));
         }
 
-        let batch = match rt().block_on(inner.stream.try_next())? {
+        let fut = inner.stream.try_next();
+        let batch = match detach(py, fut)? {
             Some(b) => b,
             None => return Ok(None),
         };

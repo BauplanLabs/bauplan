@@ -13,7 +13,7 @@ use crate::{
         generated as commanderpb,
         job::{Job, JobKind, JobState},
     },
-    python::{exceptions::BauplanError, paginate::PyPaginator, rt},
+    python::{detach, exceptions::BauplanError, paginate::PyPaginator},
 };
 
 use super::Client;
@@ -382,7 +382,7 @@ impl Client {
     /// Parameters:
     ///     job_id: A job ID
     #[pyo3(signature = (job_id, /) -> "Job")]
-    fn get_job(&self, job_id: &str) -> PyResult<Job> {
+    fn get_job(&self, py: Python<'_>, job_id: &str) -> PyResult<Job> {
         let mut req = Request::new(commanderpb::GetJobsRequest {
             job_ids: vec![job_id.to_string()],
             all_users: true,
@@ -390,8 +390,7 @@ impl Client {
         });
         req.set_timeout(self.client_timeout);
 
-        let response = rt()
-            .block_on(self.grpc.clone().get_jobs(req))
+        let response = detach(py, self.grpc.clone().get_jobs(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         let jobs = response.into_inner().jobs;
@@ -430,6 +429,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn get_jobs(
         &self,
+        py: Python<'_>,
         all_users: bool,
         filter_by_ids: Option<JobListArg>,
         filter_by_users: Option<JobListArg>,
@@ -456,7 +456,7 @@ impl Client {
         let client_timeout = self.client_timeout;
         let mut grpc = self.grpc.clone();
 
-        PyPaginator::new(limit, move |token, page_limit| {
+        PyPaginator::new(py, limit, move |py, token, page_limit| {
             let mut req = Request::new(commanderpb::GetJobsRequest {
                 job_ids: job_ids.clone(),
                 all_users,
@@ -471,8 +471,7 @@ impl Client {
             });
             req.set_timeout(client_timeout);
 
-            let page = rt()
-                .block_on(grpc.get_jobs(req))
+            let page = detach(py, grpc.get_jobs(req))
                 .map_err(|e| BauplanError::new_err(e.to_string()))?
                 .into_inner();
 
@@ -494,15 +493,14 @@ impl Client {
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
     #[pyo3(signature = (job) -> "list[JobLogEvent]")]
-    fn get_job_logs(&self, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
+    fn get_job_logs(&self, py: Python<'_>, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
         let mut req = Request::new(commanderpb::GetLogsRequest {
             job_id: job.0,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
 
-        let response = rt()
-            .block_on(self.grpc.clone().get_logs(req))
+        let response = detach(py, self.grpc.clone().get_logs(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         let events: Vec<JobLogEvent> = response
@@ -530,6 +528,7 @@ impl Client {
     #[pyo3(signature = (job, *, include_logs=false, include_snapshot=false) -> "JobContext")]
     fn get_job_context(
         &self,
+        py: Python<'_>,
         job: JobArg,
         include_logs: bool,
         include_snapshot: bool,
@@ -543,8 +542,7 @@ impl Client {
         });
         req.set_timeout(self.client_timeout);
 
-        let response = rt()
-            .block_on(self.grpc.clone().get_job_context(req))
+        let response = detach(py, self.grpc.clone().get_job_context(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         let inner = response.into_inner();
@@ -575,6 +573,7 @@ impl Client {
     #[pyo3(signature = (jobs, *, include_logs=false, include_snapshot=false) -> "list[JobContext]")]
     fn get_job_contexts(
         &self,
+        py: Python<'_>,
         jobs: JobListArg,
         include_logs: bool,
         include_snapshot: bool,
@@ -587,8 +586,7 @@ impl Client {
         });
         req.set_timeout(self.client_timeout);
 
-        let resp = rt()
-            .block_on(self.grpc.clone().get_job_context(req))
+        let resp = detach(py, self.grpc.clone().get_job_context(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?
             .into_inner();
 
@@ -613,14 +611,14 @@ impl Client {
     /// Parameters:
     ///     job_id: A job ID
     #[pyo3(signature = (job_id, /) -> "None")]
-    fn cancel_job(&self, job_id: &str) -> PyResult<()> {
+    fn cancel_job(&self, py: Python<'_>, job_id: &str) -> PyResult<()> {
         let req = commanderpb::CancelJobRequest {
             job_id: Some(commanderpb::JobId {
                 id: job_id.to_owned(),
                 ..Default::default()
             }),
         };
-        rt().block_on(self.grpc.clone().cancel(req))
+        detach(py, self.grpc.clone().cancel(req))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
         Ok(())

@@ -70,6 +70,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn get_commits(
         &self,
+        py: Python<'_>,
         r#ref: RefArg,
         filter_by_message: Option<String>,
         filter_by_author_username: Option<String>,
@@ -90,7 +91,7 @@ impl Client {
         let filter_by_authored_date_start_at = filter_by_authored_date_start_at.map(|a| a.0);
         let filter_by_authored_date_end_at = filter_by_authored_date_end_at.map(|a| a.0);
 
-        PyPaginator::new(limit, move |token, limit| {
+        PyPaginator::new(py, limit, move |py, token, limit| {
             let req = GetCommits {
                 at_ref: &r#ref,
                 filter_by_message: filter_by_message.as_deref(),
@@ -106,7 +107,7 @@ impl Client {
             }
             .paginate(token, limit);
 
-            Ok(super::roundtrip(req, &profile, &agent)?)
+            Ok(super::roundtrip(py, req, &profile, &agent)?)
         })
     }
 }
