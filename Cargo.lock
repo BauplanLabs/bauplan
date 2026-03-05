@@ -157,6 +157,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "arc-swap"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9f3647c145568cec02c42054e07bdf9a5a698e15b466fb2341bfc393cd24aa5"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "array-init"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -569,6 +578,7 @@ dependencies = [
  "humantime",
  "iceberg-catalog-rest",
  "indicatif",
+ "log",
  "nondestructive",
  "opentelemetry",
  "parquet",
@@ -578,6 +588,7 @@ dependencies = [
  "prost-types",
  "pyo3",
  "pyo3-arrow",
+ "pyo3-log",
  "rand 0.8.5",
  "regex",
  "reqwest",
@@ -3157,6 +3168,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "pyo3-log"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "26c2ec80932c5c3b2d4fbc578c9b56b2d4502098587edb8bef5b6bfcad43682e"
+dependencies = [
+ "arc-swap",
+ "log",
+ "pyo3",
+]
+
+[[package]]
 name = "pyo3-macros"
 version = "0.28.2"
 source = "git+https://github.com/pyo3/pyo3?rev=f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d#f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d"
@@ -4646,6 +4668,7 @@ version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
 dependencies = [
+ "log",
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",

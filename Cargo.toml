@@ -29,7 +29,7 @@ path = "src/main.rs"
 
 [features]
 default = []
-python = ["dep:arrow-csv", "dep:parquet", "dep:pyo3", "dep:pyo3-arrow", "pyo3/chrono", "pyo3/uuid"]
+python = ["dep:arrow-csv", "dep:parquet", "dep:pyo3", "dep:pyo3-arrow", "dep:pyo3-log", "dep:log", "pyo3/chrono", "pyo3/uuid"]
 _integration-tests = []
 
 [dependencies]
@@ -55,6 +55,8 @@ prost-types = "0.14"
 parquet = { version = "57", optional = true }
 pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
 pyo3-arrow = { version = "0.16", optional = true }
+pyo3-log = { version = "0.13", optional = true }
+log = { version = "0.4", optional = true }
 rand = "0.8"
 regex = "1"
 rsa = { version = "0.9", features = ["pem", "sha2"] }
@@ -69,7 +71,7 @@ toml = { version = "0.8", features = ["preserve_order"] }
 tokio = { version = "1", features = ["full"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 tonic-prost = "0.14"
-tracing = "0.1"
+tracing = { version = "0.1", features = ["log"] }
 tracing-indicatif = "0.3"
 tracing-subscriber = { version = "0.3", features = ["chrono", "env-filter"] }
 ureq = "3"

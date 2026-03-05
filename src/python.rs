@@ -106,6 +106,21 @@ impl ClientError {
 ///     1. try/except `bauplan.exceptions.BauplanJobError`
 ///     2. check the `state.job_status` attribute
 ///
+/// #### Logging
+///
+/// You can use python's standard logging apparatus to tap logs from the client:
+///
+/// ```python fixture:bauplan
+/// import logging
+///
+/// # Enable debug logs from the Bauplan client.
+/// logging.basicConfig()
+/// logging.getLogger("bauplan").setLevel(logging.DEBUG)
+///
+/// client = bauplan.Client()
+/// client.query("SELECT count(*) FROM titanic", ref="main")
+/// ```
+///
 /// ## Examples
 ///
 /// ```python notest fixture:client
@@ -245,6 +260,12 @@ mod _internal {
     // `from bauplan._internal.schema import X` works.
     #[pymodule_init]
     fn init(m: &Bound<'_, PyModule>) -> PyResult<()> {
+        pyo3_log::Logger::new(m.py(), pyo3_log::Caching::LoggersAndLevels)?
+            .filter(log::LevelFilter::Off)
+            .filter_target("bauplan".to_owned(), log::LevelFilter::Trace)
+            .install()
+            .ok();
+
         m.add("__version__", env!("CARGO_PKG_VERSION"))?;
 
         let sys = m.py().import("sys")?;

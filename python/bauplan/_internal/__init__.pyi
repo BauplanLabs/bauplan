@@ -78,6 +78,21 @@ class Client:
         1. try/except `bauplan.exceptions.BauplanJobError`
         2. check the `state.job_status` attribute
 
+    #### Logging
+
+    You can use python's standard logging apparatus to tap logs from the client:
+
+    ```python fixture:bauplan
+    import logging
+
+    # Enable debug logs from the Bauplan client.
+    logging.basicConfig()
+    logging.getLogger("bauplan").setLevel(logging.DEBUG)
+
+    client = bauplan.Client()
+    client.query("SELECT count(*) FROM titanic", ref="main")
+    ```
+
     ## Examples
 
     ```python notest fixture:client
