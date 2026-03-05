@@ -11,7 +11,7 @@ For more information about Bauplan or the SDK, you can check out:
 
 ## Contributing
 
-We're not really looking for external contributions at the moment. However, feel free to [open an issue](https://github.com/bauplanlabs/bauplan/issues/new) if you encounter any problems with any part of the platform! 
+We're not really looking for external contributions at the moment. However, feel free to [open an issue](https://github.com/BauplanLabs/bauplan/issues/new) if you encounter any problems with any part of the platform! 
 
 ### Running the test suite
 
@@ -30,4 +30,4 @@ The command `cargo test --features _integration-tests` will run the first two. `
 
 ### Maintaining the python stubs
 
-You can generate stub definitions for the python SDK with `cargo run -p gen-stubs`. However, the stub generation is currently [incomplete](https://github.com/PyO3/pyo3/issues/5137), so the output needs to be merged by hand with the existing stubs. The instructions for that can be found in [`gen-stubs/README.md`](/gen-stubs/README.md). This is best done with an LLM of some kind.
+You can generate stub definitions for the python SDK with `cargo run -p gen-stubs`. However, the stub generation is currently [incomplete](https://github.com/PyO3/pyo3/issues/5137), so the output needs to be merged by hand with the existing stubs. The instructions for that can be found in [`gen-stubs/README.md`](https://github.com/BauplanLabs/bauplan/blob/main/gen-stubs/README.md). This is best done with an LLM of some kind.

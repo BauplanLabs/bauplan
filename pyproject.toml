@@ -6,9 +6,42 @@ build-backend = "maturin"
 name = "bauplan"
 requires-python = ">=3.10"
 dynamic = ["version"]
-dependencies = [
-    "pyarrow>=15.0.0",
+readme = "README.md"
+description = "The client SDK and CLI for Bauplan"
+authors = [{ name = "Bauplan Inc." }]
+license = "Apache-2.0 OR MIT"
+keywords = [
+    "bauplan",
+    "data-pipelines",
+    "iceberg",
+    "lakehouse",
+    "data-versioning",
 ]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = ["pyarrow>=15.0.0"]
+
+[project.urls]
+Documentation = "https://docs.bauplanlabs.com/"
+Homepage = "https://www.bauplanlabs.com/"
+Issues = "https://github.com/BauplanLabs/bauplan/issues"
+Repository = "https://github.com/BauplanLabs/bauplan/"
+Changelog = "https://github.com/BauplanLabs/bauplan/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
@@ -27,14 +60,20 @@ module-name = "bauplan._internal"
 bindings = "pyo3"
 features = ["pyo3/extension-module", "python"]
 data = "python/data"
-use_base_python = true
+strip = true
+use-base-python = true
+include = [
+    # https://github.com/rust-lang/cargo/issues/5933
+    { path = "LICENSE-APACHE", format = "sdist" },
+    { path = "LICENSE-MIT", format = "sdist" },
+]
 
 [tool.ruff]
 exclude = ["tests/fixtures", "src/cli/init/models.py"]
 
 [tool.ruff.lint]
 select = [
-    "ANN001",  # Missing type annotation for function argument
+    "ANN001", # Missing type annotation for function argument
 ]
 
 [tool.ty.src]
