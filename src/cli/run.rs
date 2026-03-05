@@ -240,20 +240,13 @@ pub(crate) async fn monitor_job_progress(
         };
 
         match event {
-            RunnerEvent::RuntimeUserLog(commanderpb::RuntimeLogEvent {
-                level,
-                output_stream,
-                r#type,
-                ref msg,
-                ref job_id,
-                ..
-            }) => {
+            RunnerEvent::RuntimeUserLog(ref ev) => {
                 debug!(
-                    job_id,
-                    ?level,
-                    ?output_stream,
-                    ?r#type,
-                    msg,
+                    job_id = ev.job_id,
+                    level = ?ev.level(),
+                    output_stream = ?ev.output_stream(),
+                    r#type = ?ev.r#type(),
+                    msg = ev.msg,
                     "runtime log event"
                 );
 
@@ -460,6 +453,10 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                 let Some(metadata) = ev.task_metadata else {
                     return;
                 };
+
+                if metadata.level() != commanderpb::task_metadata::TaskLevel::Dag {
+                    return;
+                }
 
                 cli.multiprogress
                     .suspend(|| print_user_log(&ev.msg, stream, metadata));
