@@ -45,20 +45,21 @@ impl Client {
     ) -> "typing.Iterator[Branch]")]
     fn get_branches(
         &self,
+        py: Python<'_>,
         name: Option<String>,
         user: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
         let profile = self.profile.clone();
         let agent = self.agent.clone();
-        PyPaginator::new(limit, move |token, limit| {
+        PyPaginator::new(py, limit, move |py, token, limit| {
             let req = GetBranches {
                 filter_by_name: name.as_deref(),
                 filter_by_user: user.as_deref(),
             }
             .paginate(token, limit);
 
-            Ok(super::roundtrip(req, &profile, &agent)?)
+            Ok(super::roundtrip(py, req, &profile, &agent)?)
         })
     }
 
@@ -86,9 +87,9 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (branch: "str | Branch") -> "Branch")]
-    fn get_branch(&self, branch: BranchArg) -> PyResult<Branch> {
+    fn get_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<Branch> {
         let req = GetBranch { name: &branch.0 };
-        let b = super::roundtrip(req, &self.profile, &self.agent)?;
+        let b = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(b)
     }
 
@@ -114,10 +115,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (branch: "str | Branch") -> "bool")]
-    fn has_branch(&self, branch: BranchArg) -> PyResult<bool> {
+    fn has_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<bool> {
         let req = GetBranch { name: &branch.0 };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
             Err(e)
                 if matches!(
@@ -172,7 +173,7 @@ impl Client {
         if_not_exists: "bool" = false,
     ) -> "Branch")]
     fn create_branch(
-        &self,
+        &self, py: Python<'_>,
         branch: BranchArg,
         from_ref: RefArg,
         if_not_exists: bool,
@@ -182,7 +183,7 @@ impl Client {
             from_ref: &from_ref.0,
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(b) => Ok(b),
             Err(e) => {
                 if let Some(ApiErrorKind::BranchExists {
@@ -232,13 +233,13 @@ impl Client {
         branch: "str | Branch",
         new_branch: "str | Branch",
     ) -> "Branch")]
-    fn rename_branch(&self, branch: BranchArg, new_branch: BranchArg) -> PyResult<Branch> {
+    fn rename_branch(&self, py: Python<'_>, branch: BranchArg, new_branch: BranchArg) -> PyResult<Branch> {
         let req = RenameBranch {
             name: &branch.0,
             new_name: &new_branch.0,
         };
 
-        let b = super::roundtrip(req, &self.profile, &self.agent)?;
+        let b = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(b)
     }
 
@@ -281,7 +282,7 @@ impl Client {
         commit_properties: "dict[str, str] | None" = None,
     ) -> "Branch")]
     fn merge_branch(
-        &self,
+        &self, py: Python<'_>,
         source_ref: RefArg,
         into_branch: BranchArg,
         commit_message: Option<&str>,
@@ -304,7 +305,7 @@ impl Client {
             },
         };
 
-        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
     }
 
     /// Delete a branch.
@@ -336,10 +337,10 @@ impl Client {
         *,
         if_exists: "bool" = false,
     ) -> "bool")]
-    fn delete_branch(&self, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
+    fn delete_branch(&self, py: Python<'_>, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteBranch { name: &branch.0 };
 
-        if let Err(e) = super::roundtrip(req, &self.profile, &self.agent) {
+        if let Err(e) = super::roundtrip(py, req, &self.profile, &self.agent) {
             if if_exists && matches!(e.kind(), Some(ApiErrorKind::BranchNotFound { .. })) {
                 return Ok(false);
             } else {

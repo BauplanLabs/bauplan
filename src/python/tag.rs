@@ -35,18 +35,19 @@ impl Client {
     ) -> "typing.Iterator[Tag]")]
     fn get_tags(
         &self,
+        py: Python<'_>,
         filter_by_name: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
         let profile = self.profile.clone();
         let agent = self.agent.clone();
-        PyPaginator::new(limit, move |token, limit| {
+        PyPaginator::new(py, limit, move |py, token, limit| {
             let req = GetTags {
                 filter_by_name: filter_by_name.as_deref(),
             }
             .paginate(token, limit);
 
-            Ok(super::roundtrip(req, &profile, &agent)?)
+            Ok(super::roundtrip(py, req, &profile, &agent)?)
         })
     }
 
@@ -73,9 +74,9 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
-    fn get_tag(&self, tag: TagArg) -> PyResult<Tag> {
+    fn get_tag(&self, py: Python<'_>, tag: TagArg) -> PyResult<Tag> {
         let req = GetTag { name: &tag.0 };
-        let t = super::roundtrip(req, &self.profile, &self.agent)?;
+        let t = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(t)
     }
 
@@ -101,10 +102,10 @@ impl Client {
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     ValueError: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "bool")]
-    fn has_tag(&self, tag: TagArg) -> PyResult<bool> {
+    fn has_tag(&self, py: Python<'_>, tag: TagArg) -> PyResult<bool> {
         let req = GetTag { name: &tag.0 };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
             Err(e)
                 if matches!(
@@ -151,13 +152,13 @@ impl Client {
         *,
         if_not_exists: "bool" = false,
     ) -> "Tag")]
-    fn create_tag(&self, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
+    fn create_tag(&self, py: Python<'_>, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
         let req = CreateTag {
             name: &tag.0,
             from_ref: &from_ref.0,
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(t) => Ok(t),
 
             Err(e) => {
@@ -206,13 +207,13 @@ impl Client {
         tag: "str | Tag",
         new_tag: "str | Tag",
     ) -> "Tag")]
-    fn rename_tag(&self, tag: TagArg, new_tag: TagArg) -> PyResult<Tag> {
+    fn rename_tag(&self, py: Python<'_>, tag: TagArg, new_tag: TagArg) -> PyResult<Tag> {
         let req = RenameTag {
             name: &tag.0,
             new_name: &new_tag.0,
         };
 
-        let t = super::roundtrip(req, &self.profile, &self.agent)?;
+        let t = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(t)
     }
 
@@ -244,10 +245,10 @@ impl Client {
         *,
         if_exists: "bool" = false,
     ) -> "bool")]
-    fn delete_tag(&self, tag: TagArg, if_exists: bool) -> PyResult<bool> {
+    fn delete_tag(&self, py: Python<'_>, tag: TagArg, if_exists: bool) -> PyResult<bool> {
         let req = DeleteTag { name: &tag.0 };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
             Err(e) if matches!(e.kind(), Some(ApiErrorKind::TagNotFound { .. })) && if_exists => {
                 Ok(false)

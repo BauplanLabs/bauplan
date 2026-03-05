@@ -249,6 +249,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn run(
         &self,
+        py: Python<'_>,
         project_dir: PathBuf,
         r#ref: Option<RefArg>,
         namespace: Option<NamespaceArg>,
@@ -279,11 +280,14 @@ impl Client {
         let project = ProjectFile::from_dir(project_dir).map_err(job_err)?;
         let zip_file = project.create_code_snapshot().map_err(job_err)?;
 
-        let parameters = rt().block_on(resolve_job_parameters(
-            &mut self.grpc.clone(),
-            &project,
-            parameters.unwrap_or_default(),
-        ))?;
+        let parameters = super::detach(
+            py,
+            resolve_job_parameters(
+                &mut self.grpc.clone(),
+                &project,
+                parameters.unwrap_or_default(),
+            ),
+        )?;
 
         let req = commanderpb::CodeSnapshotRunRequest {
             job_request_common: Some(common),
@@ -302,7 +306,7 @@ impl Client {
         };
 
         let mut client = self.grpc.clone();
-        let state = rt().block_on(async {
+        let state = super::detach(py, async {
             let resp = client
                 .code_snapshot_run(req)
                 .await

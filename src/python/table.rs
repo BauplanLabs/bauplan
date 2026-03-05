@@ -16,7 +16,6 @@ use crate::{
         namespace::NamespaceArg,
         paginate::PyPaginator,
         refs::{BranchArg, RefArg},
-        rt,
         run::monitor_job,
     },
     table::{DeleteTable, GetTable, GetTables, RevertTable},
@@ -97,6 +96,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn create_table(
         &self,
+        py: Python<'_>,
         table: &str,
         search_uri: &str,
         branch: Option<&str>,
@@ -109,6 +109,7 @@ impl Client {
     ) -> PyResult<Table> {
         // Create the plan.
         let plan_state = self.plan_table_creation(
+            py,
             table,
             search_uri,
             branch,
@@ -154,7 +155,7 @@ impl Client {
         };
 
         let mut client = self.grpc.clone();
-        rt().block_on(async {
+        super::detach(py, async {
             let resp = client
                 .table_create_plan_apply(req)
                 .await
@@ -189,7 +190,7 @@ impl Client {
             namespace: Some(&plan_state.ctx.namespace),
         };
 
-        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
     }
 
     /// Create a table import plan from an S3 location.
@@ -245,6 +246,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn plan_table_creation(
         &self,
+        py: Python<'_>,
         table: &str,
         search_uri: &str,
         branch: Option<&str>,
@@ -270,7 +272,7 @@ impl Client {
         };
 
         let mut client = self.grpc.clone();
-        rt().block_on(async {
+        super::detach(py, async {
             let resp = client
                 .table_create_plan(req)
                 .await
@@ -383,7 +385,7 @@ impl Client {
         };
 
         let mut client = self.grpc.clone();
-        rt().block_on(async {
+        super::detach(py, async {
             let resp = client
                 .table_create_plan_apply(req)
                 .await
@@ -466,6 +468,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn import_data(
         &self,
+        py: Python<'_>,
         table: &str,
         search_uri: &str,
         branch: Option<&str>,
@@ -497,7 +500,7 @@ impl Client {
         };
 
         let mut client = self.grpc.clone();
-        rt().block_on(async {
+        super::detach(py, async {
             let resp = client
                 .table_data_import(req)
                 .await
@@ -590,6 +593,7 @@ impl Client {
     #[allow(clippy::too_many_arguments)]
     fn create_external_table_from_parquet(
         &self,
+        py: Python<'_>,
         table: &str,
         search_patterns: Vec<String>,
         branch: Option<&str>,
@@ -620,7 +624,7 @@ impl Client {
         };
 
         let mut client = self.grpc.clone();
-        rt().block_on(async {
+        super::detach(py, async {
             let resp = client
                 .external_table_create(req)
                 .await
@@ -688,6 +692,7 @@ impl Client {
     ) -> "typing.Iterator[Table]")]
     fn get_tables(
         &self,
+        py: Python<'_>,
         r#ref: RefArg,
         filter_by_name: Option<String>,
         filter_by_namespace: Option<String>,
@@ -696,7 +701,7 @@ impl Client {
         let r#ref = r#ref.0;
         let profile = self.profile.clone();
         let agent = self.agent.clone();
-        PyPaginator::new(limit, move |token, limit| {
+        PyPaginator::new(py, limit, move |py, token, limit| {
             let req = GetTables {
                 at_ref: &r#ref,
                 filter_by_name: filter_by_name.as_deref(),
@@ -704,7 +709,7 @@ impl Client {
             }
             .paginate(token, limit);
 
-            Ok(super::roundtrip(req, &profile, &agent)?)
+            Ok(super::roundtrip(py, req, &profile, &agent)?)
         })
     }
 
@@ -752,7 +757,7 @@ impl Client {
         namespace: "str | Namespace | None" = None,
     ) -> "Table")]
     fn get_table(
-        &self,
+        &self, py: Python<'_>,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<NamespaceArg>,
@@ -764,7 +769,7 @@ impl Client {
             namespace: namespace.as_deref(),
         };
 
-        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
     }
 
     /// Check if a table exists.
@@ -801,7 +806,7 @@ impl Client {
         namespace: "str | Namespace | None" = None,
     ) -> "bool")]
     fn has_table(
-        &self,
+        &self, py: Python<'_>,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<NamespaceArg>,
@@ -813,7 +818,7 @@ impl Client {
             namespace: namespace.as_deref(),
         };
 
-        if let Err(e) = super::roundtrip(req, &self.profile, &self.agent) {
+        if let Err(e) = super::roundtrip(py, req, &self.profile, &self.agent) {
             if matches!(e.kind(), Some(ApiErrorKind::TableNotFound { .. })) {
                 return Ok(false);
             } else {
@@ -869,7 +874,7 @@ impl Client {
     ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn delete_table(
-        &self,
+        &self, py: Python<'_>,
         table: TableArg,
         branch: BranchArg,
         namespace: Option<NamespaceArg>,
@@ -894,7 +899,7 @@ impl Client {
             },
         };
 
-        match super::roundtrip(req, &self.profile, &self.agent) {
+        match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(r) => Ok(r),
             Err(e) => {
                 if if_exists && let Some(ApiErrorKind::TableNotFound { catalog_ref, .. }) = e.kind()
@@ -953,7 +958,7 @@ impl Client {
         overwrite: "bool" = false,
     ) -> "Table")]
     fn create_external_table_from_metadata(
-        &self,
+        &self, py: Python<'_>,
         table: &str,
         metadata_json_uri: &str,
         namespace: &str,
@@ -972,7 +977,7 @@ impl Client {
             namespace,
         };
 
-        super::roundtrip(req, &self.profile, &self.agent)?;
+        super::roundtrip(py, req, &self.profile, &self.agent)?;
 
         let req = GetTable {
             name: table,
@@ -980,7 +985,7 @@ impl Client {
             namespace: Some(namespace),
         };
 
-        Ok(super::roundtrip(req, &self.profile, &self.agent)?)
+        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
     }
 
     /// Revert a table to a previous state.
@@ -1032,7 +1037,7 @@ impl Client {
     ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn revert_table(
-        &self,
+        &self, py: Python<'_>,
         table: TableArg,
         namespace: Option<NamespaceArg>,
         source_ref: RefArg,
@@ -1060,7 +1065,7 @@ impl Client {
             },
         };
 
-        let resp = super::roundtrip(req, &self.profile, &self.agent)?;
+        let resp = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(resp)
     }
 }
