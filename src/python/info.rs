@@ -160,7 +160,7 @@ impl Client {
     ///     client_timeout: timeout in seconds.
     ///
     /// Returns:
-    ///     An `InfoState` object containing organization, user, and runner information.
+    ///     A `bauplan.InfoState` object containing organization, user, and runner information.
     #[pyo3(signature = (*, client_timeout: "int | None" = None) -> "InfoState")]
     fn info(&self, py: Python<'_>, client_timeout: Option<u64>) -> PyResult<PyInfoState> {
         let mut request = Request::new(GetBauplanInfoRequest::default());
