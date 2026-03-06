@@ -1,4 +1,14 @@
 
+## [0.1.7] - 2026-03-06
+
+### New Features
+
+- [pysdk] Allow hooking into `logging` (b3a13bab91ce3c7ea85cee0df5376db4aabe3b45)
+
+### Bugfixes
+
+- [pysdk] Release the GIL during network operations (56cde6f410774a88ffd6511a9ddc21880779183b)
+
 ## [0.1.6] - 2026-03-05
 
 ### New Features
