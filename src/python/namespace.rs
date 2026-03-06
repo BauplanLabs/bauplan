@@ -51,12 +51,12 @@ impl Client {
     ///     limit: Optional, max number of namespaces to get.
     ///
     /// Raises:
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     ///
     /// Yields:
-    ///     A Namespace object.
+    ///     `bauplan.schema.Namespace` objects.
     #[pyo3(signature = (
         r#ref: "str | Ref",
         *,
@@ -105,10 +105,10 @@ impl Client {
     ///     A `bauplan.schema.Namespace` object.
     ///
     /// Raises:
-    ///     NamespaceNotFoundError: if the namespace does not exist.
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         namespace: "str | Namespace",
         r#ref: "str | Ref",
@@ -147,13 +147,13 @@ impl Client {
     ///     The created `bauplan.schema.Namespace` object.
     ///
     /// Raises:
-    ///     CreateNamespaceForbiddenError: if the user does not have access to create the namespace.
-    ///     BranchNotFoundError: if the branch does not exist.
-    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
-    ///     BranchHeadChangedError: if the branch head hash has changed.
-    ///     NamespaceExistsError: if the namespace already exists.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.CreateNamespaceForbiddenError`: if the user does not have access to create the namespace.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.NamespaceExistsError`: if the namespace already exists.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         namespace: "str | Namespace",
         branch: "str | Branch",
@@ -227,14 +227,14 @@ impl Client {
     ///     A `bauplan.schema.Branch` object pointing to head.
     ///
     /// Raises:
-    ///     DeleteNamespaceForbiddenError: if the user does not have access to delete the namespace.
-    ///     BranchNotFoundError: if the branch does not exist.
-    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
-    ///     BranchHeadChangedError: if the branch head hash has changed.
-    ///     NamespaceNotFoundError: if the namespace does not exist.
-    ///     NamespaceIsNotEmptyError: if the namespace is not empty.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.DeleteNamespaceForbiddenError`: if the user does not have access to delete the namespace.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace is not empty.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         namespace: "str | Namespace",
         branch: "str | Branch",
@@ -304,9 +304,9 @@ impl Client {
     ///     A boolean for if the namespace exists.
     ///
     /// Raises:
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         namespace: "str | Namespace",
         r#ref: "str | Ref",

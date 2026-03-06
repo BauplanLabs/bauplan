@@ -132,7 +132,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for JobKindListArg {
     }
 }
 
-/// The output stream for a log event.
+/// The output stream of a log event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[pyclass(name = "JobLogStream", module = "bauplan.schema", from_py_object, eq)]
 pub(crate) enum JobLogStream {
@@ -169,7 +169,7 @@ impl TryFrom<i32> for JobLogStream {
     }
 }
 
-/// The log level for a log event.
+/// The severity level of a log event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[pyclass(
     name = "JobLogLevel",
@@ -218,7 +218,7 @@ impl TryFrom<i32> for JobLogLevel {
     }
 }
 
-/// A log event from a job.
+/// A single log message from a job execution. When you output logs within a Python model, they are persisted as `JobLogEvent`s.
 #[derive(Debug, Clone, Serialize)]
 #[pyclass(
     name = "JobLogEvent",
@@ -267,7 +267,9 @@ impl TryFrom<commanderpb::RuntimeLogEvent> for JobLogEvent {
 #[derive(Debug, Clone, Serialize)]
 #[pyclass(module = "bauplan.schema", skip_from_py_object, get_all)]
 pub(crate) struct DAGNode {
+    /// The unique identifier for this node (model).
     id: String,
+    /// The model name.
     name: String,
 }
 
@@ -280,11 +282,13 @@ impl From<commanderpb::ModelNode> for DAGNode {
     }
 }
 
-/// An edge in the job DAG (a dependency).
+/// A dependency between two `DAGNode` instances, representing dataflow.
 #[derive(Debug, Clone, Serialize)]
 #[pyclass(module = "bauplan.schema", skip_from_py_object, get_all)]
 pub(crate) struct DAGEdge {
+    /// The source model ID. `None` when the data source is a table scan rather than another model's output.
     source_model: Option<String>,
+    /// The destination model ID.
     destination_model: String,
 }
 
@@ -297,7 +301,7 @@ impl From<commanderpb::ModelEdge> for DAGEdge {
     }
 }
 
-/// Context for a job, including logs, DAG, and code snapshot.
+/// The working context of a job, including its ref, DAG, code snapshot, and logs.
 #[derive(Debug, Clone)]
 #[pyclass(module = "bauplan.schema", skip_from_py_object, get_all)]
 pub(crate) struct JobContext {
@@ -379,8 +383,18 @@ fn decompress_snapshot(data: &[u8]) -> Option<HashMap<String, String>> {
 impl Client {
     /// EXPERIMENTAL: Get a job by ID or ID prefix.
     ///
+    /// ```python fixture:my_job
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// job = client.get_job(my_job.id)
+    /// print(f"{job.human_readable_status} ({job.kind})")
+    /// ```
+    ///
     /// Parameters:
     ///     job_id: A job ID
+    /// Returns:
+    ///     A `bauplan.schema.Job` object.
     #[pyo3(signature = (job_id, /) -> "Job")]
     fn get_job(&self, py: Python<'_>, job_id: &str) -> PyResult<Job> {
         let mut req = Request::new(commanderpb::GetJobsRequest {
@@ -403,6 +417,14 @@ impl Client {
 
     /// Get jobs with optional filtering.
     ///
+    /// ```python
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// for job in client.get_jobs():
+    ///     print(f"{job.id}: {job.status} ({job.kind})")
+    /// ```
+    ///
     /// Parameters:
     ///     all_users: Optional[bool]: Whether to list jobs from all users or only the current user.
     ///     filter_by_ids: Optional[Union[str, List[str]]]: Optional, filter by job IDs.
@@ -414,7 +436,7 @@ impl Client {
     ///     limit: Optional[int]: Optional, max number of jobs to return.
     ///
     /// Returns:
-    ///     An iterator over `Job` objects.
+    ///     An iterator over `bauplan.schema.Job` objects.
     #[pyo3(signature = (
         *,
         all_users=false,
@@ -490,8 +512,18 @@ impl Client {
 
     /// EXPERIMENTAL: Get logs for a job.
     ///
+    /// ```python fixture:my_job
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// for log in client.get_job_logs(my_job.id):
+    ///     print(f"[{log.level}] {log.message}")
+    /// ```
+    ///
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
+    /// Returns:
+    ///     A list of `bauplan.schema.JobLogEvent` objects representing the log events for the job.
     #[pyo3(signature = (job) -> "list[JobLogEvent]")]
     fn get_job_logs(&self, py: Python<'_>, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
         let mut req = Request::new(commanderpb::GetLogsRequest {
@@ -521,10 +553,22 @@ impl Client {
 
     /// EXPERIMENTAL: Get context for a job by ID.
     ///
+    /// ```python fixture:my_job
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// ctx = client.get_job_context(my_job.id, include_logs=True)
+    /// print(f"ref: {ctx.ref}, project: {ctx.project_name}")
+    /// for log in ctx.logs:
+    ///     print(f"[{log.level}] {log.message}")
+    /// ```
+    ///
     /// Parameters:
     ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
+    /// Returns:
+    ///     A `bauplan.schema.JobContext` object containing the job details, and optionally logs and snapshot.
     #[pyo3(signature = (job, *, include_logs=false, include_snapshot=false) -> "JobContext")]
     fn get_job_context(
         &self,
@@ -566,10 +610,21 @@ impl Client {
 
     /// EXPERIMENTAL: Get context for multiple jobs.
     ///
+    /// ```python fixture:my_job
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// contexts = client.get_job_contexts([my_job], include_logs=True)
+    /// for ctx in contexts:
+    ///     print(f"{ctx.id}: {ctx.project_name} on {ctx.ref}")
+    /// ```
+    ///
     /// Parameters:
     ///     jobs: list[Union[str, Job]]: A list of job IDs or Job instances.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
+    /// Returns:
+    ///     A list of `bauplan.schema.JobContext` objects containing the job details, and optionally logs and snapshot.
     #[pyo3(signature = (jobs, *, include_logs=false, include_snapshot=false) -> "list[JobContext]")]
     fn get_job_contexts(
         &self,

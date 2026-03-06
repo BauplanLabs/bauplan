@@ -19,15 +19,23 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
+    /// ```python fixture:my_tag
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// for tag in client.get_tags():
+    ///     print(tag.name)
+    /// ```
+    ///
     /// Parameters:
     ///     filter_by_name: Optional, filter the tags by name.
     ///     limit: Optional, max number of tags to get.
     /// Returns:
-    ///     An iterator over `Tag` objects.
+    ///     An iterator over `bauplan.schema.Tag` objects.
     ///
     /// Raises:
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         *,
         filter_by_name: "str | None" = None,
@@ -59,7 +67,6 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// # retrieve only the tables as tuples of (name, kind)
     /// tag = client.get_tag('my_tag_name')
     /// ```
     ///
@@ -69,10 +76,10 @@ impl Client {
     ///     A `bauplan.schema.Tag` object.
     ///
     /// Raises:
-    ///     TagNotFoundError: if the tag does not exist.
-    ///     NotATagRefError: if the object is not a tag.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+    ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
     fn get_tag(&self, py: Python<'_>, tag: TagArg) -> PyResult<Tag> {
         let req = GetTag { name: &tag.0 };
@@ -99,8 +106,8 @@ impl Client {
     ///     A boolean for if the tag exists.
     ///
     /// Raises:
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "bool")]
     fn has_tag(&self, py: Python<'_>, tag: TagArg) -> PyResult<bool> {
         let req = GetTag { name: &tag.0 };
@@ -141,11 +148,11 @@ impl Client {
     ///     The created `bauplan.schema.Tag` object.
     ///
     /// Raises:
-    ///     CreateTagForbiddenError: if the user does not have access to create the tag.
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     TagExistsError: if the tag already exists.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.CreateTagForbiddenError`: if the user does not have access to create the tag.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.TagExistsError`: if the tag already exists.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str | Tag",
         from_ref: "str | Ref",
@@ -197,12 +204,12 @@ impl Client {
     ///     tag: The name of the tag to rename.
     ///     new_tag: The name of the new tag.
     /// Returns:
-    ///     The renamed tag object.
+    ///     The renamed `bauplan.schema.Tag` object.
     ///
     /// Raises:
-    ///     RenameTagForbiddenError: if the user does not have access to create the tag.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to rename the tag.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str | Tag",
         new_tag: "str | Tag",
@@ -235,11 +242,11 @@ impl Client {
     ///     A boolean for if the tag was deleted.
     ///
     /// Raises:
-    ///     DeleteTagForbiddenError: if the user does not have access to delete the tag.
-    ///     TagNotFoundError: if the tag does not exist.
-    ///     NotATagRefError: if the object is not a tag.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.DeleteTagForbiddenError`: if the user does not have access to delete the tag.
+    ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+    ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str | Tag",
         *,
