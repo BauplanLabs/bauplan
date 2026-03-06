@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::{grpc::generated as commanderpb, project};
 
-/// The state of a job.
+/// The execution state of a job.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
 #[allow(missing_docs)]
 #[cfg_attr(
@@ -180,7 +180,7 @@ impl std::str::FromStr for JobKind {
     }
 }
 
-/// A bauplan job, representing a unit of work such as a query, run, or import.
+/// The record of running a pipeline, query, or an import (see `bauplan.schema.JobKind` for all job kinds).
 #[derive(Debug, Clone, Serialize)]
 #[cfg_attr(
     feature = "python",

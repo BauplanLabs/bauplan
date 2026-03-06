@@ -33,6 +33,14 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
+    /// ```python fixture:my_branch
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// for commit in client.get_commits('my_ref_or_branch_name', limit=50):
+    ///     ...
+    /// ```
+    ///
     /// Parameters:
     ///     ref: The ref or branch to get the commits from.
     ///     filter_by_message: Optional, filter the commits by message (can be a string or a regex like '^abc.*$')
@@ -47,11 +55,11 @@ impl Client {
     ///     filter: Optional, a CEL filter expression to filter the commits.
     ///     limit: Optional, max number of commits to get.
     /// Returns:
-    ///     An iterator over `Commit` objects.
+    ///     An iterator over `bauplan.schema.Commit` objects.
     ///
     /// Raises:
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         r#ref: "str | Ref",
         *,

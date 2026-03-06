@@ -46,8 +46,11 @@ impl std::fmt::Display for PyRefType {
     get_all
 )]
 pub struct PyRef {
+    /// The name of the branch or tag.
     pub name: String,
+    /// The hash of the branch or tag.
     pub hash: String,
+    /// The type of the ref, either 'BRANCH', 'TAG', or 'DETACHED'.
     pub r#type: PyRefType,
 }
 
@@ -115,7 +118,7 @@ impl PyRefType {
     }
 }
 
-/// A branch reference returned by the API.
+/// A data branch, used to isolate data changes before merging into main.
 #[derive(Debug, Clone, Copy)]
 #[pyclass(name = "Branch", module = "bauplan.schema", extends = PyRef, from_py_object)]
 pub struct PyBranch;
@@ -125,7 +128,7 @@ pub struct PyBranch;
 #[pyclass(name = "Tag", module = "bauplan.schema", extends = PyRef, from_py_object)]
 pub struct PyTag;
 
-/// A detached reference (a specific commit, not on any branch) returned by the API.
+/// A ref not attached to a branch or tag, pointing directly to a commit hash.
 #[derive(Debug, Clone, Copy)]
 #[pyclass(name = "DetachedRef", module = "bauplan.schema", extends = PyRef, from_py_object)]
 pub(crate) struct PyDetachedRef;
