@@ -5,6 +5,7 @@ use similar::{ChangeTag, TextDiff};
 use std::fmt::Write as _;
 
 mod cli {
+    mod auth;
     mod branch;
     mod import;
     mod init;

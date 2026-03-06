@@ -31,6 +31,9 @@ pub enum ApiErrorKind {
         catalog_ref: CatalogRef,
     },
 
+    // 401
+    Unauthorized {},
+
     // 403
     CreateBranchForbidden {},
     CreateNamespaceForbidden {},
@@ -141,6 +144,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::TableNotFound { .. } => "TABLE_NOT_FOUND",
             Self::TagExists { .. } => "TAG_EXISTS",
             Self::TagNotFound { .. } => "TAG_NOT_FOUND",
+            Self::Unauthorized { .. } => "UNAUTHORIZED",
         };
 
         f.write_str(s)
@@ -289,6 +293,26 @@ mod test {
 
         assert_matches!(kind, ApiErrorKind::CreateBranchForbidden { .. });
         assert_eq!(message.as_deref(), Some("foo"));
+
+        Ok(())
+    }
+
+    #[test]
+    fn raw_unauthorized() -> anyhow::Result<()> {
+        let raw: RawApiError = serde_json::from_str(
+            r#"{
+                "message": "invalid api key",
+                "type": "UNAUTHORIZED"
+            }"#,
+        )?;
+
+        let err = ApiError::from_raw(http::StatusCode::UNAUTHORIZED, raw);
+        let ApiError::ErrorResponse { kind, message, .. } = &err else {
+            bail!("expected ErrorResponse, got {err:?}");
+        };
+
+        assert_matches!(kind, ApiErrorKind::Unauthorized { .. });
+        assert_eq!(message.as_deref(), Some("invalid api key"));
 
         Ok(())
     }

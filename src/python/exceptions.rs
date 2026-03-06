@@ -249,6 +249,8 @@ impl ApiError {
                     PyErr::new::<NotAWriteBranchRefError, _>(args)
                 }
                 ApiErrorKind::SameRef { .. } => PyErr::new::<SameRefError, _>(args),
+                // 401
+                ApiErrorKind::Unauthorized { .. } => PyErr::new::<UnauthorizedError, _>(args),
                 // 403
                 ApiErrorKind::CreateBranchForbidden { .. } => {
                     PyErr::new::<CreateBranchForbiddenError, _>(args)

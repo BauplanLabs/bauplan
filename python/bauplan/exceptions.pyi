@@ -247,6 +247,11 @@ class ApiErrorKind:
         @property
         def tag_name(self, /) -> str: ...
 
+    @final
+    class Unauthorized(ApiErrorKind):
+        __match_args__: Final = ()
+        def __new__(cls, /) -> ApiErrorKind.Unauthorized: ...
+
 class BauplanError(Exception):
     def __new__(cls, /, *_args) -> BauplanError: ...
 
