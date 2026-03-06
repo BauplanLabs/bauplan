@@ -910,7 +910,7 @@ class Client:
         ref: "str | Ref",
         *,
         filter_by_name: "str | None" = None,
-        filter_by_namespace: "str | None" = None,
+        filter_by_namespace: "str | Namespace | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Table]":
         """

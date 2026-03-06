@@ -687,7 +687,7 @@ impl Client {
         r#ref: "str | Ref",
         *,
         filter_by_name: "str | None" = None,
-        filter_by_namespace: "str | None" = None,
+        filter_by_namespace: "str | Namespace | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Table]")]
     fn get_tables(
@@ -695,10 +695,11 @@ impl Client {
         py: Python<'_>,
         r#ref: RefArg,
         filter_by_name: Option<String>,
-        filter_by_namespace: Option<String>,
+        filter_by_namespace: Option<NamespaceArg>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
         let r#ref = r#ref.0;
+        let filter_by_namespace = filter_by_namespace.map(|a| a.0);
         let profile = self.profile.clone();
         let agent = self.agent.clone();
         PyPaginator::new(py, limit, move |py, token, limit| {
