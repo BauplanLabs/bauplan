@@ -10,10 +10,8 @@ use anyhow::{Context, Result, bail};
 use pyo3_introspection::{introspect_cdylib, module_stub_files};
 
 fn remap_path(path: &Path) -> PathBuf {
-    if path.file_name().is_some_and(|f| f != "__init__.pyi") {
-        if let Ok(stripped) = path.strip_prefix("_internal") {
-            return stripped.to_path_buf();
-        }
+    if let Ok(stripped) = path.strip_prefix("_internal") {
+        return stripped.to_path_buf();
     }
     path.to_path_buf()
 }
@@ -48,11 +46,19 @@ fn main() -> Result<()> {
 
     let stubs = module_stub_files(&module);
 
+    // A hand-maintained preamble is prepended to the generated __init__.pyi
+    // so that type checkers see the pure-Python re-exports (decorators,
+    // Model, etc.) alongside the auto-generated class definitions.
+    let preamble = include_str!("__init__.pyi");
+
     let mut out = stdout().lock();
     for (name, content) in &stubs {
         let path = remap_path(name);
         let content = rewrite_imports(content);
         writeln!(&mut out, "# {}", path.display())?;
+        if path == Path::new("__init__.pyi") {
+            writeln!(&mut out, "{preamble}")?;
+        }
         writeln!(&mut out, "{content}")?;
     }
 

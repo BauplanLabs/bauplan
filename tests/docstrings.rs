@@ -106,7 +106,7 @@ fn docstrings() -> Result<()> {
     let dir = tempfile::tempdir()?;
 
     let mut snippets = Vec::new();
-    for entry in fs::read_dir(root.join("python/bauplan/_internal"))? {
+    for entry in fs::read_dir(root.join("python/bauplan"))? {
         let path = entry?.path();
         if path.extension().is_some_and(|e| e == "pyi") {
             extract_snippets(&path, &mut snippets)?;

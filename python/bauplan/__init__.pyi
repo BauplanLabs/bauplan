@@ -1,21 +1,78 @@
+__version__: str
+
+# Submodules.
+from bauplan import exceptions, schema, state, standard_expectations
+from bauplan.schema import (
+    Branch,
+    Commit,
+    Job,
+    JobContext,
+    JobKind,
+    JobLogEvent,
+    JobState,
+    Namespace,
+    Ref,
+    RefType,
+    Table,
+    Tag,
+)
+from bauplan.state import (
+    ExternalTableCreateState,
+    RunState,
+    TableCreatePlanApplyState,
+    TableCreatePlanState,
+    TableDataImportState,
+)
+from bauplan._classes import Model
+from bauplan._decorators import (
+    ModelCacheStrategy,
+    ModelMaterializationStrategy,
+    expectation,
+    extras,
+    model,
+    pyspark,
+    python,
+    resources,
+    synthetic_model,
+)
+from bauplan._parameters import Parameter
+
+__all__ = [
+    "__version__",
+    # Submodules.
+    "exceptions",
+    "schema",
+    "standard_expectations",
+    "state",
+    # From _internal.
+    "Client",
+    "InfoState",
+    "JobKind",
+    "JobState",
+    "OrganizationInfo",
+    "RefType",
+    "RunnerNodeInfo",
+    "UserInfo",
+    # Decorators and model definitions.
+    "Model",
+    "ModelCacheStrategy",
+    "ModelMaterializationStrategy",
+    "Parameter",
+    "expectation",
+    "extras",
+    "model",
+    "pyspark",
+    "python",
+    "resources",
+    "synthetic_model",
+]
+
 import pathlib
 import typing
 from datetime import datetime
 from typing import Literal, final
 
 import pyarrow
-
-from bauplan.schema import (
-    Branch, Commit, Job, JobContext, JobKind, JobLogEvent, JobState,
-    Namespace, Ref, Table, Tag,
-)
-from bauplan.state import (
-    ExternalTableCreateState, RunState,
-    TableCreatePlanApplyState, TableCreatePlanState,
-    TableDataImportState,
-)
-
-__version__: str
 
 @final
 class Client:
@@ -107,8 +164,23 @@ class Client:
         client_timeout: The client timeout in seconds for all the requests.
         config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
     """
-    def __new__(cls, /, profile: str |None = None, api_key: str |None = None, client_timeout: int |None = None, config_file_path: str |None = None) -> Client: ...
-    def apply_table_creation_plan(self, /, plan: "TableCreatePlanState | str", *, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "TableCreatePlanApplyState":
+    def __new__(
+        cls,
+        /,
+        profile: str | None = None,
+        api_key: str | None = None,
+        client_timeout: int | None = None,
+        config_file_path: str | None = None,
+    ) -> Client: ...
+    def apply_table_creation_plan(
+        self,
+        /,
+        plan: "TableCreatePlanState | str",
+        *,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "TableCreatePlanApplyState":
         """
         Apply a plan for creating a table. It is done automatically during the
         table plan creation if no schema conflicts exist. Otherwise, if schema
@@ -134,7 +206,14 @@ class Client:
         Parameters:
             job_id: A job ID
         """
-    def create_branch(self, /, branch: "str | Branch", from_ref: "str | Ref", *, if_not_exists: "bool" = False) -> "Branch":
+    def create_branch(
+        self,
+        /,
+        branch: "str | Branch",
+        from_ref: "str | Ref",
+        *,
+        if_not_exists: "bool" = False,
+    ) -> "Branch":
         """
         Create a new branch at a given ref.
         The branch name should follow the convention of `username.branch_name`,
@@ -170,7 +249,16 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def create_external_table_from_metadata(self, /, table: "str | Table", metadata_json_uri: "str", *, namespace: "str | Namespace", branch: "str | Branch | None" = None, overwrite: "bool" = False) -> "Table":
+    def create_external_table_from_metadata(
+        self,
+        /,
+        table: "str | Table",
+        metadata_json_uri: "str",
+        *,
+        namespace: "str | Namespace",
+        branch: "str | Branch | None" = None,
+        overwrite: "bool" = False,
+    ) -> "Table":
         """
         Create an external table from an Iceberg metadata.json file.
 
@@ -210,7 +298,20 @@ class Client:
             UpdateConflictError: if a table with the same name already exists and overwrite=False.
             BauplanError: for other API errors during registration or retrieval.
         """
-    def create_external_table_from_parquet(self, /, table: "str | Table", search_patterns: "list[str]", *, branch: "str | Branch | None" = None, namespace: "str | Namespace | None" = None, overwrite: "bool" = False, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None, detach: "bool" = False) -> "ExternalTableCreateState":
+    def create_external_table_from_parquet(
+        self,
+        /,
+        table: "str | Table",
+        search_patterns: "list[str]",
+        *,
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        overwrite: "bool" = False,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+        detach: "bool" = False,
+    ) -> "ExternalTableCreateState":
         """
         Creates an external table from S3 files.
 
@@ -245,7 +346,16 @@ class Client:
         Returns:
             The external table create state.
         """
-    def create_namespace(self, /, namespace: "str | Namespace", branch: "str | Branch", *, commit_body: "str | None" = None, commit_properties: "dict[str, str] | None" = None, if_not_exists: "bool" = False) -> "Namespace":
+    def create_namespace(
+        self,
+        /,
+        namespace: "str | Namespace",
+        branch: "str | Branch",
+        *,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+        if_not_exists: "bool" = False,
+    ) -> "Namespace":
         """
         Create a new namespace at a given branch.
 
@@ -280,7 +390,20 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def create_table(self, /, table: "str | Table", search_uri: "str", *, branch: "str | Branch | None" = None, namespace: "str | Namespace | None" = None, partitioned_by: "str | None" = None, replace: "bool | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "Table":
+    def create_table(
+        self,
+        /,
+        table: "str | Table",
+        search_uri: "str",
+        *,
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        partitioned_by: "str | None" = None,
+        replace: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "Table":
         """
         Create a table from an S3 location.
 
@@ -316,7 +439,14 @@ class Client:
             TableCreatePlanStatusError: if the table creation plan fails.
             TableCreatePlanApplyStatusError: if the table creation plan apply fails.
         """
-    def create_tag(self, /, tag: "str | Tag", from_ref: "str | Ref", *, if_not_exists: "bool" = False) -> "Tag":
+    def create_tag(
+        self,
+        /,
+        tag: "str | Tag",
+        from_ref: "str | Ref",
+        *,
+        if_not_exists: "bool" = False,
+    ) -> "Tag":
         """
         Create a new tag at a given ref.
 
@@ -346,7 +476,9 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def delete_branch(self, /, branch: "str | Branch", *, if_exists: "bool" = False) -> "bool":
+    def delete_branch(
+        self, /, branch: "str | Branch", *, if_exists: "bool" = False
+    ) -> "bool":
         """
         Delete a branch.
 
@@ -373,7 +505,16 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def delete_namespace(self, /, namespace: "str | Namespace", branch: "str | Branch", *, if_exists: "bool" = False, commit_body: "str | None" = None, commit_properties: "dict[str, str] | None" = None) -> "Branch":
+    def delete_namespace(
+        self,
+        /,
+        namespace: "str | Namespace",
+        branch: "str | Branch",
+        *,
+        if_exists: "bool" = False,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch":
         """
         Delete a namespace.
 
@@ -408,7 +549,17 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def delete_table(self, /, table: "str | Table", branch: "str | Branch", *, namespace: "str | Namespace | None" = None, if_exists: "bool" = False, commit_body: "str | None" = None, commit_properties: "dict[str, str] | None" = None) -> "Branch":
+    def delete_table(
+        self,
+        /,
+        table: "str | Table",
+        branch: "str | Branch",
+        *,
+        namespace: "str | Namespace | None" = None,
+        if_exists: "bool" = False,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch":
         """
         Drop a table.
 
@@ -497,7 +648,14 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def get_branches(self, /, *, name: "str | None" = None, user: "str | None" = None, limit: "int | None" = None) -> "typing.Iterator[Branch]":
+    def get_branches(
+        self,
+        /,
+        *,
+        name: "str | None" = None,
+        user: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "typing.Iterator[Branch]":
         """
         Get the available data branches in the Bauplan catalog.
 
@@ -518,7 +676,23 @@ class Client:
         Returns:
             An iterator over `Branch` objects.
         """
-    def get_commits(self, /, ref: "str | Ref", *, filter_by_message: "str | None" = None, filter_by_author_username: "str | None" = None, filter_by_author_name: "str | None" = None, filter_by_author_email: "str | None" = None, filter_by_authored_date: "str | datetime | None" = None, filter_by_authored_date_start_at: "str | datetime | None" = None, filter_by_authored_date_end_at: "str | datetime | None" = None, filter_by_parent_hash: "str | None" = None, filter_by_properties: "dict[str, str] | None" = None, filter: "str | None" = None, limit: "int | None" = None) -> "typing.Iterator[Commit]":
+    def get_commits(
+        self,
+        /,
+        ref: "str | Ref",
+        *,
+        filter_by_message: "str | None" = None,
+        filter_by_author_username: "str | None" = None,
+        filter_by_author_name: "str | None" = None,
+        filter_by_author_email: "str | None" = None,
+        filter_by_authored_date: "str | datetime | None" = None,
+        filter_by_authored_date_start_at: "str | datetime | None" = None,
+        filter_by_authored_date_end_at: "str | datetime | None" = None,
+        filter_by_parent_hash: "str | None" = None,
+        filter_by_properties: "dict[str, str] | None" = None,
+        filter: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "typing.Iterator[Commit]":
         """
         Get the commits for the target branch or ref.
 
@@ -551,7 +725,14 @@ class Client:
         Parameters:
             job_id: A job ID
         """
-    def get_job_context(self, /, job: str | Job, *, include_logs: bool = False, include_snapshot: bool = False) -> "JobContext":
+    def get_job_context(
+        self,
+        /,
+        job: str | Job,
+        *,
+        include_logs: bool = False,
+        include_snapshot: bool = False,
+    ) -> "JobContext":
         """
         EXPERIMENTAL: Get context for a job by ID.
 
@@ -560,7 +741,14 @@ class Client:
             include_logs: bool: Whether to include logs in the response.
             include_snapshot: bool: Whether to include the code snapshot in the response.
         """
-    def get_job_contexts(self, /, jobs: str | list[str] | list[Job], *, include_logs: bool = False, include_snapshot: bool = False) -> "list[JobContext]":
+    def get_job_contexts(
+        self,
+        /,
+        jobs: str | list[str] | list[Job],
+        *,
+        include_logs: bool = False,
+        include_snapshot: bool = False,
+    ) -> "list[JobContext]":
         """
         EXPERIMENTAL: Get context for multiple jobs.
 
@@ -576,7 +764,19 @@ class Client:
         Parameters:
             job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
         """
-    def get_jobs(self, /, *, all_users: bool = False, filter_by_ids: str | list[str] | list[Job] |None = None, filter_by_users: str | list[str] |None = None, filter_by_kinds: str | JobKind | list[str] | list[JobKind] |None = None, filter_by_statuses: str | JobState | list[str] | list[JobState] |None = None, filter_by_created_after: datetime |None = None, filter_by_created_before: datetime |None = None, limit: int |None = None) -> "typing.Iterator[Job]":
+    def get_jobs(
+        self,
+        /,
+        *,
+        all_users: bool = False,
+        filter_by_ids: str | list[str] | list[Job] | None = None,
+        filter_by_users: str | list[str] | None = None,
+        filter_by_kinds: str | JobKind | list[str] | list[JobKind] | None = None,
+        filter_by_statuses: str | JobState | list[str] | list[JobState] | None = None,
+        filter_by_created_after: datetime | None = None,
+        filter_by_created_before: datetime | None = None,
+        limit: int | None = None,
+    ) -> "typing.Iterator[Job]":
         """
         Get jobs with optional filtering.
 
@@ -593,7 +793,9 @@ class Client:
         Returns:
             An iterator over `Job` objects.
         """
-    def get_namespace(self, /, namespace: "str | Namespace", ref: "str | Ref") -> "Namespace":
+    def get_namespace(
+        self, /, namespace: "str | Namespace", ref: "str | Ref"
+    ) -> "Namespace":
         """
         Get a namespace.
 
@@ -621,7 +823,14 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def get_namespaces(self, /, ref: "str | Ref", *, filter_by_name: "str | None" = None, limit: "int | None" = None) -> "typing.Iterator[Namespace]":
+    def get_namespaces(
+        self,
+        /,
+        ref: "str | Ref",
+        *,
+        filter_by_name: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "typing.Iterator[Namespace]":
         """
         Get the available data namespaces in the Bauplan catalog branch.
 
@@ -648,7 +857,14 @@ class Client:
         Yields:
             A Namespace object.
         """
-    def get_table(self, /, table: "str | Table", ref: "str | Ref", *, namespace: "str | Namespace | None" = None) -> "Table":
+    def get_table(
+        self,
+        /,
+        table: "str | Table",
+        ref: "str | Ref",
+        *,
+        namespace: "str | Namespace | None" = None,
+    ) -> "Table":
         """
         Get the table data and metadata for a table in the target branch.
 
@@ -688,7 +904,15 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def get_tables(self, /, ref: "str | Ref", *, filter_by_name: "str | None" = None, filter_by_namespace: "str | Namespace | None" = None, limit: "int | None" = None) -> "typing.Iterator[Table]":
+    def get_tables(
+        self,
+        /,
+        ref: "str | Ref",
+        *,
+        filter_by_name: "str | None" = None,
+        filter_by_namespace: "str | None" = None,
+        limit: "int | None" = None,
+    ) -> "typing.Iterator[Table]":
         """
         Get the tables and views in the target branch.
 
@@ -735,7 +959,9 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def get_tags(self, /, *, filter_by_name: "str | None" = None, limit: "int | None" = None) -> "typing.Iterator[Tag]":
+    def get_tags(
+        self, /, *, filter_by_name: "str | None" = None, limit: "int | None" = None
+    ) -> "typing.Iterator[Tag]":
         """
         Get all the tags.
 
@@ -775,7 +1001,9 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def has_namespace(self, /, namespace: "str | Namespace", ref: "str | Ref") -> "bool":
+    def has_namespace(
+        self, /, namespace: "str | Namespace", ref: "str | Ref"
+    ) -> "bool":
         """
         Check if a namespace exists.
 
@@ -803,7 +1031,14 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def has_table(self, /, table: "str | Table", ref: "str | Ref", *, namespace: "str | Namespace | None" = None) -> "bool":
+    def has_table(
+        self,
+        /,
+        table: "str | Table",
+        ref: "str | Ref",
+        *,
+        namespace: "str | Namespace | None" = None,
+    ) -> "bool":
         """
         Check if a table exists.
 
@@ -857,7 +1092,23 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def import_data(self, /, table: "str | Table", search_uri: "str", *, branch: "str | Branch | None" = None, namespace: "str | Namespace | None" = None, continue_on_error: "bool" = False, import_duplicate_files: "bool" = False, best_effort: "bool" = False, preview: "str | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None, detach: "bool" = False) -> "TableDataImportState":
+    def import_data(
+        self,
+        /,
+        table: "str | Table",
+        search_uri: "str",
+        *,
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        continue_on_error: "bool" = False,
+        import_duplicate_files: "bool" = False,
+        best_effort: "bool" = False,
+        preview: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+        detach: "bool" = False,
+    ) -> "TableDataImportState":
         """
         Imports data into an already existing table.
 
@@ -913,7 +1164,16 @@ class Client:
         Returns:
             An `InfoState` object containing organization, user, and runner information.
         """
-    def merge_branch(self, /, source_ref: "str | Ref", into_branch: "str | Branch", *, commit_message: "str | None" = None, commit_body: "str | None" = None, commit_properties: "dict[str, str] | None" = None) -> "Branch":
+    def merge_branch(
+        self,
+        /,
+        source_ref: "str | Ref",
+        into_branch: "str | Branch",
+        *,
+        commit_message: "str | None" = None,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch":
         """
         Merge one branch into another.
 
@@ -946,7 +1206,20 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def plan_table_creation(self, /, table: "str | Table", search_uri: "str", *, branch: "str | Branch | None" = None, namespace: "str | Namespace | None" = None, partitioned_by: "str | None" = None, replace: "bool | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "TableCreatePlanState":
+    def plan_table_creation(
+        self,
+        /,
+        table: "str | Table",
+        search_uri: "str",
+        *,
+        branch: "str | Branch | None" = None,
+        namespace: "str | Namespace | None" = None,
+        partitioned_by: "str | None" = None,
+        replace: "bool | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "TableCreatePlanState":
         """
         Create a table import plan from an S3 location.
 
@@ -987,7 +1260,19 @@ class Client:
         Raises:
             TableCreatePlanStatusError: if the table creation plan fails.
         """
-    def query(self, /, query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pyarrow.Table":
+    def query(
+        self,
+        /,
+        query: "str",
+        *,
+        ref: "str | Ref | None" = None,
+        max_rows: "int | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pyarrow.Table":
         """
         Execute a SQL query and return the results as a pyarrow.Table.
         Note that this function uses Arrow also internally, resulting
@@ -1023,7 +1308,20 @@ class Client:
         Returns:
             The query results as a `pyarrow.Table`.
         """
-    def query_to_csv_file(self, /, path: "str | pathlib.Path", query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pathlib.Path":
+    def query_to_csv_file(
+        self,
+        /,
+        path: "str | pathlib.Path",
+        query: "str",
+        *,
+        ref: "str | Ref | None" = None,
+        max_rows: "int | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pathlib.Path":
         """
         Export the results of a SQL query to a file in CSV format.
 
@@ -1051,7 +1349,19 @@ class Client:
         Returns:
             The path of the file written.
         """
-    def query_to_generator(self, /, query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "typing.Iterator[dict[str, typing.Any]]":
+    def query_to_generator(
+        self,
+        /,
+        query: "str",
+        *,
+        ref: "str | Ref | None" = None,
+        max_rows: "int | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "typing.Iterator[dict[str, typing.Any]]":
         """
         Execute a SQL query and return the results as a generator, where each row is
         a Python dictionary.
@@ -1083,7 +1393,21 @@ class Client:
         Yields:
             A dictionary representing a row of query results.
         """
-    def query_to_json_file(self, /, path: "str | pathlib.Path", query: "str", *, file_format: "Literal['json', 'jsonl']" = "json", ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pathlib.Path":
+    def query_to_json_file(
+        self,
+        /,
+        path: "str | pathlib.Path",
+        query: "str",
+        *,
+        file_format: "Literal['json', 'jsonl']" = "json",
+        ref: "str | Ref | None" = None,
+        max_rows: "int | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pathlib.Path":
         """
         Export the results of a SQL query to a file in JSON format.
 
@@ -1112,7 +1436,20 @@ class Client:
         Returns:
             The path of the file written.
         """
-    def query_to_parquet_file(self, /, path: "str | pathlib.Path", query: "str", *, ref: "str | Ref | None" = None, max_rows: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pathlib.Path":
+    def query_to_parquet_file(
+        self,
+        /,
+        path: "str | pathlib.Path",
+        query: "str",
+        *,
+        ref: "str | Ref | None" = None,
+        max_rows: "int | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pathlib.Path":
         """
         Export the results of a SQL query to a file in Parquet format.
 
@@ -1140,7 +1477,9 @@ class Client:
         Returns:
             The path of the file written.
         """
-    def rename_branch(self, /, branch: "str | Branch", new_branch: "str | Branch") -> "Branch":
+    def rename_branch(
+        self, /, branch: "str | Branch", new_branch: "str | Branch"
+    ) -> "Branch":
         """
         Rename an existing branch.
         The branch name should follow the convention of "username.branch_name",
@@ -1196,7 +1535,18 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def revert_table(self, /, table: "str | Table", *, namespace: "str | Namespace | None" = None, source_ref: "str | Ref", into_branch: "str | Branch", replace: "bool | None" = None, commit_body: "str | None" = None, commit_properties: "dict[str, str] | None" = None) -> "Branch":
+    def revert_table(
+        self,
+        /,
+        table: "str | Table",
+        *,
+        namespace: "str | Namespace | None" = None,
+        source_ref: "str | Ref",
+        into_branch: "str | Branch",
+        replace: "bool | None" = None,
+        commit_body: "str | None" = None,
+        commit_properties: "dict[str, str] | None" = None,
+    ) -> "Branch":
         """
         Revert a table to a previous state.
 
@@ -1236,7 +1586,24 @@ class Client:
             UnauthorizedError: if the user's credentials are invalid.
             ValueError: if one or more parameters are invalid.
         """
-    def run(self, /, project_dir: "str", *, ref: "str | Ref | None" = None, namespace: "str | Namespace | None" = None, parameters: "dict[str, str | int | float | bool | None] | None" = None, cache: "Literal['on', 'off'] | None" = None, transaction: "Literal['on', 'off'] | None" = None, dry_run: "bool | None" = None, strict: "Literal['on', 'off'] | None" = None, preview: "str | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None, detach: "bool" = False) -> "RunState":
+    def run(
+        self,
+        /,
+        project_dir: "str",
+        *,
+        ref: "str | Ref | None" = None,
+        namespace: "str | Namespace | None" = None,
+        parameters: "dict[str, str | int | float | bool | None] | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        transaction: "Literal['on', 'off'] | None" = None,
+        dry_run: "bool | None" = None,
+        strict: "Literal['on', 'off'] | None" = None,
+        preview: "str | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+        detach: "bool" = False,
+    ) -> "RunState":
         """
         Run a Bauplan project and return the state of the run. This is the equivalent of
         running through the CLI the `bauplan run` command. All parameters default to 'off'/false unless otherwise specified.
@@ -1244,9 +1611,6 @@ class Client:
         ## Examples
 
         ```python notest
-        import bauplan
-        client = bauplan.Client()
-
         # Run a daily sales pipeline on a dev branch, and if successful and data is good, merge to main
         run_state = client.run(
             project_dir='./etl_pipelines/daily_sales',
@@ -1275,7 +1639,21 @@ class Client:
         Returns:
             `bauplan.state.RunState`: The state of the run.
         """
-    def scan(self, /, table: "str | Table", *, ref: "str | Ref | None" = None, columns: "list[str] | None" = None, filters: "str | None" = None, limit: "int | None" = None, cache: "Literal['on', 'off'] | None" = None, namespace: "str | Namespace | None" = None, args: "dict[str, str] | None" = None, priority: "int | None" = None, client_timeout: "int | None" = None) -> "pyarrow.Table":
+    def scan(
+        self,
+        /,
+        table: "str | Table",
+        *,
+        ref: "str | Ref | None" = None,
+        columns: "list[str] | None" = None,
+        filters: "str | None" = None,
+        limit: "int | None" = None,
+        cache: "Literal['on', 'off'] | None" = None,
+        namespace: "str | Namespace | None" = None,
+        args: "dict[str, str] | None" = None,
+        priority: "int | None" = None,
+        client_timeout: "int | None" = None,
+    ) -> "pyarrow.Table":
         """
         Execute a table scan (with optional filters) and return the results as an arrow Table.
 
@@ -1318,19 +1696,19 @@ class InfoState:
     @property
     def client_version(self, /) -> str: ...
     @property
-    def organization(self, /) -> OrganizationInfo |None: ...
+    def organization(self, /) -> OrganizationInfo | None: ...
     @property
     def runners(self, /) -> list[RunnerNodeInfo]: ...
     @property
-    def user(self, /) -> UserInfo |None: ...
+    def user(self, /) -> UserInfo | None: ...
 
 @final
 class OrganizationInfo:
     def __repr__(self, /) -> str: ...
     @property
-    def default_parameter_secret_key(self, /) -> str |None: ...
+    def default_parameter_secret_key(self, /) -> str | None: ...
     @property
-    def default_parameter_secret_public_key(self, /) -> str |None: ...
+    def default_parameter_secret_public_key(self, /) -> str | None: ...
     @property
     def id(self, /) -> str: ...
     @property
