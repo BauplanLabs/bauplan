@@ -1610,7 +1610,7 @@ class Client:
 
         ## Examples
 
-        ```python notest
+        ```python notest fixture:client
         # Run a daily sales pipeline on a dev branch, and if successful and data is good, merge to main
         run_state = client.run(
             project_dir='./etl_pipelines/daily_sales',
