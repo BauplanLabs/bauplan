@@ -36,6 +36,9 @@ class TestExceptionHierarchy:
     def test_table_not_found_is_http_error(self):
         assert issubclass(exceptions.TableNotFoundError, exceptions.BauplanHTTPError)
 
+    def test_unauthorized_is_http_error(self):
+        assert issubclass(exceptions.UnauthorizedError, exceptions.BauplanHTTPError)
+
     def test_http_error_is_bauplan_error(self):
         assert issubclass(exceptions.BauplanHTTPError, exceptions.BauplanError)
 
@@ -139,6 +142,18 @@ class TestExceptionInstantiation:
         e = exceptions.BauplanJobError("test error")
         assert isinstance(e, exceptions.BauplanJobError)
         assert isinstance(e, exceptions.BauplanError)
+
+
+class TestUnauthorized:
+    def test_invalid_api_key(self):
+        client = bauplan.Client(api_key="invalid")
+        with pytest.raises(exceptions.UnauthorizedError) as exc_info:
+            client.get_branch("main")
+
+        e = exc_info.value
+        assert e.code == 401
+        assert e.type == "UNAUTHORIZED"
+        assert isinstance(e.kind, exceptions.ApiErrorKind.Unauthorized)
 
 
 class TestHttpErrorProperties:
