@@ -22,7 +22,7 @@ class Actor:
 @final
 class Branch(Ref):
     """
-    A branch reference returned by the API.
+    A data branch, used to isolate data changes before merging into main.
     """
 
 @final
@@ -32,7 +32,9 @@ class Commit:
     """
     def __repr__(self, /) -> str: ...
     @property
-    def author(self, /) -> Actor | None: ...
+    def author(self, /) -> Actor |None: 
+        """The first author of the commit."""
+        ...
     @property
     def authored_date(self, /) -> datetime:
         """
@@ -44,7 +46,9 @@ class Commit:
         The authors of the commit.
         """
     @property
-    def body(self, /) -> str | None: ...
+    def body(self, /) -> str |None:
+        """The body of the commit message. ``None`` if the message has no body."""
+        ...
     @property
     def committed_date(self, /) -> datetime:
         """
@@ -66,7 +70,9 @@ class Commit:
         The parent commit hashes.
         """
     @property
-    def parent_merge_ref(self, /) -> Branch | None: ...
+    def parent_merge_ref(self, /) -> Branch |None: 
+        """For merge commits, the branch that was merged in (second parent). ``None`` for regular commits."""
+        ...
     @property
     def parent_ref(self, /) -> Ref:
         """
@@ -88,17 +94,25 @@ class Commit:
         Actors who signed off on the commit.
         """
     @property
-    def subject(self, /) -> str | None: ...
+    def subject(self, /) -> str |None: 
+        """The subject line of the commit message."""
+        ...
 
 @final
 class DAGEdge:
     """
-    An edge in the job DAG (a dependency).
+    A dependency between two `DAGNode` instances, representing dataflow.
     """
     @property
-    def destination_model(self, /) -> str: ...
+    def destination_model(self, /) -> str:
+        """
+        The destination model ID.
+        """
     @property
-    def source_model(self, /) -> str | None: ...
+    def source_model(self, /) -> str |None:
+        """
+        The source model ID. `None` when the data source is a table scan rather than another model's output.
+        """
 
 @final
 class DAGNode:
@@ -106,20 +120,24 @@ class DAGNode:
     A node in the job DAG (a model).
     """
     @property
-    def id(self, /) -> str: ...
+    def id(self, /) -> str: 
+        """The unique identifier for this node (model)."""
+        ...
     @property
-    def name(self, /) -> str: ...
+    def name(self, /) -> str:
+        """The model name."""
+        ...
 
 @final
 class DetachedRef(Ref):
     """
-    A detached reference (a specific commit, not on any branch) returned by the API.
+    A ref not attached to a branch or tag, pointing directly to a commit hash.
     """
 
 @final
 class Job:
     """
-    A bauplan job, representing a unit of work such as a query, run, or import.
+    The record of running a pipeline, query, or an import (see `bauplan.schema.JobKind` for all job kinds).
     """
     def __repr__(self, /) -> str: ...
     @property
@@ -171,7 +189,7 @@ class Job:
 @final
 class JobContext:
     """
-    Context for a job, including logs, DAG, and code snapshot.
+    The working context of a job, including its ref, DAG, code snapshot, and logs.
     """
     @property
     def dag_edges(self, /) -> list[DAGEdge]: ...
@@ -215,7 +233,7 @@ class JobKind:
 @final
 class JobLogEvent:
     """
-    A log event from a job.
+    A single log message from a job execution. When you output logs within a Python model, they are persisted as `JobLogEvent`s.
     """
     def __repr__(self, /) -> str: ...
     @property
@@ -237,7 +255,7 @@ class JobLogEvent:
 @final
 class JobLogLevel:
     """
-    The log level for a log event.
+    The severity level of a log event.
     """
 
     DEBUG: Final[JobLogLevel]
@@ -253,7 +271,7 @@ class JobLogLevel:
 @final
 class JobLogStream:
     """
-    The output stream for a log event.
+    The output stream of a log event.
     """
 
     STDERR: Final[JobLogStream]
@@ -266,7 +284,7 @@ class JobLogStream:
 @final
 class JobState:
     """
-    The state of a job.
+    The execution state of a job.
     """
 
     ABORT: Final[JobState]
@@ -285,7 +303,7 @@ class JobState:
 @final
 class Namespace:
     """
-    A table namespace.
+    A container for organizing tables.
     """
     def __repr__(self, /) -> str: ...
     @property
@@ -318,11 +336,17 @@ class Ref:
     def __repr__(self, /) -> str: ...
     def __str__(self, /) -> str: ...
     @property
-    def hash(self, /) -> str: ...
+    def hash(self, /) -> str:
+        """The hash of the branch or tag."""
+        ...
     @property
-    def name(self, /) -> str: ...
+    def name(self, /) -> str: 
+        """The name of the branch or tag."""
+        ...
     @property
-    def type(self, /) -> RefType: ...
+    def type(self, /) -> RefType: 
+        """The type of the ref, either 'BRANCH', 'TAG', or 'DETACHED'."""
+        ...
 
 @final
 class RefType:
@@ -478,5 +502,5 @@ class TableKind:
 @final
 class Tag(Ref):
     """
-    A tag reference returned by the API.
+    A human-readable name that points to a specific commit in the data lake. Tags are often used to mark important milestones in the data lake history, such as releases or experiments.
     """

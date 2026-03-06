@@ -76,11 +76,11 @@ impl Client {
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
-    ///     Table
+    ///     A `bauplan.schema.Table` object.
     ///
     /// Raises:
-    ///     TableCreatePlanStatusError: if the table creation plan fails.
-    ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
+    ///     `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
+    ///     `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
     #[pyo3(signature = (
         table: "str | Table",
         search_uri: "str",
@@ -227,10 +227,10 @@ impl Client {
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     ///
     /// Returns:
-    ///     The plan state.
+    ///     A `bauplan.state.TableCreatePlanState` object.
     ///
     /// Raises:
-    ///     TableCreatePlanStatusError: if the table creation plan fails.
+    ///     `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
     #[pyo3(signature = (
         table: "str | Table",
         search_uri: "str",
@@ -339,16 +339,46 @@ impl Client {
     /// schema conflicts are resolved. The most common schema conflict is two
     /// parquet files with the same column name but different datatypes.
     ///
+    /// ```python notest
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// plan_state = client.plan_table_creation(
+    ///     table='my_table',
+    ///     search_uri='s3://my-bucket/data/*.parquet',
+    ///     branch='main',
+    ///     namespace='my_namespace',
+    /// )
+    /// if plan_state.error:
+    ///     raise Exception(f"Planning failed: {plan_state.error}")
+    ///
+    /// if plan_state.can_auto_apply:
+    ///     # No schema conflicts — table was already created automatically
+    ///     print("Table created automatically (no conflicts)")
+    /// else:
+    ///     # Schema conflicts detected (e.g. same column name, different types across files).
+    ///     # Inspect and resolve the plan YAML, then apply manually.
+    ///     print(plan_state.plan)  # review/edit the schema plan
+    ///     apply_state = client.apply_table_creation_plan(
+    ///         plan=plan_state,
+    ///         priority=5,
+    ///         client_timeout=30,
+    ///     )
+    ///     if apply_state.error:
+    ///         raise Exception(f"Apply failed: {apply_state.error}")
+    ///     print(f"Table created after conflict resolution: {apply_state.job_status}")
+    /// ```
+    ///
     /// Parameters:
     ///     plan: The plan to apply.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
     /// Returns:
-    ///     The plan state.
+    ///     A `bauplan.state.TableCreatePlanApplyState` object.
     ///
     /// Raises:
-    ///     TableCreatePlanApplyStatusError: if the table creation plan apply fails.
+    ///     `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
     #[pyo3(signature = (
         plan: "TableCreatePlanState | str",
         *,
@@ -577,7 +607,7 @@ impl Client {
     ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
     ///
     /// Returns:
-    ///     The external table create state.
+    ///     A `bauplan.state.ExternalTableCreateState` object.
     #[pyo3(signature = (
         table: "str | Table",
         search_patterns: "list[str]",
@@ -682,7 +712,7 @@ impl Client {
     ///     filter_by_namespace: Optional, the namespace to get filtered tables from.
     ///     limit: Optional, max number of tables to get.
     /// Returns:
-    ///     An iterator over `Table` objects.
+    ///     An iterator over `bauplan.schema.Table` objects.
     #[pyo3(signature = (
         r#ref: "str | Ref",
         *,
@@ -745,12 +775,12 @@ impl Client {
     ///     a `bauplan.schema.Table` object
     ///
     /// Raises:
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     NamespaceNotFoundError: if the namespace does not exist.
-    ///     NamespaceConflictsError: if conflicting namespaces names are specified.
-    ///     TableNotFoundError: if the table does not exist.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
+    ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
         r#ref: "str | Ref",
@@ -796,10 +826,10 @@ impl Client {
     ///     A boolean for if the table exists.
     ///
     /// Raises:
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     NamespaceNotFoundError: if the namespace does not exist.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
         r#ref: "str | Ref",
@@ -856,14 +886,14 @@ impl Client {
     ///     A `bauplan.schema.Branch` object pointing to the new head.
     ///
     /// Raises:
-    ///     DeleteTableForbiddenError: if the user does not have access to delete the table.
-    ///     BranchNotFoundError: if the branch does not exist.
-    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
-    ///     BranchHeadChangedError: if the branch head hash has changed.
-    ///     TableNotFoundError: if the table does not exist.
-    ///     NamespaceConflictsError: if conflicting namespaces names are specified.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.DeleteTableForbiddenError`: if the user does not have access to delete the table.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
         branch: "str | Branch",
@@ -940,16 +970,16 @@ impl Client {
     ///     overwrite: Whether to overwrite an existing table with the same name (default: False).
     ///
     /// Returns:
-    ///     Table: The registered table with full metadata.
+    ///     A `bauplan.schema.Table` object.
     ///
     /// Raises:
-    ///     ValueError: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
-    ///     BranchNotFoundError: if the branch does not exist.
-    ///     NamespaceNotFoundError: if the namespace does not exist.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     InvalidDataError: if the metadata location is within the warehouse directory.
-    ///     UpdateConflictError: if a table with the same name already exists and overwrite=False.
-    ///     BauplanError: for other API errors during registration or retrieval.
+    ///     `ValueError`: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `bauplan.exceptions.InvalidDataError`: if the metadata location is within the warehouse directory.
+    ///     `bauplan.exceptions.UpdateConflictError`: if a table with the same name already exists and overwrite=False.
+    ///     `bauplan.exceptions.BauplanError`: for other API errors during registration or retrieval.
     #[pyo3(signature = (
         table: "str | Table",
         metadata_json_uri: "str",
@@ -1017,15 +1047,15 @@ impl Client {
     ///     The `bauplan.schema.Branch` where the revert was made.
     ///
     /// Raises:
-    ///     RevertTableForbiddenError: if the user does not have access to revert the table.
-    ///     RefNotFoundError: if the ref does not exist.
-    ///     BranchNotFoundError: if the destination branch does not exist.
-    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
-    ///     BranchHeadChangedError: if the branch head hash has changed.
-    ///     MergeConflictError: if the merge operation results in a conflict.
-    ///     NamespaceConflictsError: if conflicting namespaces names are specified.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.RevertTableForbiddenError`: if the user does not have access to revert the table.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
+    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         table: "str | Table",
         *,

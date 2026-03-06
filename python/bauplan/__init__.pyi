@@ -188,20 +188,64 @@ class Client:
         schema conflicts are resolved. The most common schema conflict is two
         parquet files with the same column name but different datatypes.
 
+        ```python notest
+        import bauplan
+        client = bauplan.Client()
+
+        plan_state = client.plan_table_creation(
+            table='my_table',
+            search_uri='s3://my-bucket/data/*.parquet',
+            branch='main',
+            namespace='my_namespace',
+        )
+        if plan_state.error:
+            raise Exception(f"Planning failed: {plan_state.error}")
+
+        if plan_state.can_auto_apply:
+            # No schema conflicts — table was already created automatically
+            print("Table created automatically (no conflicts)")
+        else:
+            # Schema conflicts detected (e.g. same column name, different types across files).
+            # Inspect and resolve the plan YAML, then apply manually.
+            print(plan_state.plan)  # review/edit the schema plan
+            apply_state = client.apply_table_creation_plan(
+                plan=plan_state,
+                priority=5,
+                client_timeout=30,
+            )
+            if apply_state.error:
+                raise Exception(f"Apply failed: {apply_state.error}")
+            print(f"Table created after conflict resolution: {apply_state.job_status}")
+        ```
+
         Parameters:
             plan: The plan to apply.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
             client_timeout: seconds to timeout; this also cancels the remote job execution.
         Returns:
-            The plan state.
+            A `bauplan.state.TableCreatePlanApplyState` object.
 
         Raises:
-            TableCreatePlanApplyStatusError: if the table creation plan apply fails.
+            `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
         """
     def cancel_job(self, job_id: str, /) -> "None":
         """
         EXPERIMENTAL: Cancel a job by ID.
+
+        ```python notest
+        import bauplan
+        client = bauplan.Client()
+
+        # Kick off a pipeline without blocking, then cancel it if it's taking too long
+        state = client.run(
+            project_dir='./my_pipeline',
+            ref='username.dev_branch',
+            detach=True,
+        )
+        if state.job_id:
+            client.cancel_job(state.job_id)
+        ```
 
         Parameters:
             job_id: A job ID
@@ -241,13 +285,13 @@ class Client:
             from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
             if_not_exists: If set to `True`, the branch will not be created if it already exists.
         Returns:
-            The created branch object.
+            The created `bauplan.schema.Branch` object.
 
         Raises:
-            CreateBranchForbiddenError: if the user does not have access to create the branch.
-            BranchExistsError: if the branch already exists.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
+            `bauplan.exceptions.BranchExistsError`: if the branch already exists.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def create_external_table_from_metadata(
         self,
@@ -287,16 +331,16 @@ class Client:
             overwrite: Whether to overwrite an existing table with the same name (default: False).
 
         Returns:
-            Table: The registered table with full metadata.
+            The registered `bauplan.schema.Table` with full metadata.
 
         Raises:
-            ValueError: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
-            BranchNotFoundError: if the branch does not exist.
-            NamespaceNotFoundError: if the namespace does not exist.
-            UnauthorizedError: if the user's credentials are invalid.
-            InvalidDataError: if the metadata location is within the warehouse directory.
-            UpdateConflictError: if a table with the same name already exists and overwrite=False.
-            BauplanError: for other API errors during registration or retrieval.
+            `ValueError`: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `bauplan.exceptions.InvalidDataError`: if the metadata location is within the warehouse directory.
+            `bauplan.exceptions.UpdateConflictError`: if a table with the same name already exists and overwrite=False.
+            `bauplan.exceptions.BauplanError`: for other API errors during registration or retrieval.
         """
     def create_external_table_from_parquet(
         self,
@@ -344,7 +388,7 @@ class Client:
             detach: Whether to detach the job and return immediately without waiting for the job to finish.
 
         Returns:
-            The external table create state.
+            A `bauplan.state.ExternalTableCreateState` object.
         """
     def create_namespace(
         self,
@@ -382,13 +426,13 @@ class Client:
             The created `bauplan.schema.Namespace` object.
 
         Raises:
-            CreateNamespaceForbiddenError: if the user does not have access to create the namespace.
-            BranchNotFoundError: if the branch does not exist.
-            NotAWriteBranchError: if the destination branch is not a writable ref.
-            BranchHeadChangedError: if the branch head hash has changed.
-            NamespaceExistsError: if the namespace already exists.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.CreateNamespaceForbiddenError`: if the user does not have access to create the namespace.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotAWriteBranchError`: if the destination branch is not a writable ref.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.NamespaceExistsError`: if the namespace already exists.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def create_table(
         self,
@@ -409,7 +453,7 @@ class Client:
 
         This operation will attempt to create a table based on schemas of N
         parquet files found by a given search uri. This is a two step operation using
-        `plan_table_creation` and `apply_table_creation_plan`.
+        `Client.plan_table_creation` and `Client.apply_table_creation_plan`.
 
         ```python notest
         import bauplan
@@ -433,11 +477,11 @@ class Client:
             priority: Optional job priority (1-10, where 10 is highest priority).
             client_timeout: seconds to timeout; this also cancels the remote job execution.
         Returns:
-            Table
+            The created `bauplan.schema.Table`.
 
         Raises:
-            TableCreatePlanStatusError: if the table creation plan fails.
-            TableCreatePlanApplyStatusError: if the table creation plan apply fails.
+            `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
+            `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
         """
     def create_tag(
         self,
@@ -470,11 +514,11 @@ class Client:
             The created `bauplan.schema.Tag` object.
 
         Raises:
-            CreateTagForbiddenError: if the user does not have access to create the tag.
-            RefNotFoundError: if the ref does not exist.
-            TagExistsError: if the tag already exists.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.CreateTagForbiddenError`: if the user does not have access to create the tag.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.TagExistsError`: if the tag already exists.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def delete_branch(
         self, /, branch: "str | Branch", *, if_exists: "bool" = False
@@ -499,11 +543,11 @@ class Client:
             A boolean for if the branch was deleted.
 
         Raises:
-            DeleteBranchForbiddenError: if the user does not have access to delete the branch.
-            BranchNotFoundError: if the branch does not exist.
-            BranchHeadChangedError: if the branch head hash has changed.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.DeleteBranchForbiddenError`: if the user does not have access to delete the branch.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def delete_namespace(
         self,
@@ -540,14 +584,14 @@ class Client:
             A `bauplan.schema.Branch` object pointing to head.
 
         Raises:
-            DeleteNamespaceForbiddenError: if the user does not have access to delete the namespace.
-            BranchNotFoundError: if the branch does not exist.
-            NotAWriteBranchError: if the destination branch is not a writable ref.
-            BranchHeadChangedError: if the branch head hash has changed.
-            NamespaceNotFoundError: if the namespace does not exist.
-            NamespaceIsNotEmptyError: if the namespace is not empty.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.DeleteNamespaceForbiddenError`: if the user does not have access to delete the namespace.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotAWriteBranchError`: if the destination branch is not a writable ref.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace is not empty.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def delete_table(
         self,
@@ -587,14 +631,14 @@ class Client:
             A `bauplan.schema.Branch` object pointing to the new head.
 
         Raises:
-            DeleteTableForbiddenError: if the user does not have access to delete the table.
-            BranchNotFoundError: if the branch does not exist.
-            NotAWriteBranchError: if the destination branch is not a writable ref.
-            BranchHeadChangedError: if the branch head hash has changed.
-            TableNotFoundError: if the table does not exist.
-            NamespaceConflictsError: if conflicting namespaces names are specified.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.DeleteTableForbiddenError`: if the user does not have access to delete the table.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotAWriteBranchError`: if the destination branch is not a writable ref.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+            `bauplan.exceptions.NamespaceConflictsError`: if conflicting namespaces names are specified.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def delete_tag(self, /, tag: "str | Tag", *, if_exists: "bool" = False) -> "bool":
         """
@@ -616,11 +660,11 @@ class Client:
             A boolean for if the tag was deleted.
 
         Raises:
-            DeleteTagForbiddenError: if the user does not have access to delete the tag.
-            TagNotFoundError: if the tag does not exist.
-            NotATagRefError: if the object is not a tag.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.DeleteTagForbiddenError`: if the user does not have access to delete the tag.
+            `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+            `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_branch(self, /, branch: "str | Branch") -> "Branch":
         """
@@ -639,14 +683,14 @@ class Client:
         Parameters:
             branch: The name of the branch to retrieve.
         Returns:
-            A `Branch` object.
+            A `bauplan.schema.Branch` object.
 
         Raises:
-            BranchNotFoundError: if the branch does not exist.
-            NotABranchRefError: if the object is not a branch.
-            ForbiddenError: if the user does not have access to the branch.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+            `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_branches(
         self,
@@ -674,7 +718,7 @@ class Client:
             user: Filter the branches by user.
             limit: Optional, max number of branches to get.
         Returns:
-            An iterator over `Branch` objects.
+            An iterator over `bauplan.schema.Branch` objects.
         """
     def get_commits(
         self,
@@ -698,6 +742,14 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
+        ```python fixture:my_branch
+        import bauplan
+        client = bauplan.Client()
+
+        for commit in client.get_commits('my_ref_or_branch_name', limit=50):
+            ...
+        ```
+
         Parameters:
             ref: The ref or branch to get the commits from.
             filter_by_message: Optional, filter the commits by message (can be a string or a regex like '^abc.*$')
@@ -712,18 +764,28 @@ class Client:
             filter: Optional, a CEL filter expression to filter the commits.
             limit: Optional, max number of commits to get.
         Returns:
-            An iterator over `Commit` objects.
+            An iterator over `bauplan.schema.Commit` objects.
 
         Raises:
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_job(self, job_id: str, /) -> "Job":
         """
         EXPERIMENTAL: Get a job by ID or ID prefix.
 
+        ```python fixture:my_job
+        import bauplan
+        client = bauplan.Client()
+
+        job = client.get_job(my_job.id)
+        print(f"{job.human_readable_status} ({job.kind})")
+        ```
+
         Parameters:
             job_id: A job ID
+        Returns:
+            A `bauplan.schema.Job` object.
         """
     def get_job_context(
         self,
@@ -736,10 +798,22 @@ class Client:
         """
         EXPERIMENTAL: Get context for a job by ID.
 
+        ```python fixture:my_job
+        import bauplan
+        client = bauplan.Client()
+
+        ctx = client.get_job_context(my_job.id, include_logs=True)
+        print(f"ref: {ctx.ref}, project: {ctx.project_name}")
+        for log in ctx.logs:
+            print(f"[{log.level}] {log.message}")
+        ```
+
         Parameters:
             job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
             include_logs: bool: Whether to include logs in the response.
             include_snapshot: bool: Whether to include the code snapshot in the response.
+        Returns:
+            A `bauplan.schema.JobContext` object containing the job details, and optionally logs and snapshot.
         """
     def get_job_contexts(
         self,
@@ -752,17 +826,38 @@ class Client:
         """
         EXPERIMENTAL: Get context for multiple jobs.
 
+        ```python fixture:my_job
+        import bauplan
+        client = bauplan.Client()
+
+        contexts = client.get_job_contexts([my_job], include_logs=True)
+        for ctx in contexts:
+            print(f"{ctx.id}: {ctx.project_name} on {ctx.ref}")
+        ```
+
         Parameters:
             jobs: list[Union[str, Job]]: A list of job IDs or Job instances.
             include_logs: bool: Whether to include logs in the response.
             include_snapshot: bool: Whether to include the code snapshot in the response.
+        Returns:
+            A list of `bauplan.schema.JobContext` objects containing the job details, and optionally logs and snapshot.
         """
     def get_job_logs(self, /, job: str | Job) -> "list[JobLogEvent]":
         """
         EXPERIMENTAL: Get logs for a job.
 
+        ```python fixture:my_job
+        import bauplan
+        client = bauplan.Client()
+
+        for log in client.get_job_logs(my_job.id):
+            print(f"[{log.level}] {log.message}")
+        ```
+
         Parameters:
             job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
+        Returns:
+            A list of `bauplan.schema.JobLogEvent` objects representing the log events for the job.
         """
     def get_jobs(
         self,
@@ -780,6 +875,14 @@ class Client:
         """
         Get jobs with optional filtering.
 
+        ```python
+        import bauplan
+        client = bauplan.Client()
+
+        for job in client.get_jobs():
+            print(f"{job.id}: {job.status} ({job.kind})")
+        ```
+
         Parameters:
             all_users: Optional[bool]: Whether to list jobs from all users or only the current user.
             filter_by_ids: Optional[Union[str, List[str]]]: Optional, filter by job IDs.
@@ -791,7 +894,7 @@ class Client:
             limit: Optional[int]: Optional, max number of jobs to return.
 
         Returns:
-            An iterator over `Job` objects.
+            An iterator over `bauplan.schema.Job` objects.
         """
     def get_namespace(
         self, /, namespace: "str | Namespace", ref: "str | Ref"
@@ -818,10 +921,10 @@ class Client:
             A `bauplan.schema.Namespace` object.
 
         Raises:
-            NamespaceNotFoundError: if the namespace does not exist.
-            RefNotFoundError: if the ref does not exist.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_namespaces(
         self,
@@ -850,12 +953,12 @@ class Client:
             limit: Optional, max number of namespaces to get.
 
         Raises:
-            RefNotFoundError: if the ref does not exist.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
 
         Yields:
-            A Namespace object.
+            `bauplan.schema.Namespace` objects.
         """
     def get_table(
         self,
@@ -897,12 +1000,12 @@ class Client:
             a `bauplan.schema.Table` object
 
         Raises:
-            RefNotFoundError: if the ref does not exist.
-            NamespaceNotFoundError: if the namespace does not exist.
-            NamespaceConflictsError: if conflicting namespaces names are specified.
-            TableNotFoundError: if the table does not exist.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.NamespaceConflictsError`: if conflicting namespaces names are specified.
+            `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_tables(
         self,
@@ -932,7 +1035,7 @@ class Client:
             filter_by_namespace: Optional, the namespace to get filtered tables from.
             limit: Optional, max number of tables to get.
         Returns:
-            An iterator over `Table` objects.
+            An iterator over `bauplan.schema.Table` objects.
         """
     def get_tag(self, /, tag: "str | Tag") -> "Tag":
         """
@@ -954,10 +1057,10 @@ class Client:
             A `bauplan.schema.Tag` object.
 
         Raises:
-            TagNotFoundError: if the tag does not exist.
-            NotATagRefError: if the object is not a tag.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+            `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_tags(
         self, /, *, filter_by_name: "str | None" = None, limit: "int | None" = None
@@ -967,15 +1070,22 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
+        ```python fixture:my_tag
+        import bauplan
+        client = bauplan.Client()
+
+        tags = client.get_tags()
+        ```
+
         Parameters:
             filter_by_name: Optional, filter the tags by name.
             limit: Optional, max number of tags to get.
         Returns:
-            An iterator over `Tag` objects.
+            An iterator over `bauplan.schema.Tag` objects.
 
         Raises:
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            bauplan.exceptions.UnauthorizedError: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def has_branch(self, /, branch: "str | Branch") -> "bool":
         """
@@ -997,9 +1107,9 @@ class Client:
             A boolean for if the branch exists.
 
         Raises:
-            ForbiddenError: if the user does not have access to the branch.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def has_namespace(
         self, /, namespace: "str | Namespace", ref: "str | Ref"
@@ -1027,9 +1137,9 @@ class Client:
             A boolean for if the namespace exists.
 
         Raises:
-            RefNotFoundError: if the ref does not exist.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def has_table(
         self,
@@ -1063,10 +1173,10 @@ class Client:
             A boolean for if the table exists.
 
         Raises:
-            RefNotFoundError: if the ref does not exist.
-            NamespaceNotFoundError: if the namespace does not exist.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def has_tag(self, /, tag: "str | Tag") -> "bool":
         """
@@ -1089,8 +1199,8 @@ class Client:
             A boolean for if the tag exists.
 
         Raises:
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def import_data(
         self,
@@ -1162,7 +1272,7 @@ class Client:
             client_timeout: timeout in seconds.
 
         Returns:
-            An `InfoState` object containing organization, user, and runner information.
+            A `bauplan.InfoState` object containing organization, user, and runner information.
         """
     def merge_branch(
         self,
@@ -1196,15 +1306,15 @@ class Client:
             commit_body: Optional, the commit body.
             commit_properties: Optional, a list of properties to attach to the merge.
         Returns:
-            the `Branch` where the merge was made.
+            The `bauplan.schema.Branch` where the merge was made.
 
         Raises:
-            MergeForbiddenError: if the user does not have access to merge the branch.
-            BranchNotFoundError: if the destination branch does not exist.
-            NotAWriteBranchError: if the destination branch is not a writable ref.
-            MergeConflictError: if the merge operation results in a conflict.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.MergeForbiddenError`: if the user does not have access to merge the branch.
+            `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
+            `bauplan.exceptions.NotAWriteBranchError`: if the destination branch is not a writable ref.
+            `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def plan_table_creation(
         self,
@@ -1255,10 +1365,10 @@ class Client:
             client_timeout: seconds to timeout; this also cancels the remote job execution.
 
         Returns:
-            The plan state.
+            A `bauplan.state.TableCreatePlanState` object.
 
         Raises:
-            TableCreatePlanStatusError: if the table creation plan fails.
+            `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
         """
     def query(
         self,
@@ -1501,11 +1611,11 @@ class Client:
             branch: The name of the branch to rename.
             new_branch: The name of the new branch.
         Returns:
-            The renamed `Branch` object.
+            The renamed `bauplan.schema.Branch` object.
 
         Raises:
-            `RenameBranchForbiddenError`: if the user does not have access to create the branch.
-            `UnauthorizedError`: if the user's credentials are invalid.
+            `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to create the branch.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
     def rename_tag(self, /, tag: "str | Tag", new_tag: "str | Tag") -> "Tag":
@@ -1528,12 +1638,12 @@ class Client:
             tag: The name of the tag to rename.
             new_tag: The name of the new tag.
         Returns:
-            The renamed tag object.
+            The renamed `bauplan.schema.Tag` object.
 
         Raises:
-            RenameTagForbiddenError: if the user does not have access to create the tag.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to create the tag.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def revert_table(
         self,
@@ -1576,15 +1686,15 @@ class Client:
             The `bauplan.schema.Branch` where the revert was made.
 
         Raises:
-            RevertTableForbiddenError: if the user does not have access to revert the table.
-            RefNotFoundError: if the ref does not exist.
-            BranchNotFoundError: if the destination branch does not exist.
-            NotAWriteBranchError: if the destination branch is not a writable ref.
-            BranchHeadChangedError: if the branch head hash has changed.
-            MergeConflictError: if the merge operation results in a conflict.
-            NamespaceConflictsError: if conflicting namespaces names are specified.
-            UnauthorizedError: if the user's credentials are invalid.
-            ValueError: if one or more parameters are invalid.
+            `bauplan.exceptions.RevertTableForbiddenError`: if the user does not have access to revert the table.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
+            `bauplan.exceptions.NotAWriteBranchError`: if the destination branch is not a writable ref.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
+            `bauplan.exceptions.NamespaceConflictsError`: if conflicting namespaces names are specified.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def run(
         self,
@@ -1619,7 +1729,7 @@ class Client:
         )
 
         if str(run_state.job_status).lower() != "success":
-            raise Exception(f"{run_state.job_id} failed: {run_state.job_status}")
+            raise Exception(f"{run_state.job_id} failed: {run_state.job_status} — {run_state.error}")
         ```
 
         Parameters:
@@ -1658,7 +1768,7 @@ class Client:
         Execute a table scan (with optional filters) and return the results as an arrow Table.
 
         Note that this function uses SQLGlot to compose a safe SQL query,
-        and then internally defer to the query_to_arrow function for the actual
+        and then internally defer to the `query` function for the actual
         scan.
         ```python fixture:my_branch
         import bauplan

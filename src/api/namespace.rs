@@ -7,7 +7,7 @@ use crate::{
     api::{ApiRequest, DataResponse, commit::CommitOptions},
 };
 
-/// A table namespace.
+/// A container for organizing tables.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",

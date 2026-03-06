@@ -110,21 +110,25 @@ impl Commit {
         format!("Commit(hash={short_hash:?}, author={author:?}, message={subject:?})")
     }
 
+    /// The first author of the commit.
     #[getter(author)]
     fn py_author(&self) -> Option<Actor> {
         self.author().cloned()
     }
 
+    /// The subject line of the commit message.
     #[getter(subject)]
     fn py_subject(&self) -> Option<&str> {
         self.subject()
     }
 
+    /// The body of the commit message. `None` if the message has no body.
     #[getter(body)]
     fn py_body(&self) -> Option<&str> {
         self.body()
     }
 
+    /// For merge commits, the branch that was merged in (second parent). `None` for regular commits.
     #[getter(parent_merge_ref)]
     fn py_parent_merge_ref(&self) -> Option<Branch> {
         self.parent_merge_ref()

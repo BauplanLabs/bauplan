@@ -50,8 +50,8 @@ impl Client {
     ///     An iterator over `Commit` objects.
     ///
     /// Raises:
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         r#ref: "str | Ref",
         *,

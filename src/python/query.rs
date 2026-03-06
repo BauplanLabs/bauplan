@@ -603,7 +603,7 @@ impl Client {
     /// Execute a table scan (with optional filters) and return the results as an arrow Table.
     ///
     /// Note that this function uses SQLGlot to compose a safe SQL query,
-    /// and then internally defer to the query_to_arrow function for the actual
+    /// and then internally defer to the `query` function for the actual
     /// scan.
     /// ```python fixture:my_branch
     /// import bauplan

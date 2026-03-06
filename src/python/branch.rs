@@ -36,7 +36,7 @@ impl Client {
     ///     user: Filter the branches by user.
     ///     limit: Optional, max number of branches to get.
     /// Returns:
-    ///     An iterator over `Branch` objects.
+    ///     An iterator over `bauplan.schema.Branch` objects.
     #[pyo3(signature = (
         *,
         name: "str | None" = None,
@@ -71,21 +71,20 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// # retrieve only the tables as tuples of (name, kind)
     /// branch = client.get_branch('my_branch_name')
     /// ```
     ///
     /// Parameters:
     ///     branch: The name of the branch to retrieve.
     /// Returns:
-    ///     A `Branch` object.
+    ///     A `bauplan.schema.Branch` object.
     ///
     /// Raises:
-    ///     BranchNotFoundError: if the branch does not exist.
-    ///     NotABranchRefError: if the object is not a branch.
-    ///     ForbiddenError: if the user does not have access to the branch.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (branch: "str | Branch") -> "Branch")]
     fn get_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<Branch> {
         let req = GetBranch { name: &branch.0 };
@@ -111,9 +110,9 @@ impl Client {
     ///     A boolean for if the branch exists.
     ///
     /// Raises:
-    ///     ForbiddenError: if the user does not have access to the branch.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (branch: "str | Branch") -> "bool")]
     fn has_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<bool> {
         let req = GetBranch { name: &branch.0 };
@@ -162,10 +161,10 @@ impl Client {
     ///     The created branch object.
     ///
     /// Raises:
-    ///     CreateBranchForbiddenError: if the user does not have access to create the branch.
-    ///     BranchExistsError: if the branch already exists.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
+    ///     `bauplan.exceptions.BranchExistsError`: if the branch already exists.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         branch: "str | Branch",
         from_ref: "str | Ref",
@@ -223,11 +222,11 @@ impl Client {
     ///     branch: The name of the branch to rename.
     ///     new_branch: The name of the new branch.
     /// Returns:
-    ///     The renamed `Branch` object.
+    ///     The renamed `bauplan.schema.Branch` object.
     ///
     /// Raises:
-    ///     `RenameBranchForbiddenError`: if the user does not have access to create the branch.
-    ///     `UnauthorizedError`: if the user's credentials are invalid.
+    ///     `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to rename the branch.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         branch: "str | Branch",
@@ -264,15 +263,15 @@ impl Client {
     ///     commit_body: Optional, the commit body.
     ///     commit_properties: Optional, a list of properties to attach to the merge.
     /// Returns:
-    ///     the `Branch` where the merge was made.
+    ///     The `bauplan.schema.Branch` where the merge was made.
     ///
     /// Raises:
-    ///     MergeForbiddenError: if the user does not have access to merge the branch.
-    ///     BranchNotFoundError: if the destination branch does not exist.
-    ///     NotAWriteBranchError: if the destination branch is not a writable ref.
-    ///     MergeConflictError: if the merge operation results in a conflict.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.MergeForbiddenError`: if the user does not have access to merge the branch.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+    ///     `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         source_ref: "str | Ref",
         into_branch: "str | Branch",
@@ -327,11 +326,11 @@ impl Client {
     ///     A boolean for if the branch was deleted.
     ///
     /// Raises:
-    ///     DeleteBranchForbiddenError: if the user does not have access to delete the branch.
-    ///     BranchNotFoundError: if the branch does not exist.
-    ///     BranchHeadChangedError: if the branch head hash has changed.
-    ///     UnauthorizedError: if the user's credentials are invalid.
-    ///     ValueError: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.DeleteBranchForbiddenError`: if the user does not have access to delete the branch.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         branch: "str | Branch",
         *,
