@@ -9,7 +9,7 @@ class Actor:
     """
     def __repr__(self, /) -> str: ...
     @property
-    def email(self, /) -> str |None:
+    def email(self, /) -> str | None:
         """
         The actor's email address.
         """
@@ -32,7 +32,7 @@ class Commit:
     """
     def __repr__(self, /) -> str: ...
     @property
-    def author(self, /) -> Actor |None: ...
+    def author(self, /) -> Actor | None: ...
     @property
     def authored_date(self, /) -> datetime:
         """
@@ -44,7 +44,7 @@ class Commit:
         The authors of the commit.
         """
     @property
-    def body(self, /) -> str |None: ...
+    def body(self, /) -> str | None: ...
     @property
     def committed_date(self, /) -> datetime:
         """
@@ -56,7 +56,7 @@ class Commit:
         The committer of the commit.
         """
     @property
-    def message(self, /) -> str |None:
+    def message(self, /) -> str | None:
         """
         The commit message.
         """
@@ -66,7 +66,7 @@ class Commit:
         The parent commit hashes.
         """
     @property
-    def parent_merge_ref(self, /) -> Branch |None: ...
+    def parent_merge_ref(self, /) -> Branch | None: ...
     @property
     def parent_ref(self, /) -> Ref:
         """
@@ -88,7 +88,7 @@ class Commit:
         Actors who signed off on the commit.
         """
     @property
-    def subject(self, /) -> str |None: ...
+    def subject(self, /) -> str | None: ...
 
 @final
 class DAGEdge:
@@ -98,7 +98,7 @@ class DAGEdge:
     @property
     def destination_model(self, /) -> str: ...
     @property
-    def source_model(self, /) -> str |None: ...
+    def source_model(self, /) -> str | None: ...
 
 @final
 class DAGNode:
@@ -123,12 +123,12 @@ class Job:
     """
     def __repr__(self, /) -> str: ...
     @property
-    def created_at(self, /) -> datetime |None:
+    def created_at(self, /) -> datetime | None:
         """
         When the job was created.
         """
     @property
-    def finished_at(self, /) -> datetime |None:
+    def finished_at(self, /) -> datetime | None:
         """
         When the job finished (successfully or not).
         """
@@ -148,7 +148,7 @@ class Job:
         The runner instance assigned to execute this job.
         """
     @property
-    def started_at(self, /) -> datetime |None:
+    def started_at(self, /) -> datetime | None:
         """
         When the job started executing.
         """
@@ -182,21 +182,22 @@ class JobContext:
     @property
     def logs(self, /) -> list[JobLogEvent]: ...
     @property
-    def project_id(self, /) -> str |None: ...
+    def project_id(self, /) -> str | None: ...
     @property
-    def project_name(self, /) -> str |None: ...
+    def project_name(self, /) -> str | None: ...
     @property
-    def ref(self, /) -> str |None: ...
+    def ref(self, /) -> str | None: ...
     @property
     def snapshot_dict(self, /) -> dict[str, str]: ...
     @property
-    def tx_ref(self, /) -> str |None: ...
+    def tx_ref(self, /) -> str | None: ...
 
 @final
 class JobKind:
     """
     The kind/type of a job.
     """
+
     IMPORT_PLAN_APPLY: Final[JobKind]
     IMPORT_PLAN_CREATE: Final[JobKind]
     QUERY: Final[JobKind]
@@ -238,6 +239,7 @@ class JobLogLevel:
     """
     The log level for a log event.
     """
+
     DEBUG: Final[JobLogLevel]
     ERROR: Final[JobLogLevel]
     INFO: Final[JobLogLevel]
@@ -253,6 +255,7 @@ class JobLogStream:
     """
     The output stream for a log event.
     """
+
     STDERR: Final[JobLogStream]
     STDOUT: Final[JobLogStream]
     def __eq__(self, /, other: object) -> bool: ...
@@ -265,6 +268,7 @@ class JobState:
     """
     The state of a job.
     """
+
     ABORT: Final[JobState]
     COMPLETE: Final[JobState]
     FAIL: Final[JobState]
@@ -325,6 +329,7 @@ class RefType:
     """
     The type of a ref.
     """
+
     BRANCH: Final[RefType]
     DETACHED: Final[RefType]
     TAG: Final[RefType]
@@ -354,12 +359,12 @@ class Table:
         """
     def __repr__(self, /) -> str: ...
     @property
-    def current_schema_id(self, /) -> int |None:
+    def current_schema_id(self, /) -> int | None:
         """
         The current Iceberg schema ID.
         """
     @property
-    def current_snapshot_id(self, /) -> int |None:
+    def current_snapshot_id(self, /) -> int | None:
         """
         The current Iceberg snapshot ID.
         """
@@ -409,17 +414,17 @@ class Table:
         Table properties.
         """
     @property
-    def records(self, /) -> int |None:
+    def records(self, /) -> int | None:
         """
         The number of records in the table.
         """
     @property
-    def size(self, /) -> int |None:
+    def size(self, /) -> int | None:
         """
         The size of the table.
         """
     @property
-    def snapshots(self, /) -> int |None:
+    def snapshots(self, /) -> int | None:
         """
         The number of snapshots.
         """
@@ -456,6 +461,7 @@ class TableKind:
     """
     The kind of table entry.
     """
+
     ExternalTable: Final[TableKind]
     """
     An external table.

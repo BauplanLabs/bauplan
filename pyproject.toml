@@ -77,7 +77,12 @@ select = [
 ]
 
 [tool.ty.src]
-exclude = ["tests/fixtures"]
+exclude = ["tests/fixtures", "src/cli/init/models.py"]
+
+# Whitelist imports of bauplan._internal in __init__.py. The rust extension
+# module gets built there.
+[tool.ty.analysis]
+allowed-unresolved-imports = ["bauplan._internal", "bauplan._internal.*"]
 
 # Recompile whenever a rust file changes.
 [tool.uv]

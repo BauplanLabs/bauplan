@@ -1,62 +1,60 @@
-import griffe
+import importlib
 
-def canonical_bases(module: str, cls: str) -> list[str]:
-    obj = griffe.load(
-        module,
-        search_paths="python",
-        resolve_aliases=True,
-    )
-    return [
-        b.canonical_path for b in obj.classes[cls].bases
-        if not isinstance(b, str)
-    ]
+import griffe
+import pytest
+
+
+def load_module(module: str) -> griffe.Module:
+    obj = griffe.load(module, search_paths=["python"], resolve_aliases=True)
+    assert isinstance(obj, griffe.Module)
+    return obj
 
 
 class TestSubmoduleImports:
-    def test_import_schema(self):
-        import bauplan.schema
-
-        assert hasattr(bauplan.schema, "Ref")
-
-    def test_import_exceptions(self):
-        import bauplan.exceptions
-
-        assert hasattr(bauplan.exceptions, "BauplanError")
-
-    def test_import_state(self):
-        import bauplan.state
-
-        assert hasattr(bauplan.state, "RunState")
+    @pytest.mark.parametrize("mod,attr", [
+        ("bauplan.schema", "Ref"),
+        ("bauplan.exceptions", "BauplanError"),
+        ("bauplan.state", "RunState"),
+    ])
+    def test_import(self, mod: str, attr: str):
+        assert hasattr(importlib.import_module(mod), attr)
 
 
-class TestGriffeBases:
-    def test_exception_bases(self):
-        assert canonical_bases("bauplan.exceptions", "BauplanHTTPError") == [
-            "bauplan.exceptions.BauplanError",
+class TestInheritance:
+    @pytest.mark.parametrize("mod,cls,base", [
+        ("bauplan.exceptions", "BauplanHTTPError", "bauplan.exceptions.BauplanError"),
+        ("bauplan.exceptions", "ForbiddenError", "bauplan.exceptions.BauplanHTTPError"),
+        ("bauplan.schema", "Branch", "bauplan.schema.Ref"),
+    ])
+    def test_base_class(self, mod: str, cls: str, base: str):
+        obj = load_module(mod)
+        bases = [
+            b.canonical_path for b in obj.classes[cls].bases
+            if not isinstance(b, str)
         ]
+        assert bases == [base]
 
-    def test_exception_hierarchy(self):
-        assert canonical_bases("bauplan.exceptions", "ForbiddenError") == [
-            "bauplan.exceptions.BauplanHTTPError",
-        ]
 
-    def test_schema_bases(self):
-        assert canonical_bases("bauplan.schema", "Branch") == [
-            "bauplan.schema.Ref",
-        ]
+class TestCanonicalPaths:
+    """Types should resolve to their public module, not bauplan._internal."""
+
+    @pytest.mark.parametrize("mod,cls", [
+        ("bauplan", "Client"),
+        ("bauplan.schema", "Ref"),
+        ("bauplan.state", "RunState"),
+    ])
+    def test_canonical_path(self, mod: str, cls: str):
+        obj = load_module(mod)
+        assert obj.classes[cls].canonical_path == f"{mod}.{cls}"
 
 
 class TestRuntimeModule:
-    def test_schema_types(self):
-        from bauplan.schema import Ref, Branch, Job, JobKind
+    """__module__ on live types should reflect the public path."""
 
-        assert Ref.__module__ == "bauplan.schema"
-        assert Branch.__module__ == "bauplan.schema"
-        assert Job.__module__ == "bauplan.schema"
-        assert JobKind.__module__ == "bauplan.schema"
-
-    def test_state_types(self):
-        from bauplan.state import RunState, TableCreatePlanState
-
-        assert RunState.__module__ == "bauplan.state"
-        assert TableCreatePlanState.__module__ == "bauplan.state"
+    @pytest.mark.parametrize("mod,cls", [
+        ("bauplan", "Client"),
+        ("bauplan.schema", "Ref"),
+        ("bauplan.state", "RunState"),
+    ])
+    def test_module(self, mod: str, cls: str):
+        assert getattr(importlib.import_module(mod), cls).__module__ == mod

@@ -1,17 +1,16 @@
-from bauplan._internal import __version__
-
-# Re-export everything from the extension module.
-from bauplan._internal import (
-    Client,
-    InfoState,
-    OrganizationInfo,
-    RunnerNodeInfo,
-    UserInfo,
-)
+__version__: str
 
 # Submodules.
 from bauplan import exceptions, schema, state, standard_expectations
-from bauplan.schema import JobKind, JobState, RefType
+from bauplan.schema import (
+    Branch, Commit, Job, JobContext, JobKind, JobLogEvent, JobState,
+    Namespace, Ref, RefType, Table, Tag,
+)
+from bauplan.state import (
+    ExternalTableCreateState, RunState,
+    TableCreatePlanApplyState, TableCreatePlanState,
+    TableDataImportState,
+)
 from bauplan._classes import Model
 from bauplan._decorators import (
     ModelCacheStrategy,
@@ -25,7 +24,6 @@ from bauplan._decorators import (
     synthetic_model,
 )
 from bauplan._parameters import Parameter
-
 
 __all__ = [
     "__version__",

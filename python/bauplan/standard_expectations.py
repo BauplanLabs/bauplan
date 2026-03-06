@@ -13,7 +13,9 @@ import pyarrow as pa
 import pyarrow.compute as pc
 
 
-def _calculate_string_concatenation(table: pa.Table, columns: list, separator: str = '') -> Any:
+def _calculate_string_concatenation(
+    table: pa.Table, columns: list, separator: str = ""
+) -> Any:
     """
     Given a pyarrow table and a list of column names, concatenate the columns into a new column.
     The caller of the function can then use the column to compare it with an existing column or add it.
@@ -24,7 +26,9 @@ def _calculate_string_concatenation(table: pa.Table, columns: list, separator: s
     fields = []
     for column in columns:
         fields.append(
-            pc.cast(table[column], pa.string()) if table[column].type != pa.string() else table[column]
+            pc.cast(table[column], pa.string())
+            if table[column].type != pa.string()
+            else table[column]
         )
     # last item needs to be the separator
     fields.append(separator)
@@ -43,7 +47,7 @@ def expect_column_equal_concatenation(
     table: pa.Table,
     target_column: str,
     columns: list,
-    separator: str = '',
+    separator: str = "",
 ) -> bool:
     """
     Expect the target column to be equal to the concatenation of the columns in the list.
@@ -71,7 +75,9 @@ def expect_column_equal_concatenation(
     ).as_py()
 
 
-def expect_column_mean_greater_than(table: pa.Table, column_name: str, value: float) -> bool:
+def expect_column_mean_greater_than(
+    table: pa.Table, column_name: str, value: float
+) -> bool:
     """
     Expect the mean of a column to be greater than the supplied value.
 
@@ -88,7 +94,9 @@ def expect_column_mean_greater_than(table: pa.Table, column_name: str, value: fl
     return mean_ > value
 
 
-def expect_column_mean_greater_or_equal_than(table: pa.Table, column_name: str, value: float) -> bool:
+def expect_column_mean_greater_or_equal_than(
+    table: pa.Table, column_name: str, value: float
+) -> bool:
     """
     Expect the mean of a column to be equal or greater than the supplied value.
 
@@ -105,7 +113,9 @@ def expect_column_mean_greater_or_equal_than(table: pa.Table, column_name: str, 
     return mean_ >= value
 
 
-def expect_column_mean_smaller_than(table: pa.Table, column_name: str, value: float) -> bool:
+def expect_column_mean_smaller_than(
+    table: pa.Table, column_name: str, value: float
+) -> bool:
     """
     Expect the mean of a column to be smaller than the supplied value.
 
@@ -122,7 +132,9 @@ def expect_column_mean_smaller_than(table: pa.Table, column_name: str, value: fl
     return mean_ < value
 
 
-def expect_column_mean_smaller_or_equal_than(table: pa.Table, column_name: str, value: float) -> bool:
+def expect_column_mean_smaller_or_equal_than(
+    table: pa.Table, column_name: str, value: float
+) -> bool:
     """
     Expect the mean of a column to be equal or smaller than the supplied value.
 
@@ -222,11 +234,15 @@ def expect_column_not_unique(table: pa.Table, column_name: str) -> bool:
     return _column_unique(table, column_name) < len(table[column_name])
 
 
-def _column_accepted_values(table: pa.Table, column_name: str, accepted_values: list) -> Any:
+def _column_accepted_values(
+    table: pa.Table, column_name: str, accepted_values: list
+) -> Any:
     return pc.all(pc.is_in(table[column_name], pa.array(accepted_values))).as_py()
 
 
-def expect_column_accepted_values(table: pa.Table, column_name: str, accepted_values: list) -> bool:
+def expect_column_accepted_values(
+    table: pa.Table, column_name: str, accepted_values: list
+) -> bool:
     """
     Expect all values in the column to come from the list of accepted values.
 
