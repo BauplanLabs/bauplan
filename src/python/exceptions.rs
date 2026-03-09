@@ -110,6 +110,8 @@ pub mod exceptions {
     #[pymodule_export]
     use super::RevertIdenticalTableError;
     #[pymodule_export]
+    use super::TableExistsError;
+    #[pymodule_export]
     use super::TagExistsError;
     #[pymodule_export]
     use super::UpdateConflictError;
@@ -242,6 +244,7 @@ impl ApiError {
         if let Some(ref kind) = args.3 {
             match kind {
                 // 400
+                ApiErrorKind::BadRequest { .. } => PyErr::new::<BadRequestError, _>(args),
                 ApiErrorKind::InvalidRef { .. } => PyErr::new::<InvalidRefError, _>(args),
                 ApiErrorKind::NotABranchRef { .. } => PyErr::new::<NotABranchRefError, _>(args),
                 ApiErrorKind::NotATagRef { .. } => PyErr::new::<NotATagRefError, _>(args),
@@ -252,6 +255,7 @@ impl ApiError {
                 // 401
                 ApiErrorKind::Unauthorized { .. } => PyErr::new::<UnauthorizedError, _>(args),
                 // 403
+                ApiErrorKind::Forbidden { .. } => PyErr::new::<ForbiddenError, _>(args),
                 ApiErrorKind::CreateBranchForbidden { .. } => {
                     PyErr::new::<CreateBranchForbiddenError, _>(args)
                 }
@@ -310,6 +314,7 @@ impl ApiError {
                 ApiErrorKind::RevertIdenticalTable { .. } => {
                     PyErr::new::<RevertIdenticalTableError, _>(args)
                 }
+                ApiErrorKind::TableExists { .. } => PyErr::new::<TableExistsError, _>(args),
                 ApiErrorKind::TagExists { .. } => PyErr::new::<TagExistsError, _>(args),
             }
         } else {
@@ -419,6 +424,7 @@ pyo3::create_exception!(bauplan.exceptions, ApiRouteError, MethodNotAllowedError
 pyo3::create_exception!(bauplan.exceptions, ConflictError, BauplanHTTPError);
 pyo3::create_exception!(bauplan.exceptions, UpdateConflictError, ConflictError);
 pyo3::create_exception!(bauplan.exceptions, BranchExistsError, UpdateConflictError);
+pyo3::create_exception!(bauplan.exceptions, TableExistsError, UpdateConflictError);
 pyo3::create_exception!(bauplan.exceptions, TagExistsError, UpdateConflictError);
 pyo3::create_exception!(
     bauplan.exceptions,

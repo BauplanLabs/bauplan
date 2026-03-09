@@ -57,6 +57,9 @@ class TestExceptionHierarchy:
     def test_namespace_exists_is_update_conflict(self):
         assert issubclass(exceptions.NamespaceExistsError, exceptions.UpdateConflictError)
 
+    def test_table_exists_is_update_conflict(self):
+        assert issubclass(exceptions.TableExistsError, exceptions.UpdateConflictError)
+
     def test_plan_status_error_is_plan_error(self):
         assert issubclass(exceptions.TableCreatePlanStatusError, exceptions.TableCreatePlanError)
 

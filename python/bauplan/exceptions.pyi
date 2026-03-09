@@ -8,6 +8,11 @@ class ApiErrorKind:
     of an error response.
     """
     @final
+    class BadRequest(ApiErrorKind):
+        __match_args__: Final = ()
+        def __new__(cls, /) -> ApiErrorKind.BadRequest: ...
+
+    @final
     class BranchExists(ApiErrorKind):
         __match_args__: Final = ("branch_name", "catalog_ref")
         def __new__(
@@ -70,6 +75,11 @@ class ApiErrorKind:
     class DeleteTagForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.DeleteTagForbidden: ...
+
+    @final
+    class Forbidden(ApiErrorKind):
+        __match_args__: Final = ()
+        def __new__(cls, /) -> ApiErrorKind.Forbidden: ...
 
     @final
     class InvalidRef(ApiErrorKind):
@@ -230,6 +240,17 @@ class ApiErrorKind:
         def table_name(self, /) -> str: ...
 
     @final
+    class TableExists(ApiErrorKind):
+        __match_args__: Final = ("table_name", "catalog_ref")
+        def __new__(
+            cls, /, table_name: str, catalog_ref: Ref
+        ) -> ApiErrorKind.TableExists: ...
+        @property
+        def catalog_ref(self, /) -> Ref: ...
+        @property
+        def table_name(self, /) -> str: ...
+
+    @final
     class TagExists(ApiErrorKind):
         __match_args__: Final = ("tag_name", "catalog_ref")
         def __new__(
@@ -338,6 +359,7 @@ class ApiRouteError(MethodNotAllowedError): ...
 class ConflictError(BauplanHTTPError): ...
 class UpdateConflictError(ConflictError): ...
 class BranchExistsError(UpdateConflictError): ...
+class TableExistsError(UpdateConflictError): ...
 class TagExistsError(UpdateConflictError): ...
 class NamespaceExistsError(UpdateConflictError): ...
 class NamespaceUnresolvedError(ConflictError): ...

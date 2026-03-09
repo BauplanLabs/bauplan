@@ -135,7 +135,7 @@ def test_create_external_table_from_metadata(client: bauplan.Client, temp_branch
     assert result.num_rows == 10
 
     # Creating the same table without overwrite should raise.
-    with pytest.raises(Exception):
+    with pytest.raises(bauplan.exceptions.ConflictError):
         client.create_external_table_from_metadata(
             table="ext_metadata_table",
             metadata_json_uri=metadata_uri,
