@@ -159,7 +159,7 @@ impl Client {
     ///     from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
     ///     if_not_exists: If set to `True`, the branch will not be created if it already exists.
     /// Returns:
-    ///     The created branch object.
+    ///     The created `bauplan.schema.Branch` object.
     ///
     /// Raises:
     ///     `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
