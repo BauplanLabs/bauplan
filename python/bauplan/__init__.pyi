@@ -122,8 +122,8 @@ class Client:
         - 401: `bauplan.exceptions.UnauthorizedError`
         - 403: `bauplan.exceptions.ForbiddenError`
         - 404: `bauplan.exceptions.ResourceNotFoundError` e.g. ID doesn't match any records
-        - 404: `bauplan.exceptions.ApiRouteError` e.g. the given route doesn't exist
-        - 405: `bauplan.exceptions.ApiMethodError` e.g. POST on a route with only GET defined
+        - 404: `bauplan.exceptions.ApiMethodError` e.g. the given API method doesn't exist
+        - 405: `bauplan.exceptions.ApiRouteError` e.g. POST on a route with only GET defined
         - 409: `bauplan.exceptions.UpdateConflictError` e.g. creating a record with a name that already exists
         - 429: `bauplan.exceptions.TooManyRequestsError`
 
@@ -295,7 +295,7 @@ class Client:
             NamespaceNotFoundError: if the namespace does not exist.
             UnauthorizedError: if the user's credentials are invalid.
             InvalidDataError: if the metadata location is within the warehouse directory.
-            UpdateConflictError: if a table with the same name already exists and overwrite=False.
+            ConflictError: if a table with the same name already exists and overwrite=False.
             BauplanError: for other API errors during registration or retrieval.
         """
     def create_external_table_from_parquet(

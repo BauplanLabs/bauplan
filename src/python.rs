@@ -93,8 +93,8 @@ impl ClientError {
 ///     - 401: `bauplan.exceptions.UnauthorizedError`
 ///     - 403: `bauplan.exceptions.ForbiddenError`
 ///     - 404: `bauplan.exceptions.ResourceNotFoundError` e.g. ID doesn't match any records
-///     - 404: `bauplan.exceptions.ApiRouteError` e.g. the given route doesn't exist
-///     - 405: `bauplan.exceptions.ApiMethodError` e.g. POST on a route with only GET defined
+///     - 404: `bauplan.exceptions.ApiMethodError` e.g. the given API method doesn't exist
+///     - 405: `bauplan.exceptions.ApiRouteError` e.g. POST on a route with only GET defined
 ///     - 409: `bauplan.exceptions.UpdateConflictError` e.g. creating a record with a name that already exists
 ///     - 429: `bauplan.exceptions.TooManyRequestsError`
 ///

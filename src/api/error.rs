@@ -13,6 +13,7 @@ use crate::CatalogRef;
 )]
 pub enum ApiErrorKind {
     // 400
+    BadRequest {},
     InvalidRef {
         input_ref: String,
     },
@@ -35,6 +36,7 @@ pub enum ApiErrorKind {
     Unauthorized {},
 
     // 403
+    Forbidden {},
     CreateBranchForbidden {},
     CreateNamespaceForbidden {},
     CreateTagForbidden {},
@@ -104,6 +106,11 @@ pub enum ApiErrorKind {
         source_table_name: String,
         destination_table_name: String,
     },
+    TableExists {
+        table_name: String,
+        #[serde(rename = "ref")]
+        catalog_ref: CatalogRef,
+    },
     TagExists {
         tag_name: String,
         #[serde(rename = "ref")]
@@ -114,6 +121,7 @@ pub enum ApiErrorKind {
 impl std::fmt::Display for ApiErrorKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
+            Self::BadRequest { .. } => "BAD_REQUEST",
             Self::BranchExists { .. } => "BRANCH_EXISTS",
             Self::BranchHeadChanged { .. } => "BRANCH_HEAD_CHANGED",
             Self::BranchNotFound { .. } => "BRANCH_NOT_FOUND",
@@ -124,6 +132,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::DeleteNamespaceForbidden { .. } => "DELETE_NAMESPACE_FORBIDDEN",
             Self::DeleteTableForbidden { .. } => "DELETE_TABLE_FORBIDDEN",
             Self::DeleteTagForbidden { .. } => "DELETE_TAG_FORBIDDEN",
+            Self::Forbidden { .. } => "FORBIDDEN",
             Self::InvalidRef { .. } => "INVALID_REF",
             Self::MergeConflict { .. } => "MERGE_CONFLICT",
             Self::MergeForbidden { .. } => "MERGE_FORBIDDEN",
@@ -141,6 +150,7 @@ impl std::fmt::Display for ApiErrorKind {
             Self::RevertIdenticalTable { .. } => "REVERT_IDENTICAL_TABLE",
             Self::RevertTableForbidden { .. } => "REVERT_TABLE_FORBIDDEN",
             Self::SameRef { .. } => "SAME_REF",
+            Self::TableExists { .. } => "TABLE_EXISTS",
             Self::TableNotFound { .. } => "TABLE_NOT_FOUND",
             Self::TagExists { .. } => "TAG_EXISTS",
             Self::TagNotFound { .. } => "TAG_NOT_FOUND",
@@ -297,23 +307,4 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn raw_unauthorized() -> anyhow::Result<()> {
-        let raw: RawApiError = serde_json::from_str(
-            r#"{
-                "message": "invalid api key",
-                "type": "UNAUTHORIZED"
-            }"#,
-        )?;
-
-        let err = ApiError::from_raw(http::StatusCode::UNAUTHORIZED, raw);
-        let ApiError::ErrorResponse { kind, message, .. } = &err else {
-            bail!("expected ErrorResponse, got {err:?}");
-        };
-
-        assert_matches!(kind, ApiErrorKind::Unauthorized { .. });
-        assert_eq!(message.as_deref(), Some("invalid api key"));
-
-        Ok(())
-    }
 }

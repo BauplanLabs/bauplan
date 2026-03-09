@@ -948,7 +948,7 @@ impl Client {
     ///     NamespaceNotFoundError: if the namespace does not exist.
     ///     UnauthorizedError: if the user's credentials are invalid.
     ///     InvalidDataError: if the metadata location is within the warehouse directory.
-    ///     UpdateConflictError: if a table with the same name already exists and overwrite=False.
+    ///     ConflictError: if a table with the same name already exists and overwrite=False.
     ///     BauplanError: for other API errors during registration or retrieval.
     #[pyo3(signature = (
         table: "str | Table",
