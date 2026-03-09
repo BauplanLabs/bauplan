@@ -1,4 +1,4 @@
-use crate::{bauplan, username};
+use crate::{bauplan, test_branch};
 use predicates::{
     prelude::*,
     str::{contains, starts_with},
@@ -174,20 +174,13 @@ fn invalid_package_ppandas() {
 
 #[test]
 fn materialize_partitioned_by_year() {
-    let branch = format!("{}.e2e_test_for_materialization", username());
-
-    let _ = bauplan().args(["branch", "delete", &branch]).ok();
-
-    bauplan()
-        .args(["branch", "create", &branch])
-        .assert()
-        .success();
+    let branch = test_branch("e2e_test_for_materialization");
 
     bauplan()
         .args([
             "run",
             "--ref",
-            &branch,
+            &branch.name,
             "--cache",
             "off",
             "-p",
@@ -195,8 +188,6 @@ fn materialize_partitioned_by_year() {
         ])
         .assert()
         .success();
-
-    let _ = bauplan().args(["branch", "delete", &branch]).ok();
 }
 
 #[test]
@@ -382,20 +373,13 @@ fn parquet_field_ids() {
 
 #[test]
 fn prophet_with_materialization() {
-    let branch = format!("{}.prophet_with_materialization", username());
-
-    let _ = bauplan().args(["branch", "delete", &branch]).ok();
-
-    bauplan()
-        .args(["branch", "create", &branch])
-        .assert()
-        .success();
+    let branch = test_branch("prophet_with_materialization");
 
     bauplan()
         .args([
             "run",
             "--ref",
-            &branch,
+            &branch.name,
             "--cache",
             "off",
             "-p",
@@ -404,11 +388,6 @@ fn prophet_with_materialization() {
         .assert()
         .success()
         .stderr(contains("ciao gianx"));
-
-    bauplan()
-        .args(["branch", "delete", &branch])
-        .assert()
-        .success();
 }
 
 #[test]
@@ -493,14 +472,7 @@ fn sdk_expectations_project() {
 
 #[test]
 fn with_transaction() {
-    let branch = format!("{}.run_with_transaction", username());
-
-    let _ = bauplan().args(["branch", "delete", &branch]).ok();
-
-    bauplan()
-        .args(["branch", "create", &branch])
-        .assert()
-        .success();
+    let branch = test_branch("run_with_transaction");
 
     bauplan()
         .args([
@@ -510,16 +482,11 @@ fn with_transaction() {
             "--cache",
             "off",
             "--ref",
-            &branch,
+            &branch.name,
             "-p",
             "tests/fixtures/simple_taxi_dag",
         ])
         .assert()
         .success()
         .stderr(contains("num_rows= 430488"));
-
-    bauplan()
-        .args(["branch", "delete", &branch])
-        .assert()
-        .success();
 }

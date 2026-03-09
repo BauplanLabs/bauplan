@@ -1,23 +1,16 @@
 use predicates::str::contains;
 
-use crate::cli::{bauplan, username};
+use crate::cli::{bauplan, test_branch};
 
 const NAMESPACE_NAME: &str = "e2e-create-table";
 const TABLE_NAME: &str = "my-table-name";
 
 #[test]
 fn import_create_table_and_query() {
-    let branch = format!("{}.e2e_create_table", username());
-
-    let _ = bauplan().args(["branch", "delete", &branch]).ok();
+    let branch = test_branch("e2e_create_table");
 
     bauplan()
-        .args(["branch", "create", &branch])
-        .assert()
-        .success();
-
-    bauplan()
-        .args(["namespace", "create", "--branch", &branch, NAMESPACE_NAME])
+        .args(["namespace", "create", "--branch", &branch.name, NAMESPACE_NAME])
         .assert()
         .success();
 
@@ -31,7 +24,7 @@ fn import_create_table_and_query() {
             "--namespace",
             NAMESPACE_NAME,
             "--branch",
-            &branch,
+            &branch.name,
         ])
         .assert()
         .success();
@@ -46,7 +39,7 @@ fn import_create_table_and_query() {
             "--namespace",
             NAMESPACE_NAME,
             "--branch",
-            &branch,
+            &branch.name,
         ])
         .assert()
         .success();
@@ -57,30 +50,18 @@ fn import_create_table_and_query() {
             "--cache",
             "off",
             "--ref",
-            &branch,
+            &branch.name,
             "--namespace",
             NAMESPACE_NAME,
             &format!("SELECT COUNT(*) FROM \"{}\"", TABLE_NAME),
         ])
         .assert()
         .success();
-
-    bauplan()
-        .args(["branch", "delete", &branch])
-        .assert()
-        .success();
 }
 
 #[test]
 fn import_manually() {
-    let branch = format!("{}.e2e_import_manual", username());
-
-    let _ = bauplan().args(["branch", "delete", &branch]).ok();
-
-    bauplan()
-        .args(["branch", "create", &branch])
-        .assert()
-        .success();
+    let branch = test_branch("e2e_import_manual");
 
     bauplan()
         .args([
@@ -90,7 +71,7 @@ fn import_manually() {
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
             "--branch",
-            &branch,
+            &branch.name,
             "--save-plan",
             "/tmp/planabcd.yaml",
         ])
@@ -110,7 +91,7 @@ fn import_manually() {
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
             "--branch",
-            &branch,
+            &branch.name,
         ])
         .assert()
         .success();
@@ -123,7 +104,7 @@ fn import_manually() {
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
             "--branch",
-            &branch,
+            &branch.name,
             "--import-duplicate-files",
         ])
         .assert()
@@ -137,7 +118,7 @@ fn import_manually() {
             "--search-uri",
             "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*",
             "--branch",
-            &branch,
+            &branch.name,
         ])
         .assert()
         .success();
@@ -148,15 +129,10 @@ fn import_manually() {
             "--cache",
             "off",
             "--ref",
-            &branch,
+            &branch.name,
             "SELECT COUNT(*) FROM table_with_partitions",
         ])
         .assert()
         .success()
         .stdout(contains("400"));
-
-    bauplan()
-        .args(["branch", "delete", &branch])
-        .assert()
-        .success();
 }
