@@ -82,6 +82,7 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
     ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
@@ -163,6 +164,8 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
     ///     `bauplan.exceptions.BranchExistsError`: if the branch already exists.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
@@ -226,6 +229,10 @@ impl Client {
     ///
     /// Raises:
     ///     `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to rename the branch.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.BranchExistsError`: if the new branch name already exists.
+    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
@@ -268,8 +275,11 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.MergeForbiddenError`: if the user does not have access to merge the branch.
     ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
     ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
     ///     `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
@@ -329,6 +339,9 @@ impl Client {
     ///     `bauplan.exceptions.DeleteBranchForbiddenError`: if the user does not have access to delete the branch.
     ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
     ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (

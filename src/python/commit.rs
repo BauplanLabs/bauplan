@@ -58,6 +58,8 @@ impl Client {
     ///     An iterator over `bauplan.schema.Commit` objects.
     ///
     /// Raises:
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (

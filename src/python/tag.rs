@@ -78,6 +78,7 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
     ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
@@ -151,6 +152,7 @@ impl Client {
     ///     `bauplan.exceptions.CreateTagForbiddenError`: if the user does not have access to create the tag.
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
     ///     `bauplan.exceptions.TagExistsError`: if the tag already exists.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
@@ -208,6 +210,10 @@ impl Client {
     ///
     /// Raises:
     ///     `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to rename the tag.
+    ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+    ///     `bauplan.exceptions.TagExistsError`: if the new tag name already exists.
+    ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
@@ -244,7 +250,9 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.DeleteTagForbiddenError`: if the user does not have access to delete the tag.
     ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
     ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (

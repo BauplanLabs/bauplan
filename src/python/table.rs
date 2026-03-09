@@ -713,6 +713,14 @@ impl Client {
     ///     limit: Optional, max number of tables to get.
     /// Returns:
     ///     An iterator over `bauplan.schema.Table` objects.
+    ///
+    /// Raises:
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         r#ref: "str | Ref",
         *,
@@ -776,6 +784,7 @@ impl Client {
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
     ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
     ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
@@ -827,6 +836,7 @@ impl Client {
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
@@ -888,10 +898,13 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.DeleteTableForbiddenError`: if the user does not have access to delete the table.
     ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
     ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+    ///     `bauplan.exceptions.MergeConflictError`: if the delete operation results in a conflict.
     ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
     ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
@@ -1047,15 +1060,21 @@ impl Client {
     ///     The `bauplan.schema.Branch` where the revert was made.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.RevertTableForbiddenError`: if the user does not have access to revert the table.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
-    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
-    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    ///     `ValueError`: if the table identifier is invalid, source_ref or branch_name is blank, the source entry is not Iceberg, a snapshot_id is missing, or a path validation error occurs.
+    ///     `bauplan.exceptions.InvalidRefError`: if the ref format from Nessie is invalid.
+    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination ref is not a branch.
+    ///     `bauplan.exceptions.SameRefError`: if the source and destination have the same hash.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the JWT is invalid or the auth session is missing.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user lacks writer role.
+    ///     `bauplan.exceptions.RevertTableForbiddenError`: if there is a zone/workspace restriction on the destination branch.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the source ref doesn't exist.
+    ///     `bauplan.exceptions.TableNotFoundError`: if the source table is not found on the source ref.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch doesn't exist.
+    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if the namespace cannot be resolved.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if a concurrent modification changed the branch head.
+    ///     `bauplan.exceptions.RevertDestinationTableExistsError`: if the destination table exists and the replace flag is not set.
+    ///     `bauplan.exceptions.RevertIdenticalTableError`: if the source and destination have the same snapshot.
+    ///     `bauplan.exceptions.MergeConflictError`: if there is a merge conflict during the transactional revert.
     #[pyo3(signature = (
         table: "str | Table",
         *,
