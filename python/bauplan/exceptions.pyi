@@ -45,30 +45,37 @@ class ApiErrorKind:
     class CreateBranchForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.CreateBranchForbidden: ...
+
     @final
     class CreateNamespaceForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.CreateNamespaceForbidden: ...
+
     @final
     class CreateTagForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.CreateTagForbidden: ...
+
     @final
     class DeleteBranchForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.DeleteBranchForbidden: ...
+
     @final
     class DeleteNamespaceForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.DeleteNamespaceForbidden: ...
+
     @final
     class DeleteTableForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.DeleteTableForbidden: ...
+
     @final
     class DeleteTagForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.DeleteTagForbidden: ...
+
     @final
     class Forbidden(ApiErrorKind):
         __match_args__: Final = ()
@@ -96,6 +103,7 @@ class ApiErrorKind:
     class MergeForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.MergeForbidden: ...
+
     @final
     class NamespaceExists(ApiErrorKind):
         __match_args__: Final = ("namespace_name", "catalog_ref")
@@ -174,10 +182,12 @@ class ApiErrorKind:
     class RenameBranchForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.RenameBranchForbidden: ...
+
     @final
     class RenameTagForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.RenameTagForbidden: ...
+
     @final
     class RevertDestinationTableExists(ApiErrorKind):
         __match_args__: Final = ("source_table_name", "destination_table_name")
@@ -204,6 +214,7 @@ class ApiErrorKind:
     class RevertTableForbidden(ApiErrorKind):
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.RevertTableForbidden: ...
+
     @final
     class SameRef(ApiErrorKind):
         __match_args__: Final = ("input_ref", "catalog_ref")

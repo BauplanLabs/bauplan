@@ -290,6 +290,8 @@ class Client:
         Raises:
             `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
             `bauplan.exceptions.BranchExistsError`: if the branch already exists.
+            `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -428,9 +430,12 @@ class Client:
         Raises:
             `bauplan.exceptions.CreateNamespaceForbiddenError`: if the user does not have access to create the namespace.
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.NamespaceExistsError`: if the namespace already exists.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -517,6 +522,7 @@ class Client:
             `bauplan.exceptions.CreateTagForbiddenError`: if the user does not have access to create the tag.
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
             `bauplan.exceptions.TagExistsError`: if the tag already exists.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -546,6 +552,9 @@ class Client:
             `bauplan.exceptions.DeleteBranchForbiddenError`: if the user does not have access to delete the branch.
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
             `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -586,8 +595,9 @@ class Client:
         Raises:
             `bauplan.exceptions.DeleteNamespaceForbiddenError`: if the user does not have access to delete the namespace.
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
             `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace is not empty.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
@@ -633,10 +643,13 @@ class Client:
         Raises:
             `bauplan.exceptions.DeleteTableForbiddenError`: if the user does not have access to delete the table.
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
+            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
+            `bauplan.exceptions.MergeConflictError`: if the delete operation results in a conflict.
             `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
-            `bauplan.exceptions.NamespaceConflictsError`: if conflicting namespaces names are specified.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -662,7 +675,9 @@ class Client:
         Raises:
             `bauplan.exceptions.DeleteTagForbiddenError`: if the user does not have access to delete the tag.
             `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
             `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -676,7 +691,6 @@ class Client:
         import bauplan
         client = bauplan.Client()
 
-        # retrieve only the tables as tuples of (name, kind)
         branch = client.get_branch('my_branch_name')
         ```
 
@@ -688,6 +702,7 @@ class Client:
         Raises:
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
             `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
@@ -767,6 +782,8 @@ class Client:
             An iterator over `bauplan.schema.Commit` objects.
 
         Raises:
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -923,6 +940,7 @@ class Client:
         Raises:
             `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -954,6 +972,7 @@ class Client:
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
 
@@ -1001,8 +1020,9 @@ class Client:
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-            `bauplan.exceptions.NamespaceConflictsError`: if conflicting namespaces names are specified.
+            `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
             `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
@@ -1036,6 +1056,14 @@ class Client:
             limit: Optional, max number of tables to get.
         Returns:
             An iterator over `bauplan.schema.Table` objects.
+
+        Raises:
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+            `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+            `ValueError`: if one or more parameters are invalid.
         """
     def get_tag(self, /, tag: "str | Tag") -> "Tag":
         """
@@ -1047,7 +1075,6 @@ class Client:
         import bauplan
         client = bauplan.Client()
 
-        # retrieve only the tables as tuples of (name, kind)
         tag = client.get_tag('my_tag_name')
         ```
 
@@ -1059,6 +1086,7 @@ class Client:
         Raises:
             `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
             `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -1075,6 +1103,7 @@ class Client:
         client = bauplan.Client()
 
         tags = client.get_tags()
+        for tag in tags:
             print(tag.name)
         ```
 
@@ -1139,6 +1168,7 @@ class Client:
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -1175,6 +1205,7 @@ class Client:
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
@@ -1312,8 +1343,11 @@ class Client:
         Raises:
             `bauplan.exceptions.MergeForbiddenError`: if the user does not have access to merge the branch.
             `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
             `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
+            `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -1615,7 +1649,11 @@ class Client:
             The renamed `bauplan.schema.Branch` object.
 
         Raises:
-            `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to create the branch.
+            `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to rename the branch.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.BranchExistsError`: if the new branch name already exists.
+            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -1642,7 +1680,11 @@ class Client:
             The renamed `bauplan.schema.Tag` object.
 
         Raises:
-            `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to create the tag.
+            `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to rename the tag.
+            `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
+            `bauplan.exceptions.TagExistsError`: if the new tag name already exists.
+            `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
+            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
             `ValueError`: if one or more parameters are invalid.
         """
@@ -1702,8 +1744,6 @@ class Client:
             `bauplan.exceptions.RevertDestinationTableExistsError`: if the destination table exists and the replace flag is not set.
             `bauplan.exceptions.RevertIdenticalTableError`: if the source and destination have the same snapshot.
             `bauplan.exceptions.MergeConflictError`: if there is a merge conflict during the transactional revert.
-            `bauplan.exceptions.InternalServerError`: if an unhandled exception occurs.
-            `bauplan.exceptions.NessieResponseException`: if a non-200 response is received from Nessie.
         """
     def run(
         self,

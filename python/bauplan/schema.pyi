@@ -32,7 +32,7 @@ class Commit:
     """
     def __repr__(self, /) -> str: ...
     @property
-    def author(self, /) -> Actor |None: 
+    def author(self, /) -> Actor | None:
         """The first author of the commit."""
         ...
     @property
@@ -46,8 +46,8 @@ class Commit:
         The authors of the commit.
         """
     @property
-    def body(self, /) -> str |None:
-        """The body of the commit message. ``None`` if the message has no body."""
+    def body(self, /) -> str | None:
+        """The body of the commit message. `None` if the message has no body."""
         ...
     @property
     def committed_date(self, /) -> datetime:
@@ -70,8 +70,8 @@ class Commit:
         The parent commit hashes.
         """
     @property
-    def parent_merge_ref(self, /) -> Branch |None: 
-        """For merge commits, the branch that was merged in (second parent). ``None`` for regular commits."""
+    def parent_merge_ref(self, /) -> Branch | None:
+        """For merge commits, the branch that was merged in (second parent). `None` for regular commits."""
         ...
     @property
     def parent_ref(self, /) -> Ref:
@@ -94,7 +94,7 @@ class Commit:
         Actors who signed off on the commit.
         """
     @property
-    def subject(self, /) -> str |None: 
+    def subject(self, /) -> str | None:
         """The subject line of the commit message."""
         ...
 
@@ -109,7 +109,7 @@ class DAGEdge:
         The destination model ID.
         """
     @property
-    def source_model(self, /) -> str |None:
+    def source_model(self, /) -> str | None:
         """
         The source model ID. `None` when the data source is a table scan rather than another model's output.
         """
@@ -120,7 +120,7 @@ class DAGNode:
     A node in the job DAG (a model).
     """
     @property
-    def id(self, /) -> str: 
+    def id(self, /) -> str:
         """The unique identifier for this node (model)."""
         ...
     @property
@@ -340,11 +340,11 @@ class Ref:
         """The hash of the branch or tag."""
         ...
     @property
-    def name(self, /) -> str: 
+    def name(self, /) -> str:
         """The name of the branch or tag."""
         ...
     @property
-    def type(self, /) -> RefType: 
+    def type(self, /) -> RefType:
         """The type of the ref, either 'BRANCH', 'TAG', or 'DETACHED'."""
         ...
 

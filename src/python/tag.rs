@@ -23,7 +23,8 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// for tag in client.get_tags():
+    /// tags = client.get_tags()
+    /// for tag in tags:
     ///     print(tag.name)
     /// ```
     ///
