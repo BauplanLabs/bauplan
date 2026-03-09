@@ -1,4 +1,6 @@
 use anstyle::{AnsiColor, Style};
+use anyhow::Context as _;
+use bauplan::ApiResponse as _;
 use bstr::{BStr, BString, ByteSlice as _};
 use predicates::reflection::{Case, Product};
 use similar::{ChangeTag, TextDiff};
@@ -29,8 +31,60 @@ pub fn username() -> String {
     std::env::var("BPLN_USERNAME").unwrap_or_else(|_| "bauplan-e2e-check".to_string())
 }
 
+pub fn test_branch(suffix: &str) -> TestBranch {
+    let profile = bauplan::Profile::from_default_env()
+        .expect("Failed to load test profile. Did you forget to set BAUPLAN_PROFILE?");
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    let name = format!("{}.{suffix}.{timestamp}", username());
+
+    // Clean up any leftover branch from a previous run.
+    let _ = roundtrip(&profile, bauplan::branch::DeleteBranch { name: &name });
+
+    roundtrip(
+        &profile,
+        bauplan::branch::CreateBranch {
+            name: &name,
+            from_ref: "main",
+        },
+    )
+    .expect("Failed to create test branch");
+
+    TestBranch { name, profile }
+}
+
+/// A temporary branch that is deleted when dropped.
+pub struct TestBranch {
+    pub name: String,
+    profile: bauplan::Profile,
+}
+
+fn roundtrip<T: bauplan::ApiRequest>(
+    profile: &bauplan::Profile,
+    req: T,
+) -> Result<T::Response, anyhow::Error> {
+    let req = req
+        .into_request(profile)
+        .context("Failed to create request")?;
+    let resp = ureq::run(req).context("HTTP error")?;
+    let resp = T::Response::from_response(resp.map(ureq::Body::into_reader))?;
+    Ok(resp)
+}
+
+impl Drop for TestBranch {
+    fn drop(&mut self) {
+        if let Err(e) = roundtrip(
+            &self.profile,
+            bauplan::branch::DeleteBranch { name: &self.name },
+        ) {
+            eprintln!("Warning: failed to delete test branch {}: {e}", self.name);
+        }
+    }
+}
+
 /// A predicate that checks strings appear consecutively in order.
-/// Mimics Python's ValidatorStringSequence.
 pub fn lines(expected: &[&str]) -> Lines {
     Lines {
         expected: expected.iter().map(|&s| s.into()).collect(),
