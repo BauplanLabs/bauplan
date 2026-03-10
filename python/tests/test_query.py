@@ -81,7 +81,7 @@ def test_query_with_max_rows(client: bauplan.Client):
 
 def test_scan_empty_columns(client: bauplan.Client):
     with pytest.raises(ValueError) as exc_info:
-       client.scan(
+        client.scan(
             table="titanic",
             namespace="bauplan",
             ref="main",
@@ -130,7 +130,7 @@ INVALID_FILTERS = [
     "1 = 1; SELECT 1",
     "\x00",
     "Survived = '",
-    "Survived = \"",
+    'Survived = "',
 ]
 
 

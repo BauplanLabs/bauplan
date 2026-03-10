@@ -1,5 +1,6 @@
 lint:
     uv run ruff check
+    uv run ruff format --diff
     uv run ty check python/
     buf lint
     cargo clippy -- -Dwarnings
