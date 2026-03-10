@@ -64,12 +64,16 @@ def test_get_tables_pagination(client: bauplan.Client):
 
 
 def test_get_tables_with_limit(client: bauplan.Client):
-    all_tables = list(client.get_tables(ref="main", filter_by_namespace="bauplan", limit=5))
+    all_tables = list(
+        client.get_tables(ref="main", filter_by_namespace="bauplan", limit=5)
+    )
 
     if len(all_tables) < 2:
         pytest.skip("Need at least 2 tables to test limit")
 
-    limited = list(client.get_tables(ref="main", filter_by_namespace="bauplan", limit=1))
+    limited = list(
+        client.get_tables(ref="main", filter_by_namespace="bauplan", limit=1)
+    )
     assert len(limited) == 1
 
 

@@ -28,7 +28,9 @@ def temp_branch(client: bauplan.Client, username: str):
 
 class TestExceptionHierarchy:
     def test_table_not_found_is_resource_not_found(self):
-        assert issubclass(exceptions.TableNotFoundError, exceptions.ResourceNotFoundError)
+        assert issubclass(
+            exceptions.TableNotFoundError, exceptions.ResourceNotFoundError
+        )
 
     def test_table_not_found_is_not_found(self):
         assert issubclass(exceptions.TableNotFoundError, exceptions.NotFoundError)
@@ -43,7 +45,9 @@ class TestExceptionHierarchy:
         assert issubclass(exceptions.BauplanHTTPError, exceptions.BauplanError)
 
     def test_namespace_not_found_is_resource_not_found(self):
-        assert issubclass(exceptions.NamespaceNotFoundError, exceptions.ResourceNotFoundError)
+        assert issubclass(
+            exceptions.NamespaceNotFoundError, exceptions.ResourceNotFoundError
+        )
 
     def test_branch_exists_is_update_conflict(self):
         assert issubclass(exceptions.BranchExistsError, exceptions.UpdateConflictError)
@@ -55,19 +59,25 @@ class TestExceptionHierarchy:
         assert issubclass(exceptions.TagExistsError, exceptions.UpdateConflictError)
 
     def test_namespace_exists_is_update_conflict(self):
-        assert issubclass(exceptions.NamespaceExistsError, exceptions.UpdateConflictError)
+        assert issubclass(
+            exceptions.NamespaceExistsError, exceptions.UpdateConflictError
+        )
 
     def test_table_exists_is_update_conflict(self):
         assert issubclass(exceptions.TableExistsError, exceptions.UpdateConflictError)
 
     def test_plan_status_error_is_plan_error(self):
-        assert issubclass(exceptions.TableCreatePlanStatusError, exceptions.TableCreatePlanError)
+        assert issubclass(
+            exceptions.TableCreatePlanStatusError, exceptions.TableCreatePlanError
+        )
 
     def test_plan_error_is_bauplan_error(self):
         assert issubclass(exceptions.TableCreatePlanError, exceptions.BauplanError)
 
     def test_plan_apply_status_error_is_bauplan_error(self):
-        assert issubclass(exceptions.TableCreatePlanApplyStatusError, exceptions.BauplanError)
+        assert issubclass(
+            exceptions.TableCreatePlanApplyStatusError, exceptions.BauplanError
+        )
 
 
 class TestTableNotFoundContext:
@@ -81,7 +91,9 @@ class TestTableNotFoundContext:
         assert e.kind.catalog_ref is not None
         assert e.kind.catalog_ref.type == bauplan.RefType.BRANCH
 
-    def test_delete_nonexistent_table_raises(self, client: bauplan.Client, temp_branch: str):
+    def test_delete_nonexistent_table_raises(
+        self, client: bauplan.Client, temp_branch: str
+    ):
         with pytest.raises(exceptions.TableNotFoundError) as exc_info:
             client.delete_table("nonexistent_table_xyz", temp_branch)
 
@@ -90,9 +102,7 @@ class TestTableNotFoundContext:
         assert "nonexistent_table_xyz" in e.kind.table_name
 
     def test_delete_table_if_exists(self, client: bauplan.Client, temp_branch: str):
-        ref = client.delete_table(
-            "nonexistent_table_xyz", temp_branch, if_exists=True
-        )
+        ref = client.delete_table("nonexistent_table_xyz", temp_branch, if_exists=True)
         assert ref.type == bauplan.RefType.BRANCH
 
     def test_has_table_false(self, client: bauplan.Client):
@@ -109,7 +119,9 @@ class TestBranchExistsContext:
         assert e.kind.catalog_ref is not None
         assert e.kind.catalog_ref.type == bauplan.RefType.BRANCH
 
-    def test_create_branch_if_not_exists(self, client: bauplan.Client, temp_branch: str):
+    def test_create_branch_if_not_exists(
+        self, client: bauplan.Client, temp_branch: str
+    ):
         branch = client.create_branch(
             branch=temp_branch, from_ref="main", if_not_exists=True
         )
@@ -120,9 +132,7 @@ class TestBranchExistsContext:
 class TestNamespaceNotFoundContext:
     def test_get_table_bad_namespace(self, client: bauplan.Client):
         with pytest.raises(exceptions.NamespaceNotFoundError) as exc_info:
-            client.get_table(
-                "titanic", "main", namespace="nonexistent_ns_xyz"
-            )
+            client.get_table("titanic", "main", namespace="nonexistent_ns_xyz")
 
         e = exc_info.value
         assert isinstance(e.kind, exceptions.ApiErrorKind.NamespaceNotFound)

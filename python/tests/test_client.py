@@ -12,11 +12,7 @@ def test_version():
 
 def test_api_key_param(tmp_path: pathlib.Path):
     config = tmp_path / "config.yaml"
-    config.write_text(
-        "profiles:\n"
-        "  nokey:\n"
-        "    api_endpoint: https://example.com\n"
-    )
+    config.write_text("profiles:\n  nokey:\n    api_endpoint: https://example.com\n")
 
     bauplan.Client(
         profile="nokey",

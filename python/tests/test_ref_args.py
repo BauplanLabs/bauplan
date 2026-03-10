@@ -62,7 +62,9 @@ class TestBranchArg:
 
 
 class TestRefArg:
-    def test_create_branch_ref(self, client: bauplan.Client, username: str, temp_branch: bauplan.schema.Branch):
+    def test_create_branch_ref(
+        self, client: bauplan.Client, username: str, temp_branch: bauplan.schema.Branch
+    ):
         name = f"{username}.test_{uuid.uuid4().hex[:8]}"
 
         try:
@@ -96,17 +98,21 @@ class TestRefArg:
         """Branch object as ref should equal explicit name@hash string."""
         branch = client.get_branch("main")
 
-        tables_str = list(client.get_tables(
-            ref=f"{branch.name}@{branch.hash}",
-            filter_by_namespace="bauplan",
-            limit=5,
-        ))
+        tables_str = list(
+            client.get_tables(
+                ref=f"{branch.name}@{branch.hash}",
+                filter_by_namespace="bauplan",
+                limit=5,
+            )
+        )
 
-        tables_obj = list(client.get_tables(
-            ref=branch,
-            filter_by_namespace="bauplan",
-            limit=5,
-        ))
+        tables_obj = list(
+            client.get_tables(
+                ref=branch,
+                filter_by_namespace="bauplan",
+                limit=5,
+            )
+        )
 
         assert len(tables_str) == len(tables_obj)
         assert [t.name for t in tables_str] == [t.name for t in tables_obj]
