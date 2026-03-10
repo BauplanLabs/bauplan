@@ -381,7 +381,7 @@ fn decompress_snapshot(data: &[u8]) -> Option<HashMap<String, String>> {
 
 #[pymethods]
 impl Client {
-    /// EXPERIMENTAL: Get a job by ID or ID prefix.
+    /// EXPERIMENTAL: Get a job by ID.
     ///
     /// ```python fixture:my_job
     /// import bauplan
@@ -521,7 +521,7 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     job: Union[str, Job]: A job ID, prefix of a job ID, or a Job instance.
+    ///     job: Union[str, Job]: A job ID or a Job instance.
     /// Returns:
     ///     A list of `bauplan.schema.JobLogEvent` objects representing the log events for the job.
     #[pyo3(signature = (job) -> "list[JobLogEvent]")]
@@ -564,7 +564,7 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     job: Union[str, Job]: A job ID, prefix of a job ID, a Job instance.
+    ///     job: Union[str, Job]: A job ID or a Job instance.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
     /// Returns:
