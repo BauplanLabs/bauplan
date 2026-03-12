@@ -1,0 +1,7 @@
+project:
+  id: ae386eb2-b192-45cb-9687-6ca48b00e30a
+  name: long_running_dag
+
+defaults:
+  python:
+    version: "3.11"

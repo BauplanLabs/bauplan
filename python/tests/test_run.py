@@ -74,6 +74,27 @@ def test_detach(client: bauplan.Client):
     assert job.status == bauplan.JobState.COMPLETE
 
 
+def test_cancel_job(client: bauplan.Client):
+    state = client.run(
+        project_dir="tests/fixtures/long_running_dag",
+        cache="off",
+        detach=True,
+    )
+
+    assert state.job_id is not None
+    time.sleep(3)
+    client.cancel_job(state.job_id)
+
+    # Poll until the job finishes.
+    for _ in range(120):
+        job = client.get_job(state.job_id)
+        if job.status not in (bauplan.JobState.RUNNING, bauplan.JobState.NOT_STARTED):
+            break
+        time.sleep(1)
+
+    assert job.status == bauplan.JobState.ABORT
+
+
 def test_job_context_snapshot(client: bauplan.Client):
     # TODO: For some reason, this is timing out ocassionally in automated tests.
     client = bauplan.Client(client_timeout=60)
