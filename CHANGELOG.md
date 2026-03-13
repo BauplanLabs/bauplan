@@ -1,4 +1,16 @@
 
+## [0.1.8] - 2026-03-13
+
+### New Features
+
+- [pysdk] Accept a Namespace for filter_by_namespace in get_tables (6e04b3d4e4eb5dff1f3276ea3520c16c8bbc64e5)
+
+### Bugfixes
+
+- [pysdk] Inconsistent raises (2d5f61901dc9c7650149d7a5619b601799d097be)
+- Map missing error kinds from API responses (9df535adace5272c35865d793fc1737f740b3009)
+- Map UNAUTHORIZED error kind from API responses (8a19443270c51a395b83dad403a405733dc7e755)
+
 ## [0.1.7] - 2026-03-06
 
 ### New Features

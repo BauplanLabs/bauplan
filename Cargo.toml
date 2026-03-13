@@ -1,6 +1,6 @@
 [package]
 name = "bauplan"
-version = "0.1.7"
+version = "0.1.8"
 edition = "2024"
 authors = ["Colin Marc <colin.marc@bauplanlabs.com>"]
 description = "The client SDK and CLI for Bauplan"
