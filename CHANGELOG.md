@@ -1,4 +1,10 @@
 
+## [0.1.9] - 2026-03-17
+
+### Bugfixes
+
+- [cli] Honor active branch in table get, query, and run commands (84d9f2f94c839c505225cc406354ddc2b95a3429)
+
 ## [0.1.8] - 2026-03-13
 
 ### New Features
