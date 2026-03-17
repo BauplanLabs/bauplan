@@ -414,7 +414,10 @@ fn handle_get_table(
 ) -> anyhow::Result<()> {
     let req = GetTable {
         name: &table_name,
-        at_ref: r#ref.as_deref().unwrap_or("main"),
+        at_ref: r#ref
+            .as_deref()
+            .or(cli.profile.active_branch.as_deref())
+            .unwrap_or("main"),
         namespace: None,
     };
 

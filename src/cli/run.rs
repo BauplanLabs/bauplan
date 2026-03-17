@@ -68,7 +68,7 @@ pub(crate) struct RunArgs {
     /// Path to the root Bauplan project directory.
     #[arg(short, long)]
     pub project_dir: Option<PathBuf>,
-    /// Ref or branch name from which to run the job.
+    /// Ref or branch name from which to run the job [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Namespace to run the job in. If not set, the job will be run in the default namespace for the project.
@@ -293,6 +293,8 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     } else {
         commanderpb::JobRequestOptionalBool::False as _
     };
+
+    let r#ref = r#ref.or_else(|| cli.profile.active_branch.clone());
 
     let req = commanderpb::CodeSnapshotRunRequest {
         job_request_common: Some(job_request_common),
