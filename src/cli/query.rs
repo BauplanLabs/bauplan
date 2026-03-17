@@ -41,7 +41,7 @@ use tabwriter::TabWriter;
 pub(crate) struct QueryArgs {
     /// Sql
     pub sql: Option<String>,
-    /// Ref or branch name to run query against.
+    /// Ref or branch name to run query against [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Namespace to run the query in
@@ -107,6 +107,8 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
 
     let progress = cli.new_spinner().with_message("Planning query...");
     progress.enable_steady_tick(time::Duration::from_millis(100));
+
+    let r#ref = r#ref.or_else(|| cli.profile.active_branch.clone());
 
     let req = commanderpb::QueryRunRequest {
         job_request_common: Some(job_request_common),
