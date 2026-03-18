@@ -22,4 +22,7 @@ message QueryRunResponse {
   string namespace = 4;
 
   string cache = 5;
+
+  // The iroh public key for the longbow query-results server.
+  bytes longbow_public_key = 6;
 }
