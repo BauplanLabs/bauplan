@@ -157,6 +157,25 @@ message FlightServerStartEvent {
   string magic_token = 7;
 }
 
+message LongbowEndpointReadyEvent {
+  message TransportAddr {
+    oneof addr {
+      // A socketaddr for the server.
+      string direct_addr = 1;
+
+      // A https URL for a relay.
+      string relay_url = 2;
+    }
+  }
+
+  // The iroh public key to contact.
+  string endpoint_id = 1;
+
+  // Optional addresses for the server. Currently at least one address must be
+  // provided, because we don't support endpoint discovery.
+  repeated TransportAddr transport_addrs = 2;
+}
+
 message RuntimeLogEvent {
   enum LogLevel {
     LOG_LEVEL_UNSPECIFIED = 0;
@@ -245,6 +264,7 @@ message RunnerEvent {
     JobCompleteEvent job_completion = 3;
     RuntimeLogEvent runtime_user_log = 4;
     FlightServerStartEvent flight_server_start = 5;
+    LongbowEndpointReadyEvent longbow_endpoint_ready = 11;
 
     ImportPlanCreatedEvent import_plan_created = 6;
     ApplyPlanDoneEvent apply_plan_done = 7;

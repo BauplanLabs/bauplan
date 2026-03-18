@@ -134,6 +134,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     futures::pin_mut!(ctrl_c);
 
     let mut flight_event = None;
+    let mut longbow_event = None;
     monitor_job_progress(
         cli,
         &mut client,
@@ -141,40 +142,46 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         "query",
         progress.clone(),
         &mut ctrl_c,
-        |event| {
-            if let RunnerEvent::FlightServerStart(flight) = event {
+        |event| match event {
+            RunnerEvent::FlightServerStart(flight) => {
                 flight_event = Some(flight);
             }
+            RunnerEvent::LongbowEndpointReady(longbow) => {
+                longbow_event = Some(longbow);
+            }
+            _ => (),
         },
     )
     .await?;
 
-    let Some(commanderpb::FlightServerStartEvent {
+    let tp = cli.traceparent();
+    let (schema, batches) = if let Some(commanderpb::FlightServerStartEvent {
         endpoint,
         magic_token,
         ..
     }) = flight_event
-    else {
+    {
+        let endpoint = if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
+            endpoint
+        } else {
+            format!("https://{}", endpoint)
+        };
+
+        let Ok(endpoint) = endpoint.parse() else {
+            bail!("Invalid endpoint: {}", endpoint);
+        };
+
+        progress.set_message("Fetching results...");
+
+        fetch_flight_results(endpoint, magic_token, timeout, row_limit, Some(&tp))
+            .await
+            .context("Failed to fetch query results")?
+    } else if let Some(commanderpb::LongbowEndpointReadyEvent { .. }) = longbow_event {
+        todo!()
+    } else {
         bail!("Query completed, but no results available");
     };
 
-    let endpoint = if endpoint.starts_with("http://") || endpoint.starts_with("https://") {
-        endpoint
-    } else {
-        format!("https://{}", endpoint)
-    };
-
-    let Ok(endpoint) = endpoint.parse() else {
-        bail!("Invalid endpoint: {}", endpoint);
-    };
-
-    progress.set_message("Fetching results...");
-
-    let tp = cli.traceparent();
-    let (schema, batches) =
-        fetch_flight_results(endpoint, magic_token, timeout, row_limit, Some(&tp))
-            .await
-            .context("Failed to fetch query results")?;
     futures::pin_mut!(batches);
 
     progress.finish_with_done();

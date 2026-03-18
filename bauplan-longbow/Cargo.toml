@@ -1,0 +1,33 @@
+[package]
+name = "bauplan-longbow"
+description = "The internal protocol for connecting to Bauplan runtimes"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[features]
+default = ["client"]
+server = []
+client = []
+
+[dependencies]
+arrow = "58"
+arrow-ipc = { version = "58", features = ["zstd"] }
+bytes = "1"
+futures.workspace = true
+iroh = "0.97"
+n0-error = "0.1"
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+anyhow.workspace = true
+rand = "0.9"
+test-log = { version = "0.2", features = ["trace"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
