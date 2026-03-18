@@ -26,7 +26,7 @@ pub async fn fetch_flight_results(
     client_timeout: time::Duration,
     row_limit: Option<u64>,
     traceparent: Option<&str>,
-) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>>)> {
+) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>> + use<>)> {
     let channel = Channel::builder(endpoint)
         .tls_config(ClientTlsConfig::new().with_native_roots())
         .unwrap()
@@ -83,7 +83,7 @@ async fn fetch(
     auth_token: String,
     serialized_criteria: String,
     traceparent: Option<&str>,
-) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>>)> {
+) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>> + use<>)> {
     let mut client = FlightClient::new(channel.clone());
     client.add_header("authorization", &format!("Bearer {auth_token}"))?;
     if let Some(tp) = traceparent {

@@ -1,12 +1,33 @@
-[package]
-name = "bauplan"
+[workspace]
+members = ["bauplan-longbow"]
+
+[workspace.dependencies]
+anyhow = "1"
+futures = "0.3"
+thiserror = "2"
+tokio = { version = "1" }
+tracing = { version = "0.1" }
+url = "2"
+
+[workspace.package]
 version = "0.1.11"
 edition = "2024"
 authors = ["Colin Marc <colin.marc@bauplanlabs.com>"]
-description = "The client SDK and CLI for Bauplan"
 homepage = "https://docs.bauplanlabs.com"
 repository = "https://github.com/bauplanlabs/bauplan"
 license = "Apache-2.0 OR MIT"
+
+
+[package]
+name = "bauplan"
+default-run = "bauplan"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "The client SDK and CLI for Bauplan"
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
 exclude = [
     ".*",
     "/python",
@@ -38,7 +59,10 @@ _integration-tests = []
 _check-parse = []
 
 [dependencies]
-anyhow = "1"
+anstream = "0.6"
+anstyle = "1"
+anyhow.workspace = true
+bauplan-longbow = { path = "bauplan-longbow", default-features = false, features = ["client"] }
 arrow = { version = "57", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
 arrow-csv = { version = "57", optional = true }
 arrow-flight = "57"
@@ -46,25 +70,26 @@ base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 dateparser = "0.2"
-futures = "0.3"
+futures.workspace = true
 gethostname = "1"
 http = "1"
 humantime = "2"
 iceberg-catalog-rest = "0.8"
 indicatif = "0.18"
+log = { version = "0.4", optional = true }
 nondestructive = { version = "0.0.28", features = ["serde", "yaml"] }
 opentelemetry = { version = "0.28", default-features = false, features = ["trace"] }
+parquet = { version = "57", optional = true }
 polyglot-sql = "0.1"
 prost = "0.14"
 prost-types = "0.14"
-parquet = { version = "57", optional = true }
 percent-encoding = "2"
 pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
 pyo3-arrow = { version = "0.16", optional = true }
 pyo3-log = { version = "0.13", optional = true }
-log = { version = "0.4", optional = true }
 rand = "0.8"
 regex = "1"
+resolve-path = "0.1"
 rsa = { version = "0.9", features = ["pem", "sha2"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -74,20 +99,17 @@ serde_yaml = "0.9"
 tera = { version = "1", default-features = false }
 tabwriter = "1"
 textwrap = "0.16"
-thiserror = "2"
+thiserror.workspace = true
+tokio = { workspace = true, features = ["full"] }
 toml = { version = "0.8", features = ["preserve_order"] }
-tokio = { version = "1", features = ["full"] }
 tonic = { version = "0.14", features = ["tls-native-roots"] }
 tonic-prost = "0.14"
-tracing = { version = "0.1", features = ["log"] }
+tracing = { workspace = true, features = ["log"] }
 tracing-indicatif = "0.3"
 tracing-subscriber = { version = "0.3", features = ["chrono", "env-filter"] }
 ureq = "3"
-url = "2"
+url.workspace = true
 uuid = { version = "1", features = ["serde", "v4"] }
-anstyle = "1"
-anstream = "0.6"
-resolve-path = "0.1"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 
 [build-dependencies]
@@ -97,7 +119,7 @@ tonic-prost-build = "0.14"
 [dev-dependencies]
 assert_cmd = "2"
 assert_matches = "1"
-bstr = "1.12.1"
+bstr = "1"
 escargot = "0.5"
 http-body-util = "0.1"
 predicates = "3"
@@ -105,7 +127,7 @@ reqwest = { version = "0.12", features = ["json"] }
 shlex = "1"
 similar = { version = "2", features = ["bytes"] }
 tempfile = "3"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tree-sitter = "0.26"
 tree-sitter-md = "0.5"
 tree-sitter-python = "0.25"

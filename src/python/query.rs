@@ -9,10 +9,12 @@ use arrow::{
     datatypes::Schema,
 };
 use commanderpb::runner_event::Event as RunnerEvent;
-use futures::{Stream, TryStreamExt};
+use futures::{Stream, TryStreamExt, future::Either};
 use polyglot_sql::{Expression, Parser, builder, expressions::TableRef};
 use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
 use tracing::{debug, error, info};
+
+use bauplan_longbow::BauplanPreset;
 
 use crate::{
     flight,
@@ -72,6 +74,8 @@ impl Client {
             return Err(query_err("response missing job ID"));
         };
 
+        let longbow_public_key = resp.longbow_public_key;
+
         info!(job_id, "successfully planned query");
 
         let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
@@ -109,6 +113,22 @@ impl Client {
             }
         }
 
+        if !longbow_public_key.is_empty() {
+            let public_key =
+                bauplan_longbow::iroh::PublicKey::try_from(longbow_public_key.as_slice())
+                    .map_err(|_| query_err("invalid longbow public key"))?;
+            let preset = BauplanPreset::default();
+            let addr = bauplan_longbow::iroh::EndpointAddr::new(public_key);
+            let addr = preset.add_relay_urls(addr);
+
+            let (schema, stream) = bauplan_longbow::fetch_query_results(preset, addr)
+                .await
+                .map_err(query_err)?;
+
+            let schema: Schema = schema.as_ref().clone();
+            return Ok((schema, Either::Left(stream.map_err(query_err))));
+        }
+
         let Some(commanderpb::FlightServerStartEvent {
             endpoint,
             magic_token,
@@ -135,7 +155,7 @@ impl Client {
                 .await
                 .map_err(|_| query_err("failed to fetch query results"))?;
 
-        Ok((schema, batches.map_err(query_err)))
+        Ok((schema, Either::Right(batches.map_err(query_err))))
     }
 
     #[allow(clippy::too_many_arguments)]
