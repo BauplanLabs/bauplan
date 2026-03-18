@@ -14,8 +14,9 @@ use arrow::{
 use arrow_flight::error::Result as FlightResult;
 use bauplan::flight::fetch_flight_results;
 use bauplan::grpc::{self, generated as commanderpb};
+use bauplan_longbow::BauplanPreset;
 use commanderpb::runner_event::Event as RunnerEvent;
-use futures::{Stream, TryStreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use tabwriter::TabWriter;
 
 #[derive(Debug, clap::Args)]
@@ -151,6 +152,57 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     )
     .await?;
 
+    progress.set_message("Fetching results...");
+
+    let tp = cli.traceparent();
+    let (schema, batches) = fetch_results(
+        resp.longbow_public_key,
+        flight_event,
+        timeout,
+        row_limit,
+        tp,
+    )
+    .await?;
+
+    futures::pin_mut!(batches);
+
+    progress.finish_with_done();
+    match cli.global.output.unwrap_or_default() {
+        Output::Tty => print_tty(schema, batches, !no_trunc).await,
+        Output::Json => print_json(batches, &job_id).await,
+    }
+}
+
+type ResultStream = std::pin::Pin<Box<dyn Stream<Item = FlightResult<RecordBatch>>>>;
+
+async fn fetch_results(
+    longbow_public_key: Option<Vec<u8>>,
+    flight_event: Option<commanderpb::FlightServerStartEvent>,
+    timeout: time::Duration,
+    row_limit: Option<u64>,
+    traceparent: String,
+) -> anyhow::Result<(Schema, ResultStream)> {
+    if let Some(public_key_bytes) = longbow_public_key {
+        let public_key = bauplan_longbow::iroh::PublicKey::try_from(public_key_bytes.as_slice())
+            .context("invalid longbow public key")?;
+        let preset = BauplanPreset::default();
+        let addr = preset.add_relay_urls(bauplan_longbow::iroh::EndpointAddr::new(public_key));
+
+        let (schema, stream) = bauplan_longbow::fetch_query_results(preset, addr)
+            .await
+            .context("failed to fetch query results")?;
+
+        let schema: Schema = schema.as_ref().clone();
+        let stream = stream.map(|r| {
+            r.map_err(|e| {
+                arrow_flight::error::FlightError::Arrow(
+                    arrow::error::ArrowError::ExternalError(Box::new(e)),
+                )
+            })
+        });
+        return Ok((schema, Box::pin(stream)));
+    }
+
     let Some(commanderpb::FlightServerStartEvent {
         endpoint,
         magic_token,
@@ -166,24 +218,15 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         format!("https://{}", endpoint)
     };
 
-    let Ok(endpoint) = endpoint.parse() else {
-        bail!("Invalid endpoint: {}", endpoint);
-    };
+    let endpoint = endpoint
+        .parse()
+        .map_err(|_| anyhow::anyhow!("Invalid endpoint: {}", endpoint))?;
 
-    progress.set_message("Fetching results...");
-
-    let tp = cli.traceparent();
     let (schema, batches) =
-        fetch_flight_results(endpoint, magic_token, timeout, row_limit, Some(&tp))
+        fetch_flight_results(endpoint, magic_token, timeout, row_limit, Some(&traceparent))
             .await
             .context("Failed to fetch query results")?;
-    futures::pin_mut!(batches);
-
-    progress.finish_with_done();
-    match cli.global.output.unwrap_or_default() {
-        Output::Tty => print_tty(schema, batches, !no_trunc).await,
-        Output::Json => print_json(batches, &job_id).await,
-    }
+    Ok((schema, Box::pin(batches)))
 }
 
 async fn print_tty(

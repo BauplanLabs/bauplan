@@ -245,7 +245,6 @@ message RunnerEvent {
     JobCompleteEvent job_completion = 3;
     RuntimeLogEvent runtime_user_log = 4;
     FlightServerStartEvent flight_server_start = 5;
-
     ImportPlanCreatedEvent import_plan_created = 6;
     ApplyPlanDoneEvent apply_plan_done = 7;
 

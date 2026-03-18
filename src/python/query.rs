@@ -14,6 +14,8 @@ use polyglot_sql::{Expression, Parser, builder, expressions::TableRef};
 use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
 use tracing::{debug, error, info};
 
+use bauplan_longbow::BauplanPreset;
+
 use crate::{
     flight,
     grpc::{self, generated as commanderpb},
@@ -72,6 +74,8 @@ impl Client {
             return Err(query_err("response missing job ID"));
         };
 
+        let longbow_public_key = resp.longbow_public_key;
+
         info!(job_id, "successfully planned query");
 
         let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
@@ -107,6 +111,22 @@ impl Client {
                 }
                 _ => (),
             }
+        }
+
+        if let Some(public_key_bytes) = longbow_public_key {
+            let public_key =
+                bauplan_longbow::iroh::PublicKey::try_from(public_key_bytes.as_slice())
+                    .map_err(|_| query_err("invalid longbow public key"))?;
+            let preset = BauplanPreset::default();
+            let addr =
+                preset.add_relay_urls(bauplan_longbow::iroh::EndpointAddr::new(public_key));
+
+            let (schema, stream) = bauplan_longbow::fetch_query_results(preset, addr)
+                .await
+                .map_err(|e| query_err(e))?;
+
+            let schema: Schema = schema.as_ref().clone();
+            return Ok((schema, stream.map_err(query_err)));
         }
 
         let Some(commanderpb::FlightServerStartEvent {
