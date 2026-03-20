@@ -79,6 +79,7 @@ def test_cancel_job(client: bauplan.Client):
         project_dir="tests/fixtures/long_running_dag",
         cache="off",
         detach=True,
+        dry_run=True,
     )
 
     assert state.job_id is not None
