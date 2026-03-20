@@ -11,7 +11,6 @@ import bauplan
         'log_trip_miles',
         'ds',
     ],
-    materialization_strategy='REPLACE',
 )
 @bauplan.python('3.11', pip={'pandas': '2.2.2'})
 def normalize_data(
