@@ -472,6 +472,22 @@ class Client:
         )
         ```
 
+        To specify partitioning, use the `create_table` method with the `partitioned_by` parameter:
+
+        ```python
+        import bauplan
+
+        client = bauplan.Client()
+
+        # Create a partitioned table
+        table = client.create_table(
+            table='my_partitioned_table',
+            search_uri='s3://your-bucket/data/*.parquet',
+            partitioned_by="hour(tpep_pickup_datetime), PULocationID",
+            branch='my_branch'
+        )
+        ```
+
         Parameters:
             table: The table which will be created.
             search_uri: The location of the files to scan for schema.
@@ -1391,6 +1407,33 @@ class Client:
             print(f"Plan failed: {plan_state.error}")
         else:
             print(plan_state.plan)
+        ```
+
+        To manually add partitioning to a plan before applying it:
+
+        ```python
+        import yaml
+        import bauplan
+
+        client = bauplan.Client()
+
+        plan_state = client.plan_table_creation(
+            table='my_partitioned_table',
+            search_uri='s3://your-data/*.parquet',
+            branch='my_branch',
+        )
+
+        # Modify plan to add partitioning
+        plan = yaml.safe_load(plan_state.plan)
+        plan['schema_info']['partitions'] = [
+            {
+                'from_column_name': 'datetime_column',
+                'transform': {'name': 'year'},
+            }
+        ]
+
+        # Apply the modified plan
+        client.apply_table_creation_plan(yaml.dump(plan))
         ```
 
         Parameters:
