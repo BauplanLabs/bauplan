@@ -1,0 +1,71 @@
+---
+title: "Installation"
+---
+
+## Install the Bauplan CLI and SDK
+
+You can install Bauplan via uv or pip. Ensure you are running a supported
+Python version (`>=3.10`):
+
+```bash
+uv tool install bauplan --upgrade
+```
+
+Verify the installation by checking the CLI version:
+
+```bash
+bauplan version
+```
+
+## Obtain Your API Key
+
+Sign in to your [Bauplan account](https://app.bauplanlabs.com/),
+navigate to your **Settings → API Keys**, and generate a new API key. If
+you do not have an API key yet, you can [request
+one](https://app.bauplanlabs.com/sign-up) for free.
+
+<Warning>
+Your API key is shown only once. Save it immediately in a secure location.
+</Warning>
+
+## Configure Your API Key
+
+### Option A: Configure via CLI (Recommended)
+
+Set your API key directly in the Bauplan CLI:
+
+```bash
+bauplan config set api_key <your_api_key>
+```
+
+Verify your configuration:
+
+```bash
+bauplan config get
+```
+
+### Option B: Use with the Python SDK
+
+You can either explicitly pass in your key:
+
+```python notest
+import bauplan
+client = bauplan.Client(api_key="your_api_key")
+```
+
+Or just call `bauplan.Client()` without arguments and it will automatically pull your key from the `BAUPLAN_API_KEY` environment variable, or from your config profile if you ran Option A:
+
+```python
+import bauplan
+client = bauplan.Client()
+```
+
+<Danger>
+Never share your API key publicly. Store it securely using environment variables or secrets management tools in your deployment workflows.
+</Danger>
+
+## Supported Environments and Constraints
+
+Bauplan officially supports Python 3.10 or higher. We recommend using a
+virtual environment (such as `venv`, `virtualenv`, or `conda`) for best
+practices and dependency management.

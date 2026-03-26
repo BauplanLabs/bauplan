@@ -1,0 +1,67 @@
+---
+title: "Snowflake (Outbound)"
+---
+
+Connect Bauplan to Snowflake to read from Snowflake tables in your Bauplan pipelines. This lets you run arbitrary Python-based analytics on your tables, or even just write them wholesale to Iceberg for more flexibility.
+
+Bauplan can use Snowflake credentials to access your tables, which are then provided as Apache Arrow tables to your Python code inside a Bauplan model. Note that every run involving an external connector will by-pass the cache.
+
+## When to use this integration
+
+- You need to break out from SQL and perform more complex analysis with Python.
+- You want to export data from Snowflake into Iceberg for compatibility with other tools.
+- You're migrating away from Snowflake, but want to bridge the migration period by allowing users to write pipelines on existing tables.
+
+## Prerequisites
+
+- A Snowflake account with tables in it.
+- A Snowflake user with read access to your target tables.
+
+## Step 1: store Snowflake credentials in AWS Parameter Store
+
+Create a JSON object with your Snowflake connection details. The supported fields are:
+
+```json
+{
+  "account": "xy12345.us-east-1",
+  "user": "MY_SERVICE_USER",
+  "password": "...",
+  "default_role": "MY_ROLE",
+  "default_warehouse": "MY_WAREHOUSE",
+  "default_database": "MY_DATABASE",
+  "default_schema": "MY_SCHEMA",
+  "host": "xy12345.us-east-1.snowflakecomputing.com",
+  "port": 443,
+  "region": "us-east-1",
+  "insecure_mode": false,
+  "session_parameters": {
+    "QUERY_TAG": "bauplan"
+  }
+}
+```
+
+All fields are optional, include only what your setup requires.
+
+Upload this JSON to your AWS account as an SSM Parameter. Use the path `/bauplan/connectors/snowflake/<name>`, for example `/bauplan/connectors/snowflake/my-snowflake-account`.
+
+Make sure that the AWS role you use for the Bauplan runtime has permission to access the SSM Parameter you just created. For example, you can attach the `AmazonSSMReadOnlyAccess` policy to the role, or write a custom policy to grant access to only the new SSM parameter.
+
+## Step 2: write a Bauplan pipeline that uses the Snowflake connector
+
+Here's an example model to get you started:
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python('3.12')
+def snowflake_taxi_trips(
+    trips=bauplan.Model(
+        'test.taxi_trips',                              # This should be <schema>.<table>.
+        connector='snowflake',
+        connector_config_key='my-snowflake-account',    # This should match the last part of the SSM Parameter.
+    ),
+):
+    print(f'Got {trips.num_rows} rows from Snowflake')
+    ...
+```
+
+To avoid fetching the entire table every time, you can use slice your data with `filter`, `columns`, etc, just like you would on a native Bauplan model.

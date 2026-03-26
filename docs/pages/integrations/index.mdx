@@ -1,0 +1,58 @@
+---
+title: "Integrations"
+displayed_sidebar: "integrationsSidebar"
+---
+
+import DocCardList from '@theme/DocCardList';
+import orchestratorsImage from '@site/static/img/integrations/orchestrator.png';
+import notebooksDataAppsImage from '@site/static/img/integrations/notebooks.png';
+import warehousesLakehousesImage from '@site/static/img/integrations/db.png';
+import biToolsPostgresImage from '@site/static/img/integrations/bitools.png';
+import dataIntEtLImage from '@site/static/img/integrations/etl.png';
+import dbtImage from '@site/static/img/integrations/dbt.png';
+
+
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/integrations/orchestrators/',
+    label: 'Orchestrators',
+    image: orchestratorsImage,
+    description: 'Integrate Bauplan with Airflow, Prefect, Dagster, Temporal, and DBOS'
+  },
+  {
+    type: 'link',
+    href: '/integrations/notebooks_data_apps/',
+    label: 'Interactive notebooks and data apps',
+    image: notebooksDataAppsImage,
+    description: 'Use Bauplan with Jupyter Notebooks, Marimo, and Streamlit'
+  },
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/',
+    label: 'Warehouses and Lakehouses',
+    image: warehousesLakehousesImage,
+    description: 'Connect Bauplan to Snowflake and other data warehouses'
+  },
+  {
+    type: 'link',
+    href: '/integrations/bi_tools_postgres/',
+    label: 'BI tools and Postgres client',
+    image: biToolsPostgresImage,
+    description: 'Access Bauplan data from BI tools using the PostgreSQL-compatible Proxy'
+  },
+  {
+    type: 'link',
+    href: '/integrations/data_int_and_etl/',
+    label: 'Data Integration and ELT Tools',
+    image: dataIntEtLImage,
+    description: 'Land data with your ELT tool and transform it into queryable Iceberg tables with Bauplan'
+  },
+  {
+    type: 'link',
+    href: '/integrations/dbt/',
+    label: 'DBT',
+    image: dbtImage,
+    description: 'WIP'
+  }
+]} />

@@ -1,0 +1,44 @@
+---
+title: BigQuery (Outbound)
+---
+
+Connect Bauplan to Google BigQuery to read from BigQuery tables in your Bauplan pipelines. This lets you run arbitrary Python-based analytics on your tables, or even just write them wholesale to Iceberg for more flexibility.
+
+Bauplan can use a GCP service account to access your BigQuery tables, which are then provided as Apache Arrow tables to your Python code. Note that every run involving an external connector will by-pass the cache.
+
+## When to use this integration
+
+- You need to break out from SQL and perform more complex analysis with Python.
+- You want to export data from BigQuery into Iceberg for compatibility with other tools.
+- You're migrating away from BigQuery, but want to bridge the migration period by allowing users to write pipelines on existing tables.
+
+## Prerequisites
+
+- A BigQuery dataset with tables in it.
+- A GCP service account with access to that dataset.
+
+## Step 1: store service account credentials in AWS Parameter Store
+
+For the service account you'd like to use, [create a key pair](https://docs.cloud.google.com/iam/docs/service-account-creds) and download it as JSON. Then upload it to your AWS account as an [SSM Parameter](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-su-create.html). Use the path `/bauplan/connectors/bigquery/<name>`, for example `/bauplan/connectors/bigquery/my-service-account`.
+
+Make sure that the AWS role you use for the Bauplan runtime has permission to access the SSM Parameter you just created. For example, you can attach the `AmazonSSMReadOnlyAccess` policy to the role, or write a custom policy to grant access to only the new SSM parameter.
+
+## Step 2: write a Bauplan pipeline that uses the BigQuery connector
+
+Here’s an example model to get you started:
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python('3.12')
+def bigquery_taxi_trips(
+    trips=bauplan.Model(
+        'test.taxi_trips',                         # This should be <dataset>.<table>.
+        connector='bigquery',
+        connector_config_key='my-service-account', # This should match the last part of the SSM Parameter.
+    ),
+):
+    print(f'Got {trips.num_rows} rows from BigQuery')
+    ...
+```
+
+To avoid fetching the entire table every time, you can use slice your data with `filter`, `columns`, etc, just like you would on a native Bauplan model.

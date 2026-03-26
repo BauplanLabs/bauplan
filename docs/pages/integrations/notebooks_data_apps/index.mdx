@@ -1,0 +1,46 @@
+---
+title: "Notebooks and data apps"
+---
+
+import DocCardList from '@theme/DocCardList';
+
+import jupyterIcon from '@site/static/img/logos/jupyter.png';
+import marimoIcon from '@site/static/img/logos/marimo.png';
+import streamlitIcon from '@site/static/img/logos/streamlit.png';
+
+Notebooks and data apps are widely used by data teams to explore datasets, test ideas, and share results with other stakeholders.
+
+- **Notebooks** (for example, Jupyter or Marimo) are often used for prototyping, exploratory analysis, and quick experiments.
+- **Data app frameworks** (for example, Streamlit) allow you to turn Python code into interactive applications that can be shared with a broader audience.
+
+All of these environments can access Bauplan through the Python SDK. All the client methods exposed by the Bauplan data platform can be called from a notebook cell or an app callback to query tables, run pipelines, create branches, or materialize results.
+
+When using notebooks or apps, it is good practice to work on a **data** **branch** rather than directly on `main`. Branches provide an isolated data sandbox in the lakehouse, so exploration and app queries can be run on production data without affecting the production environment. This allows to:
+
+- create temporary environments for analysis or prototyping,
+- pin apps or notebooks to a stable snapshot,
+- and merge or discard changes once you are finished.
+
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/integrations/notebooks_data_apps/jupyter_notebooks',
+    label: 'Jupyter Notebooks',
+    icon: jupyterIcon,
+    description: 'Use Bauplan in Jupyter notebooks for interactive data exploration'
+  },
+  {
+    type: 'link',
+    href: '/integrations/notebooks_data_apps/marimo',
+    label: 'Marimo',
+    icon: marimoIcon,
+    description: 'Build reactive notebooks with Bauplan and Marimo'
+  },
+  {
+    type: 'link',
+    href: '/integrations/notebooks_data_apps/streamlit',
+    label: 'Streamlit',
+    icon: streamlitIcon,
+    description: 'Create interactive data apps powered by Bauplan'
+  }
+]} />

@@ -1,0 +1,21 @@
+---
+title: "Tables"
+---
+
+Bauplan uses **Apache Iceberg tables** to bring transactional, SQL-ready
+structure to your object storage. This gives you the best of both
+worlds: the scalability and openness of data lakes, with the reliability
+and usability of a data warehouse.
+
+Iceberg tables support:
+
+-   **ACID transactions** over object storage
+-   **Schema evolution** without downtime
+-   **Efficient querying** via column pruning, partition filtering, and
+    file skipping
+-   **Time travel** with snapshot-based versioning
+
+In Bauplan, tables are first-class citizens - you create them, read from
+them, write to them, and revert them via simple code and commands. Every
+table lives inside a **branch**, can evolve independently, and is fully
+versioned.

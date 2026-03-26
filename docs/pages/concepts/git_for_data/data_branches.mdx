@@ -1,0 +1,95 @@
+---
+title: "Data branches"
+---
+
+Data branches are isolated development environments that let you safely
+import data, delete tables, create namespaces, run and test pipelines
+without affecting production. Inspired by Git, branches in Bauplan bring
+modern software development workflows to your data lake.
+
+Traditional data systems make safe development hard:
+
+-   Risk of corrupting production data
+-   Lack of isolation between developers
+-   Difficult rollbacks
+-   Inefficient iteration and testing
+
+Data branches solve these problems by enabling version-controlled,
+zero-copy, namespace-aware data sandboxes.
+
+## Why Use Data Branches?
+
+Branches introduce Git-like workflows to data management, enabling
+robust development practices throughout the data application lifecycle:
+
+-   **Safe parallel development** without conflicts
+-   **Zero-copy sandboxes** for experiments and CI
+-   **Simplified rollbacks and debugging** using immutable Refs
+-   **Auditability and traceability** by design
+
+## Key Features
+
+-   **Zero-Copy Branching**: Creating a branch is instantaneous and
+    cost-efficient. No data duplication; only metadata changes.
+-   **Username-Based Namespaces**: Each user gets a private branch space
+    (`username.branch_name`) with write access to their branches and
+    read access to others.
+-   **Main Branch Protection**: `main` is protected by default. Changes
+    flow in via merges, keeping production safe.
+
+## Using Data Branches and Refs
+| **Branch**                                   | **Ref**                                        |
+|----------------------------------------------|------------------------------------------------|
+| Mutable                                      | Immutable                                      |
+| Points to the *latest* commit                | Points to a specific commit                    |
+| Used for development workflow                | Used for reproducibility / audit trail         |
+| You move it (via new runs, imports, etc.)    | It never changes                               |
+| Example: `ciro.feature_xyz`                  | Example: `ciro.feature@xyz-run-202505...`      |
+
+Each time you change the state of the lake, for instance when you run a
+pipeline, Bauplan creates a new Commit. If the run succeeds, the branch
+is updated to point to the new Ref. If it fails, the branch remains
+unchanged. This is what makes pipelines **transactional by default**.
+
+<Tip>
+Think of a branch as your active sandbox and a Ref as a pointer to a
+timestamped, frozen snapshot created by any write operation on the lake.
+</Tip>
+
+## Basic Data Branch Operations
+
+```bash
+# Create and switch to a feature branch
+bauplan branch create ciro.feature_xyz
+bauplan checkout ciro.feature_xyz
+
+# List branches and active branch
+bauplan branch ls
+
+# Compare active branch with main
+bauplan branch diff main
+
+# Checkout and merge to main
+bauplan branch checkout main
+bauplan branch merge ciro.feature_xyz
+
+# Delete a branch
+bauplan branch rm ciro.feature_xyz
+```
+
+## Tags
+
+A **tag** is an immutable, user-defined label that points to a specific
+commit hash.
+
+-   Used to "freeze" a specific state of the lake (e.g.
+    `v1.0-passed-qa`)
+-   Always points to a commit, never moves on its own.
+-   Useful for bookmarking releases, debugging points, or restoring
+    known-good states.
+-   Can be updated manually by reassigning it to a new commit hash.
+
+Tags are also compatible with relative syntax:
+
+-   `v1.0^1` → commit before the tagged one
+-   `v1.0*2025-05-19T06:11:33Z` → last commit before the timestamp

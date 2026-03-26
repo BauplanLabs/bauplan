@@ -1,0 +1,104 @@
+---
+title: "Pipelines"
+---
+
+In Bauplan, pipelines are implicitly defined by chaining models together
+through their declared inputs and outputs. Pipelines take the form of
+Directed Acyclic Graphs (DAGs).
+
+You don't need to define a DAG manually, because Bauplan automatically
+analyzes the dependency graph based on model declarations and
+automatically infers the correct execution order.
+
+To chain models into a DAG, simply pass a previous bauplan model as an
+input.
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python('3.11')
+def step_1(data=bauplan.Model('input_table')):
+    ...
+
+@bauplan.model()
+@bauplan.python('3.11')
+def step_2(data=bauplan.Model('step_1')):
+    ...
+
+@bauplan.model()
+@bauplan.python('3.11')
+def step_3(data=bauplan.Model('step_2')):
+    ...
+```
+
+## Pipeline Constraints
+
+Models can take multiple tabular inputs but must return a single tabular
+output (e.g., a Pandas DataFrame or Arrow table).
+
+```text
+✅ -- This is a valid Bauplan DAG
+
+┌────────────┐
+│  Model 1   │──────────────┐
+└────────────┘              │
+                            ▼
+┌────────────┐      ┌────────────┐      ┌────────────┐
+│  Model 2   │─────►│  Model 3   │─────►│  Model 4   │
+└────────────┘      └────────────┘      └────────────┘
+                            ▲
+┌────────────┐              │
+│ Iceberg    │──────────────┘
+│  Table     │
+└────────────┘
+```
+
+```text
+❌ -- This is **NOT** a valid Bauplan DAG
+
+                                        ┌────────────┐
+                            ┌──────────►│  Model 3   │
+                            │           └────────────┘
+                            │
+┌────────────┐      ┌────────────┐      ┌────────────┐
+│  Model 1   │─────►│  Model 2   │─────►│  Model 4   │
+└────────────┘      └────────────┘      └────────────┘
+```
+
+## Best Practices
+
+To keep your project organized and make it easy to run, test, and
+inspect individual pipelines, we recommend the following structure. See
+[Projects](/concepts/projects) for more details.
+
+```text
+my_project/
+└── pipelines/
+    ├── sales_reporting/
+    │   ├── models.py
+    │   └── bauplan_project.yml
+    ├── customer_segmentation/
+    │   ├── models.py
+    │   └── bauplan_project.yml
+    └── churn_prediction/
+        ├── models.py
+        └── bauplan_project.yml
+```
+
+-   Group models that form a logical pipeline into a single file:
+    `models.py`.
+-   Place that file inside a folder named after the pipeline
+    (`sales_reporting`, `churn_prediction`, etc.).
+-   Each pipeline folder contains its own `bauplan_project.yml` file,
+    which defines environment settings and dependencies for that
+    pipeline only.
+-   Separate function bodies into external modules and call them within
+    the Bauplan models. This keeps business logic code neatly separated
+    from the DAG and environment declaration, making code refactoring
+    easier and future-proof.
+
+This layout:
+
+-   Makes each pipeline self-contained and easy to run with
+    `bauplan run` from inside the folder.
+-   Keeps models modular and promotes reuse.
+-   Helps enforce consistent dependency tracking and ref resolution.

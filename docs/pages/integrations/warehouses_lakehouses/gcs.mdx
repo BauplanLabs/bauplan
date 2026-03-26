@@ -1,0 +1,36 @@
+---
+title: GCS (Google Cloud Storage)
+---
+
+Connect your GCS bucket to Bauplan by creating an automated sync with the S3 bucket linked to your Bauplan lakehouse. This lets you run pipelines with all the safety and correctness guarantees of Bauplan, without moving from your current landing zone or relying on laborious manual processes.
+
+For querying the results of Bauplan pipelines from an external engine (e.g. BigQuery) without any data copy, please refer to the [warehouse integration section](/integrations/warehouses_lakehouses/big_query).
+
+We recommend using the Enhanced [AWS DataSync](https://docs.aws.amazon.com/datasync/) service to transfer files between cloud providers. The Enhanced mode avoids deploying a data agent as additional infrastructure to provision and manage, and guarantees higher performance and bandwidth compared to the Basic mode. The mental model is straightforward: DataSync takes a source (your GCS bucket) and a destination (the S3 bucket associated with Bauplan), and periodically and incrementally keeps the two in sync.
+
+We report below the major logical steps as an overview of the process, but please refer to the latest [DataSync documentation](https://docs.aws.amazon.com/datasync/) for specific details, pricing, and advanced networking options.
+
+## When to use this integration
+
+- You want to run Bauplan pipelines on data in object storage, but your landing zone is on GCS rather than S3.
+
+## Prerequisites
+
+- A GCS bucket storing Parquet, CSV, or JSONL files as your landing zone for raw data.
+- A GCP account with permissions to create a service account and the related HMAC key (needed for AWS authentication for the data sync).
+- An S3 bucket that stores your Bauplan table data and Iceberg metadata.
+- An AWS account with permissions to create DataSync tasks.
+
+## Step 1. Create the source and destination locations
+
+After the accounts are set up, create two locations in DataSync: one corresponding to the S3 bucket and path devoted to receiving raw data that Bauplan will manage as a lakehouse (e.g. `s3://mybucketforbauplan/raw/`), and one corresponding to your current GCS bucket receiving raw data from your sources (e.g. from Fivetran, Confluent, etc.). For full instructions, refer to the [DataSync documentation](https://docs.aws.amazon.com/datasync/).
+
+## Step 2. Create the sync task
+
+Now create a task. In the Enhanced mode, there are a few options to choose from.
+
+<Note>
+By design, you cannot copy object tags (GCS APIs do not support them) and cannot select sub-60-minute latency. For the copying logic, we recommend performing incremental changes only and keeping deleted files as an additional failsafe: since OLAP patterns rely on immutable files, these configurations should guarantee a robust syncing process.
+</Note>
+
+Once you start the task, DataSync will automatically perform the copying and syncing for you, and Bauplan will be able to load and transform the data in the now-synced bucket.

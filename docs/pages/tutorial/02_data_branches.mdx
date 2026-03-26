@@ -1,0 +1,140 @@
+---
+title: "Data Branches"
+---
+
+[Open in
+Github.](https://github.com/BauplanLabs/examples/tree/main/01-quick-start)
+
+This guide will walk you through the core features of bauplan data
+catalog.
+
+-   **Create** new data branches.
+-   **Import** new data as Iceberg tables.
+-   **Merge** branches.
+
+With bauplan, all tables created through uploads or business logic can
+be materialized and persisted in a data catalog as [Iceberg
+Tables](https://iceberg.apache.org/). A distinctive feature of bauplan
+is its ability to create branches of your data lake and write data
+artifacts within them. We call these *data branches*. Think of them as
+sandboxed data environments where you can manipulate production data
+without affecting the primary production environment. Data branches are
+powerful tools that allow your team to explore, develop, and debug data
+artifacts and pipelines before merging them into the main production
+environment - similar to code version control.
+
+## Create a branch
+
+Data branches are relative to your username, so you must prefix branch
+names with your `username`. The default setting is that you are allowed
+to write in your own branches, but you can only read from somebody
+else\'s branches.
+
+```bash
+bauplan branch create <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
+```
+
+For example, to create a branch named `hello_bauplan` and switch to it:
+
+```bash
+bauplan branch create <YOUR_USERNAME>.hello_bauplan
+bauplan checkout <YOUR_USERNAME>.hello_bauplan
+```
+
+To see your current branch, run `bauplan branch ls`. This command displays
+all your branches, marking your active branch with a green star.
+
+```bash
+bauplan branch ls
+```
+
+To see the content of your newly created data branch:
+
+```bash
+bauplan table ls
+```
+
+<Note>
+Even without writing new tables, your branch isn't empty. As it's a zero-copy of the `main` branch, it contains all tables existing in `main`.
+</Note>
+
+## Import data in a branch
+
+To import data into a branch, you'll need a public S3 bucket with
+ListObject permission enabled
+([here is an example of json S3 permissions](/tutorial/s3_permissions))
+
+We provide a public bucket with an [open
+dataset](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)
+to get started.
+
+Make sure you're in your target branch:
+
+```bash
+bauplan branch checkout <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
+```
+
+Then create and import a new table:
+
+```bash
+bauplan table create <YOUR_USERNAME>_green_taxi_table --search-uri 's3://alpha-hello-bauplan/green-taxi/*.parquet'
+bauplan table import <YOUR_USERNAME>_green_taxi_table --search-uri 's3://alpha-hello-bauplan/green-taxi/*.parquet'
+```
+
+To verify the table creation:
+
+```bash
+bauplan table get <YOUR_USERNAME>_green_taxi_table
+```
+
+For detailed information about importing data, schema conflict
+resolution, and using the Python SDK for imports, see the
+[importing data](../guides/import_data.mdx) concept page.
+
+## Merge a branch
+
+To merge your `hello_bauplan` branch into the `main` branch:
+
+1.  Review the differences between branches:
+
+    ```bash
+    bauplan branch diff main
+    ```
+
+    You can compare your active branch with the main branch to
+    identify the differences. This comparison will show which tables
+    exist in one branch but not the other.
+
+2.  Switch to main and merge:
+
+    ```bash
+    bauplan branch checkout main
+    bauplan branch merge <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
+    ```
+
+3.  Check the schema of the merged table:
+
+    ```bash
+    bauplan table ls
+    bauplan table get <YOUR_USERNAME>_green_taxi_table
+    ```
+
+You can now query the table. For example, to find out how many records
+are in the table:
+
+```bash
+bauplan query "SELECT COUNT(lpep_pickup_datetime) as number_of_trips FROM <YOUR_USERNAME>_green_taxi_table"
+```
+
+👏👏 Congratulations, you just merged a data branch into the main data
+catalog!
+
+<Tip>
+-   Data branches are user-specific; always prefix branch names with
+    your username.
+-   For a complete command reference, please consult our [reference
+    documentation](/reference/bauplan).
+-   The bauplan data catalog supports additional operations like
+    namespace management, removing tables, and deleting branches. See
+    [CLI Reference](/reference/cli.mdx) for more details.
+</Tip>

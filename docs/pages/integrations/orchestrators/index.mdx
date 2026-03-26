@@ -1,0 +1,69 @@
+---
+title: "Orchestrators"
+---
+
+import DocCardList from '@theme/DocCardList';
+
+import orchestraIcon from '@site/static/img/logos/orchestra.png';
+import dbosIcon from '@site/static/img/logos/dbos.png';
+import airflowIcon from '@site/static/img/logos/apache-airflow.webp';
+import prefectIcon from '@site/static/img/logos/prefect.png';
+import dagsterIcon from '@site/static/img/logos/dagster.png';
+import temporalIcon from '@site/static/img/logos/temporal.png';
+
+Bauplan integrates seamlessly with common workflow orchestrators such as Airflow, Prefect, and Dagster. The general pattern we recommend is straightforward:
+
+- **Use your orchestrator** to manage scheduling, retries, triggers, and durable workflow execution.
+- **Use Bauplan** as the underlying data platform that actually runs your compute and manages your lakehouse.
+
+This division of responsibilities has several advantages:
+
+1. **Separation of orchestration and runtime.** Orchestrators remain lightweight. They don’t execute heavy transformations directly. Instead they call into Bauplan, where compute is isolated, scalable, and data-aware. This avoids overloading your orchestration cluster and ensures your jobs run where they can take advantage of Bauplan’s optimizations (optimized S3 scans, smart caching, zero-copy branching, atomic merges, versioned inputs).
+2. **Simpler DAGs, less boilerplate.** Orchestration code focuses on *when* and *under what conditions* a job should run, not *how* data is processed. This keeps DAGs small and maintainable, reducing the risk of monolithic deployments that are hard to test and debug.
+3. **Portable, reproducible transformation code.** All transformation logic lives in Bauplan projects. Pipelines are versioned, testable, and reproducible without depending on the orchestration context, like Airflow operators. This makes your data workflows portable across orchestrators or even runnable ad-hoc from the CLI without rewriting pipeline code.
+4. **Future-proof architecture.** By keeping orchestration and compute loosely coupled, you can evolve each layer independently. Swap Airflow for Prefect (or vice versa), adopt event-driven triggers, or move workloads between environments without rewriting data business logic. Bauplan ensures consistent execution and data management regardless of how tasks are scheduled.
+
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/integrations/orchestrators/airflow',
+    label: 'Airflow',
+    icon: airflowIcon,
+    description: 'Integrate Bauplan with Apache Airflow'
+  },
+  {
+    type: 'link',
+    href: '/integrations/orchestrators/temporal',
+    label: 'Temporal',
+    icon: temporalIcon,
+    description: 'Integrate Bauplan with Temporal'
+  },
+  {
+    type: 'link',
+    href: '/integrations/orchestrators/dagster',
+    label: 'Dagster',
+    icon: dagsterIcon,
+    description: 'Integrate Bauplan with Dagster'
+  },
+  {
+    type: 'link',
+    href: '/integrations/orchestrators/dbos',
+    label: 'DBOS',
+    icon: dbosIcon,
+    description: 'Integrate Bauplan with DBOS'
+  },
+  {
+    type: 'link',
+    href: '/integrations/orchestrators/prefect',
+    label: 'Prefect',
+    icon: prefectIcon,
+    description: 'Integrate Bauplan with Prefect'
+  },
+    {
+    type: 'link',
+    href: '/integrations/orchestrators/orchestra',
+    label: 'Orchestra',
+    icon: orchestraIcon,
+    description: 'Integrate Bauplan with Orchestra'
+  }
+]} />

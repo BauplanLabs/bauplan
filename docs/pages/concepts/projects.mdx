@@ -1,0 +1,171 @@
+---
+title: "Projects"
+---
+
+A Bauplan project encapsulates your data workflows, including models,
+pipelines, configurations, and dependencies. Organizing your project
+effectively ensures maintainability, scalability, and ease of
+collaboration.
+
+## Recommended Folder Structure
+
+To promote clarity and modularity, we recommend structuring your Bauplan
+projects as follows:
+
+```text
+my_bauplan_project/
+├── pipelines/
+│   ├── pipeline_one/
+│   │   ├── models.py
+│   │   ├── expectations.py
+│   │   └── bauplan_project.yml
+│   ├── pipeline_two/
+│   │   ├── models.py
+│   │   ├── expectations.py
+│   │   ├── utils.py
+│   │   └── constants.py
+│   └── ...
+├── data/
+│   └── raw/
+│       ├── utils.py
+└── README.md
+```
+
+### Explanation
+
+-   `pipelines/`: Contains individual pipelines, each in its own
+    subdirectory with dedicated code and configuration.
+    -   `models.py`: Core transformation logic.
+    -   `expectations.py`: Data quality checks.
+    -   `utils.py`, `constants.py`: Optional helpers used by the
+        pipeline.
+    -   `bauplan_project.yml`: Defines parameters, dependencies, and
+        secrets.
+-   `data/raw/`: Optional folder for raw data references or
+    pipeline-specific data helpers.
+-   `README.md`: Documentation for the overall project.
+
+### Best Practices
+
+-   **Modular Pipelines:** Keep each pipeline self-contained within its
+    directory to facilitate independent development and testing.
+-   **Documentation:** Maintain clear documentation in `README.md` files
+    for each pipeline and the overall project.
+-   **Testing:** Implement tests for your models and pipelines to ensure
+    correctness and facilitate refactoring.
+
+## The `bauplan_project.yml` Configuration file
+
+Each pipeline should include a `bauplan_project.yml` file that defines
+its configuration. This file specifies parameters such as the project
+name, the default Python version, and the secrets.
+
+```yaml
+project:
+  id: d290f1ee-6c54-4b01-90e6-d701748f0851
+  name: my_pipeline_project
+
+defaults:
+  python:
+    version: "3.11"
+    packages:
+      - name: pandas
+        version: "2.2.0"
+      - name: duckdb
+        version: "0.9.2"
+  namespace: my-dev-namespace
+  timeout: 600
+
+parameters:
+  openai_api_key:
+    type: secret
+    default: ENCRYPTED_BASE64_STRING_HERE
+    key: awskms:///arn:aws:kms:us-east-1:123456789012:key/your-kms-key-id
+
+  threshold:
+    type: float
+    default: 0.9
+
+  enable_debug:
+    type: bool
+    default: true
+```
+
+## Notebooks
+
+Some pipelines benefit from interactive or external components:
+
+-   **Apps** (e.g., Streamlit) built on top of model outputs.
+-   **Notebooks** used for exploration, debugging, and analysis.
+-   **Orchestrators** (e.g., Airflow, Prefect) used to schedule and
+    monitor the pipelines in production.
+
+We recommend to structure your project like this:
+
+```text
+my_bauplan_project/
+├── pipelines/
+│   ├── customer_segmentation/
+│   │   ├── models.py
+│   │   ├── bauplan_project.yml
+│   │   └── expectations.py
+│   ├── airflow/
+│   │   └── flow.py            # Orchestration flow and scheduling
+│   ├── notebooks/
+│   │   ├── analysis.ipynb     # Exploratory analysis or visualizations
+│   │   └── test_output.ipynb
+│   ├── app/
+│   │   └── app.py             # Data appas, e.g. Streamlit
+│   └── README.md
+├── data/
+│   └── raw/
+│       └── utils.py
+└── README.md
+```
+
+### Notebooks and the SDK
+
+Notebooks using the Bauplan Python SDK are excellent for quick
+inspection and lightweight exploration on your local machine. However:
+
+-   **You pay the memory cost locally.** Any data returned via
+    `client.query()` is loaded into the memory of your Notebook or
+    Python process. This is great for small-to-medium datasets, but
+    risky for multi-GB results.
+-   **Performance is significantly slower than remote execution.** Even
+    with efficient streaming (e.g., Arrow Flight), SDK-based retrieval
+    is slower and more resource-intensive than letting the computation
+    run near the data.
+
+### Best Practices
+
+-   Use the Notebooks for **exploratory workflows**, lightweight
+    queries, and output inspection.
+-   Keep notebook results small and filtered - use `LIMIT` or `WHERE`
+    clauses.
+
+## Orchestrators
+
+To productionize your pipelines, you can trigger Bauplan runs from any
+external orchestrator (e.g., Airflow, Prefect, Dagster).
+
+### Requirements for a good orchestrator
+
+-   **Flexible inputs**: Support for scheduled, manual, or event-driven
+    triggers.
+-   **Flexible task control**: Ability to run subsets of pipelines
+    (e.g., a specific model and its children).
+-   **Backfills**: Easily reprocess historical data.
+-   **Logging UI**: Centralized access to job logs and statuses.
+-   **Retries**: Robust error handling and retries.
+
+### Best practices
+
+-   Keep orchestration lightweight: external orchestrators manage **when
+    and how your data pipelines** run -- not to replicate their logic.
+    Invoke Bauplan with the correct ref and parameters and let Bauplan
+    handle execution and data versioning.
+-   Store orchestrator config and code (e.g., Airflow DAGs) alongside
+    the relevant pipeline.
+-   Use tags or branch naming conventions to trigger runs in dev vs.
+    prod.

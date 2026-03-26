@@ -1,0 +1,47 @@
+---
+title: "Overview"
+canonicalUrl: /overview/index
+sidebar_class_name: hidden
+slug: /overview/
+# hide_table_of_contents: true
+---
+
+import { ChevronRight, Workflow, Zap, GitBranch, Database, Code2, Shield, Terminal, Layers, PlayCircle, BookOpen, Rocket, Cloud, Code, Lock,Package } from 'lucide-react';
+
+## What is Bauplan under the hood
+Bauplan is a Python-first lakehouse runtime for building and operating data pipelines on object storage (for example, AWS S3) with [Git-style](/concepts/git_for_data) branching and versioning for data.
+It gives you a safe execution loop for changes: write to an [isolated branch](/concepts/git_for_data/data_branches), run and validate, then publish to `main` with an atomic merge, with rollback to a known-good commit.
+Bauplan is designed for teams that want to ship production data changes without running a data platform project with special emphasis on AI-generated changes.
+
+## Why we built it
+
+We built Bauplan for a world where the default analytical workload is no longer a human running a small number of carefully prepared jobs, but agents generating SQL and Python, probing the data, proposing changes, and iterating repeatedly (often in parallel).
+
+Today most teams cannot get the full benefit of AI systems in data work because the platform layer is missing the safety primitives and the context loop needed by agents.
+
+There is no cheap, isolated place to apply writes on real production-scale data; no single, programmatic “publish” step that is atomic and gated by checks; no consistent notion of history you can diff, reproduce, and roll back.
+
+Because production is protected by process rather than by the execution model, agents get confined to drafting code and humans still do the DevOps and DataOps part.
+
+With Bauplan, the agent workflow matches the way engineers ship code: create a branch, run on that branch, validate, then publish by merging to `main` atomically, with rollback to a known-good commit. That makes high-iteration agent work safe on real data, without turning production into an experiment.
+
+## Design principles
+
+**Simple:** You and your AI agent write pipelines in pure Python and SQL and run them through a small set of commands and APIs. No Spark, Kubernetes, or a complex configuration surface.
+
+**Robust:** Every run is tied to a branch and a commit history, so results can be reproduced, reviewed, diffed, and rolled back. Production changes happen only through explicit publish.
+
+**Interoperable:** All data is stored as Apache Iceberg tables on your object storage. Outputs remain fully compatible with existing query engines, catalogs, and BI tools, without locking teams into a siloed system.
+
+## Main features
+
+- **`Python-first`** write transformations in Python (and SQL where it makes sense) in your existing repo and IDE; run them on Bauplan optimized runtime without managing cloud execution infrastructure.
+
+- **`Iceberg tables on object storage`** turn files ([Parquet](https://parquet.apache.org/), CSV) into [Apache Iceberg](https://iceberg.apache.org/) tables in your bucket; get schema and partition evolution, time travel, and transactional updates.
+
+- **`SQL for exploration and verification`** query tables interactively or asynchronously on any branch to inspect outputs, debug issues, and verify results.
+
+- **`Isolated branches for safe agentic work`** agents write to zero-copy data branches, so they can run on real production-scale data without touching **main** until you decide to publish.
+- **`Atomic publish for concurrent changes`** publishing is an atomic merge to **main**, so independent changes from multiple agents or engineers land as a single consistent update rather than a sequence of partial writes.
+
+- **`Rollback by commit`** Every publish produces a commit you can return to. If a change is wrong or a downstream consumer breaks, roll back to a known-good state quickly and reproducibly.

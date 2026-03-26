@@ -1,0 +1,83 @@
+---
+title: "Execution model"
+---
+
+When you run a function or a pipeline in Bauplan, here\'s what happens
+behind the scenes:
+
+-   **You write code locally in your IDE and you run it remotely** using
+    the Bauplan SDK and CLI. When you run `bauplan run`, the
+    platform handles everything else (e.g. environment setup, execution,
+    data movement, and tracking).
+-   **Your code is packaged and executed in Bauplan\'s managed
+    runtime**, built on a fast, secure, and autoscaling
+    Function-as-a-Service (FaaS) layer. All functions are ephemeral.
+-   **Your data is persisted only in your cloud.** Bauplan reads and
+    writes directly from your S3. We don\'t copy or ingest your data.
+-   **Results and metadata are versioned.** Every operation that results
+    in writing to the data catalog (e.g. a run) creates a new immutable
+    reference (Ref) capturing the code, inputs, outputs, and
+    environment. This enables full reproducibility, auditability, and
+    rollback.
+
+```mermaid
+graph TB
+    subgraph local["<b>Your Local Code</b>"]
+        direction LR
+        subgraph ab[" "]
+            K[" "]
+            direction TB
+            A["@bauplan.model()<br/>def get_data():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import pandas<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]
+            B["@bauplan.model()<br/>def predictions():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import torch<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]
+            A --> B
+        end
+        C["<b>SQL Query</b><br/>SELECT col,COUNT(*) FROM ..."]
+    end
+
+    spacerTop1[" "]
+
+    subgraph bauplan[" "]
+        direction LR
+        bauplanTitle["<b>Bauplan (Managed)</b>"]
+        D["Python packages +<br/>Dockerized function"]
+        E["Python packages +<br/>Dockerized function"]
+        F["<b>DataFusion</b> (ephemeral)"]
+        G["<b>Active Branch</b><br/>(Iceberg tables tracked by<br/>Bauplan catalog)"]
+    end
+
+    spacerTop2[" "]
+
+    subgraph storage[" "]
+        direction LR
+        storageTitle["<b>Your Object Store</b>"]
+        spacerS["<br/><br/>"]
+        J[" "]
+        K[" "]
+        H["Parquet / CSV / JSON files"]
+        I["Parquet / CSV / JSON files"]
+        J[" "]
+        K[" "]
+        Z[" "]
+    end
+
+    A <--> D
+    B <--> E
+    C <--> F
+    D --> G
+    E --> G
+    F --> G
+    G <--> H
+    G <--> I
+
+    style storageTitle fill:none,stroke:none
+    style bauplanTitle fill:none,stroke:none
+    style A text-align:left
+    style B text-align:left
+    style spacerS fill:none,stroke:none
+    style ab fill:none,stroke:none
+    style spacerTop1 fill:none,stroke:none
+    style spacerTop2 fill:none,stroke:none
+    style J fill:none,stroke:none
+    style K fill:none,stroke:none
+    style Z fill:none,stroke:none
+```

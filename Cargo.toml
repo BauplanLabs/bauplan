@@ -101,6 +101,7 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tree-sitter = "0.26"
 tree-sitter-md = "0.5"
 tree-sitter-python = "0.25"
+walkdir = "2.5.0"
 
 # TODO: replace this with >=0.28.3 (here and in gen-stubs) when it lands.
 # https://github.com/PyO3/pyo3/pull/5782

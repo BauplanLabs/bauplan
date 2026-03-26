@@ -1,0 +1,175 @@
+---
+title: Fivetran
+---
+
+Fivetran is a managed ELT platform that moves data from hundreds of sources into your data lake with automated schemas, scheduling, and monitoring. With the Managed Data Lake destination, it writes Apache Iceberg tables directly to your S3 bucket. In this guide, you will register those Fivetran-created Iceberg tables in Bauplan as external tables so you can branch, validate, and query them without copying data.
+
+## Prerequisites
+
+- A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
+- An S3 bucket where Fivetran and Bauplan can read and write.
+
+## Architecture overview
+
+- Fivetran writes Iceberg tables to your S3 bucket (recommended prefix: `/iceberg/`).
+- Table metadata is discoverable via the Iceberg REST catalog that Fivetran exposes (Polaris).
+- Bauplan registers those tables by pointing at each table’s `metadata.json` and exposes them as external tables on any branch you choose.
+
+```
+[Fivetran Connectors] → [Managed Data Lake → Iceberg on S3]
+                                  ↓
+                         [Iceberg REST (Polaris)]
+                                  ↓
+                [Bauplan: register as External Table]
+                                  ↓
+              [Branch • Query • Validate • Merge in Bauplan]
+```
+
+## Step 1 - Set up the Fivetran destination
+
+1. In Fivetran, create a **Managed Data Lake** destination (S3).
+
+    See Fivetran documentation for setup details.
+
+2. Use the **same S3 bucket** that your Bauplan environment can access in read and write.
+3. Set the **prefix** to `/iceberg/` so paths look like:
+
+```
+s3://<your-bucket>/iceberg/<schema>/<table>/
+```
+
+Fivetran will create one Iceberg table per connector schema and manage data and metadata under that path.
+
+## Step 2 - Fetch the Iceberg table metadata location
+
+Bauplan needs the absolute path to the table’s current `metadata.json`. Retrieve it via PyIceberg against Polaris.
+
+```python notest
+# get_polaris_metadata.py
+from pyiceberg.catalog import rest
+
+# Configure your catalog values
+CATALOG_URI = "https://polaris.fivetran.com/api/catalog"
+OAUTH2_TOKEN_URI = "https://polaris.fivetran.com/api/catalog/v1/oauth/tokens"
+POLARIS_WAREHOUSE = "YOUR_POLARIS_WAREHOUSE"
+POLARIS_CREDENTIAL = "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET"
+OAUTH_SCOPE = "PRINCIPAL_ROLE:ALL"
+
+ICEBERG_NAMESPACE = "your_iceberg_namespace"   # e.g. "ngrokpg_public"
+ICEBERG_TABLE = "your_iceberg_table"           # e.g. "playing_with_neon"
+
+def get_metadata_location(namespace: str, table_name: str) -> str:
+    """Return the fully-qualified metadata.json location for an Iceberg table in Polaris."""
+    polaris_catalog = rest.RestCatalog(
+        name="default",
+        type="rest",
+        uri=CATALOG_URI,
+        **{
+            "warehouse": POLARIS_WAREHOUSE,
+            "oauth2-server-uri": OAUTH2_TOKEN_URI,
+            "credential": POLARIS_CREDENTIAL,
+            "scope": OAUTH_SCOPE,
+        },
+    )
+    table_obj = polaris_catalog.load_table(identifier=(namespace, table_name))
+    return table_obj.metadata_location
+
+```
+
+Example output:
+
+```
+s3://<your-bucket>/iceberg/<schema>/<table>/metadata/00004-...metadata.json
+```
+
+## Step 3 - Register the table in Bauplan as an external table
+
+Use the Bauplan Python SDK to create an external table on a working branch. You can register multiple Fivetran tables on the same branch.
+
+```python notest
+# register_fivetran_external_table.py
+import bauplan
+from get_polaris_metadata import get_metadata_location
+
+# Keep in sync with get_polaris_metadata.py
+ICEBERG_NAMESPACE = "your_iceberg_namespace"
+ICEBERG_TABLE = "your_iceberg_table"
+
+# How the table will appear inside Bauplan
+BAUPLAN_TABLE_NAME = f"fivetran.{ICEBERG_NAMESPACE}__{ICEBERG_TABLE}"
+
+# Resolve the current metadata.json location from Polaris
+metadata_location_string = get_metadata_location(
+    namespace=ICEBERG_NAMESPACE,
+    table_name=ICEBERG_TABLE,
+)
+
+# Instantiate Bauplan client
+client = bauplan.Client()
+bauplan_user = client.info().user.username
+
+# Create a non-main branch for safe testing
+branch_name = f"{bauplan_user}.fivetran_integration"
+client.create_branch(branch=branch_name, from_ref="main", if_not_exists=True)
+
+client.create_external_table_from_metadata(
+    table=BAUPLAN_TABLE_NAME,
+    metadata_json_uri=metadata_location_string,
+    branch=branch_name,
+    namespace='fivetran',
+    overwrite=True,
+)
+
+print(f"External table registered: {BAUPLAN_TABLE_NAME} on branch {branch_name}")
+
+```
+
+### Advancing to new snapshots
+
+Fivetran continuously writes new snapshots. The `metadata_location` you register pins a specific snapshot. To advance:
+
+1. Call `get_metadata_location(...)` again to fetch the latest `metadata.json`.
+2. Call `create_external_table_from_metadata(..., overwrite=True)` on your feature branch.
+3. Run expectations or smoke tests.
+4. `commit` and `merge` into `main` when validation passes.
+
+## Authorization
+
+To register Fivetran tables as external tables, grant the Bauplan **Job Executor** role read access to the S3 bucket/prefix where Fivetran writes Iceberg data (typically, this is `<S3_BUCKET_NAME>/iceberg/…`).
+
+The Job Executor role (`<AWS_JOB_EXECUTOR_ROLE_ARN>`) is created during your one-time Bauplan deployment. You do not need to change the trust policy or external ID, just attach or update the permissions policy.
+
+### Example: minimal S3 access for Fivetran landing zone
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "ListBucketForFivetranIceberg",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": "arn:aws:s3:::<S3_BUCKET_NAME>",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": [
+            "iceberg/*"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "ReadObjectsFromFivetranIceberg",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": "arn:aws:s3:::<S3_BUCKET_NAME>/iceberg/*"
+    }
+  ]
+}
+
+```

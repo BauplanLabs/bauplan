@@ -1,0 +1,43 @@
+import { ConceptCards } from '@site/src/theme/components/ConceptCards';
+import { Workflow, GitBranch, GitCommit, Box, Table, CheckCircle, FolderGit } from 'lucide-react';
+
+# Build and run a pipeline
+
+Data pipelines transform raw data into analysis-ready datasets. In traditional workflows, this means manually writing transformation code, testing it, and carefully deploying to production - a process that can take days.
+
+**With Bauplan and AI agents, you can build and run a complete pipeline in minutes.** The agent writes the transformation code, executes it on a safe development branch, and helps you iterate until it's ready for production.
+
+```bash
+main data branch (production)
+  │
+  ├─── alice.pipeline-dev (development branch)
+  │       │
+  │       ├── Iteration 1: Agent builds and run pipeline, see results
+  │       ├── Iteration 2: Agent fixes bug, run again
+  │       └── Iteration 3: Add new model, verify
+  │
+  └─── (merge when ready) → main updated with new pipeline outputs
+```
+
+Bauplan's **data branches** make AI-assisted pipeline development safe. Just like Git branches for code, [data branches](/tutorial/data_branches) isolate your pipeline outputs from production:
+
+- **Development branch**: Agent builds and runs pipelines here - test freely without risk
+- **`main` branch**: Your production data - only updated when you're ready to merge
+- **Iteration cycle**: Generate code → Run pipeline → Review results → Refine → Repeat
+- **Atomic merges**: When satisfied, merge everything to `main` in one operation
+
+**This is a very powerful capability of Bauplan**: AI agents can write new data to your lakehouse safely and securely through branch isolation.
+
+**What you'll build**: Code-first pipelines (Python or SQL) that live in Git, execute on specific branches, and automatically handle dependencies, parallelism, and data lineage.
+
+**Learn more:**
+
+<ConceptCards items={[
+    { title: "Pipelines", href: "/concepts/pipelines", icon: Workflow },
+    { title: "Data Branches", href: "/concepts/git_for_data/data_branches", icon: GitBranch },
+    { title: "Commits and Refs", href: "/concepts/git_for_data/commits_refs", icon: GitCommit },
+    { title: "Models", href: "/concepts/models", icon: Box },
+    { title: "Tables", href: "/concepts/tables", icon: Table },
+    { title: "Expectations", href: "/concepts/expectations", icon: CheckCircle },
+    { title: "Bauplan Projects", href: "/concepts/projects", icon: FolderGit }
+]} />

@@ -1,0 +1,204 @@
+---
+title: "Frequently Asked Questions"
+sidebar_label: "FAQ"
+toc_min_heading_level: 3
+---
+
+<div className="faq-index">
+
+:::info Quick Index
+- [I need some help. Who do I call?](#i-need-some-help-who-do-i-call)
+- [I found a bug. Who do I tell?](#i-found-a-bug-who-do-i-tell)
+- [How easy is it to integrate Bauplan with other tools?](#how-easy-is-it-to-integrate-bauplan-with-other-tools)
+- [How does Bauplan handle schema evolution?](#how-does-bauplan-handle-schema-evolution)
+- [How does Bauplan help with managing and querying data in a lakehouse architecture?](#how-does-bauplan-help-with-managing-and-querying-data-in-a-lakehouse-architecture)
+- [Does Bauplan support versioned data access?](#does-bauplan-support-versioned-data-access)
+- [What file formats does Bauplan support in ingestion?](#what-file-formats-does-bauplan-support-in-ingestion)
+- [Does Bauplan run Spark under the hood?](#does-bauplan-run-spark-under-the-hood)
+- [I already have a lot of Spark code, can I run it with Bauplan?](#i-already-have-a-lot-of-spark-code-can-i-run-it-with-bauplan)
+- [What kind of applications can I deploy using Bauplan?](#what-kind-of-applications-can-i-deploy-using-bauplan)
+- [How does Bauplan simplify debugging in production?](#how-does-bauplan-simplify-debugging-in-production)
+- [Does Bauplan optimize my code?](#does-bauplan-optimize-my-code)
+- [How many new tools or frameworks do I need to learn to use Bauplan?](#how-many-new-tools-or-frameworks-do-i-need-to-learn-to-use-bauplan)
+- [Can I use the table I write with Bauplan somewhere else?](#can-i-use-the-table-i-write-with-bauplan-somewhere-else)
+- [I have an orchestrator and I like it. Do I have to ditch it to use Bauplan?](#i-have-an-orchestrator-and-i-like-it-do-i-have-to-ditch-it-to-use-bauplan)
+- [What does Bauplan mean?](#what-does-bauplan-mean)
+:::
+</div>
+
+---
+
+## I need some help. Who do I call?
+
+Drop us a line at [support@bauplanlabs.com](mailto:support@bauplanlabs.com) and we'll come running. This
+goes for everything: questions, suggestions, complaints, improvements.
+Don't be shy and reach out!
+
+## I found a bug. Who do I tell?
+
+If you found a bug, you are strongly encouraged to open an issue in
+[this repository.](https://github.com/BauplanLabs/examples) When you do
+it, please remember to report the `JobId` printed out by the system. You
+can also send us a note at [support@bauplanlabs.com](mailto:support@bauplanlabs.com).
+
+## How easy is it to integrate Bauplan with other tools?
+
+Pretty easy. Bauplan is built **for S3** on **Iceberg's open format**
+and a **Python-native runtime**, ensuring seamless integration with
+modern data stacks:
+
+-   **Object storage native** - runs directly on your S3 so you don't
+    really have to move data in Bauplan.
+-   **Iceberg compatible** - Works with any engine and catalog that
+    speaks Iceberg - Snowflake, Databricks, Athena, and Trino.
+-   **No proprietary dependencies** - Fully open and standards-based,
+    avoiding vendor lock-in.
+
+We really don't believe in vendor lock-in so it is very easy to get out
+of Bauplan: your data remains in your S3 and your code is just pure
+Python.
+
+## How does Bauplan handle schema evolution?
+
+Bauplan's **Iceberg tables** support schema evolution without breaking
+queries.
+
+-   Add, rename, or drop columns.
+-   Maintain backward compatibility.
+
+## How does Bauplan help with managing and querying data in a lakehouse architecture?
+
+Bauplan is designed to make lakehouse implementation as seamless as
+possible by eliminating complexity and reducing infrastructure overhead:
+
+ -   **Native object storage access (S3)** - Query data directly from
+    your object storage
+ -   **SQL querying with ACID guarantees** - Leverages Iceberg for
+    transactional consistency and schema evolution.
+ -   **Flexible, serverless compute** - Run workloads efficiently
+    without managing clusters or proprietary infrastructure.
+
+## Does Bauplan support versioned data access?
+
+Yes, Bauplan enables **versioning** in two ways:
+
+ -   **Time-travel queries**: access previous table versions at any point
+    in time.
+ -   **Data branching**: isolate data changes safely, enabling
+    experimentation without affecting production
+    ([docs](/tutorial/data_branches)).
+
+All this, while ensuring **transactional consistency** and integrity
+across updates, merges, and queries.
+
+## What file formats does Bauplan support in ingestion?
+
+Bauplan supports **CSV and Parquet**, stored in S3. Bauplan tables are
+represented as Iceberg tables. We currently do not support Delta tables
+and Hudi tables.
+
+## Does Bauplan run Spark under the hood?
+
+No, Bauplan does not run Spark. Unlike Spark, which relies on a
+distributed computing model with JVM-based execution, Bauplan operates
+with a declarative programming model that natively supports Python and
+SQL functions, executing them efficiently on cloud-based virtual
+machines.
+
+## I already have a lot of Spark code, can I run it with Bauplan?
+
+Yes, Bauplan supports **PySpark** functions - see our
+[docs](/reference/bauplan#bauplan__decorators_pyspark) for details - so you can
+copy and paste your PySpark code and run it on Bauplan. However, for now
+we run your PySpark code on a **single-node architecture** rather than a
+distributed cluster, so you should ensure your jobs are not too large.
+
+## What kind of applications can I deploy using Bauplan?
+
+You can build any application that uses data pipelines and structured
+and semi-structured data. Today Bauplan is used for data transformation,
+data enrichment, ML pipelines, data products, user-facing analytics and
+AI applications. Here are some real-world examples:
+[here](/examples/).
+
+## How does Bauplan simplify debugging in production?
+
+Bauplan ensures **reproducible debugging** by versioning **data, code,
+and execution environments**, so you can always trace and fix issues
+efficiently:
+
+-   **Time travel for data** - Access the exact version of a dataset
+    from when an issue occurred.
+-   **Branching for debugging** - Create an isolated **debug branch**
+    to reproduce and fix failures without disrupting production.
+-   **Immutable execution environments** - Containerized runs ensure
+    the same dependencies, preventing environment drift.
+-   **Versioned pipelines** - Track and restore previous
+    transformations for consistent troubleshooting.
+
+## Does Bauplan optimize my code?
+
+Not really. Bauplan does not force you to learn a new syntax. We provide
+lighting-fast feedback loop in the cloud by removing many bottlenecks
+you would normally have - network bandwidth, caching, containerization
+and data passing between functions: if a function or a pipeline runs on
+your laptop, it will run in Bauplan, faster, more robustly and directly
+integrated with our data lake. However, we do not change your code in
+any way; it runs exactly as you write it.
+
+## How many new tools or frameworks do I need to learn to use Bauplan?
+
+**Zero, zip, zilch, nada.** We designed Bauplan specifically to rely
+only on abstractions familiar to every developer.
+
+-   **Standard Languages**: Utilize familiar languages like **Python**
+    and **SQL** to develop your applications.
+-   **No Complex Frameworks**: Avoid the need for complex big-data
+    frameworks like Spark; Bauplan simplifies data processing without
+    additional infrastructure.
+-   **Software Engineering Practices**: Apply standard software
+    engineering practices such as modularity, test-driven development,
+    and CI/CD directly within Bauplan.
+
+There are enough DSLs, data frameworks, and dataframe APIs in the world.
+We don't need a new one.
+
+## Can I use the table I write with Bauplan somewhere else?
+
+Yes, every table produced by Bauplan is stored as an **Iceberg table**
+in your S3 bucket, making it accessible to any engine that supports
+**Apache Iceberg**, such as:
+
+-   **Databricks**
+-   **Snowflake**
+-   **Trino/Presto**
+-   **Athena**
+
+## I have an orchestrator and I like it. Do I have to ditch it to use Bauplan?
+
+No, please keep it. Bauplan is not an orchestrator, it's a serverless
+Data Lakehouse. We are good at being really fast, running pipelines,
+querying and branching data. We are not terribly good at scheduling,
+re-try and fan-out. We integrate with the outermost layer of
+orchestration, so you can keep your favorite frameworks and maintain the
+capabilities that really matter for an orchestrator. For instance, you
+can call Bauplan functions and DAGs as Airflow tasks, they just will be
+run by Bauplan optimized runtime. [Do you wanna see an
+example?](https://github.com/BauplanLabs/wap_with_bauplan_and_prefect/tree/main)
+
+## What does Bauplan mean?
+
+Bauplan is a term from evolutionary biology and means \"ground plan\" or
+\"structural plan\". It is a concept from evolutionary biology used to
+identify common sets of morphological features in organism such as
+symmetry, layers, segmentation, nerve, limb configuration. Different
+phyla of animals can be grouped based on their bauplan. For instance,
+the vertebrates share the same Bauplan, while invertebrates have many
+Baupläne. We wanted a name that could convey our passion for structural
+optimization of complex systems. What makes a bauplan successful in the
+history of evolution? How many ways are there to optimize the structure
+of an organism against its environment?
+
+If you want to know more about this kind of stuff check out this
+amazing [book](https://www.amazon.com/Endless-Forms-Most-Beautiful-Science/dp/0393327795/ref=sr_1_1?crid=1UO8IYFVRHJ2G&keywords=endless+forms+most+beautiful+sean+carroll&qid=1699723985&sprefix=sean+carroll+most%2Caps%2C82&sr=8-1) by [Sean
+B. Carroll.](https://www.seanbcarroll.com/)

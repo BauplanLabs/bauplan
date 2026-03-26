@@ -52,6 +52,23 @@ dev = [
     "gitlint-core",
     "ruff>=0.14.14",
     "ty>=0.0.15",
+    "apache-airflow>=3.1.8",
+    "dagster>=1.12.20",
+    "dbos>=2.16.0",
+    "duckdb>=1.5.1",
+    "google-cloud-bigquery>=3.40.1",
+    "ipywidgets>=8.1.8",
+    "marimo>=0.21.1",
+    "matplotlib>=3.10.8",
+    "openai>=2.30.0",
+    "pandas>=2.3.3",
+    "pandas-stubs>=2.3.3.260113",
+    "pendulum>=3.2.0",
+    "plotly>=6.6.0",
+    "prefect>=3.6.23",
+    "pyiceberg>=0.11.1",
+    "streamlit>=1.55.0",
+    "temporalio>=1.24.0",
 ]
 
 [tool.maturin]
@@ -69,7 +86,7 @@ include = [
 ]
 
 [tool.ruff]
-exclude = ["tests/fixtures", "src/cli/init/models.py"]
+exclude = ["tests/fixtures", "src/cli/init/models.py", "docs/gen_sdk_reference.py"]
 
 [tool.ruff.lint]
 select = [
@@ -77,7 +94,7 @@ select = [
 ]
 
 [tool.ty.src]
-exclude = ["tests/fixtures", "src/cli/init/models.py"]
+exclude = ["tests/fixtures", "src/cli/init/models.py", "docs/gen_sdk_reference.py"]
 
 # Whitelist imports of bauplan._internal in __init__.py. The rust extension
 # module gets built there.

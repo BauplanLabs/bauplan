@@ -1,0 +1,31 @@
+---
+title: "Explore Data"
+---
+
+Start by understanding what data is already available. Your Bauplan sandbox comes with pre-loaded public datasets.
+
+```
+Explore the tables in the main branch of the data lake that contain data about the taxi rides in NYC.
+```
+
+The agent will load the `explore-data` skill and use it to: create a dedicated folder named `data-exploration` containing one or more Python file that will run the data analysis. Expect this to take some time.
+
+You can use your agent to ask specific questions like the following:
+
+```
+Can you show me the schema of taxi_fhvhv in the main branch and tell me what time range of data it covers?
+```
+
+```
+Give me a preview of 5 rows from the taxi_fhvhv in the main branch table and tell me if there are anomalies in the table that I should be aware of
+```
+
+The agent can fetch the individual CLI commands described in the file  `.claude/bauplan_reference/bauplan_cli.md` and use them to explore the data and answer complex questions on the spot.
+
+When exploring data, the agent may:
+
+- Use the **Bauplan CLI** in `.claude/bauplan_reference/bauplan_cli.md` directly for queries, schema inspection, table listing.
+- invoke the `explore-data` skill for a comprehensive and reproducible profiling.
+- Generate a **structured summary** with schemas, row counts, and observations
+
+Data exploration, is read-only. In carrying out these operations your agent shall not **import or modify data.**

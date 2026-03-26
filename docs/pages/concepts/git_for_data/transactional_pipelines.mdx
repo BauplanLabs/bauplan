@@ -1,0 +1,60 @@
+---
+title: "Transactional pipelines"
+---
+
+In Bauplan, every pipeline run is treated like a **database
+transaction**. That means:
+
+-   **If the run succeeds, all outputs are committed**.
+-   **If the run fails,** the data on your current branch **remains
+    untouched.**
+
+This behavior applies automatically - whether you're developing locally
+or running production jobs on a schedule.
+
+Transactionality is enforced via **temporary execution branches**:
+
+ -  When you trigger a run, the platform forks your current branch to
+    create an isolated branch: intermediate outputs are materialized in
+    this temporary branch.
+ -  If the run succeeds, the outputs are merged into your working
+    branch, making it point to the latest commit - your branch now
+    reflects the results of that pipeline run.
+ -  If the run fails, your working branch remains unchanged.
+    Intermediate artifacts are preserved for inspection.
+
+This guarantees that **every change to your lakehouse is atomic,
+isolated, and versioned**.
+
+```text
+          ┌────────────┐
+          │  main/     │
+          │  active    │
+          │  branch    │
+          └─────┬──────┘
+                │
+      (run triggered from this branch)
+                │
+                ▼
+      ┌────────────────────┐
+      │  temporary branch  │
+      │   (isolated run)   │
+      └─────────┬──────────┘
+                │
+                ▼
+      ┌─────────────────────────────┐
+      │   pipeline succeeds?        │-─────────────────┐
+      └─────────────┬───────────────┘                  │
+                    │ yes                              │ no
+                    ▼                                  ▼
+        ┌────────────────────────┐           ┌───────────────────────────┐
+        │ Merge into working     │           │ Keep active branch clean  │
+        │ branch as new Ref      │           │ Keep temp branch for logs │
+        └───────────┬────────────┘           └─────────┬─────────────────┘
+                    │                                  │
+                    ▼                                  ▼
+        ┌──────────────────────┐             ┌─────────────────────────────┐
+        │ Active branch now    │             │ Inspect failed run metadata │
+        │ points to new Ref    │             │ Re-run or debug as needed   │
+        └──────────────────────┘             └─────────────────────────────┘
+```

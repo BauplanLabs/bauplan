@@ -1,0 +1,19 @@
+install:
+    bun install
+
+generate:
+    uv run gen_sdk_reference.py
+    bun run generate-llm-docs
+    bun run generate-llms-txt
+
+build out_dir="./build": install generate
+    uv sync --reinstall-package bauplan
+    bun run docusaurus build --out-dir "{{ out_dir }}"
+
+serve: install generate
+    bun run docusaurus start
+
+clean:
+    rm -rf pages/reference
+    rm -rf build/
+    rm -rf .docusaurus

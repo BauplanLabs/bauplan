@@ -1,0 +1,22 @@
+---
+title: Data Integration and ELT
+---
+
+# Overview
+
+Use your ELT tool to land data in your bucket, use Bauplan to turn that landing zone into safe, queryable Iceberg tables.
+
+**Recommended pattern**
+
+- Land to S3 (ideally Iceberg-native; otherwise Parquet).
+- Register in Bauplan: external table from `metadata.json` (native Iceberg) or materialize to managed Iceberg from files.
+- Work on a branch, run expectations, then merge (WAP).
+
+**Two modes**
+
+- Native Iceberg: register per table as an external table and advance snapshots intentionally.
+- Files (Parquet/CSV): read from prefix, enforce contracts, materialize to Iceberg.
+
+**Authorization**
+
+Grant the Bauplan Job Executor role read (and optional write) to the landing bucket/prefix used by the ELT tool. If it is a different bucket than your standard one, add it to the role policy.

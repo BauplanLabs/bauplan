@@ -1,0 +1,71 @@
+---
+title: "Deployment"
+---
+
+Bauplan offers two secure deployment options tailored to your needs.
+
+## Single-tenant Private Link Deployment
+
+In this model, Bauplan manages a dedicated cloud environment for you,
+linked to your own object storage:
+
+```mermaid
+flowchart TB
+    A["Your Local Environment<br/>(IDE / CLI / SDK)"]
+
+    A -->|"auth + data streaming<br/>(private link)"| B
+
+    subgraph B[" "]
+        direction TB
+        BTitle["<b>Bauplan Managed Cloud</b>"]
+        C["Bauplan APIs<br/>Data Catalog"]
+        D["EC2 Runner<br/>(compute runtime)"]
+
+    end
+
+    B --> E["Your S3 Bucket<br/>(in your cloud account)"]
+
+    style BTitle fill:none,stroke:none
+```
+
+Key Benefits:
+
+-   Fully isolated, SOC2-compliant managed environment.
+-   Data stays in your cloud with no S3 egress costs.
+-   No infrastructure management required by your team.
+
+## Bring Your Own Cloud (BYOC) Deployment
+
+In the BYOC model, the entire Bauplan runtime is deployed within your
+existing VPC, under your control:
+
+```mermaid
+flowchart TB
+    A["Your Local Environment<br/>(IDE / CLI / SDK)"]
+
+    A -->|"auth + data streaming"| B
+
+    subgraph B[" "]
+        direction TB
+        BTitle["<b>Your Cloud (BYOC - VPC)<br/>(compute runs here only)</b>"]
+        C["EC2 Runner (primary)"]
+        D["EC2 Runner (backup)"]
+        E["Object Storage<br/>(Your S3)"]
+        C --> E
+        D --> E
+    end
+
+    B <--> F
+
+    F["<b>Bauplan APIs</br>(Control Plane)</b>
+    <hr class='mermaid' /><ul style='margin:0px; text-align:left;'>
+    <li style="white-space: nowrap;">Catalog</br>(Iceberg + Git-for-data)</li><li>Auth, scheduling, observability</li><li>Multi-tenant, managed by Bauplan</li></ul>"]
+
+    style BTitle fill:none,stroke:none
+```
+
+Key Benefits:
+
+-   Maximum security and control within your infrastructure.
+-   No external data traffic, fully private and compliant.
+-   Efficient, with zero data transfer costs to external networks.

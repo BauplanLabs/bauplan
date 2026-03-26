@@ -1,0 +1,22 @@
+{
+  "scripts": {
+    "generate-llm-docs": "node scripts/generate-llm-docs.js",
+    "generate-llms-txt": "node scripts/generate-llms-txt.js",
+    "prebuild": "npm run generate-llm-docs && npm run generate-llms-txt",
+    "build": "docusaurus build",
+    "start": "docusaurus start",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.9.2",
+    "@docusaurus/faster": "^3.9.2",
+    "@docusaurus/plugin-google-gtag": "^3.9.2",
+    "@docusaurus/preset-classic": "^3.9.2",
+    "@docusaurus/theme-mermaid": "^3.9.2",
+    "@tailwindcss/postcss": "^4.1.18",
+    "lucide-react": "^0.544.0",
+    "postcss": "^8.5.6",
+    "react-markdown": "^10.1.0"
+  }
+}

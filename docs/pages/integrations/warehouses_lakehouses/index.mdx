@@ -1,0 +1,67 @@
+---
+title: "Warehouses and Lakehouses"
+---
+
+import DocCardList from '@theme/DocCardList';
+import snowflakeIcon from '@site/static/img/logos/snowflake.png';
+import bigqueryIcon from '@site/static/img/logos/bigquery.png';
+import gcsIcon from '@site/static/img/logos/gcs.png';
+
+This section explains how to connect Bauplan‑managed Iceberg tables in your object storage to other
+platforms your teams already use, such as Databricks Unity Catalog, AWS Glue and Athena.
+
+Bauplan writes tables in Apache Iceberg format and exposes a standards-compliant Iceberg REST
+catalog. External engines discover tables through that catalog and read files directly from your
+bucket with their own cloud credentials.
+
+## **Integration Options**
+
+- **External catalog:** plug-and-play, auto-discovery, recommended whenever supported.
+- **External tables:** manual, per-table setup, fallback for engines without catalog support.
+
+Bauplan ensures that whichever route you take, your tables remain in open formats on your own storage, accessible to the rest of your stack.
+
+### **Option 1: External catalogs (recommended)**
+
+Most modern engines now support the **Iceberg REST catalog**. This lets them attach directly to Bauplan and see all namespaces and tables, with no manual refresh required.
+
+- **Bauplan catalog endpoint:** `https://api.use1.aprod.bauplanlabs.com/iceberg`
+- **Auth:** `Bearer <token>` (we recommend a read-only Bauplan user)
+- **Storage:** Your object store (i.e. Amazon S3). Engines authenticate with their own IAM/service accounts.
+- **Engines supported:** Snowflake Open Catalog, Databricks Unity Catalog, BigQuery, Trino, Athena, Spark, DuckDB, and others with native Iceberg connectors.
+
+### **Option 2: External tables (per-table)**
+
+If your engine does not yet support the REST catalog, you can still integrate by registering each table directly from its metadata location.
+
+- Use Bauplan's API (`client.get_table(...)`) to retrieve the Iceberg metadata path.
+- Register that path manually in your engine as an external table.
+- You must refresh tables manually when schema or snapshots change.
+
+This approach works everywhere, but requires more operational overhead than catalog integration.
+
+---
+
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/snowflake',
+    label: 'Snowflake',
+    icon: snowflakeIcon,
+    description: 'Connect Snowflake to Bauplan using Iceberg REST catalog'
+  },
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/big_query',
+    label: 'BigQuery',
+    icon: bigqueryIcon,
+    description: 'Query Bauplan data from BigQuery with external Iceberg tables'
+  },
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/gcs',
+    label: 'Google Cloud Storage',
+    icon: gcsIcon,
+    description: 'Sync GCS buckets with Bauplan via AWS DataSync'
+  }
+]} />
