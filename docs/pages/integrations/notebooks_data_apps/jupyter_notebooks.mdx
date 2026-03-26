@@ -1,0 +1,189 @@
+---
+title: "Jupyter Notebooks"
+hide_title: true
+---
+
+# **Jupyter Integration**
+
+[Jupyter](https://jupyter.org/) notebooks are an interactive computing environment for Python. They are commonly used for exploratory analysis, iterative development, and sharing reproducible workflows that combine code, text, and visuals.
+
+Bauplan exposes a Python SDK that lets you interact with your lakehouse in code: running pipelines, managing branches, and querying tables. Integrating the two is straightforward: use Bauplan for data management and queries, and Jupyter for the user interface and the visualization.
+
+## **Prerequisites**
+
+- Python 3.10 or above.
+- A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
+- JupyterLab or Jupyter Notebook, Bauplan, Pandas, Matplotlib, and ipywidgets installed.
+- Access to a Bauplan table you can query (i.e. taxi_fhvhv).
+
+<Note>
+To isolate your data environment, run it on a branch (not on main). Branch names must be prefixed with your Bauplan username, for example alice.exploration_app.
+</Note>
+
+[Learn more about branches](/concepts/git_for_data/data_branches)
+
+## **Quickstart: query Bauplan from a Jupyter notebook**
+
+This example reads from the `taxi_fhvhv` table in the Bauplan Sandbox (data for 2023). The notebook:
+
+- Authenticates with `bauplan.Client()` using your profile or `BAUPLAN_API_KEY`.
+- Uses Bauplan SDK to execute SQL against a table in a data branch (`<username>.exploration_app`) for a user-selected date range.
+- Visualizes the resulting table as a Pandas dataframe and a matplotlib bar chart embedded in the notebook.
+
+<Note>
+The Sandbox dataset is shared and meant for examples. In a private environment, you can replace the table name (and catalog/namespace if needed) while keeping the same pattern: *Client → branch → query → visualize*.
+</Note>
+
+
+```python notest
+# Jupyter notebook cells
+
+# -------------------------------------------------------------------
+# Cell 1: Imports and Bauplan client setup
+# -------------------------------------------------------------------
+import bauplan
+import pandas as pd
+import matplotlib.pyplot as plt
+from datetime import date
+from functools import lru_cache
+
+import ipywidgets as widgets
+from IPython.display import display, HTML
+
+# If using classic Notebook and want inline plotting:
+# %matplotlib inline
+
+# 1) Initialize Bauplan client
+#    The client will use your local profile or BAUPLAN_API_KEY for authentication.
+#    We'll also capture the username so we can scope a branch per user.
+client = bauplan.Client()
+username = client.info().user.username
+
+# 2) Define a user-scoped branch
+#    Notebooks should not query `main` directly. By running against a personal branch,
+#    you keep exploration isolated from production.
+exploration_branch = f"{username}.exploration_app"
+
+# -------------------------------------------------------------------
+# Cell 2: Date picker widgets and outputs
+# -------------------------------------------------------------------
+# Default to the month of January 2023 for reproducibility.
+start_picker = widgets.DatePicker(description="Start date", value=date(2023, 1, 1))
+end_picker   = widgets.DatePicker(description="End date",   value=date(2023, 1, 31))
+run_button   = widgets.Button(description="Run query", button_style="primary")
+
+status_out = widgets.Output()
+table_out  = widgets.Output()
+plot_out   = widgets.Output()
+
+ui = widgets.VBox([
+    widgets.HBox([start_picker, end_picker, run_button]),
+    status_out,
+    table_out,
+    plot_out
+])
+display(ui)
+
+# -------------------------------------------------------------------
+# Cell 3: Query function (cached) and click handler
+# -------------------------------------------------------------------
+# We wrap the SQL query in an LRU cache so repeated date ranges reuse results
+# instead of re-running the query every interaction.
+@lru_cache(maxsize=256)
+def run_query_cached(start_iso: str, end_iso: str, ref: str) -> pd.DataFrame:
+    query = f"""
+        SELECT
+          DATE_TRUNC('day', pickup_datetime) AS dt,
+          COUNT(*) AS rides
+        FROM taxi_fhvhv
+        WHERE pickup_datetime BETWEEN '{start_iso}' AND '{end_iso}'
+        GROUP BY dt
+        ORDER BY dt ASC
+    """
+    # Returns a Pandas DataFrame
+    return client.query(query, ref=ref).to_pandas()
+
+def on_run_clicked(_):
+    with status_out:
+        status_out.clear_output()
+        print("Running query…")
+    table_out.clear_output()
+    plot_out.clear_output()
+
+    s = start_picker.value
+    e = end_picker.value
+
+    # Guard against invalid ranges
+    if s is None or e is None:
+        with status_out:
+            status_out.clear_output()
+            display(HTML('<p style="color:#b35b00;">Please select both start and end dates.</p>'))
+        return
+    if s > e:
+        with status_out:
+            status_out.clear_output()
+            display(HTML('<p style="color:#b35b00;">Start date must be <= end date.</p>'))
+        return
+
+    # Execute the query against the sandbox table on our branch
+    df = run_query_cached(s.isoformat(), e.isoformat(), exploration_branch)
+
+    with status_out:
+        status_out.clear_output()
+        print("Rides per day")
+
+    # Stop early if the query returned no rows
+    if df.empty:
+        with table_out:
+            display(HTML("<p>No rows for the selected date range.</p>"))
+        return
+
+    # 5) Normalize data types
+    #    Ensure datetime and numeric types are consistent for plotting.
+    df = df.copy()
+    df["dt"] = pd.to_datetime(df["dt"], errors="coerce")
+    df["rides"] = pd.to_numeric(df["rides"], errors="coerce").fillna(0).astype("int64")
+
+    # 6) Display the result table
+    with table_out:
+        display(df)
+
+    # 7) Create a bar chart with matplotlib
+    labels = df["dt"].dt.strftime("%Y-%m-%d")
+    values = df["rides"].values
+
+    with plot_out:
+        plt.figure(figsize=(max(6, len(df) * 0.25), 4))
+        plt.bar(labels, values)
+        plt.xlabel("Date")
+        plt.ylabel("Rides")
+        plt.title(f"Rides per day ({s} → {e})")
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+# 8) Wire up the button
+run_button.on_click(on_run_clicked)
+```
+
+## **Run it**
+
+Create a virtual environment and install the dependencies:
+
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install jupyterlab ipywidgets bauplan pandas matplotlib
+```
+
+Then start JupyterLab from your terminal:
+
+```bash
+jupyter lab
+```
+
+Create a new Python 3 notebook, paste the cells above, and execute them. If widgets do not render, ensure ipywidgets is installed and enabled. In classic Notebook, you may need to enable the extension with:
+
+```bash
+jupyter nbextension enable --py widgetsnbextension
+```

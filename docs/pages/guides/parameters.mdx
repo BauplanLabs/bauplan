@@ -1,0 +1,143 @@
+---
+title: "Managing Project Parameters"
+---
+
+Bauplan parameters let you define and manage variables that we can pass
+programmatically to your pipelines — things like prompts, time ranges,
+flags, constants, and API tokens. They're stored in
+`bauplan_project.yml` and versioned with your code, so your logic stays
+declarative, reproducible, and easy to test. Parameters in your
+`bauplan_project.yml` become defaults but can always be overridden
+explicitly at runtime.
+
+Parameters can be:
+
+-   **Strings** (`str`)
+-   **Numbers** (`int`, `float`)
+-   **Booleans** (`bool`)
+-   [Secrets](/guides/secrets) (encrypted API keys or credentials)
+
+<Warning>
+Note that type definition follows the Python syntactic convention.
+</Warning>
+
+You can think of them as environment variables passed as arguments into
+your Models, but safer, versioned, and scoped to your Bauplan project.
+
+## Why Use Parameters?
+
+Parameters help you:
+
+-   Customize pipeline behavior without modifying code
+-   Pass secrets securely at runtime
+-   Reuse the same logic across different configurations, inputs, or
+    prompts
+
+They're particularly useful when calling APIs, toggling features, or
+injecting user-defined values into your models.
+
+## Setting a Parameter
+
+You can define a parameter using the CLI:
+
+```bash
+bauplan parameter set prompt_summary "Write a concise, incisive summary of the news article." --description "Prompt passed to GPT for article summarization"
+```
+
+This adds the following entry to your `bauplan_project.yml`:
+
+```yaml
+parameters:
+    prompt_summary:
+        type: str
+        default: Write a concise, incisive summary of the news article.
+        description: Prompt passed to GPT for article summarization
+```
+
+## Setting from a File
+
+For longer values like LLM prompts, SQL templates, or configuration
+blobs, you can load a parameter from a file:
+
+```bash
+bauplan parameter set prompt_template --type str --file prompts/summary.txt
+```
+
+## Listing and Removing Parameters
+
+To list all defined parameters:
+
+```bash
+bauplan parameter ls
+```
+
+To remove a parameter:
+
+```bash
+bauplan parameter rm prompt_summary
+```
+
+## Using Parameters in Code
+
+Once defined, parameters become inputs to your models. Declare them
+using `bauplan.Parameter(...)`, and Bauplan will inject their values at
+runtime:
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python('3.11')
+def example_model(
+    data=bauplan.Parameter("your_table"),
+    my_param=bauplan.Parameter("param_name")
+):
+    print(my_param)  # Treated as a regular Python variable
+    ...
+```
+
+## Example: Summarize Text Using GPT
+
+Suppose you have a step in your pipeline that summarizes news articles
+using an LLM. The OpenAI API key is stored as a **secret**, and the
+summary prompt is a configurable **string parameter**.
+
+```python fixture:bauplan
+@bauplan.model(internet_access=True)  # Enables API access
+@bauplan.python('3.11', pip={'openai': '1.57.2', 'pandas': '2.2.2'})
+def article_summaries(
+    articles=bauplan.Model("article_table"),               # Input table
+    openai_key=bauplan.Parameter('openai_api_key'),        # Encrypted secret
+    summary_prompt=bauplan.Parameter("prompt_summary")     # Prompt string
+):
+    import openai
+    import pandas as pd
+
+    openai.api_key = openai_key  # Decrypted and injected at runtime
+
+    df = articles.to_pandas()
+    summaries = []
+
+    for _, row in df.iterrows():
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": summary_prompt},
+                {"role": "user", "content": row["article_content"]}  # Assumes a 'article_content' column
+            ]
+        )
+        summaries.append(response["choices"][0]["message"]["content"])
+
+    df["llm_summary"] = summaries
+    return df  # Return enriched table
+```
+
+## What This Model Does
+
+-   Reads articles from a table.
+-   Uses a configurable prompt and a secret API key to call the OpenAI
+    API.
+-   Appends a new column `llm_summary` with the model's output.
+-   Returns the enriched table as a result.
+
+The combination of parameters and secrets makes this pipeline flexible,
+secure, and maintainable — all without needing to hardcode logic or
+credentials.

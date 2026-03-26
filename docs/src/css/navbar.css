@@ -1,0 +1,87 @@
+/* global styles first */
+
+.navbar {
+  box-shadow: none;
+  border-bottom: 1px solid #67748a1f;
+
+  .navbar__items {
+    max-height: 100%;
+  }
+}
+
+.navbar__brand {
+  margin-right: 160px;
+}
+
+.navbar__item {
+  font-weight: 700;
+  margin-right: 16px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.navbar__link {
+  border-bottom: 2px solid transparent;
+  padding-top: 20px;
+  padding-bottom: 14px;
+}
+
+.navbar__link--active {
+  color: #00B0FF;
+  border-bottom-color: #00B0FF;
+}
+
+.navbar__link:hover {
+  color: #00B0FF;
+  border-bottom-color: #00B0FF;
+}
+
+/* sidebar */
+.menu__link.menu__link--active {
+  color: #00B0FF;
+}
+
+/* table of contents */
+.table-of-contents__link.toc-highlight.table-of-contents__link--active {
+  color: #00B0FF;
+}
+
+.table-of-contents__link.toc-highlight.table-of-contents__link:hover {
+  color: #00B0FF;
+}
+
+/* searchbar */
+.DocSearch-Logo,
+.searchLogoColumn_rJIA {
+  display: none;
+}
+
+.DocSearch-Footer {
+  justify-content: center;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .DocSearch-Container {
+    top: var(--ifm-navbar-height);
+  }
+
+  .navbar__brand{
+    margin-right: 0;
+  }
+
+  /* hide mainlogo, and replace it with mobile version */
+  .navbar__brand img {
+    display: none;
+  }
+
+  .navbar__brand::after {
+    content: "";
+    background-image: url('/img/mobile_nav_logo.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    width: 120px;
+    height: 40px;
+    display: block;
+  }
+}

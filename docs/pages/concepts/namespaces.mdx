@@ -1,0 +1,61 @@
+---
+title: "Namespaces"
+---
+
+A **namespace** in Bauplan is a logical container that groups related
+tables, similar to schemas in a relational database or folders in a
+filesystem.
+
+By default, tables are created in the `bauplan` namespace. You can
+override this per table, per project, or per run.
+
+Namespaces are useful for:
+
+-   Organizing tables by team, project, or domain (e.g. `ml.features`,
+    `analytics.events`)
+-   Preventing name collisions across teams
+-   Isolating environments (e.g. dev/test/prod)
+
+## Behavior
+
+-   Namespaces are branch-specific. The same namespace name can exist in
+    multiple branches, but they are independent of each other.
+-   Creating a new branch inherits all namespaces from the parent branch.
+-   Any newly created namespaces stay on the branch where they were created and are not visible in other branches.
+-   When a branch is merged, any namespaces that you created or modified are going to be merged as well.
+
+## Using namespaces
+
+You can create a namespace using either the Python SDK or the CLI.
+
+**Python:**
+
+```python fixture:my_branch
+import bauplan
+
+client = bauplan.Client()
+client.create_namespace(
+    namespace='marketing_data',
+    branch=my_branch,
+)
+```
+
+**CLI:**
+
+```bash
+bauplan branch checkout ciro.feature_campaign_v2
+bauplan namespace create marketing_data
+```
+
+You can reference a table in a namespace either using dot notation:
+
+```bash
+# Query with fully qualified table name
+bauplan query "SELECT * FROM marketing_data.raw_events"
+```
+
+or passing the namespace to the query API as a parameter:
+
+```bash
+bauplan query "SELECT * FROM raw_events" --namespace marketing_data
+```

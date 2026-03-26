@@ -1,0 +1,21 @@
+---
+title: "Welcome to Bauplan"
+sidebar_label: "Home"
+slug: "/"
+---
+
+import { HomePage } from '@site/src/theme/components/home/index';
+
+Bauplan brings Git-style workflows to data so AI agents can safely make changes on your data.
+
+You can run AI-generated pipeline changes on real production datasets while keeping your data and downstream applications protected, with a clean rollback path if something goes wrong.
+
+Bauplan provides a tight, tool-callable loop with a small API surface: write to an isolated branch, run and validate, then publish to `main` with an atomic merge. If a change fails validation or causes issues later, roll back to a previous commit.
+
+Use Bauplan for workloads where you produce and maintain tables: ingesting files into curated datasets, building transformation pipelines, running backfills, enforcing data quality tests, and iterating quickly on logic and outputs.
+
+In your architecture, Bauplan sits on top of your object storage and manages data as Iceberg tables. It produces versioned Iceberg outputs that remain compatible with any Iceberg-capable engine and catalog, so you can keep your existing tools for analytics and BI while using Bauplan as the execution and change-management layer for pipelines and agent workflows.
+
+📚 [Learn more →](/overview/)
+
+<HomePage />

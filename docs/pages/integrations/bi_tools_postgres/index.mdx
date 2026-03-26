@@ -1,0 +1,29 @@
+---
+title: "BI tools and Postgres client"
+sidebar_title: "BI tools and Postgres client"
+---
+Bauplan includes a PostgreSQL-compatible Proxy that enables Read-Only data access from major BI Tools.
+
+Bauplan tables are in Iceberg format and the data they contain is stored in parquet files on an S3 bucket; while this facilitates handling large amounts of data, it makes challenging for traditional BI Tools to access this data or query its content.
+
+Bauplan's Proxy bridges this gap by introducing support for PostgreSQL's SQL dialect and using its protocol to manage connections between the client (BI Proxy) and server (Bauplan).
+
+## Configuration
+
+Once your Bauplan instance setup is complete, a dedicated hostname and port number will be made available for accessing the PostgreSQL Proxy.
+
+When configuring the database connection, you need to define:
+
+- Hostname + Port
+- Database name: the `ref` or `branch` name from which to read data
+- Password: a valid Bauplan API Key
+- Username: must match the username of the user to whom the API Key is linked.
+- SSL: enabled
+
+<Warning>
+ **JDBC connections**
+For connections from `Java` clients or BI Tools that use `JDBC` to connect to the PostgreSQL database, you need to add the following configuration option:
+
+ `preferQueryMode=simple`
+
+</Warning>

@@ -1,0 +1,92 @@
+---
+title: "Commits and refs"
+---
+
+In Bauplan, **everything is versioned**: code, data, and execution
+environments.
+
+-   **Code** is versioned by you using Git or similar tools, and is also
+    immutably captured by Bauplan at execution time.
+-   **Data** is versioned through the catalog: all writes, replacements,
+    and deletions are tracked via evolving table snapshots, where each
+    data change creates a new commit.
+-   **Execution environments** are expressed in code and versioned as
+    well - Python versions, packages, parameters, and run metadata.
+
+## What is a Commit?
+
+A **commit** is a record of a change in the data lake.
+
+Every mutation results in a commit, whether it comes from running a
+pipeline, importing data, or modifying a table.
+
+Commits form the linear history of branches and represent the
+fundamental units of change tracking in your data. Each commit contains:
+
+-   A unique `commit_hash` that identifies the operation.
+-   A `parent_hash`, which references the previous state of the lake.
+-   In the case of a merge operation, a second parent hash
+    (`parent_hash[1]`) that represents the branch being merged.
+-   Additional metadata such as `job-id` if created by a pipeline run,
+    and `project-id`, `user-id`, `task-id`, etc.
+
+### Example: viewing commit history
+
+Here is a simple example of output from the commit API:
+
+```bash
+bauplan commit --limit 1
+
+commit 4307792b4e2a325e4e42e3e0b595cf79c68016be6023314a5ac345c85833a9bc
+Author: John Doe <john.doe@bauplanlabs.com>
+Author Date: 2025-05-13T18:31:40.133920Z
+Commit Date: 2025-05-13T18:31:40.139839199Z
+Properties:
+    bpln_organization_id = org_2oAi2K36inuMyeRy3YfCOcR6yUi
+    bpln_task_id = 80ddee4b-5568-4b69-8f0b-b573766450a7
+    bpln_job_id = 7d3c81d7-a779-4754-8c72-2311cc905da7
+    bpln_project_id = 7a1878f8-d736-4079-bc1d-c23910948153
+    bpln_username = jdoe
+    bpln_user_id = user_2oAw0PTViaoSfvKX55Yp9Xu5HMV
+Parent Hashes:
+    300266b7781b59093649742c254f639d2f9085f629f9f1eaa9a0d732838b0e72
+    268bbd29de8113a0faf5478b85972fdd755c9503569124d21d72f32fef562810
+
+    Run job_id=7d3c81d7-a779-4754-8c72-2311cc905da7
+```
+
+## What's a Ref?
+
+A **Ref** is an immutable, addressable handle to a specific commit.
+Unlike commits, which are the record of a change, a Ref is what you use
+in the API to reference a version of the lake.
+
+Bauplan APIs like `query`, `run`, `scan`, and `revert_table` accept
+`ref` as a parameter to operate on that exact version of the lake. Refs
+let you perform **point-in-time operations** like:
+
+-   Querying the state of a table at a specific version
+-   Reproducing a pipeline run
+-   Comparing development environments
+
+## Ref Syntax
+
+-   A branch name, like `main`, is a shortcut that points to the latest
+    commit on the branch.
+-   `main@abc123` points to the commit `abc123` on the branch `main`.
+-   `@abc123` is a detached ref pointing directly to commit `abc123`
+    (without going through a branch or tag).
+
+Refs are read-only: only **branches** can be used for write operations,
+because branches are mutable while refs point to commits which are not.
+
+```bash
+bauplan query "SELECT * FROM my_table" --ref ciro.mybranch-run-20250517181234-ca3ad62f-a2c7-4ef4-b87a-53d12909fde
+```
+
+```python notest
+import bauplan
+
+client = bauplan.Client()
+client.query("SELECT * FROM my_table", ref="ciro.mybranch-run-20250517181234-ca3ad62f-a2c7-4ef4-b87a-53d12909fde")
+```

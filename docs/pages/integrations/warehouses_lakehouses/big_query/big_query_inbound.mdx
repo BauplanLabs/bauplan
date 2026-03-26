@@ -1,0 +1,74 @@
+---
+title: BigQuery (Inbound)
+---
+
+Connect BigQuery to Bauplan by creating external Iceberg tables in BigQuery that point to your Bauplan tables and S3 storage. This lets you query Bauplan-managed data from BigQuery without copying it.
+
+BigQuery uses a cross-cloud connection to read objects in your S3 bucket, and the Iceberg table format to discover table metadata.
+
+<Note>
+In BigQuery, this pattern relies on a BigQuery [connection](https://docs.cloud.google.com/bigquery/docs/connections-api-intro) that allows BigQuery to read the contents of an S3 bucket, and a `CREATE EXTERNAL TABLE` statement that creates a table in BigQuery by pointing to the current Iceberg metadata file. See [BigQuery Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection) for the initial setup (AWS permissions and so on).
+</Note>
+
+## When to use this integration
+
+- You want BigQuery users to run SQL over Bauplan tables that live in object storage.
+- You prefer read access from BigQuery without moving data.
+- You deploy and evolve tables in Bauplan, then surface them in BigQuery for analytics.
+
+## Prerequisites
+
+- An S3 bucket that stores your Bauplan table data and Iceberg metadata.
+- AWS account with permissions to create IAM policies and roles on the Bauplan bucket.
+- BigQuery role with privileges to create external connections.
+
+## Step 1. Create the AWS connection
+
+To create a (read-only) connection between BigQuery and your AWS bucket containing a Bauplan table, you need to configure an IAM role and policy so BigQuery can securely access the Iceberg tables in it. Follow the [BigQuery Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection) for the exact steps.
+
+## Step 2. Table registration
+
+Bauplan-managed tables can be registered "zero-copy" into BigQuery by issuing the following SQL command, where:
+
+- `BQ_FULL_TABLE` is the fully qualified name (`dataset.table`) for the table you want to create.
+- `BQ_CONNECTION` is the name of the connection to S3 created above.
+- `metadata_uri` is the full S3 path of the JSON file corresponding to the metadata file of the Bauplan table you want to register.
+
+```sql
+CREATE OR REPLACE EXTERNAL TABLE `{BQ_FULL_TABLE}`
+WITH CONNECTION `{BQ_CONNECTION}`
+OPTIONS (
+    format = 'ICEBERG',
+    uris = ["{metadata_uri}"]
+)
+```
+
+Note that in production Bauplan allows you (through its [Git-for-data](/concepts/git_for_data/data_branches) abstractions) to have multiple versions of the same table in different branches; moreover, a pipeline that runs every day will naturally advance the snapshot of the relevant final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop / cron / orchestrator, the workflow would look like this:
+
+1. A Bauplan DAG is triggered on a job-related branch, replacing `my_table`.
+2. On success, the branch is merged and you now have a new version of `my_table`.
+3. The `metadata_location` of the latest version of `my_table` (just merged into `main`) is retrieved, and the registration command is issued to keep BigQuery in sync.
+
+```python notest
+from google.cloud import bigquery
+import bauplan
+
+# .... init clients, setup development branch etc. ....
+run_state = bpln_client.run('my_project/')
+# .... check if it is a successful run, merge the branch, etc. ....
+metadata_location = bpln_client.get_table('my_table', ref='main').metadata_location
+ddl = f"""
+   CREATE OR REPLACE EXTERNAL TABLE `{BQ_FULL_TABLE}`
+   WITH CONNECTION `{BQ_CONNECTION}`
+   OPTIONS (
+       format = 'ICEBERG',
+       uris = ["{metadata_location}"]
+   )
+"""
+bq_client.query(ddl).result()
+print("  BigQuery table registered.")
+```
+
+<Note>
+When a table is managed by an external catalog, BigQuery typically treats it as read-only (in fact, the IAM role you created above should have no write privileges on the S3 bucket). Writes remain managed by the external engine and catalog, i.e. Bauplan. As Iceberg catalog federation and cross-engine compatibility evolve quickly, reach out if you have further questions about this setup.
+</Note>

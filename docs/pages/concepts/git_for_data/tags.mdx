@@ -1,0 +1,39 @@
+---
+title: "Tags"
+---
+
+Tags in Bauplan are mutable **human-readable names** that point to a
+specific commit. They\'re ideal for marking important states like:
+
+-   Production releases
+-   Validated datasets
+-   Compliance checkpoints
+-   CI/CD deploy points
+
+Unlike branches, which move with each commit.
+
+## Example: creating and using tags
+
+```python notest
+# Create a tag
+client.create_tag("model_v1", from_ref="main")
+
+# Use the tag in a query
+client.query("SELECT * FROM my_table", ref="model_v1")
+```
+
+Tags give you a semantic handle on a Ref. They\'re ideal for sharing
+results, running benchmarks, or reverting to a known-good state.
+
+## Tagging best practices
+
+-   Use tags to mark milestones (\"ready-for-review\",
+    \"v1.0-passed-QA\")
+-   Pair with branch merges for clean promotion flows
+-   Use tag-based querying or reverts in CI pipelines
+
+Together, **commits, Refs, and tags** give you:
+
+-   A detailed and immutable record of every change (commits)
+-   A way to reference those changes in operations (Refs)
+-   A human-friendly way to mark and share important states (tags)

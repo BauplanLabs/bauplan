@@ -1,0 +1,42 @@
+---
+title: "MCP Server & Skills"
+sidebar_label: "MCP Server & Skills"
+---
+
+# MCP Server & Skills
+
+The MCP Server is a [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro) integration that gives AI assistants direct access to your Bauplan data lakehouse. Instead of just reading documentation, your AI coding partner can query tables, inspect schemas, run pipelines, and manage branches directly.
+
+**Repository:** [https://github.com/BauplanLabs/bauplan-mcp-server](https://github.com/BauplanLabs/bauplan-mcp-server)
+
+## What it does
+
+The MCP server exposes lakehouse operations through the Model Context Protocol, enabling AI assistants (Claude Code, Claude Desktop, Cursor) to interact with Bauplan via tool calls. This provides real-time context about your lakehouse state, improving code quality and reducing hallucinations in generated SQL and Python.
+
+Rather than requiring the assistant to guess at API syntax or table structures, the server gives them accurate, up-to-date information about your data landscape.
+
+## Available Skills
+
+The MCP server includes six reusable skill definitions for common workflows:
+
+### 1. Data Pipeline (`data-pipeline`)
+Create a new Bauplan data pipeline project from scratch. This skill guides the assistant through proper project setup, model definitions using Python functions and decorators, source table validation, and execution on a development branch before publishing.
+
+### 2. Safe Ingestion (`safe-ingestion`)
+Implements the Write-Audit-Publish (WAP) pattern to safely ingest data from S3 into the lakehouse. Data is loaded onto an isolated branch, validated, and only merged to main after quality checks pass. Failed branches are preserved for debugging.
+
+### 3. Explore Data (`explore-data`)
+Provides structured, read-only investigation of the Bauplan lakehouse through schema inspection, data sampling, profiling, and join discovery. Use this when you need to understand unfamiliar datasets or validate data assumptions. Produces a `summary.md` report.
+
+### 4. Data Assessment (`data-assessment`)
+Evaluates whether a business question can be answered using data in the lakehouse. Maps business concepts to tables and columns, profiles quality on relevant columns, validates semantic fit, and delivers a structured feasibility report with a verdict: answerable, partially answerable, or not answerable.
+
+### 5. Data Quality Checks (`data-quality-checks`)
+Generates data quality check code in two forms: pipeline expectations (`expectations.py` using `@bauplan.expectation()`) that run during `bauplan run`, and ingestion validation functions embedded in WAP scripts. Checks cover completeness, uniqueness, validity, freshness, consistency, and volume.
+
+### 6. Debug and Fix Pipeline (`debug-and-fix-pipeline`)
+A structured diagnostic workflow for failed Bauplan pipeline jobs. Pins the failing state to a specific branch and commit hash, collects evidence by inspecting schemas and data, identifies the root cause model, and applies a minimal fix. Produces job, data, and summary reports at defined checkpoints.
+
+## Getting Started
+
+For setup instructions, configuration examples, and usage videos, visit the [GitHub repository](https://github.com/BauplanLabs/bauplan-mcp-server).

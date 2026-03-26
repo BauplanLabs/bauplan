@@ -1,0 +1,63 @@
+/* Padding on the entire menu container */
+.theme-doc-sidebar-menu {
+  padding-top: 0.5rem;
+  padding-bottom: 1.5rem;
+}
+
+/* Category Headers (Uppercase, Bold, Spaced) */
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible > .menu__link,
+.theme-doc-sidebar-item-category-level-2 > .menu__list-item-collapsible > .menu__link,
+.theme-doc-sidebar-item-link-level-1 > .menu__link {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* First category header - no extra top margin */
+.theme-doc-sidebar-item-category-level-1 > .menu__list-item-collapsible > .menu__link {
+  margin-top: 0;
+  padding-top: 4px;
+}
+
+/* Active/selected state - blue accent with left border */
+.menu__link--active {
+  border-left: 3px solid var(--ifm-color-primary, #00B0FF) !important;
+  color: var(--ifm-color-primary, #00B0FF) !important;
+  padding-left: 18px !important;
+}
+
+/* Prevent active state from affecting category headers */
+.menu__list-item-collapsible .menu__link--active {
+  border-left: none !important;
+  padding-left: 16px !important;
+  background-color: transparent !important;
+}
+
+/* First level nested items */
+.theme-doc-sidebar-item-link-level-2 > .menu__link,
+.theme-doc-sidebar-item-link-level-3 > .menu__link,
+.theme-doc-sidebar-item-link-level-4 > .menu__link {
+  padding-left: 1rem;
+  margin-left: 1rem;
+  font-weight: 400;
+  color: var(--ifm-menu-color, #4B5563);
+  transition: background-color 0.3s, border-left 0.3s, padding-left 0.3s;
+}
+
+/* Second-third-fourth level nested items (sub-nested) */
+.theme-doc-sidebar-item-link-level-2,
+.theme-doc-sidebar-item-link-level-3 .menu__link,
+.theme-doc-sidebar-item-link-level-4 .menu__link {
+  font-size: 14px;
+}
+
+/* Standalone doc items styled as category headers (e.g. single-page integrations) */
+.sidebar-standalone-header > .menu__link {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-left: 16px !important;
+  margin-left: 0 !important;
+}

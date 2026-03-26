@@ -1,0 +1,189 @@
+---
+title: "Detached Job Runs"
+---
+
+<Warning>
+Detached runs are currently in BETA and may not be available in all
+environments.
+</Warning>
+
+In Bauplan you can run jobs in a detached mode. This means that the job
+will be submitted to the system and the client will return immediately,
+then the job can be followed up on later.
+
+Detached runs are useful for long running jobs or situations where you
+cannot ensure constant connectivity between your client and the Bauplan
+server.
+
+## Running in Detached Mode
+
+To run a job in detached mode, use the `--detach` flag with supported
+commands:
+
+**For regular runs:**
+
+```bash
+bauplan run --detach
+```
+
+**For data imports:**
+
+```bash
+bauplan table import --detach
+```
+
+You will see the output of planning the job, then the job will be
+submitted to the system and the client will return immediately.
+
+<Note>
+The job ID will be printed to the console when the job is submitted.
+</Note>
+
+## Checking Job Status
+
+To check the status of a detached job, use the `job get` subcommand:
+
+```bash
+$ bauplan job get <YOUR_JOB_ID>
+Job ID:         <YOUR_JOB_ID>
+Status:         Running
+Kind:           CodeSnapshotRun
+User:           yourusername
+Runner:         bauplan-runner-dev
+Created:        23 seconds ago
+```
+
+This will return the status of the job, including whether it is still
+running or has completed.
+
+You can see the status of recent jobs you have run with the `job ls`
+command:
+
+```bash
+$ bauplan job ls
+ID        TYPE             USER          STATUS     CREATED        FINISHED
+9f4b6b03  CodeSnapshotRun  yourusername  Completed  3 minutes ago  2 minutes ago
+eeef1b40  CodeSnapshotRun  yourusername  Completed  3 minutes ago  2 minutes ago
+0dd03881  CodeSnapshotRun  yourusername  Completed  3 minutes ago  2 minutes ago
+72d0703e  CodeSnapshotRun  yourusername  Aborted    2 hours ago    2 hours ago
+1d0205ef  CodeSnapshotRun  yourusername  Aborted    2 hours ago    2 hours ago
+```
+
+This will retrieve the last 24 hours of jobs.
+
+<Note>
+In `job ls` you will see all jobs you have requested on the Bauplan
+system. Currently, both `run` and `data import` operations support
+detached mode in both the CLI and SDK.
+</Note>
+
+## Retrieving Job Output
+
+To retrieve the output of a detached job, use the `job logs` subcommand:
+
+```
+$ bauplan job logs <YOUR_JOB_ID>
+This is the 0th time I'm very sleepy, and I've become exceedingly efficient at it
+This is the 1st time I'm very sleepy, and I've become exceedingly efficient at it
+This is the 2nd time I'm very sleepy, and I've become exceedingly efficient at it
+```
+
+This will return the logs of the job, including any output or errors
+that were generated. Logs are persisted for 24 hours as a way to
+troubleshoot jobs, after which they are deleted.
+
+## Cancel a Job
+
+To cancel a job that is running, use the `job stop` subcommand:
+
+```bash
+$ bauplan job stop <YOUR_JOB_ID>
+Job <YOUR_JOB_ID> stopped
+```
+
+If the stop was successful, you will see the job status will change to
+`Aborted`.
+
+## Using the Python SDK
+
+You can also run jobs in detached mode using the Bauplan Python SDK.
+Both `run()` and `import_data()` methods support the `detach` parameter.
+
+```python notest
+import os
+import time
+import bauplan
+from bauplan.schema import JobState
+
+def run_detached_job_and_poll() -> None:
+    client = bauplan.Client()
+    run_state = client.run(
+        project_dir='path/to/longrunning_project',
+        ref='yourusername.run_detached_job',
+        detach=True,
+    )
+
+    job_id = run_state.job_id
+    print(f'Job submitted in detach mode with ID={job_id}')
+
+    max_retries = 10
+    retry_count = 0
+
+    while retry_count < max_retries:
+        job = client.get_job(job_id)
+        print(f'Polling job={job.id}, state={job.status}')
+        if job.status in (JobState.COMPLETE, JobState.FAIL, JobState.ABORT):
+            print(f'Job finished with state={job.status}')
+            break
+        time.sleep(1)
+        retry_count += 1
+    else:
+        raise TimeoutError(f'Job polling exceeded {max_retries} retries')
+
+    logs = client.get_job_logs(job_id)
+    for log_line in logs:
+        print(f'[{log_line.stream.name}] {log_line.message}')
+
+if __name__ == '__main__':
+    run_detached_job_and_poll()
+```
+
+This script demonstrates how to submit a job in detached mode, poll for
+its status, and retrieve its logs using the Bauplan Python SDK.
+
+## Canceling Jobs with the Bauplan Python SDK
+
+You can cancel a running job using the Bauplan Python SDK. This is
+useful when you need to stop a long-running job that may not be
+performing as expected or is no longer needed.
+
+The following example demonstrates how to do this using
+`client.cancel_job`.
+
+When a job is successfully cancelled, its status will change to
+`JobState.ABORT`.
+
+`cancel_job` will poll for this status change and return when the job
+has been successfully cancelled.
+
+```python notest
+import bauplan
+import os
+import time
+from bauplan.schema import JobState
+
+client = bauplan.Client()
+run_state = client.run(
+    project_dir="path/to/your/project",
+    ref="your_username.your_branch_name",
+    detach=True
+)
+
+job_id = run_state.job_id
+print(f'Job submitted in detach mode with ID={job_id}')
+
+job = client.get_job(job_id)
+
+client.cancel_job(job_id)
+print(f'Job {job_id} stopped')
+```

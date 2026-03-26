@@ -1,0 +1,137 @@
+---
+title: "Datasets"
+---
+
+## city_bike_nyc
+
+[Citi Bikers System Data](https://www.kaggle.com/datasets/rosenthal/citi-bike-stations)
+
+### Dataset description
+
+The dataset contains information about what Citi Bikers do in NYC.
+
+| NAME                             | REQUIRED | TYPE    |
+|----------------------------------|----------|---------|
+| station_id                       | false    | string  |
+| num_bikes_available              | false    | int     |
+| num_ebikes_available             | false    | string  |
+| num_bikes_disabled               | false    | string  |
+| num_docks_available              | false    | int     |
+| num_docks_disabled               | false    | string  |
+| is_installed                     | false    | string  |
+| is_renting                       | false    | string  |
+| is_returning                     | false    | string  |
+| station_status_last_reported     | false    | int     |
+| station_name                     | false    | string  |
+| lat                              | false    | string  |
+| lon                              | false    | string  |
+| region_id                        | false    | string  |
+| capacity                         | false    | string  |
+| has_kiosk                        | false    | string  |
+| station_information_last_updated | false    | string  |
+| missing_station_information      | false    | boolean |
+
+NUMBER OF ROWS: 366,676,951
+
+## taxi_fhvhv
+
+[NYC TLC Trip Record Data](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page), [available under the nyc.gov terms of use](https://www.nyc.gov/home/terms-of-use.page).
+
+### Dataset description
+
+Dataset segment:
+
+- Trips from 2019/02 to 2023/07;
+- High Volume For-Hire Vehicle Trip Records only (fhvhv).
+
+Please note that each row corresponds to one taxi trip.
+
+| Column name          | Required | Type        |
+|----------------------|----------|-------------|
+| access_a_ride_flag   | FALSE    | string      |
+| airport_fee          | FALSE    | int         |
+| base_passenger_fare  | FALSE    | double      |
+| bcf                  | FALSE    | double      |
+| congestion_surcharge | FALSE    | double      |
+| dispatching_base_num | FALSE    | string      |
+| DOLocationID         | FALSE    | long        |
+| driver_pay           | FALSE    | double      |
+| dropoff_datetime     | FALSE    | timestamptz |
+| hvfhs_license_num    | FALSE    | string      |
+| on_scene_datetime    | FALSE    | timestamptz |
+| originating_base_num | FALSE    | string      |
+| pickup_datetime      | FALSE    | timestamptz |
+| PULocationID         | FALSE    | long        |
+| request_datetime     | FALSE    | timestamptz |
+| sales_tax            | FALSE    | double      |
+| shared_match_flag    | FALSE    | string      |
+| shared_request_flag  | FALSE    | string      |
+| tips                 | FALSE    | double      |
+| tolls                | FALSE    | double      |
+| trip_miles           | FALSE    | double      |
+| trip_time            | FALSE    | long        |
+| wav_match_flag       | FALSE    | string      |
+| wav_request_flag     | FALSE    | string      |
+
+NUMBER OF ROWS: 899,297,740
+
+## taxi_zones
+
+[NYC Taxi Zones](https://catalog.data.gov/dataset/nyc-taxi-zones), [available under the nyc.gov terms of use](https://www.nyc.gov/home/terms-of-use.page).
+
+### Dataset description
+
+NYC Taxi Zones, which correspond to the pickup and drop-off zones, or LocationIDs, included in the Yellow, Green, and FHV Trip Records published to Open Data
+
+| NAME         | REQUIRED | TYPE   |
+|--------------|----------|--------|
+| LocationID   | false    | long   |
+| Borough      | false    | string |
+| Zone         | false    | string |
+| service_zone | false    | string |
+
+NUMBER OF ROWS: 265
+
+## titanic
+
+[Titanic - Machine Learning from Disaster](https://www.kaggle.com/c/titanic/data)
+
+### Dataset description
+
+The data includes only the `train.csv` part of the original dataset. The dataset contains the ground truth for each passenger of the Titanic.
+
+| Column name | Required | Type   |
+|-------------|----------|--------|
+| PassengerId | false    | long   |
+| Survived    | false    | long   |
+| Pclass      | false    | long   |
+| Name        | false    | string |
+| Sex         | false    | string |
+| Age         | false    | double |
+| SibSp       | false    | long   |
+| Parch       | false    | long   |
+| Ticket      | false    | string |
+| Fare        | false    | double |
+| Cabin       | false    | string |
+| Embarked    | false    | string |
+
+NUMBER OF ROWS: 891
+
+## wind_energy_sensor_data
+
+[Wind Power Generation](https://www.kaggle.com/datasets/jorgesandoval/wind-power-generation)
+
+### The Dataset description
+
+The dataset contains information from four German energy companies (50 Hertz, Amprion, TenneT TSO and TransnetBW). It contains power generation data (non-normalized) with an interval of 15 minutes, totalizing 96 points a day. Generation is in THw, with data collected between 23/08/2019 and 22/09/2020.
+
+| COLUMN NAME      | REQUIRED | TYPE   |
+|------------------|----------|--------|
+| hour_000000      | false    | double |
+| hour_001500      | false    | double |
+| hour_003000      | false    | double |
+| …                | …        | …      |
+| observation_date | false    | date   |
+| company          | false    | string |
+
+Number of rows: 1588

@@ -1,0 +1,36 @@
+
+# Test your pipeline
+
+### Understanding the Generated Code
+
+The actual code the agent generates will differ based on your data schema, transformation requirements, and the agent's implementation choices. It important that you familiarize with the basic concepts in Bauplan:
+
+- [Models](/concepts/models)
+- [Pipelines](/concepts/pipelines/)
+
+and run the pipeline yourself:
+
+- [Run a pipeline](/tutorial/pipelines)
+
+### Use your agent
+
+Once your pipeline is created, you can ask your agent to
+
+**1. Review the structure:**
+
+```
+Can you show me the dependency graph for this pipeline?
+```
+
+**2. Inspect the results:**
+
+```
+Query the cleaned table with the taxi data and show me the first 10 rows to verify the cleaning logic worked correctly.
+```
+
+**3. Double-check for issues:**
+
+```
+Are there any performance optimizations I should consider? Check for missing
+I/O pushdown opportunities or inefficient operations.
+```

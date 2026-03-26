@@ -1,0 +1,215 @@
+---
+title: "Models"
+---
+
+In Bauplan, **models** are the core unit of data manipulation. They are
+declarative functions written in Python or SQL that transform one or
+more input tables into a single output table. Models are designed to
+provide a straightforward way to express data transformations without
+dealing with containerization, data movement and runtime configuration.
+
+Models can be chained together to form
+[Pipelines](/concepts/pipelines), where downstream
+models depend on the outputs of upstream ones.
+
+## Anatomy of a Bauplan Model
+
+A typical Python model consists of two decorators `@bauplan.model()` and
+`@bauplan.python()` and a function.
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python('3.11')
+def my_model(
+        data=bauplan.Model(
+            'input_table',
+            columns=[
+                'col_1',
+                'col_2',
+                'col_3',
+            ],
+            filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+        )
+):
+    ...
+
+    return output_table
+```
+
+Bauplan Models are **fully declarative**, allowing for explicit column
+selection and filter pushdown. In practice, this means your code only
+requires the name of the inputs and, optionally, the desired columns and
+filters.
+
+For example, you don't need to specify the type of `input_table`,
+whether it's an Iceberg Table, PyArrow Table, Pandas DataFrame, or
+Polars DataFrame. This approach makes the code fully portable, easier to
+reproduce across environments, and simpler to maintain.
+
+## Importing Python Packages
+
+Bauplan models are fully containerized, with each model running in the
+cloud as its own isolated environment (similar to Function-as-a-Service
+frameworks, like AWS Lambda). To isolate environments, Bauplan uses a
+optimized version of Docker containers.
+
+Each model in Bauplan runs in its own isolated Python environment -
+defined by the interpreter version and uv dependencies you declare in
+code. They are expressed entirely in code using the decorator
+`@bauplan.python()`. This decorator specifies the Python interpreter
+version (e.g., `3.11` or `3.12`) and any additional libraries and their
+versions using uv.
+
+```python fixture:bauplan
+@bauplan.model()
+# specify the package and version - in this case Pandas 2.2.0
+@bauplan.python('3.11', pip={'pandas': '2.2.0'})
+def my_model(data=bauplan.Model('input_table')):
+    # import the package declared in the decorator
+    import pandas
+
+    # use the package
+    df = data.to_pandas()
+    df = df['col_1']
+
+    return df
+```
+
+This approach allows you to run each bauplan model as an independent
+unit in a fully declarative way: all you need to run a Bauplan model
+deterministically in the cloud is the code.
+
+This enhances reproducibility, prevents unintended cross-contamination
+between environments on the same machine, and provides the freedom to
+introduce new Python packages without worrying about backward
+compatibility. In fact, you can run a pipeline where different models
+use different versions of the same packages and different versions of
+the Python interpreter.
+
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python('3.11', pip={'pandas': '2.2.0'})
+def step_1(data=bauplan.Model('input_table')):
+    import pandas
+    ...
+
+@bauplan.model()
+@bauplan.python('3.10', pip={'pandas': '1.5.3'})
+def step_2(data=bauplan.Model('step_1')):
+    import pandas
+    ...
+```
+
+## Materializing Tables with Models
+
+To write the output of a model as a table into the data catalog, use the
+`materialization_strategy` parameter in the `@bauplan.model()`
+decorator. <br/> The parameter accepts four values: `REPLACE`, `APPEND`, `NONE` (default), and `OVERWRITE_PARTITIONS`.
+
+| **Strategy** | **Description** | **Example** |
+|--------------|-----------------|-------------|
+| <CodeString>"NONE"</CodeString> | Streams model output in memory as an Arrow table without persisting to object storage. | Running will not write a table. |
+| <CodeString>"REPLACE"</CodeString> | Fully overwrites the table on each run. | Running a pipeline twice on a model that writes 1,000 rows will result in a final table with 1,000 rows, as each run replaces the previous table. |
+| <CodeString>"APPEND"</CodeString> | Appends new rows to an existing table. | Running a pipeline twice with a model that writes 1,000 rows results in a final table with 2,000 rows, as each run adds data to the existing table. |
+| <CodeString>"OVERWRITE_PARTITIONS"</CodeString><br/><AdvancedBadge /> | Deletes rows matching `overwrite_filter`, then appends the new rows. | See [details below](#overwrite-partitions). |
+
+Regardless of the `materialization_strategy` parameter, running models
+with the dry run flag - `bauplan run --dry-run` - will force the
+system to run in memory (see using `--dry-run` in the tutorial).
+
+### Overwrite Partitions
+
+`OVERWRITE_PARTITIONS` deletes all rows matching an `overwrite_filter` expression,
+then appends the new rows produced by the model. This is useful when you need to
+reprocess specific partitions without affecting the rest of the table.
+
+```python notest
+@bauplan.model(
+    materialization_strategy='OVERWRITE_PARTITIONS',
+    partitioned_by=['year'],
+    overwrite_filter='year = 2024',
+)
+@bauplan.python('3.11')
+def my_model(input=bauplan.Model('upstream')):
+    ...
+```
+
+Requirements:
+- `partitioned_by` must be set on the model decorator.
+- Every column referenced in `overwrite_filter` must be a declared partition column.
+- The filter supports `=`, `!=`, `<`, `>`, `<=`, `>=`, `AND`, `OR`, `IN`, and `NOT IN`
+  with column references and literal values.
+  Function calls (`YEAR()`, `CAST()`, `DATE_TRUNC()`, etc.) and `BETWEEN` are not supported.
+
+## Using SQL
+
+Many transformations, especially filtering, joining, and basic
+aggregations, are easier in SQL than in Python.
+
+While Bauplan supports SQL models directly, the **recommended best
+practice today** for most use cases is to embed your SQL in a Python
+function using DuckDB.
+
+```python fixture:bauplan
+@bauplan.model()
+@bauplan.python("3.11", pip={'duckdb': '1.2.0'})
+def my_model(
+    data=bauplan.Model(
+        "input_table",
+        columns=["col_1", "col_2", "col_3"],
+        filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+    )
+):
+    import duckdb
+
+    # DuckDB will convert the Arrow input into a SQL-accessible table
+    output_table = duckdb.sql("""
+        SELECT col_1, COUNT(*) as count
+        FROM data
+        GROUP BY col_1
+    """).arrow()
+
+    return output_table
+```
+
+## Best Practices
+
+1. **Input Declaration**
+  - Specify required columns explicitly.
+  - Use filter pushdown whenever feasible for efficiency.
+
+2. **Output docstrings**
+  - Specify the shape of the output table of a model in its docstrings.
+
+    ```python fixture:bauplan
+    @bauplan.model()
+    @bauplan.python("3.11")
+    def my_model(
+        data=bauplan.Model(
+            "input_table",
+            columns=["col_1", "col_2", "col_3"],
+            filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+        )
+    ):
+        """
+        This model will aggregate and count the data by Col_1.
+        The output table will look like this:
+        | Col_1 | Count  |
+        |-------|--------|
+        | A     | 100    |
+        """
+        ...
+    ```
+
+3. **Model environment Management**
+   - Include only minimal dependencies.
+   - Pin specific dependency versions for consistency.
+
+4. **Code Organization**
+   - Group models that form a pipeline within a single file.
+   - Separate function bodies into external modules and call them within the Bauplan models. This keeps business logic code neatly separated from the DAG and environment declaration, making code refactoring easier and future-proof.
+
+5. **Testing and Development**
+   - Use the `bauplan run --dry-run` flag for quick iteration.
+   - Employ print statements for real-time terminal feedback during development.

@@ -1,0 +1,209 @@
+---
+title: "Expectations"
+---
+
+Expectations are statistical and quality checks that validate the structure and values of your data. They ensure data meets defined standards before it flows through your system or reaches production.
+
+From a technical perspective, expectations are functions that take a tabular artifact (like a table or dataframe) as input and return a boolean value:
+
+- **True** if the data meets the expectation (test passes)
+- **False** if the data fails the expectation (compliance issue detected)
+
+Because Bauplan leverages vectorized [SIMD operations](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data),
+expectations run at production speed and can be applied to full tables or partitions, not just samples. Expectations are evaluated inline, as part of pipeline execution: they run as data is processed, and their result determines whether the run continues or fails.
+
+Expectations are typically attached to a node or materialization step and serve as gates in Write-Audit-Publish. Data is written to an isolated branch, audited via expectations, and published only if all checks pass. This makes expectations first-class parts of the pipeline contract: they block invalid data from being published, remove the need for separate validation jobs, scale with the dataset, and record results with the run, branch, and commit for full auditability.
+
+### How this differs from other common patterns
+
+Post-hoc validation frameworks, like [dbt tests](https://docs.getdbt.com/docs/build/data-tests)
+ or [Great Expectations](https://greatexpectations.io/), commonly execute validation as separate queries after a table or view is built. Issues are detected only after the object exists, which means invalid data may already be visible to downstream consumers, and jobs used to build the object must be rerun.
+
+Observability and monitoring platforms, like [Monte Carlo](https://www.montecarlodata.com/), run on schedules independent of pipeline execution. They typically profile tables, track distributions, and alert on anomalies or drift. They are not focused on preventing invalid data from being written and do not integrate with pipeline control flow.
+
+## Why Use Expectations?
+
+### Early Detection
+Expectations catch data quality issues before they propagate through your pipeline, preventing downstream failures and incorrect results.
+
+### Data Contracts
+Well-documented expectations serve as implicit data contracts between teams, systems, and data providers. They codify assumptions about data structure, ranges, completeness, and relationships.
+
+### Domain Knowledge Capture
+Expectations encode domain-specific rules and business logic directly in your data infrastructure. For example, "transaction amounts must be positive" or "user IDs must be unique."
+
+### Validation at Critical Points
+Key use cases include:
+- **External data validation**: Validate data from vendors, partner teams, or APIs by writing to an isolated branch, running expectations, then publishing only if all checks pass
+- **Model output validation**: Ensure transformations produce expected results
+- **Pre-deployment checks**: Validate data before promoting pipelines to production
+
+## How Expectations Work
+
+### Basic Structure
+
+Expectations are Python functions decorated with `@bauplan.expectation()`:
+
+```python
+import bauplan
+from bauplan.standard_expectations import expect_column_no_nulls
+
+@bauplan.expectation()
+@bauplan.python('3.11')
+def test_critical_field_completeness(
+    data=bauplan.Model(
+        'my_model',
+        columns=['critical_field']
+    )
+):
+    """Validate that critical_field has no null values."""
+    return expect_column_no_nulls(data, 'critical_field')
+```
+
+### Standard Expectations Library
+
+Bauplan provides a built-in library covering common validation scenarios:
+
+- **Nullness checks**: `expect_column_no_nulls`, `expect_column_all_nulls`
+- **Value constraints**: `expect_column_values_to_be_between`, `expect_column_mean_to_be_between`
+- **Uniqueness**: `expect_column_values_to_be_unique`
+- **Existence**: `expect_column_to_exist`
+- **Statistical properties**: `expect_column_mean_greater_than`, `expect_column_mean_greater_or_equal_than`, `expect_column_mean_smaller_than`,
+`expect_column_mean_smaller_or_equal_than`
+
+You can also write custom expectations or integrate other libraries like [Great Expectations](https://github.com/great-expectations/great_expectations).
+
+## Nullness Checks
+```python fixture:table
+from bauplan.standard_expectations import (
+    expect_column_no_nulls,
+    expect_column_all_null,
+    expect_column_some_null
+)
+
+# Ensure no missing values in critical fields
+expect_column_no_nulls(table, 'user_id')
+
+# Verify optional field is completely empty
+expect_column_all_null(table, 'deprecated_field')
+
+# Check that field has at least some nulls (e.g., for optional data)
+expect_column_some_null(table, 'middle_name')
+```
+
+## Value Constraints
+
+```python fixture:table
+from bauplan.standard_expectations import expect_column_accepted_values
+
+# Restrict to enumerated values
+expect_column_accepted_values(
+    table,
+    'status',
+    accepted_values=['pending', 'approved', 'rejected']
+)
+
+# Validate categorical data
+expect_column_accepted_values(
+    table,
+    'payment_method',
+    accepted_values=['credit_card', 'debit_card', 'paypal', 'bank_transfer']
+)
+```
+
+## Statistical Validations
+
+```python fixture:data
+from bauplan.standard_expectations import (
+    expect_column_mean_greater_than,
+    expect_column_mean_smaller_than
+)
+
+# Validate average order value is reasonable
+expect_column_mean_greater_than(data, 'order_amount', 10.0)
+expect_column_mean_smaller_than(data, 'order_amount', 10000.0)
+```
+
+## Derived Column Validation
+
+```python fixture:data
+from bauplan.standard_expectations import expect_column_equal_concatenation
+
+# Verify computed field matches expected concatenation
+expect_column_equal_concatenation(
+    data,
+    target_column='full_name',
+    columns=['first_name', 'last_name'],
+    separator=' '
+)
+```
+
+## Uniqueness Checks
+```python fixture:table
+from bauplan.standard_expectations import (
+    expect_column_all_unique,
+    expect_column_not_unique
+)
+
+# Ensure primary keys are unique
+expect_column_all_unique(table, 'transaction_id')
+
+# Expect the column to have at least one duplicate value
+expect_column_not_unique(table, 'customer_id')
+```
+
+## Failure Handling Strategies
+
+Expectations offer flexible failure handling to match the severity of different data quality issues.
+
+### Hard Failures (Assert)
+
+Use assertions to halt the pipeline immediately when critical issues are detected:
+
+```python
+import bauplan
+from bauplan.standard_expectations import expect_column_no_nulls
+
+@bauplan.expectation()
+@bauplan.python('3.11')
+def test_mandatory_field(data=bauplan.Model('model', columns=['field'])):
+    is_valid = expect_column_no_nulls(data, 'field')
+    assert is_valid, "Critical field cannot contain nulls"
+    return is_valid
+```
+
+**Use for**: Data quality issues that would lead to incorrect results, system failures, or compliance violations.
+
+### Soft Failures (Log and Continue)
+
+Log issues without stopping the pipeline for non-critical problems:
+
+```python
+import bauplan
+from bauplan.standard_expectations import expect_column_mean_greater_than
+
+@bauplan.expectation()
+@bauplan.python('3.11')
+def test_data_freshness(data=bauplan.Model('model', columns=['timestamp'])):
+    is_fresh = check_data_recency(data, 'timestamp', hours=24)
+
+    if is_fresh:
+        print('Data freshness check passed')
+    else:
+        print('Warning: Data may be stale')
+
+    return is_fresh
+```
+
+**Use for**: Issues you want to monitor but that don't require immediate pipeline termination, allowing you to collect metrics and set up alerts.
+
+## Summary
+
+Expectations provide a powerful framework for maintaining data quality throughout your pipelines. By encoding validation logic as testable functions, you can:
+
+- Catch issues early before they impact downstream systems
+- Document data assumptions and business rules
+- Build confidence in data quality
+- Create self-documenting pipelines
+
+Well-implemented expectations transform data quality from a reactive problem into a proactive system property.

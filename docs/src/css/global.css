@@ -1,0 +1,151 @@
+/* tailwind */
+@import "tailwindcss/theme.css" layer(theme);
+
+@layer base {
+  #tw-scope {
+    @import "tailwindcss/preflight.css" layer(base);
+  }
+}
+
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@custom-variant dark (&:is([data-theme="dark"] *));
+
+/* fonts */
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/Satoshi-Variable.ttf') format('truetype');
+  font-weight: 300 900;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'IBMPlexMono';
+  src: url('/fonts/IBMPlexMono.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+html {
+  --ifm-font-family-base: 'Satoshi', sans-serif;
+  --ifm-font-family-monospace: 'IBMPlexMono', monospace;
+  --docsearch-primary-color: #00B0FF;
+  scroll-padding-top: 65px; /* Match navbar's height */
+}
+
+/* Ensure anchors clear the fixed navbar on cross-page navigation */
+[id].anchor,
+h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
+  scroll-margin-top: 65px;
+}
+
+:root {
+  --ifm-color-primary: #00B0FF;
+  --ifm-tag-color-border: #008ECC;
+  --ifm-pagination-nav-color-hover: #00B0FF;
+  --ifm-hover-link-color: #00B0FF;
+  --ifm-link-hover-color: #00B0FF;
+  --ifm-hover-overlay: rgba(0, 176, 255, 0.1);
+  --ifm-breadcrumb-color-active: var(--docsearch-text-color);
+  --ifm-color-secondary-contrast-background: transarent;
+  --ifm-color-success-contrast-background: transarent;
+  --ifm-color-warning-contrast-background: transarent;
+  --ifm-color-danger-contrast-background: transarent;
+
+  --ifm-code-background: #E3F2FD;
+  --ifm-background-surface-color: #f7f7f7;
+  --ifm-footer-background-color: #f7f7f7;
+  --ifm-background-color: #f7f7f7;
+  --ifm-card-background-color: #ffffff;
+}
+
+/* Make code blocks wrap instead of scroll */
+.prism-code {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word; /* fallback for older browsers */
+}
+
+/* Also target the pre element */
+pre[class*="language-"] {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  overflow-x: visible !important;
+}
+
+/* Target code elements specifically */
+code[class*="language-"] {
+  white-space: pre-wrap !important;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+:not(pre) > code:not(:has(a)) {
+  padding: 0.2em 0.4em;
+  border-radius: 4px;
+}
+
+.language-bash > code[class]{
+  padding: 2em;
+}
+
+a:hover {
+  color: #00B0FF;
+}
+
+footer {
+  border-top: 0.5px solid var(--ifm-table-border-color);
+}
+
+.text--truncate {
+  white-space: wrap !important;
+}
+
+/* mermaid */
+hr.mermaid {
+  margin: 0;
+}
+
+.docusaurus-mermaid-container{
+  justify-content: center;
+  display: flex !important;
+}
+
+.edgeLabel > p {
+  margin: 0px;
+}
+
+/* Dark theme */
+[data-theme='dark'] {
+  --ifm-tag-color-border: #FFD600;
+  --ifm-code-background: rgba(255, 252, 227, 0.9);
+  --ifm-background-color: #151616;
+  --ifm-background-surface-color: #151616;
+  --ifm-footer-background-color: #151616;
+  --ifm-card-background-color: #262626;
+}
+
+[data-theme='dark'] code {
+  color: #000000;
+}
+
+[data-theme='dark'] code a {
+  color: #000000;
+}
+
+/* navbar */
+@import './navbar.css';
+
+/* sidebar */
+@import './sidebar.css';
+
+/* CLI reference tables - wider Flag column */
+table th:first-child,
+table td:first-child {
+  min-width: 180px;
+  white-space: nowrap;
+}

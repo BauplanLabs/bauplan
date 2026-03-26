@@ -1,0 +1,27 @@
+---
+title: BigQuery
+description: Choose the right BigQuery integration for your use case.
+---
+
+import DocCardList from '@theme/DocCardList';
+import bigqueryIcon from '@site/static/img/logos/bigquery.png';
+import bauplanIcon from '@site/static/img/logos/bauplan.png';
+
+Bauplan and BigQuery can be connected in two directions depending on which system holds your data. If your data is managed by Bauplan, you can expose it to BigQuery as an external Iceberg table with no data movement. If your data is in BigQuery, you can pull it into a Bauplan pipeline to run Python-based transformations or migrate it to Iceberg.
+
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/big_query/big_query_inbound',
+    label: 'Bauplan → BigQuery',
+    icon: bauplanIcon,
+    description: 'Register your Bauplan data as an external Iceberg table so BigQuery can query it - zero copying required.'
+  },
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/big_query/big_query_outbound',
+    label: 'BigQuery → Bauplan',
+    icon: bigqueryIcon,
+    description: 'Pull your data from BigQuery into a Bauplan pipeline as an Arrow table for Python analytics or migration to Iceberg.'
+  },
+]} />

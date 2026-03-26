@@ -1,0 +1,11 @@
+node_modules
+build
+.docusaurus
+
+# Generated SDK reference docs
+pages/reference/*
+!pages/reference/cli.mdx
+
+# Generated LLM-friendly markdown files (built from pages/*.mdx)
+static/**/*.md
+static/llms.txt
