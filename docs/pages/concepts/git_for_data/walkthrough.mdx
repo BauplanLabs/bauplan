@@ -5,9 +5,7 @@ title: "Walkthrough: refs, commits, branches, and tags"
 When developing in Bauplan, you always start by creating a new
 development branch from a source branch, like `main`:
 
-```python notest
-import bauplan
-
+```python
 client = bauplan.Client()
 client.create_branch('ciro.feature_xyz', from_ref='main')
 ```
@@ -16,7 +14,9 @@ Since nothing has changed in your development branch yet, both branches
 point to the same commit. You can verify that, and learn the
 `get_commits` API:
 
-```python fixture:client fixture:my_branch
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
 my_branch_last_commit = list(client.get_commits(my_branch, limit=1))[0]
 source_branch_last_commit = list(client.get_commits('main', limit=1))[0]
 assert my_branch_last_commit.ref.hash == source_branch_last_commit.ref.hash
@@ -26,21 +26,30 @@ Now let's run a pipeline on our branch. This pipeline materializes a
 table based on its parameter (so if `run_id=1` you will find a table
 with that value), therefore generating a new commit:
 
-```python notest
-run_1 = client.run(..., ref=my_branch, parameters={'run_id': 1})
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+run_1 = client.run("./my_pipeline", ref=my_branch, parameters={'run_id': 1})
 ```
 
 The branch head now changed:
 
-```python notest
-my_branch_run_1_commit = client.get_commits(my_branch, limit=1)[0]
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+#! source_branch_last_commit = list(client.get_commits('main', limit=1))[0]
+my_branch_run_1_commit = list(client.get_commits(my_branch, limit=1))[0]
 assert my_branch_run_1_commit.ref.hash != source_branch_last_commit.ref.hash
 ```
 
 Crucially, each commit records the job that generated it. This means you
 can always trace back **which run created what data**:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+#! my_branch_run_1_commit = list(client.get_commits(my_branch, limit=1))[0]
+#! run_1 = client.run("./my_pipeline", ref=my_branch, parameters={'run_id': 1})
 job_id_in_the_commit = my_branch_run_1_commit.properties['bpln_job_id']
 assert job_id_in_the_commit == run_1.job_id
 ```
@@ -48,14 +57,19 @@ assert job_id_in_the_commit == run_1.job_id
 Let's run the pipeline again with a different DAG parameter: this
 creates a new commit, since `run_2` comes after `run_1` on our branch:
 
-```python notest
-run_2 = client.run(..., ref=my_branch, parameters={'run_id': 2})
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+run_2 = client.run("./my_pipeline", ref=my_branch, parameters={'run_id': 2})
 ```
 
 Now if you query the materialized table, it will reflect the latest
 value:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+#! run_id_query = "SELECT run_id FROM my_table"
 rows = client.query(run_id_query, ref=my_branch).to_pylist()
 assert rows == [{'run_id': 2}]
 ```
@@ -63,7 +77,11 @@ assert rows == [{'run_id': 2}]
 But you can just as easily query the previous state by passing the older
 commit (the object `my_branch_run_1_commit` we got just after run 1):
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+#! run_id_query = "SELECT run_id FROM my_table"
+#! my_branch_run_1_commit = list(client.get_commits(my_branch, limit=1))[0]
 rows = client.query(run_id_query, ref=my_branch_run_1_commit.ref).to_pylist()
 assert rows == [{'run_id': 1}]
 ```
@@ -73,14 +91,21 @@ assert rows == [{'run_id': 1}]
 To simplify navigation, you can tag specific commits. For instance, we
 might want to mark a dataset version that passed compliance checks:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+#! my_compliance_dataset_tag = 'compliance_v1'
+#! my_branch_run_1_commit = list(client.get_commits(my_branch, limit=1))[0]
 tag_1_ref = client.create_tag(my_compliance_dataset_tag, my_branch_run_1_commit.ref)
 ```
 
 Now you can use the tag as a permanent reference in our operations, for
 example when querying:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_compliance_dataset_tag = 'compliance_v1'
+#! run_id_query = "SELECT run_id FROM my_table"
 target_tag = client.get_tag(my_compliance_dataset_tag)
 rows = client.query(run_id_query, ref=target_tag).to_pylist()
 assert rows == [{'run_id': 1}]
@@ -91,7 +116,9 @@ assert rows == [{'run_id': 1}]
 Since every commit is tracked, you can also filter by author to audit
 recent changes:
 
-```python  fixture:client fixture:my_branch
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
 my_author_commit_history = client.get_commits(my_branch, filter_by_author_name="ciro@example.com", limit=5)
 ```
 
@@ -103,8 +130,12 @@ In practice, a temporary branch is created from the current branch and
 all the intermediate artifacts are materialized there - which we can
 easily check with our APIs:
 
-```python notest
-failed_run = client.run(..., ref=my_branch, parameters={'something_that_fails_the_DAG': ...})
+```python
+#! client = bauplan.Client()
+#! my_branch = 'ciro.feature_xyz'
+#! my_branch_name = my_branch
+#! run_id_query = "SELECT run_id FROM my_table"
+failed_run = client.run("./my_pipeline", ref=my_branch, parameters={'something_that_fails_the_DAG': True})
 
 # This confirms the current branch still reflects the last successful run
 assert client.query(run_id_query, ref=my_branch_name).to_pylist() == [{'run_id': 2}]
@@ -113,10 +144,12 @@ assert client.query(run_id_query, ref=my_branch_name).to_pylist() == [{'run_id':
 You can now inspect the failed run's job metadata, logs, and any
 intermediate tables that were materialized:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! job_id = 'abc123'
 logs = client.get_job_logs(job_id)
 for log_line in logs:
-    print(f'[{log_line.stream.name}] {log_line.message}')
+    print(f'[{log_line.stream}] {log_line.message}')
 ```
 
 ### Reverting back in time
@@ -125,7 +158,12 @@ Suppose that we now decide that the original version - the one tagged
 as "compliant" - is the one we want. We can revert the table to that
 state with a simple API:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_test_table_name = 'my_table'
+#! my_branch_name = 'ciro.feature_xyz'
+#! my_compliance_dataset_tag = 'compliance_v1'
+#! target_tag = client.get_tag(my_compliance_dataset_tag)
 revert_ref = client.revert_table(
     table=my_test_table_name,
     source_ref=target_tag,
@@ -139,7 +177,10 @@ revert_ref = client.revert_table(
 You confirm it worked by querying the table again, and checking we got
 the table from the first run back:
 
-```python notest
+```python
+#! client = bauplan.Client()
+#! my_branch_name = 'ciro.feature_xyz'
+#! run_id_query = "SELECT run_id FROM my_table"
 rows = client.query(run_id_query, ref=my_branch_name).to_pylist()
 assert rows == [{'run_id': 1}]
 ```

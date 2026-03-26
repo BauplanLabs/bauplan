@@ -92,7 +92,7 @@ Inside the script, you can call the Bauplan Python SDK as you would locally.
 
 Example:
 
-```python notest
+```python
 import bauplan
 import pandas as pd
 
@@ -106,7 +106,7 @@ def run_query_with_bauplan(query: str, ref: str):
 
 def main():
     query = "SELECT * FROM titanic LIMIT 10"
-		branch = "main"
+    branch = "main"
     df = run_query_with_bauplan(query=query, ref=branch)
     df.show()
 

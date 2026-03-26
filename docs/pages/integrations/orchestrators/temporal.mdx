@@ -26,8 +26,7 @@ If your pipeline writes data, run it on a branch (not on `main`). Branch names m
 
 Define a Temporal Activity that runs your Bauplan project, a Workflow that calls it, and fail fast if the Bauplan job fails. Temporal requires a Worker polling a Task Queue for your Workflow and Activities. In the Workflow, specify an Activity timeout (Temporal requires at least `start_to_close_timeout` or `schedule_to_close_timeout`).
 
-```python notest
-# workflow_and_worker.py
+```python type:ignore title="workflow_and_worker.py"
 import asyncio
 from datetime import timedelta
 from uuid import uuid4
@@ -93,8 +92,7 @@ if __name__ == "__main__":
 
 ```
 
-```python notest
-# activities.py
+```python title="activities.py"
 from temporalio import activity
 from pathlib import Path
 
@@ -108,7 +106,7 @@ def run_bauplan_activity(project_dir: str, bauplan_branch_suffix: str) -> dict:
         raise RuntimeError(f"Project path does not exist: {project_path}")
 
     client = bauplan.Client()  # credentials: BAUPLAN_API_KEY / BAUPLAN_PROFILE / ~/.bauplan/config.yml
-    username = client.info().user.username
+    username = client.info().user.username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"
 
     state = client.run(project_dir=str(project_path), ref=branch)
@@ -148,7 +146,7 @@ This starts a Worker and immediately kicks off a `BauplanWorkflow` run with your
 
 Retries in dev. To avoid noisy auto-retries while iterating, set a no-retry policy in the workflow call:
 
-```python notest
+```python type:ignore
 from temporalio.common import RetryPolicy
 
 result = await workflow.execute_activity(
@@ -172,7 +170,7 @@ Bauplan looks for credentials in a clear precedence order:
 
 You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
-```python notest
+```python
 import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
@@ -196,8 +194,7 @@ parameters:
     default: "2022-12-15T00:00:00-05:00"
 ```
 
-```python notest
-# models.py
+```python title="models.py"
 import bauplan
 
 @bauplan.model(materialization_strategy='REPLACE')
@@ -219,8 +216,7 @@ def filtered_taxi_rides_parameters(
 
 You can set the `start_time` when running the pipeline through Temporal.
 
-```python notest
-# activities_with_param.py
+```python title="activities_with_param.py"
 from temporalio import activity
 from typing import Dict, Any
 
@@ -234,7 +230,7 @@ def run_with_parameters_activity(
     import bauplan
 
     client = bauplan.Client()
-    username = client.info().user.username
+    username = client.info().user.username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
@@ -248,8 +244,7 @@ def run_with_parameters_activity(
 
 ```
 
-```python notest
-# workflow_and_worker_with_param.py
+```python type:ignore title="workflow_and_worker_with_param.py"
 import asyncio
 from datetime import timedelta
 from uuid import uuid4

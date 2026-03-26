@@ -30,8 +30,7 @@ If your pipeline writes data, run it on a branch (not on `main`). Branch names m
 
 Define a DBOS **step** that runs your Bauplan project, a **workflow** that calls the step, and fail the workflow if the Bauplan job fails. DBOS requires a one-time initializer when your app starts.
 
-```python notest
-# dbos_bauplan_flow.py
+```python title="dbos_bauplan_flow.py"
 import os
 from typing import Optional, Dict, Any
 
@@ -60,7 +59,7 @@ def run_bauplan_step(project_dir: str, bauplan_branch_suffix: str,
         RuntimeError if the job did not finish with status 'success'.
     """
     client = bauplan.Client()  # build client inside the step (I/O)
-    username = client.info().user.username  # get username
+    username = client.info().user.username  # get username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters or {})
@@ -128,7 +127,7 @@ Bauplan looks for credentials in a clear precedence order:
 
 You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
-```python notest
+```python
 import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
@@ -152,8 +151,7 @@ parameters:
     default: "2022-12-15T00:00:00-05:00"
 ```
 
-```python notest
-# models.py
+```python title="models.py"
 import bauplan
 
 # models.py
@@ -176,8 +174,7 @@ def filtered_taxi_rides_parameters(
 
 You can set `start_time` when running the pipeline through DBOS:
 
-```python notest
-# dbos_bauplan_with_params.py
+```python title="dbos_bauplan_with_params.py"
 import os
 from typing import Dict, Any, Optional
 
@@ -198,7 +195,7 @@ def run_with_parameters_step(
     parameters: Dict[str, Any],
 ) -> Dict[str, Any]:
     client = bauplan.Client()  # build client inside the step
-    username = client.info().user.username
+    username = client.info().user.username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)

@@ -6,9 +6,10 @@ If you\'d rather manage schema conflicts without editing YAML by hand,
 you can handle the entire flow programmatically using the Bauplan Python
 SDK.
 
-```python notest
+```python
 import bauplan
 from typing import Dict, Any
+import yaml
 
 def generate_plan(
     client: bauplan.Client,
@@ -29,7 +30,10 @@ def generate_plan(
         search_uri=search_uri,
         branch=branch
     )
-    return response.plan  # Extract the actual plan dictionary from the response
+
+    # Extract the actual plan dictionary from the response
+    plan = yaml.safe_load(response.plan)
+    return plan
 
 client = bauplan.Client()
 plan = generate_plan(client=client, table='your_table', search_uri='s3://your-bucket/*.parquet', branch='import_branch')
@@ -99,7 +103,8 @@ inferred types, you can modify `dst_datatype` to control how each column
 will be interpreted during import - regardless of what was inferred
 from the files:
 
-```python notest
+```python
+#! plan: dict = {}
 plan['schema_info']['detected_schemas'] = [
     {
         "column_name": "EventTime",
@@ -113,7 +118,8 @@ plan['schema_info']['detected_schemas'] = [
 Once you\'ve updated the plan, you can now apply the plan and import the
 data
 
-```python notest
+```python
+#! plan = "foo: bar"
 import bauplan
 
 client = bauplan.Client()

@@ -1,4 +1,5 @@
 import { themes as prismThemes } from 'prism-react-renderer';
+import remarkHiddenLines from './src/plugins/remark-hidden-lines.js';
 
 export default {
   clientModules: [require.resolve('./src/clientModules/scrollToAnchor.js')],
@@ -17,6 +18,7 @@ export default {
           routeBasePath: "/", // The docs are served at the root.
           path: "pages", // The local path to the markdown files.
           exclude: ["node_modules/**"],
+          remarkPlugins: [remarkHiddenLines],
           sidebarPath: require.resolve("./sidebar.js"),
         },
         theme: {

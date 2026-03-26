@@ -17,7 +17,8 @@ models depend on the outputs of upstream ones.
 A typical Python model consists of two decorators `@bauplan.model()` and
 `@bauplan.python()` and a function.
 
-```python fixture:bauplan
+```python
+#! import pyarrow
 @bauplan.model()
 @bauplan.python('3.11')
 def my_model(
@@ -33,6 +34,7 @@ def my_model(
 ):
     ...
 
+    #! output_table = pyarrow.table({})
     return output_table
 ```
 
@@ -60,7 +62,7 @@ code. They are expressed entirely in code using the decorator
 version (e.g., `3.11` or `3.12`) and any additional libraries and their
 versions using uv.
 
-```python fixture:bauplan
+```python
 @bauplan.model()
 # specify the package and version - in this case Pandas 2.2.0
 @bauplan.python('3.11', pip={'pandas': '2.2.0'})
@@ -87,7 +89,7 @@ use different versions of the same packages and different versions of
 the Python interpreter.
 
 
-```python fixture:bauplan
+```python
 @bauplan.model()
 @bauplan.python('3.11', pip={'pandas': '2.2.0'})
 def step_1(data=bauplan.Model('input_table')):
@@ -124,7 +126,7 @@ system to run in memory (see using `--dry-run` in the tutorial).
 then appends the new rows produced by the model. This is useful when you need to
 reprocess specific partitions without affecting the rest of the table.
 
-```python notest
+```python
 @bauplan.model(
     materialization_strategy='OVERWRITE_PARTITIONS',
     partitioned_by=['year'],
@@ -151,7 +153,7 @@ While Bauplan supports SQL models directly, the **recommended best
 practice today** for most use cases is to embed your SQL in a Python
 function using DuckDB.
 
-```python fixture:bauplan
+```python
 @bauplan.model()
 @bauplan.python("3.11", pip={'duckdb': '1.2.0'})
 def my_model(
@@ -182,7 +184,7 @@ def my_model(
 2. **Output docstrings**
   - Specify the shape of the output table of a model in its docstrings.
 
-    ```python fixture:bauplan
+    ```python
     @bauplan.model()
     @bauplan.python("3.11")
     def my_model(

@@ -26,8 +26,7 @@ If your pipeline writes data, run it on a branch (not on `main`). Branch names m
 
 Define a Dagster job that runs your Bauplan project and fails the run if the Bauplan job fails.
 
-```python notest
-# bauplan_dagster_flow.py
+```python title="bauplan_dagster_flow.py"
 import dagster as dg
 import bauplan
 
@@ -46,7 +45,7 @@ def run_pipeline(context) -> dict:
     """
     client = bauplan.Client()  # build client inside the op
 
-    username = client.info().user.username  # get username
+    #! username = client.info().user.username # type:ignore
     cfg = context.op_config
     branch = f"{username}.{cfg['bauplan_branch_suffix']}"  # construct branch name
 
@@ -126,7 +125,7 @@ Bauplan looks for credentials in a clear precedence order:
 
 You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
-```python notest
+```python
 import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
@@ -148,8 +147,7 @@ parameters:
     default: "2022-12-15T00:00:00-05:00"
 ```
 
-```python notest
-# models.py
+```python title="models.py"
 import bauplan
 
 @bauplan.model(materialization_strategy='REPLACE')
@@ -171,8 +169,7 @@ def filtered_taxi_rides_parameters(
 
 Run the pipeline through Dagster with a parameterized op:
 
-```python notest
-# bauplan_dagster_with_params.py
+```python title="bauplan_dagster_with_params.py"
 import dagster as dg
 import bauplan
 
@@ -187,7 +184,7 @@ import bauplan
 def run_with_parameters(context) -> dict:
     client = bauplan.Client()  # build client inside the op
 
-    username = client.info().user.username
+    username = client.info().user.username # type:ignore
     cfg = context.op_config
     branch = f"{username}.{cfg['bauplan_branch_suffix']}"
 

@@ -65,7 +65,7 @@ impl ClientError {
 ///
 /// #### Notes on authentication
 ///
-/// ```python notest fixture:bauplan
+/// ```python
 /// # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yml
 /// client = bauplan.Client()
 /// # client used ~/.bauplan/config.yml profile 'default'
@@ -110,7 +110,7 @@ impl ClientError {
 ///
 /// You can use python's standard logging apparatus to tap logs from the client:
 ///
-/// ```python fixture:bauplan
+/// ```python
 /// import logging
 ///
 /// # Enable debug logs from the Bauplan client.
@@ -123,8 +123,9 @@ impl ClientError {
 ///
 /// ## Examples
 ///
-/// ```python notest fixture:client
-/// state = client.run(...)
+/// ```python
+/// #! client = bauplan.Client()
+/// state = client.run("./my_pipeline")
 /// if state.job_status != "SUCCESS":
 ///     ...
 /// ```

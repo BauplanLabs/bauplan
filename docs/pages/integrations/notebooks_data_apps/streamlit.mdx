@@ -32,8 +32,7 @@ This example reads from the `taxi_fhvhv` table in the Bauplan Sandbox (data for 
 The Sandbox dataset is shared and meant for examples. In a private environment, you can replace the table name (and catalog/namespace if needed) while keeping the same pattern: *Client → branch → query → visualize*.
 </Note>
 
-```python notest
-# streamlit_app.py
+```python title="streamlit_app.py"
 import streamlit as st
 import bauplan
 import pandas as pd
@@ -44,7 +43,7 @@ import matplotlib.pyplot as plt
 #    The client will use your local profile or BAUPLAN_API_KEY for authentication.
 #    We'll also capture the username so we can scope a branch per user.
 client = bauplan.Client()
-username = client.info().user.username
+username = client.info().user.username # type:ignore
 
 # 2) Define a user-scoped branch
 #    Apps should never query `main` directly. By running against a personal branch,
@@ -102,7 +101,7 @@ st.dataframe(df, use_container_width=True)
 # 7) Create a bar chart with matplotlib
 #    We render server-side with matplotlib, then embed the figure in Streamlit.
 labels = df["dt"].dt.strftime("%Y-%m-%d")
-values = df["rides"].values
+values = df["rides"].to_numpy()
 
 fig, ax = plt.subplots(figsize=(max(6, len(df) * 0.25), 4))
 ax.bar(labels, values)

@@ -13,7 +13,7 @@ automatically infers the correct execution order.
 To chain models into a DAG, simply pass a previous bauplan model as an
 input.
 
-```python fixture:bauplan
+```python
 @bauplan.model()
 @bauplan.python('3.11')
 def step_1(data=bauplan.Model('input_table')):

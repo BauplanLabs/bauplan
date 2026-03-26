@@ -35,7 +35,7 @@ ways:
 
 Use the `create_table` method with the `partitioned_by` parameter:
 
-```python notest
+```python
 import bauplan
 
 client = bauplan.Client()
@@ -62,8 +62,9 @@ bauplan table create my_partitioned_table \
 For more complex scenarios, particularly when schema modifications are
 needed alongside partitioning:
 
-```python notest
+```python
 import bauplan
+import yaml
 
 client = bauplan.Client()
 
@@ -75,7 +76,7 @@ plan_state = client.plan_table_creation(
 )
 
 # Modify plan to add partitioning
-plan = plan_state.plan
+plan = yaml.safe_load(plan_state.plan)
 plan['schema_info']['partitions'] = [
     {
         'from_column_name': 'datetime_column',
