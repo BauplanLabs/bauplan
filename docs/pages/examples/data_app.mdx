@@ -48,7 +48,7 @@ centralized and organized. The `top_pickup_locations` function uses the
 Iceberg table. This materialization makes the data queryable and ready
 for visualization in Streamlit.
 
-```python notest
+```python
 import bauplan
 
 @bauplan.model()
@@ -157,7 +157,7 @@ below contains a Streamlit app to visualize the table
 simple script shows how to use bauplan's Python SDK to embed querying
 and other functionalities in a data app.
 
-```python notest
+```python
 import streamlit as st
 import sys
 from argparse import ArgumentParser
@@ -171,7 +171,7 @@ def query_as_dataframe(
         _client: bauplan.Client,
         sql: str,
         branch: str
-) -> pd.DataFrame:
+) -> pd.DataFrame | None:
     """
     Runs a query with bauplan and put the table in a Pandas dataframe
     """

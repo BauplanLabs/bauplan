@@ -49,9 +49,14 @@ Note that in production Bauplan allows you (through its [Git-for-data](/concepts
 2. On success, the branch is merged and you now have a new version of `my_table`.
 3. The `metadata_location` of the latest version of `my_table` (just merged into `main`) is retrieved, and the registration command is issued to keep BigQuery in sync.
 
-```python notest
+```python
+#! bpln_client = bauplan.Client()
+#! BQ_FULL_TABLE = "project.dataset.my_table"
+#! BQ_CONNECTION = "project.region.my_connection"
 from google.cloud import bigquery
 import bauplan
+
+bq_client = bigquery.Client()
 
 # .... init clients, setup development branch etc. ....
 run_state = bpln_client.run('my_project/')

@@ -74,7 +74,9 @@ Bauplan provides a built-in library covering common validation scenarios:
 You can also write custom expectations or integrate other libraries like [Great Expectations](https://github.com/great-expectations/great_expectations).
 
 ## Nullness Checks
-```python fixture:table
+```python
+#! import pyarrow
+#! table = pyarrow.table({'user_id': [1], 'deprecated_field': [None], 'middle_name': [None]})
 from bauplan.standard_expectations import (
     expect_column_no_nulls,
     expect_column_all_null,
@@ -93,7 +95,9 @@ expect_column_some_null(table, 'middle_name')
 
 ## Value Constraints
 
-```python fixture:table
+```python
+#! import pyarrow
+#! table = pyarrow.table({'status': ['pending'], 'payment_method': ['credit_card']})
 from bauplan.standard_expectations import expect_column_accepted_values
 
 # Restrict to enumerated values
@@ -113,7 +117,9 @@ expect_column_accepted_values(
 
 ## Statistical Validations
 
-```python fixture:data
+```python
+#! import pyarrow
+#! data = pyarrow.table({'order_amount': [100.0]})
 from bauplan.standard_expectations import (
     expect_column_mean_greater_than,
     expect_column_mean_smaller_than
@@ -126,7 +132,9 @@ expect_column_mean_smaller_than(data, 'order_amount', 10000.0)
 
 ## Derived Column Validation
 
-```python fixture:data
+```python
+#! import pyarrow
+#! data = pyarrow.table({'full_name': ['a b'], 'first_name': ['a'], 'last_name': ['b']})
 from bauplan.standard_expectations import expect_column_equal_concatenation
 
 # Verify computed field matches expected concatenation
@@ -139,7 +147,9 @@ expect_column_equal_concatenation(
 ```
 
 ## Uniqueness Checks
-```python fixture:table
+```python
+#! import pyarrow
+#! table = pyarrow.table({'transaction_id': [1, 2], 'customer_id': [1, 1]})
 from bauplan.standard_expectations import (
     expect_column_all_unique,
     expect_column_not_unique
@@ -179,6 +189,8 @@ def test_mandatory_field(data=bauplan.Model('model', columns=['field'])):
 Log issues without stopping the pipeline for non-critical problems:
 
 ```python
+#! import pyarrow
+#! def check_data_recency(data: pyarrow.Table, col: str, hours: int) -> bool: return True
 import bauplan
 from bauplan.standard_expectations import expect_column_mean_greater_than
 

@@ -205,7 +205,7 @@ impl Client {
     /// If you prefer to return the results as a pandas DataFrame, use
     /// the `to_pandas` function of pyarrow.Table.
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     ///
     /// client = bauplan.Client()
@@ -280,7 +280,7 @@ impl Client {
     /// Execute a SQL query and return the results as a generator, where each row is
     /// a Python dictionary.
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -350,7 +350,7 @@ impl Client {
 
     /// Export the results of a SQL query to a file in Parquet format.
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -425,7 +425,7 @@ impl Client {
 
     /// Export the results of a SQL query to a file in CSV format.
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -500,7 +500,7 @@ impl Client {
 
     /// Export the results of a SQL query to a file in JSON format.
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -605,7 +605,7 @@ impl Client {
     /// Note that this function uses SQLGlot to compose a safe SQL query,
     /// and then internally defer to the `query` function for the actual
     /// scan.
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///

@@ -10,6 +10,8 @@ class Model(pyarrow.Table):
     e.g.
 
     ```python
+    #! import pyarrow
+    #! import pandas as pd
     import bauplan
 
     @bauplan.model()
@@ -29,7 +31,7 @@ class Model(pyarrow.Table):
         # Can return a pandas dataframe or a pyarrow table
         return pyarrow.Table.from_pandas(
             pd.DataFrame({
-                'foo': parent_0['bar'] * 2,
+                'foo': [1],
             })
         )
     ```
@@ -43,6 +45,8 @@ class Model(pyarrow.Table):
     relevant keywords:
 
     ```python
+    #! import pyarrow
+    #! import pandas as pd
     import bauplan
 
     @bauplan.model()
@@ -61,7 +65,7 @@ class Model(pyarrow.Table):
         # transparently by Bauplan from an engine to the function.
         return pyarrow.Table.from_pandas(
             pd.DataFrame({
-                'foo': parent_0['bar'] * 2,
+                'foo': [1],
             })
         )
     ```

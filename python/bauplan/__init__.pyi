@@ -94,7 +94,7 @@ class Client:
 
     #### Notes on authentication
 
-    ```python notest fixture:bauplan
+    ```python
     # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yml
     client = bauplan.Client()
     # client used ~/.bauplan/config.yml profile 'default'
@@ -139,7 +139,7 @@ class Client:
 
     You can use python's standard logging apparatus to tap logs from the client:
 
-    ```python fixture:bauplan
+    ```python
     import logging
 
     # Enable debug logs from the Bauplan client.
@@ -152,8 +152,9 @@ class Client:
 
     ## Examples
 
-    ```python notest fixture:client
-    state = client.run(...)
+    ```python
+    client = bauplan.Client()
+    state = client.run("./my_pipeline")
     if state.job_status != "SUCCESS":
         ...
     ```
@@ -188,7 +189,7 @@ class Client:
         schema conflicts are resolved. The most common schema conflict is two
         parquet files with the same column name but different datatypes.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -233,7 +234,7 @@ class Client:
         """
         EXPERIMENTAL: Cancel a job by ID.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -265,7 +266,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
 
         client = bauplan.Client()
@@ -312,7 +313,7 @@ class Client:
         metadata.json file. This is useful for importing external Iceberg tables into Bauplan
         without copying the data.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -361,7 +362,7 @@ class Client:
         """
         Creates an external table from S3 files.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -407,7 +408,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -460,7 +461,7 @@ class Client:
         parquet files found by a given search uri. This is a two step operation using
         `Client.plan_table_creation` and `Client.apply_table_creation_plan`.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -501,7 +502,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -534,7 +535,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -573,7 +574,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch fixture:my_namespace
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -619,7 +620,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -659,7 +660,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_tag
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -687,7 +688,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -757,7 +758,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -791,7 +792,8 @@ class Client:
         """
         EXPERIMENTAL: Get a job by ID.
 
-        ```python fixture:my_job
+        ```python
+        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -815,7 +817,8 @@ class Client:
         """
         EXPERIMENTAL: Get context for a job by ID.
 
-        ```python fixture:my_job
+        ```python
+        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -843,7 +846,8 @@ class Client:
         """
         EXPERIMENTAL: Get context for multiple jobs.
 
-        ```python fixture:my_job
+        ```python
+        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -863,7 +867,8 @@ class Client:
         """
         EXPERIMENTAL: Get logs for a job.
 
-        ```python fixture:my_job
+        ```python
+        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -921,7 +926,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_namespace
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -957,7 +962,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_namespace
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -992,7 +997,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch fixture:my_namespace
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1041,7 +1046,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1071,7 +1076,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_tag
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1098,7 +1103,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_tag
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1123,7 +1128,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1149,7 +1154,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_namespace
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1185,7 +1190,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1216,7 +1221,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python fixture:my_tag
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1254,7 +1259,7 @@ class Client:
         """
         Imports data into an already existing table.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1321,7 +1326,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1373,7 +1378,7 @@ class Client:
         schema and plan is returned and if there are no conflicts, it is
         automatically applied.
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1426,7 +1431,7 @@ class Client:
         If you prefer to return the results as a pandas DataFrame, use
         the `to_pandas` function of pyarrow.Table.
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
 
         client = bauplan.Client()
@@ -1470,7 +1475,7 @@ class Client:
         """
         Export the results of a SQL query to a file in CSV format.
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1511,7 +1516,7 @@ class Client:
         Execute a SQL query and return the results as a generator, where each row is
         a Python dictionary.
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1556,7 +1561,7 @@ class Client:
         """
         Export the results of a SQL query to a file in JSON format.
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1598,7 +1603,7 @@ class Client:
         """
         Export the results of a SQL query to a file in Parquet format.
 
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1632,7 +1637,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1663,7 +1668,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1705,7 +1710,7 @@ class Client:
 
         Upon failure, raises `bauplan.exceptions.BauplanError`
 
-        ```python notest
+        ```python
         import bauplan
         client = bauplan.Client()
 
@@ -1769,7 +1774,8 @@ class Client:
 
         ## Examples
 
-        ```python notest fixture:client
+        ```python
+        #! client = bauplan.Client()
         # Run a daily sales pipeline on a dev branch, and if successful and data is good, merge to main
         run_state = client.run(
             project_dir='./etl_pipelines/daily_sales',
@@ -1819,7 +1825,7 @@ class Client:
         Note that this function uses SQLGlot to compose a safe SQL query,
         and then internally defer to the `query` function for the actual
         scan.
-        ```python fixture:my_branch
+        ```python
         import bauplan
         client = bauplan.Client()
 

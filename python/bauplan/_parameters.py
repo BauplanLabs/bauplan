@@ -28,7 +28,8 @@ class Parameter:
 
     Then, to use them in a model, use `bauplan.Parameter`:
 
-    ```python fixture:bauplan
+    ```python
+    #! import pyarrow
     def a_model_using_params(
         # parent models are passed as inputs, using bauplan.Model
         interest_rate=bauplan.Parameter('interest_rate'),
@@ -36,7 +37,7 @@ class Parameter:
         customer_name=bauplan.Parameter('customer_name'),
     ):
         print(f"Calculating interest for {customer_name}")
-        return pyarrow.Table.from_pydict({'interest': [loan_amount * interest_rate]})
+        return pyarrow.Table.from_pydict({'interest': [float(loan_amount) * float(interest_rate)]})
     ```
     """
 

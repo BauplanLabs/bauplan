@@ -44,8 +44,7 @@ Fivetran will create one Iceberg table per connector schema and manage data and 
 
 Bauplan needs the absolute path to the table’s current `metadata.json`. Retrieve it via PyIceberg against Polaris.
 
-```python notest
-# get_polaris_metadata.py
+```python title="get_polaris_metadata.py"
 from pyiceberg.catalog import rest
 
 # Configure your catalog values
@@ -86,10 +85,9 @@ s3://<your-bucket>/iceberg/<schema>/<table>/metadata/00004-...metadata.json
 
 Use the Bauplan Python SDK to create an external table on a working branch. You can register multiple Fivetran tables on the same branch.
 
-```python notest
-# register_fivetran_external_table.py
+```python title="register_fivetran_external_table.py"
 import bauplan
-from get_polaris_metadata import get_metadata_location
+from get_polaris_metadata import get_metadata_location  # type: ignore[unresolved-import]
 
 # Keep in sync with get_polaris_metadata.py
 ICEBERG_NAMESPACE = "your_iceberg_namespace"
@@ -106,7 +104,7 @@ metadata_location_string = get_metadata_location(
 
 # Instantiate Bauplan client
 client = bauplan.Client()
-bauplan_user = client.info().user.username
+bauplan_user = client.info().user.username # type:ignore
 
 # Create a non-main branch for safe testing
 branch_name = f"{bauplan_user}.fivetran_integration"

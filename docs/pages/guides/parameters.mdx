@@ -83,7 +83,7 @@ Once defined, parameters become inputs to your models. Declare them
 using `bauplan.Parameter(...)`, and Bauplan will inject their values at
 runtime:
 
-```python fixture:bauplan
+```python
 @bauplan.model()
 @bauplan.python('3.11')
 def example_model(
@@ -100,7 +100,7 @@ Suppose you have a step in your pipeline that summarizes news articles
 using an LLM. The OpenAI API key is stored as a **secret**, and the
 summary prompt is a configurable **string parameter**.
 
-```python fixture:bauplan
+```python
 @bauplan.model(internet_access=True)  # Enables API access
 @bauplan.python('3.11', pip={'openai': '1.57.2', 'pandas': '2.2.2'})
 def article_summaries(
@@ -111,20 +111,20 @@ def article_summaries(
     import openai
     import pandas as pd
 
-    openai.api_key = openai_key  # Decrypted and injected at runtime
+    client = openai.OpenAI(api_key=str(openai_key))  # Decrypted and injected at runtime
 
     df = articles.to_pandas()
     summaries = []
 
     for _, row in df.iterrows():
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": summary_prompt},
+                {"role": "system", "content": str(summary_prompt)},
                 {"role": "user", "content": row["article_content"]}  # Assumes a 'article_content' column
             ]
         )
-        summaries.append(response["choices"][0]["message"]["content"])
+        summaries.append(response.choices[0].message.content)
 
     df["llm_summary"] = summaries
     return df  # Return enriched table

@@ -113,8 +113,11 @@ output will be materialized as an Iceberg table in the data catalog. In
 `models.py`, set the `materialization_strategy` flag for the
 `normalize_taxi_trips` model to `REPLACE`:
 
-```python notest
+```python
 @bauplan.model(materialization_strategy='REPLACE')  # Other options are 'NONE', 'APPEND', or 'OVERWRITE_PARTITIONS'
+#! @bauplan.python('3.11')
+#! def my_model():
+#!     ...
 ```
 
 Then checkout to your `hello_bauplan` branch and run the pipeline:

@@ -29,8 +29,7 @@ If your pipeline writes data, run it on a data branch (not on `main`). Branch na
 
 Define a Prefect flow that runs your Bauplan project and fails the flow if the Bauplan job fails.
 
-```python notest
-# bauplan_prefect_flow.py
+```python title="bauplan_prefect_flow.py"
 from prefect import flow, task, get_run_logger
 import bauplan
 
@@ -49,17 +48,18 @@ def run_pipeline(
     """
     client = bauplan.Client()  # build client inside the task
 
-    username = client.info().user.username  # get username
+    username = client.info().user.username  # get username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
 
     state = client.run(project_dir=project_dir, ref=branch)
 
 
-    if status.job_status.lower() != "success":
+    #! assert state.job_status is not None
+    if state.job_status.lower() != "success":
         raise RuntimeError(f"Bauplan job {state.job_id} ended with status='{state.job_status}'")
 
     # return only simple types so Prefect can store results safely
-    return {"job_id": state.job_id, "job_status": job_status}
+    return {"job_id": state.job_id, "job_status": state.job_status}
 
 
 @flow(name="bauplan-pipeline-run")
@@ -115,7 +115,7 @@ Bauplan looks for credentials in a clear precedence order:
 
 This means you can either set a key directly in your code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
-```python notest
+```python
 import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")  # overrides environment/profile
 ```
@@ -139,8 +139,7 @@ parameters:
         default: "2022-12-15T00:00:00-05:00"
 ```
 
-```python notest
-# models.py
+```python title="models.py"
 import bauplan
 
 @bauplan.model(materialization_strategy='REPLACE')
@@ -162,8 +161,7 @@ def filtered_taxi_rides_parameters(
 
 You can set the `start_time` when running the pipeline through Prefect:
 
-```python notest
-# bauplan_prefect_with_params.py
+```python title="bauplan_prefect_with_params.py"
 from prefect import flow
 import bauplan
 
@@ -176,7 +174,7 @@ def run_with_parameters(
 
     client = bauplan.Client()  # build client inside the task
 
-    username = client.info().user.username  # get username
+    username = client.info().user.username  # get username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)

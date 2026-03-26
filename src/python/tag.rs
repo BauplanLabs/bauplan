@@ -19,7 +19,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_tag
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -64,7 +64,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_tag
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -93,7 +93,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_tag
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -132,7 +132,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -193,7 +193,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -235,7 +235,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_tag
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///

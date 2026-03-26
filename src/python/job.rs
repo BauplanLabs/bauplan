@@ -383,7 +383,8 @@ fn decompress_snapshot(data: &[u8]) -> Option<HashMap<String, String>> {
 impl Client {
     /// EXPERIMENTAL: Get a job by ID.
     ///
-    /// ```python fixture:my_job
+    /// ```python
+    /// #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -512,7 +513,8 @@ impl Client {
 
     /// EXPERIMENTAL: Get logs for a job.
     ///
-    /// ```python fixture:my_job
+    /// ```python
+    /// #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -553,7 +555,8 @@ impl Client {
 
     /// EXPERIMENTAL: Get context for a job by ID.
     ///
-    /// ```python fixture:my_job
+    /// ```python
+    /// #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -610,7 +613,8 @@ impl Client {
 
     /// EXPERIMENTAL: Get context for multiple jobs.
     ///
-    /// ```python fixture:my_job
+    /// ```python
+    /// #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -663,7 +667,7 @@ impl Client {
 
     /// EXPERIMENTAL: Cancel a job by ID.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///

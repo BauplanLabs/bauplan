@@ -54,7 +54,7 @@ impl Client {
     /// parquet files found by a given search uri. This is a two step operation using
     /// `plan_table_creation` and `apply_table_creation_plan`.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -200,7 +200,7 @@ impl Client {
     /// schema and plan is returned and if there are no conflicts, it is
     /// automatically applied.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -339,7 +339,7 @@ impl Client {
     /// schema conflicts are resolved. The most common schema conflict is two
     /// parquet files with the same column name but different datatypes.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -450,7 +450,7 @@ impl Client {
 
     /// Imports data into an already existing table.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -578,7 +578,7 @@ impl Client {
 
     /// Creates an external table from S3 files.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -698,7 +698,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -756,7 +756,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_branch fixture:my_namespace
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -816,7 +816,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -874,7 +874,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -962,7 +962,7 @@ impl Client {
     /// metadata.json file. This is useful for importing external Iceberg tables into Bauplan
     /// without copying the data.
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -1036,7 +1036,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python notest
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///

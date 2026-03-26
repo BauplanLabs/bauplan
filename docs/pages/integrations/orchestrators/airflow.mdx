@@ -27,8 +27,7 @@ If your pipeline writes data, run it on a branch (not on `main`). Branch names m
 
 Define an Airflow DAG that runs your Bauplan project and fails the DAG if the Bauplan job fails.
 
-```python notest
-# bauplan_airflow3_flow.py
+```python type:ignore title="bauplan_airflow3_flow.py"
 from airflow.sdk import dag, task
 from airflow.exceptions import AirflowException
 import pendulum
@@ -49,7 +48,7 @@ def run_pipeline(
     """
     client = bauplan.Client()  # build client inside the task
 
-    username = client.info().user.username  # get username
+    username = client.info().user.username  # get username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
 
     state = client.run(project_dir=project_dir, ref=branch)
@@ -135,7 +134,7 @@ Bauplan looks for credentials in a clear precedence order:
 
 You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
-```python notest
+```python
 import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
@@ -161,8 +160,7 @@ parameters:
     default: "2022-12-15T00:00:00-05:00
 ```
 
-```python notest
-# models.py
+```python title="models.py"
 import bauplan
 
 @bauplan.model(materialization_strategy='REPLACE')
@@ -184,8 +182,7 @@ def filtered_taxi_rides_parameters(
 
 You can set the `start_time` when running the pipeline through Airflow:
 
-```python notest
-# bauplan_airflow3_with_params.py
+```python type:ignore title="bauplan_airflow3_with_params.py"
 from airflow.sdk import dag, task
 from airflow.exceptions import AirflowException
 import pendulum

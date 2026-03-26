@@ -202,7 +202,8 @@ impl Client {
     ///
     /// ## Examples
     ///
-    /// ```python notest fixture:client
+    /// ```python
+    /// #! client = bauplan.Client()
     /// # Run a daily sales pipeline on a dev branch, and if successful and data is good, merge to main
     /// run_state = client.run(
     ///     project_dir='./etl_pipelines/daily_sales',

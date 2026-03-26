@@ -37,7 +37,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_namespace
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -89,7 +89,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_namespace
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -128,7 +128,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_branch
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -212,7 +212,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_branch fixture:my_namespace
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
@@ -292,7 +292,7 @@ impl Client {
     ///
     /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
-    /// ```python fixture:my_namespace
+    /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///

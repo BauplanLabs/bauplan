@@ -149,10 +149,10 @@ expectation. @ expectations.py:24 |
 
 What do we do now? Well, we can go in the pipeline code and make sure to
 exclude the rows causing the problem. To do that, simply open
-`models.py`, go into the function `normalized_taxi_trips` and de-comment
+`models.py`, go into the function `normalized_taxi_trips` and uncomment
 this line:
 
-```python notest title="models.py"
+```python type:ignore title="models.py"
 pickup_location_table = pc.drop_null(pickup_location_table)
 ```
 
