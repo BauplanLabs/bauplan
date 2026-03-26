@@ -1,7 +1,8 @@
 from typing import Any, List, Optional
+import pyarrow
 
 
-class Model:
+class Model(pyarrow.Table):
     """
     Represents a model (dataframe/table representing a DAG step) as an input
     to a function.
@@ -86,11 +87,4 @@ class Model:
         connector_config_key: Optional[str] = None,
         connector_config_uri: Optional[str] = None,
         **kwargs: Any,
-    ) -> None:
-        self.name = name
-        self.columns = columns
-        self.filter = filter
-        self.ref = ref
-        self.connector = connector
-        self.connector_config_key = connector_config_key
-        self.connector_config_uri = connector_config_uri
+    ) -> None: ...

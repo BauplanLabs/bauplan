@@ -44,3 +44,15 @@ class Parameter:
 
     def __init__(self, param_name: str) -> None:
         Parameter._requested.add(param_name)
+
+    def __float__(self) -> float:
+        raise NotImplementedError
+
+    def __int__(self) -> int:
+        raise NotImplementedError
+
+    def __str__(self) -> str:
+        raise NotImplementedError
+
+    def __index__(self) -> int:
+        raise NotImplementedError
