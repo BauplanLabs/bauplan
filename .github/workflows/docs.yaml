@@ -1,0 +1,100 @@
+name: Docs Website
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/docs.yaml
+      - docs/**
+      - "!**/README.md"
+      - "!**/Justfile"
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/docs.yaml
+      - docs/**
+      - "!**/README.md"
+      - "!**/Justfile"
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment (dev or prod)"
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (dev or prod)"
+        type: choice
+        options: [dev, prod]
+        default: dev
+
+permissions:
+  id-token: write # Required for AWS OIDC authentication
+  contents: read
+
+concurrency:
+  group: docs-deploy-${{ inputs.environment || 'dev' }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    environment: ${{ inputs.environment || 'dev' }}
+    env:
+      # Get the tests and the doc generation to share a virtualenv.
+      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/docs/.venv
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
+        with:
+          working_directory: ./docs
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cache/uv
+            ~/.local/share/uv
+            target/
+            docs/.venv
+            docs/node_modules
+          key: ${{ runner.os }}-${{ runner.arch }}-docs-${{ hashFiles('Cargo.lock', 'docs/bun.lock', 'docs/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.arch }}-docs-
+            ${{ runner.os }}-${{ runner.arch }}-cargo-
+
+      # Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          role-session-name: DeployDocsWebsite
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: false
+
+      - name: docusaurus build
+        working-directory: ./docs
+        env:
+          DOCS_URL: ${{ vars.DOCS_URL }}
+        run: just build /tmp/build
+
+      # Run typechecking after building, so that it also checks the generated mdx files.
+      - name: Typecheck doc snippets
+        run: cargo test --test snippets -- docs_website
+
+      # By default, we have a strict robots.txt, so that the dev/qa sites
+      # (which are public) don't get scraped. In prod, we need to delete
+      # that file.
+      - if: inputs.environment == 'prod'
+        run: rm /tmp/build/robots.txt
+
+      - name: aws s3 sync
+        run: aws s3 sync /tmp/build s3://${{ vars.DOCS_S3_BUCKET }} --delete
+      - name: invalidate cloudfront
+        run: aws cloudfront create-invalidation --distribution-id "${{ vars.DOCS_CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*" --output text --query "Invalidation.Id"

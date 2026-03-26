@@ -44,6 +44,20 @@ jobs:
       tag: ${{ needs.release-plz-release.outputs.tag }}
     secrets: inherit
 
+  # Deploy docs for the new version.
+  docs:
+    name: Deploy docs
+    needs: release-plz-release
+    if: ${{ needs.release-plz-release.outputs.releases_created == 'true' }}
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/docs.yaml
+    with:
+      environment: prod
+    secrets: inherit
+
   # Create a PR with the new versions and changelog, preparing the next release.
   release-plz-pr:
     name: Release-plz PR
