@@ -1,5 +1,6 @@
 [tools]
 buf = "1"
+bun = "1.2.18"
 just = "latest"
 protoc = "31"
 rust = { version = "1.92.0", profile = "default" }
