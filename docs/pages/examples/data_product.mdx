@@ -54,7 +54,7 @@ You need [Docker installed in your
 laptop](https://docs.docker.com/desktop/) and running (it will be used
 to build the Lambda image) and the Serverless framework installed:
 
-```bash
+```sh
 npm install -g serverless@3.40.0
 ```
 
@@ -62,7 +62,7 @@ npm install -g serverless@3.40.0
 
 Export your Bauplan credentials as environment variables:
 
-```bash
+```sh
 export BPLN_KEY=<your_bauplan_key>
 export BPLN_USER=<your_bauplan_usename>
 ```
@@ -72,7 +72,7 @@ execution.
 
 ### 5. Deploy the Lambda
 
-```bash
+```sh
 cd serverless
 serverless deploy
 ```
@@ -85,7 +85,7 @@ You can trigger the Lambda manually from the AWS Console.
 
 ### 7. (Optional) Test the pipeline interactively
 
-```bash
+```sh
 cd src/bpln_pipeline
 bauplan run --namespace tlc_trip_record --dry-run --preview head
 ```
@@ -139,11 +139,12 @@ This product follows the WAP pattern:
 -   **Audit**: quality checks via Arrow-native expectations
 -   **Publish**: only merge if all checks pass
 
-```bash
+```sh
 bauplan branch create user.my_product
 bauplan checkout user.my_product
 bauplan run
-bauplan merge user.my_product -from main
+bauplan checkout main
+bauplan branch merge user.my_product
 ```
 
 This allows for fast, safe, zero-copy updates with no environment

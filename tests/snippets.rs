@@ -24,8 +24,8 @@ impl fmt::Display for Snippet {
     }
 }
 
-/// Extract fenced ```python blocks from a markdown string.
-fn extract_md_snippets(src: &str, path: &Path) -> anyhow::Result<Vec<Snippet>> {
+/// Extract fenced code blocks from a markdown string.
+fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec<Snippet>> {
     let md_lang = tree_sitter_md::LANGUAGE.into();
 
     let mut md_parser = Parser::new();
@@ -52,11 +52,11 @@ fn extract_md_snippets(src: &str, path: &Path) -> anyhow::Result<Vec<Snippet>> {
         let code_node = mm.captures.iter().find(|c| c.index == code_idx).unwrap();
 
         let info = info_node.node.utf8_text(src.as_bytes())?;
-        if !info.starts_with("python") {
+        if !info.starts_with(lang) {
             continue;
         }
 
-        let tag = info.strip_prefix("python").unwrap().trim();
+        let tag = info.strip_prefix(lang).unwrap().trim();
         if tag.split_whitespace().any(|t| t == "type:ignore") {
             continue;
         }
@@ -102,7 +102,7 @@ fn extract_pyi_snippets(path: &Path, src: &str, snippets: &mut Vec<Snippet>) -> 
             let base_line = cap.node.start_position().row;
             let docstring = textwrap::dedent(raw);
 
-            for mut snippet in extract_md_snippets(&docstring, path)? {
+            for mut snippet in extract_md_snippets("python", &docstring, path)? {
                 snippet.line += base_line;
                 snippets.push(snippet);
             }
@@ -180,11 +180,96 @@ fn docs_website() -> anyhow::Result<()> {
         if path.extension().is_some_and(|e| e == "mdx") {
             let rel = path.strip_prefix(root).unwrap_or(path);
             let src = fs::read_to_string(path)?;
-            for snippet in extract_md_snippets(&src, rel)? {
+            for snippet in extract_md_snippets("python", &src, rel)? {
                 snippets.push(snippet);
             }
         }
     }
 
     typecheck_snippets(root, &snippets)
+}
+
+/// Look for and validate `bauplan` invocations in the docs.
+#[test]
+fn cli() -> anyhow::Result<()> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let bin = escargot::CargoBuild::new()
+        .bin("bauplan")
+        .manifest_path(root.join("Cargo.toml"))
+        // This feature disables actually running the CLI.
+        .features("_check-parse")
+        .run()
+        .context("failed to build bauplan binary")?;
+
+    let placeholder_re = Regex::new(r"<[A-Za-z_]+>").unwrap();
+    let continuation_re = Regex::new(r"\\\s*\n\s*").unwrap();
+
+    let blue = anstyle::AnsiColor::Blue.on_default();
+    let dim = anstyle::Style::new().dimmed();
+
+    let mut failures = Vec::new();
+    let mut successes = 0;
+
+    for entry in walkdir::WalkDir::new(root.join("docs/pages")) {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().is_none_or(|e| e != "mdx") {
+            continue;
+        }
+
+        let rel = path.strip_prefix(root).unwrap_or(path);
+        let src = fs::read_to_string(path)?;
+        for snippet in extract_md_snippets("sh", &src, rel)? {
+            // Join backslash-continuation lines, then split into
+            // individual commands.
+            let joined = continuation_re.replace_all(&snippet.code, " ");
+            for (i, line) in joined.lines().enumerate() {
+                let line = line.trim();
+                if !line.starts_with("bauplan ") && line != "bauplan" {
+                    continue;
+                }
+
+                // Skip synopsis lines like `bauplan run [flags]`.
+                if line.contains("[flags]") {
+                    continue;
+                }
+
+                // Replace <PLACEHOLDER> with a dummy value so clap can parse it.
+                let line = placeholder_re.replace_all(line, "PLACEHOLDER");
+
+                let loc = format!("{}:{}", snippet.path.display(), snippet.line + i);
+                let Some(args) = shlex::split(&line) else {
+                    failures.push(format!("{loc}: failed to shell-split: {line}"));
+                    continue;
+                };
+
+                let output = bin
+                    .command()
+                    .args(&args[1..])
+                    .output()
+                    .context("failed to run bauplan")?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    failures.push(format!(
+                        "{loc}:\n{blue}% {line}{blue:#}\n{dim}{stderr}{dim:#}"
+                    ));
+                } else {
+                    successes += 1;
+                }
+            }
+        }
+    }
+
+    if failures.is_empty() {
+        let green = anstyle::AnsiColor::Green.on_default();
+        anstream::eprintln!("{green}{successes} CLI invocations checked, all passed{green:#}");
+        Ok(())
+    } else {
+        bail!(
+            "{} invocation(s) failed to parse:\n\n{}",
+            failures.len(),
+            failures.join("\n\n")
+        );
+    }
 }

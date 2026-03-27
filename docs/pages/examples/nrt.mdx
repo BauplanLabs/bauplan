@@ -81,7 +81,7 @@ Open three tabs in your terminal.
 
 ### Terminal 1: Start a Prefect Server
 
-```bash
+```sh
 uv run --with-requirements requirements.txt \
     prefect server start
 ```
@@ -94,7 +94,7 @@ ingestion and the WAP worflow.
 
 Configure Prefect (required before the first run)
 
-```bash
+```sh
 uv run --with-requirements requirements.txt \
     prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
 ```
@@ -103,7 +103,7 @@ Set up AWS credentials in one of the following two ways:
 
 1.  Environment variables:
 
-```bash
+```sh
 export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_DEFAULT_REGION=your-region  # e.g., us-east-1
@@ -116,7 +116,7 @@ guide](https://docs.aws.amazon.com/cli/v1/userguide/cli-configure-files.html).
 
 After setting up AWS credentials, run:
 
-```bash
+```sh
 uv run --with-requirements requirements.txt \
     orchestrator/run.py --username your_bauplan_username \
                         --namespace your_namespace \
@@ -126,7 +126,7 @@ uv run --with-requirements requirements.txt \
 
 ### Terminal 3: Streamlit Dashboard
 
-```bash
+```sh
 cd dashboard
 streamlit run app.py
 ```

@@ -43,14 +43,14 @@ data: **use only public datasets**.
 
 Create an import branch prefixed with your username:
 
-```bash
+```sh
 bauplan branch create <your_username>.import_branch
 bauplan checkout <your_username>.import_branch
 ```
 
 Verify your active branch by running:
 
-```bash
+```sh
 bauplan branch ls
 ```
 
@@ -63,27 +63,27 @@ done using the table API.
 Use the `table create` command to define and create your
 table:
 
-```bash
+```sh
 bauplan table create <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet'
 ```
 
 Confirm that the table was created and inspect the table's schema:
 
-```bash
+```sh
 bauplan table get <your_table_name>
 ```
 
 Use the `table import` command to populate your new table
 with the data:
 
-```bash
+```sh
 bauplan table import <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet'
 ```
 
 Run a quick exploration query to make sure that the data was imported
 correctly:
 
-```bash
+```sh
 bauplan query "SELECT COUNT(*) AS trips FROM yourname_green_taxi"
 ```
 
@@ -95,14 +95,14 @@ compares your **current branch** against a target branch. Use this
 before merging to review exactly what changes will be introduced. For
 example:
 
-```bash
+```sh
 bauplan branch diff main
 ```
 
 Once you've verified your data, merge your import branch into the main
 catalog:
 
-```bash
+```sh
 bauplan checkout main
 bauplan branch merge <your_username>.import_branch
 ```

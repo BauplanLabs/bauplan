@@ -100,7 +100,7 @@ To run Airflow components explicitly, start a lightweight local webserver and a 
 
 In one terminal, run these commands (the first two are needed only the first time):
 
-```bash
+```sh
 uv venv
 source .venv/bin/activate
 uv pip install apache-airflow bauplan pendulum
@@ -110,7 +110,7 @@ uv run python -m airflow webserver
 
 Then in another terminal (same virtual environment), run:
 
-```bash
+```sh
 python -m airflow scheduler
 ```
 
@@ -118,7 +118,7 @@ This gives you the Airflow UI at [http://localhost:8080](http://localhost:8080/)
 
 To run in-process with `dag.test()` for fast iteration, create a Python file named `bauplan_airflow3_flow.py`, paste the code above in it and run it in another window of your terminal:
 
-```bash
+```sh
 python bauplan_airflow3_flow.py
 ```
 

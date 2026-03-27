@@ -7,6 +7,11 @@ use tracing_subscriber::{EnvFilter, fmt};
 fn main() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
+    // Used by integration tests to validate argument parsing without executing.
+    if cfg!(feature = "_check-parse") {
+        return Ok(());
+    }
+
     // Tracks global progress bar state. This is necessary so that indicatif
     // progress bars and tracing log lines play nicely with each other.
     let mp = indicatif::MultiProgress::new();

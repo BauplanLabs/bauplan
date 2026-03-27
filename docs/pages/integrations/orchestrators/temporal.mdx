@@ -127,7 +127,7 @@ This uses Temporal’s Python SDK to define Workflows and Activities as plain Py
 
 Install and start Temporal dev server in one terminal:
 
-```bash
+```sh
 brew install temporal
 temporal server start-dev
 ```
@@ -136,7 +136,7 @@ This gives you the Temporal Web UI at `http://localhost:8233` and a local gRPC e
 
 Run the worker and workflow in another terminal:
 
-```bash
+```sh
 uv run --with temporalio --with bauplan workflow_and_worker.py
 ```
 

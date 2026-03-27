@@ -170,7 +170,7 @@ run_button.on_click(on_run_clicked)
 
 Create a virtual environment and install the dependencies:
 
-```bash
+```sh
 uv venv
 source .venv/bin/activate
 uv pip install jupyterlab ipywidgets bauplan pandas matplotlib
@@ -178,12 +178,12 @@ uv pip install jupyterlab ipywidgets bauplan pandas matplotlib
 
 Then start JupyterLab from your terminal:
 
-```bash
+```sh
 jupyter lab
 ```
 
 Create a new Python 3 notebook, paste the cells above, and execute them. If widgets do not render, ensure ipywidgets is installed and enabled. In classic Notebook, you may need to enable the extension with:
 
-```bash
+```sh
 jupyter nbextension enable --py widgetsnbextension
 ```

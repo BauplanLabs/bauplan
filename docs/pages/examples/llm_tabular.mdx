@@ -56,7 +56,7 @@ Index](https://github.com/run-llama/llama_index) *SEC 10-Q dataset.*
 
 The pipeline requires API keys for OpenAI and AWS (if using S3):
 
-```bash
+```sh
 bauplan parameter set openai_api_key <key> --type secret
 ```
 
@@ -108,7 +108,7 @@ Contact the Bauplan team for further inquiries.*
 Run the following command to process PDFs and generate a structured
 dataset:
 
-```bash
+```sh
 cd src
 python run.py --ingestion-branch your_username.ingestion_branch
 ```
@@ -120,14 +120,14 @@ pattern for isolation.
 
 Check the generated table:
 
-```bash
+```sh
 bauplan branch checkout main
 bauplan table get my_pdfs.sec_10_q_analysis
 ```
 
 Check out the maximum value for a column:
 
-```bash
+```sh
 bauplan query "SELECT MAX(usd) as max_usd FROM my_pdfs.sec_10_q_analysis"
 ```
 
@@ -135,7 +135,7 @@ bauplan query "SELECT MAX(usd) as max_usd FROM my_pdfs.sec_10_q_analysis"
 
 Launch the visualization app:
 
-```bash
+```sh
 cd app
 uv run --with-requirements requirements.txt \
     streamlit run explore_analysis.py

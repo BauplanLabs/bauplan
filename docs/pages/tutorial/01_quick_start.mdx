@@ -20,7 +20,7 @@ by looking at the data catalog using the CLI. This command will show you
 the tables in the main [branch](/concepts/git_for_data/data_branches)
 in the data lake.
 
-```bash
+```sh
 bauplan branch get main
 ```
 
@@ -30,7 +30,7 @@ important tables for this tutorial are `taxi_fhvhv` and `taxi_zones`
 Here `bauplan` corresponds to the default
 [namespace](/concepts/namespaces).
 
-```bash
+```sh
 bauplan table get taxi_fhvhv
 bauplan table get taxi_zones
 ```
@@ -39,7 +39,7 @@ bauplan table get taxi_zones
 
 You can query the data directly in the data lake using the CLI:
 
-```bash
+```sh
 bauplan query "SELECT max(tips) FROM taxi_fhvhv WHERE pickup_datetime = '2023-01-01T00:00:00-05:00'"
 ```
 
@@ -52,7 +52,7 @@ Go into the folder `quick_start`, and run our demo pipeline. For now, we
 don\'t have to write any new table in the data lake, so we will just run
 in-memory (dry-run).
 
-```bash
+```sh
 cd 01-quick-start
 bauplan run --dry-run
 ```

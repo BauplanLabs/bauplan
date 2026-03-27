@@ -15,7 +15,7 @@ Complete reference documentation for the Bauplan Command Line Interface (CLI).
 - [Command Reference](#command-reference) - Detailed documentation
 
 **Commands**
-[version](#version) • [run](#run) • [rerun](#rerun) • [checkout](#checkout) • [query](#query) • [commit](#commit) • [info](#info) • [branch](#branch) • [tag](#tag) • [namespace](#namespace) • [table](#table) • [parameter](#parameter) • [config](#config) • [job](#job)
+[version](#version) • [run](#run) • [checkout](#checkout) • [query](#query) • [commit](#commit) • [info](#info) • [branch](#branch) • [tag](#tag) • [namespace](#namespace) • [table](#table) • [parameter](#parameter) • [config](#config) • [job](#job)
 
 **Common Workflows**
 [Branch and Version Control](#branch-and-version-control) • [Data Exploration](#data-exploration) • [Pipeline Execution](#pipeline-execution) • [Job Management](#job-management) • [Table Operations](#table-operations)
@@ -53,7 +53,6 @@ Available commands:
 
 - `version` - Show the version of the Bauplan CLI
 - `run` - Execute a bauplan run
-- `rerun` - Re-execute a previous bauplan run
 - `branch` - Manage branches
 - `tag` - Manage tags
 - `commit` - Show commit history for a ref
@@ -77,7 +76,7 @@ Show the version of the Bauplan CLI.
 
 **Usage:**
 
-```bash
+```sh
 bauplan version [flags]
 
 ```
@@ -88,7 +87,7 @@ bauplan version [flags]
 
 **Example:**
 
-```bash
+```sh
 bauplan version
 
 ```
@@ -101,7 +100,7 @@ Execute a bauplan run (pipeline execution).
 
 **Usage:**
 
-```bash
+```sh
 bauplan run [flags]
 
 ```
@@ -115,8 +114,7 @@ bauplan run [flags]
 | `--cache` | - | string | - | Set the cache mode. [on, off] |
 | `--summary-no-trunc` | - | boolean | false | Do not truncate summary output |
 | `--preview` | - | string | - | Set the preview mode. [on, off, head, tail] |
-| `--strict` | - | string | - | Exit upon encountering runtime warnings (e.g., invalid column output) |
-| `--runner-node` | - | string | "bauplan-runner" | Node to run the job on. If not set, the job will be run on the default node for the project |
+| `--strict` | - | string | - | Exit upon encountering runtime warnings (e.g., invalid column output). [on, off] |
 | `--param` | - | string (repeatable) | - | Set a parameter for the job. Format: key=value. Can be used multiple times |
 | `--namespace` | `-n` | string | - | Namespace to run the job in. If not set, the job will be run in the default namespace for the project |
 | `--ref` | `-r` | string | - | Ref or branch name from which to run the job |
@@ -128,7 +126,7 @@ bauplan run [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Run pipeline in current directory
 bauplan run
 
@@ -136,60 +134,13 @@ bauplan run
 bauplan run --dry-run
 
 # Run with strict mode and preview
-bauplan run --strict --preview head
+bauplan run --strict on --preview head
 
 # Run on specific branch with custom parameters
 bauplan run --ref main --param env=prod
 
 # Run in background
 bauplan run --detach
-
-# Run with specific node
-bauplan run --runner-node custom-node --namespace my_ns
-
-```
-
----
-
-### rerun
-
-Re-execute a previous bauplan run.
-
-**Usage:**
-
-```bash
-bauplan rerun [flags]
-
-```
-
-**Flags:**
-
-| Flag | Short | Type | Default | Description |
-| --- | --- | --- | --- | --- |
-| `--job-id` / `--id` | - | string | - | Run ID to re-run (required) |
-| `--arg` | `-a` | string (repeatable) | - | Arguments to pass to the job. Format: key=value |
-| `--summary-no-trunc` | - | boolean | false | Do not truncate summary output |
-| `--preview` | - | string | - | Set the preview mode. [on, off, head, tail] |
-| `--strict` | `-s` | string | - | Exit upon encountering runtime warnings |
-| `--runner-node` | - | string | "bauplan-runner" | Node to run the job on |
-| `--namespace` | `-n` | string | - | Namespace to run the job in |
-| `--ref` | `-r` | string | - | Ref or branch name from which to run the job |
-| `--cache` | - | string | - | Set the cache mode. [on, off] |
-| `--dry-run` | - | boolean | false | Dry run the job without materializing any models |
-| `--transaction` | `-t` | string | - | Run the dag as a transaction |
-| `--help` | `-h` | - | - | Show help |
-
-**Examples:**
-
-```bash
-# Re-run a specific job
-bauplan rerun --job-id abc123def456
-
-# Re-run with new parameters
-bauplan rerun --id abc123def456 --arg env=staging
-
-# Re-run as dry run
-bauplan rerun --job-id abc123def456 --dry-run
 
 ```
 
@@ -201,7 +152,7 @@ Set the active branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan checkout [flags] <BRANCH_NAME>
 
 ```
@@ -210,13 +161,13 @@ bauplan checkout [flags] <BRANCH_NAME>
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--branch` | `-b` | string | - | Create a new branch (alias for "branch create") |
-| `--from-ref` | - | string | - | Ref from which to create when using --branch. If not specified, default is active branch |
+| | `-b` | boolean | false | Create the branch first (equivalent to "branch create --if-not-exists") |
+| `--from-ref` | - | string | - | Ref from which to create when using -b. If not specified, default is active branch |
 | `--help` | `-h` | - | - | Show help |
 
 **Examples:**
 
-```bash
+```sh
 # Checkout existing branch
 bauplan checkout main
 
@@ -224,10 +175,10 @@ bauplan checkout main
 bauplan checkout username.dev_branch
 
 # Create and checkout new branch from main
-bauplan checkout --branch username.new_feature --from-ref main
+bauplan checkout -b username.new_feature --from-ref main
 
 # Create and checkout new branch from active branch
-bauplan checkout --branch username.new_feature
+bauplan checkout -b username.new_feature
 
 ```
 
@@ -239,7 +190,7 @@ Run an SQL query against the lakehouse.
 
 **Usage:**
 
-```bash
+```sh
 bauplan query [flags] [SQL]
 
 ```
@@ -261,7 +212,7 @@ bauplan query [flags] [SQL]
 
 **Examples:**
 
-```bash
+```sh
 # Run query inline
 bauplan query "SELECT * FROM raw_data.customers LIMIT 10"
 
@@ -290,8 +241,8 @@ Show commit history for a ref.
 
 **Usage:**
 
-```bash
-bauplan commit [flags]
+```sh
+bauplan commit [flags] [REF_NAME]
 
 ```
 
@@ -299,7 +250,6 @@ bauplan commit [flags]
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--ref` | `-r` | string | - | Ref or branch name to get the commits from (defaults to active branch) |
 | `--message` | - | string | - | Filter by message content (string or regex like "^something.*$") |
 | `--author-username` | - | string | - | Filter by author username (string or regex) |
 | `--author-name` | - | string | - | Filter by author name (string or regex) |
@@ -311,12 +261,12 @@ bauplan commit [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Show recent commits on active branch
 bauplan commit
 
 # Show commits from specific branch
-bauplan commit --ref main
+bauplan commit main
 
 # Show more commits
 bauplan commit --limit 20
@@ -343,7 +293,7 @@ Print debug information about the current environment.
 
 **Usage:**
 
-```bash
+```sh
 bauplan info [flags]
 
 ```
@@ -354,7 +304,7 @@ bauplan info [flags]
 
 **Example:**
 
-```bash
+```sh
 bauplan info
 
 ```
@@ -367,7 +317,7 @@ Manage branches.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch <command> [flags]
 
 ```
@@ -389,7 +339,7 @@ List all available branches.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch ls [flags] [BRANCH_NAME]
 
 ```
@@ -406,7 +356,7 @@ bauplan branch ls [flags] [BRANCH_NAME]
 
 **Examples:**
 
-```bash
+```sh
 # List user's own branches
 bauplan branch ls
 
@@ -430,7 +380,7 @@ Create a new branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch create [flags] <BRANCH_NAME>
 
 ```
@@ -445,7 +395,7 @@ bauplan branch create [flags] <BRANCH_NAME>
 
 **Examples:**
 
-```bash
+```sh
 # Create branch from active branch
 bauplan branch create username.dev_branch
 
@@ -463,7 +413,7 @@ Delete a branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch rm [flags] <BRANCH_NAME>
 
 ```
@@ -477,7 +427,7 @@ bauplan branch rm [flags] <BRANCH_NAME>
 
 **Examples:**
 
-```bash
+```sh
 # Delete a branch
 bauplan branch rm username.old_branch
 
@@ -492,7 +442,7 @@ Get information about a branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch get [flags] <BRANCH_NAME>
 
 ```
@@ -506,7 +456,7 @@ bauplan branch get [flags] <BRANCH_NAME>
 
 **Examples:**
 
-```bash
+```sh
 # Get branch information
 bauplan branch get username.dev_branch
 
@@ -521,7 +471,7 @@ Set the active branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch checkout [flags] <BRANCH_NAME>
 
 ```
@@ -532,7 +482,7 @@ bauplan branch checkout [flags] <BRANCH_NAME>
 
 **Examples:**
 
-```bash
+```sh
 bauplan branch checkout main
 bauplan branch checkout username.dev_branch
 
@@ -544,7 +494,7 @@ Show the diff between two branches.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch diff [flags] <BRANCH_NAME_A> [BRANCH_NAME_B]
 
 ```
@@ -558,7 +508,7 @@ bauplan branch diff [flags] <BRANCH_NAME_A> [BRANCH_NAME_B]
 
 **Examples:**
 
-```bash
+```sh
 # Diff between active branch and another
 bauplan branch diff username.dev_branch
 
@@ -576,7 +526,7 @@ Merge a branch into the active branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch merge [flags] <BRANCH_NAME>
 
 ```
@@ -590,7 +540,7 @@ bauplan branch merge [flags] <BRANCH_NAME>
 
 **Examples:**
 
-```bash
+```sh
 # Merge branch into active branch
 bauplan branch merge username.dev_branch
 
@@ -601,7 +551,7 @@ bauplan branch merge username.feature --commit-message "Merge feature updates"
 
 **Important:** You must be on the target branch before merging. For example, to merge into `main`:
 
-```bash
+```sh
 bauplan branch checkout main
 bauplan branch merge username.feature_branch
 
@@ -613,7 +563,7 @@ Rename a branch.
 
 **Usage:**
 
-```bash
+```sh
 bauplan branch rename [flags] <BRANCH_NAME> <NEW_BRANCH_NAME>
 
 ```
@@ -624,7 +574,7 @@ bauplan branch rename [flags] <BRANCH_NAME> <NEW_BRANCH_NAME>
 
 **Examples:**
 
-```bash
+```sh
 bauplan branch rename username.old_name username.new_name
 
 ```
@@ -635,7 +585,7 @@ Manage tags.
 
 **Usage:**
 
-```bash
+```sh
 bauplan tag <command> [flags]
 
 ```
@@ -653,7 +603,7 @@ List all available tags.
 
 **Usage:**
 
-```bash
+```sh
 bauplan tag ls [flags]
 
 ```
@@ -668,7 +618,7 @@ bauplan tag ls [flags]
 
 **Examples:**
 
-```bash
+```sh
 # List all tags
 bauplan tag ls
 
@@ -686,7 +636,7 @@ Create a new tag.
 
 **Usage:**
 
-```bash
+```sh
 bauplan tag create [flags] <TAG_NAME>
 
 ```
@@ -701,7 +651,7 @@ bauplan tag create [flags] <TAG_NAME>
 
 **Examples:**
 
-```bash
+```sh
 # Create tag from active branch
 bauplan tag create v1.0
 
@@ -719,7 +669,7 @@ Delete a tag.
 
 **Usage:**
 
-```bash
+```sh
 bauplan tag rm [flags] <TAG_NAME>
 
 ```
@@ -733,7 +683,7 @@ bauplan tag rm [flags] <TAG_NAME>
 
 **Examples:**
 
-```bash
+```sh
 # Delete a tag
 bauplan tag rm v1.0
 
@@ -748,7 +698,7 @@ Rename a tag.
 
 **Usage:**
 
-```bash
+```sh
 bauplan tag rename [flags] <TAG_NAME> <NEW_TAG_NAME>
 
 ```
@@ -759,7 +709,7 @@ bauplan tag rename [flags] <TAG_NAME> <NEW_TAG_NAME>
 
 **Examples:**
 
-```bash
+```sh
 bauplan tag rename v1.0 v1.0-stable
 
 ```
@@ -772,7 +722,7 @@ Manage namespaces.
 
 **Usage:**
 
-```bash
+```sh
 bauplan namespace <command> [flags]
 
 ```
@@ -789,7 +739,7 @@ List available namespaces.
 
 **Usage:**
 
-```bash
+```sh
 bauplan namespace ls [flags] <NAMESPACE>
 
 ```
@@ -804,7 +754,7 @@ bauplan namespace ls [flags] <NAMESPACE>
 
 **Examples:**
 
-```bash
+```sh
 # List namespaces on active branch
 bauplan namespace ls
 
@@ -822,7 +772,7 @@ Create a new namespace.
 
 **Usage:**
 
-```bash
+```sh
 bauplan namespace create [flags] <NAMESPACE>
 
 ```
@@ -838,7 +788,7 @@ bauplan namespace create [flags] <NAMESPACE>
 
 **Examples:**
 
-```bash
+```sh
 # Create namespace on active branch
 bauplan namespace create raw_data
 
@@ -856,7 +806,7 @@ Drop a namespace from the data catalog.
 
 **Usage:**
 
-```bash
+```sh
 bauplan namespace rm [flags] <NAMESPACE>
 
 ```
@@ -872,7 +822,7 @@ bauplan namespace rm [flags] <NAMESPACE>
 
 **Examples:**
 
-```bash
+```sh
 # Delete namespace from active branch
 bauplan namespace rm old_namespace
 
@@ -892,7 +842,7 @@ Manage tables.
 
 **Usage:**
 
-```bash
+```sh
 bauplan table <command> [flags]
 
 ```
@@ -915,7 +865,7 @@ List all available tables.
 
 **Usage:**
 
-```bash
+```sh
 bauplan table ls [flags]
 
 ```
@@ -931,7 +881,7 @@ bauplan table ls [flags]
 
 **Examples:**
 
-```bash
+```sh
 # List tables on active branch
 bauplan table ls
 
@@ -952,7 +902,7 @@ Get information about a table.
 
 **Usage:**
 
-```bash
+```sh
 bauplan table get [flags] TABLE_NAME
 
 ```
@@ -966,7 +916,7 @@ bauplan table get [flags] TABLE_NAME
 
 **Examples:**
 
-```bash
+```sh
 # Get table info from active branch
 bauplan table get customers
 
@@ -984,7 +934,7 @@ Drop a table from the data catalog (does not free up storage).
 
 **Usage:**
 
-```bash
+```sh
 bauplan table rm [flags] TABLE_NAME
 
 ```
@@ -1000,7 +950,7 @@ bauplan table rm [flags] TABLE_NAME
 
 **Examples:**
 
-```bash
+```sh
 # Delete table from active branch
 bauplan table rm old_table
 
@@ -1018,8 +968,8 @@ Create a new table.
 
 **Usage:**
 
-```bash
-bauplan table create [flags]
+```sh
+bauplan table create [flags] <TABLE_NAME>
 
 ```
 
@@ -1027,8 +977,7 @@ bauplan table create [flags]
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--name` | - | string | - | Name of the table to create (required) |
-| `--search-uri` | - | string | - | URI search string to S3 bucket containing parquet files (e.g., s3://bucket/path/a/*) |
+| `--search-uri` | - | string | - | URI search string to S3 bucket containing parquet files (e.g., s3://bucket/path/a/*) (required) |
 | `--branch` | `-b` | string | - | Branch to create the table in (defaults to active branch) |
 | `--namespace` | `-n` | string | - | Namespace the table is in. If not set, the default namespace in your account will be used |
 | `--partitioned-by` | - | string | - | Partition the table by the given columns |
@@ -1039,18 +988,18 @@ bauplan table create [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Create table from S3 data
-bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --namespace raw_data
+bauplan table create customers --search-uri s3://mybucket/customers/*.parquet --namespace raw_data
 
 # Create table with partitioning
-bauplan table create --name orders --search-uri s3://mybucket/orders/*.parquet --partitioned-by date_column
+bauplan table create orders --search-uri s3://mybucket/orders/*.parquet --partitioned-by date_column
 
 # Create table on specific branch
-bauplan table create --name products --search-uri s3://mybucket/products/*.parquet --branch main
+bauplan table create products --search-uri s3://mybucket/products/*.parquet --branch main
 
 # Replace existing table
-bauplan table create --name customers --search-uri s3://mybucket/customers/*.parquet --replace
+bauplan table create customers --search-uri s3://mybucket/customers/*.parquet --replace
 
 ```
 
@@ -1060,8 +1009,8 @@ Create a plan for a new table (preview before applying).
 
 **Usage:**
 
-```bash
-bauplan table create-plan [flags]
+```sh
+bauplan table create-plan [flags] <TABLE_NAME>
 
 ```
 
@@ -1069,8 +1018,7 @@ bauplan table create-plan [flags]
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--name` | - | string | - | Name of the table to create (required) |
-| `--search-uri` | - | string | - | URI search string to S3 bucket containing parquet files |
+| `--search-uri` | - | string | - | URI search string to S3 bucket containing parquet files (required) |
 | `--branch` | `-b` | string | - | Branch to create the table in |
 | `--namespace` | `-n` | string | - | Namespace the table is in |
 | `--partitioned-by` | - | string | - | Partition the table by the given columns |
@@ -1081,12 +1029,12 @@ bauplan table create-plan [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Create plan and save to file
-bauplan table create-plan --name customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json
+bauplan table create-plan customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json
 
 # Create plan without saving
-bauplan table create-plan --name products --search-uri s3://mybucket/products/*.parquet
+bauplan table create-plan products --search-uri s3://mybucket/products/*.parquet
 
 ```
 
@@ -1096,7 +1044,7 @@ Apply a table create plan manually.
 
 **Usage:**
 
-```bash
+```sh
 bauplan table create-plan-apply [flags]
 
 ```
@@ -1112,7 +1060,7 @@ bauplan table create-plan-apply [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Apply previously created plan
 bauplan table create-plan-apply --plan plan.json
 
@@ -1124,8 +1072,8 @@ Create an external read-only Iceberg table from existing data.
 
 **Usage:**
 
-```bash
-bauplan table create-external [flags]
+```sh
+bauplan table create-external [flags] <TABLE_NAME>
 
 ```
 
@@ -1139,7 +1087,6 @@ Two modes:
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--name` | - | string | - | Name of the external table to create (required) |
 | `--metadata-json-uri` | - | string | - | URI to Iceberg metadata.json file (e.g., s3://bucket/metadata.json) |
 | `--search-pattern` | - | string (repeatable) | - | Search pattern for parquet files (e.g., s3://bucket/2025/*.parquet). Can be specified multiple times |
 | `--branch` | `-b` | string | - | Branch to create the table in (defaults to active branch) |
@@ -1152,18 +1099,18 @@ Two modes:
 
 **Examples:**
 
-```bash
+```sh
 # Create external table from Iceberg metadata
-bauplan table create-external --name events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data
+bauplan table create-external events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data
 
 # Create external table from parquet files
-bauplan table create-external --name events --search-pattern "s3://bucket/data/*.parquet" --namespace raw_data
+bauplan table create-external events --search-pattern "s3://bucket/data/*.parquet" --namespace raw_data
 
 # Create external table with multiple search patterns
-bauplan table create-external --name events --search-pattern "s3://bucket/2024/*.parquet" --search-pattern "s3://bucket/2025/*.parquet" --namespace raw_data
+bauplan table create-external events --search-pattern "s3://bucket/2024/*.parquet" --search-pattern "s3://bucket/2025/*.parquet" --namespace raw_data
 
 # Create and overwrite existing table
-bauplan table create-external --name events --search-pattern "s3://bucket/data/*.parquet" --overwrite
+bauplan table create-external events --search-pattern "s3://bucket/data/*.parquet" --overwrite
 
 ```
 
@@ -1173,8 +1120,8 @@ Import data to an existing table.
 
 **Usage:**
 
-```bash
-bauplan table import [flags]
+```sh
+bauplan table import [flags] <TABLE_NAME>
 
 ```
 
@@ -1182,7 +1129,6 @@ bauplan table import [flags]
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--name` | - | string | - | Name of table where data will be imported into (required) |
 | `--branch` | `-b` | string | - | Branch to import into (defaults to active branch) |
 | `--search-uri` | - | string | - | URI search string (e.g., s3://bucket/path/a/*) (required) |
 | `--continue-on-error` | - | boolean | false | Don't fail if 1/N files fail to import |
@@ -1196,18 +1142,18 @@ bauplan table import [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Import data to existing table
-bauplan table import --name customers --search-uri s3://bucket/customers/new_data/*.parquet
+bauplan table import customers --search-uri s3://bucket/customers/new_data/*.parquet
 
 # Import with continue on error flag
-bauplan table import --name events --search-uri s3://bucket/events/*.parquet --continue-on-error
+bauplan table import events --search-uri s3://bucket/events/*.parquet --continue-on-error
 
 # Import in best-effort mode (ignore new columns)
-bauplan table import --name products --search-uri s3://bucket/products/*.parquet --best-effort
+bauplan table import products --search-uri s3://bucket/products/*.parquet --best-effort
 
 # Import in background
-bauplan table import --name logs --search-uri s3://bucket/logs/*.parquet --detach
+bauplan table import logs --search-uri s3://bucket/logs/*.parquet --detach
 
 ```
 
@@ -1217,7 +1163,7 @@ Revert a table to a previous state from a source ref.
 
 **Usage:**
 
-```bash
+```sh
 bauplan table revert [flags] TABLE_NAME
 
 ```
@@ -1235,7 +1181,7 @@ bauplan table revert [flags] TABLE_NAME
 
 **Examples:**
 
-```bash
+```sh
 # Revert table from another branch
 bauplan table revert customers --source-ref main
 
@@ -1256,7 +1202,7 @@ Manage project parameters.
 
 **Usage:**
 
-```bash
+```sh
 bauplan parameter <command> [flags]
 
 ```
@@ -1273,7 +1219,7 @@ List all parameters in a project.
 
 **Usage:**
 
-```bash
+```sh
 bauplan parameter ls [flags]
 
 ```
@@ -1287,7 +1233,7 @@ bauplan parameter ls [flags]
 
 **Examples:**
 
-```bash
+```sh
 # List parameters in current directory
 bauplan parameter ls
 
@@ -1302,8 +1248,8 @@ Remove a parameter from a project.
 
 **Usage:**
 
-```bash
-bauplan parameter rm [flags]
+```sh
+bauplan parameter rm [flags] <NAME>
 
 ```
 
@@ -1311,18 +1257,17 @@ bauplan parameter rm [flags]
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--name` | - | string | - | Name of the parameter to remove (required) |
 | `--project-dir` | `-p` | string | "." | Path to the root Bauplan project directory |
 | `--help` | `-h` | - | - | Show help |
 
 **Examples:**
 
-```bash
+```sh
 # Remove parameter from current project
-bauplan parameter rm --name db_connection
+bauplan parameter rm db_connection
 
 # Remove parameter from specific project
-bauplan parameter rm --name api_key --project-dir /path/to/project
+bauplan parameter rm api_key --project-dir /path/to/project
 
 ```
 
@@ -1332,8 +1277,8 @@ Set a parameter value in a project.
 
 **Usage:**
 
-```bash
-bauplan parameter set [flags]
+```sh
+bauplan parameter set [flags] <NAME> [DEFAULT_VALUE]
 
 ```
 
@@ -1341,9 +1286,7 @@ bauplan parameter set [flags]
 
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--name` | - | string | - | Name of the parameter to set (required) |
 | `--type` | - | string | - | Type of the parameter [int, float, bool, str, secret] |
-| `--value` | - | string | - | Value of the parameter to set |
 | `--description` | - | string | - | Description of the parameter to set |
 | `--required` | - | boolean | false | Mark the parameter as required |
 | `--optional` | - | boolean | false | Mark the parameter as not required |
@@ -1353,24 +1296,24 @@ bauplan parameter set [flags]
 
 **Examples:**
 
-```bash
+```sh
 # Set string parameter
-bauplan parameter set --name env --type str --value production
+bauplan parameter set env production --type str
 
 # Set integer parameter
-bauplan parameter set --name max_rows --type int --value 1000
+bauplan parameter set max_rows 1000 --type int
 
 # Set boolean parameter
-bauplan parameter set --name debug --type bool --value true
+bauplan parameter set debug true --type bool
 
 # Set secret parameter
-bauplan parameter set --name api_key --type secret --value mysecretkey --required
+bauplan parameter set api_key mysecretkey --type secret --required
 
 # Set parameter from file
-bauplan parameter set --name config --type str --file config.json
+bauplan parameter set config --type str --file config.json
 
 # Set parameter with description
-bauplan parameter set --name db_host --type str --value "localhost" --description "Database host"
+bauplan parameter set db_host "localhost" --type str --description "Database host"
 
 ```
 
@@ -1382,7 +1325,7 @@ Configure Bauplan CLI settings.
 
 **Usage:**
 
-```bash
+```sh
 bauplan config <command> [flags]
 
 ```
@@ -1398,7 +1341,7 @@ Set a configuration value.
 
 **Usage:**
 
-```bash
+```sh
 bauplan config set [flags] <NAME> <VALUE>
 
 ```
@@ -1409,9 +1352,9 @@ bauplan config set [flags] <NAME> <VALUE>
 
 **Examples:**
 
-```bash
+```sh
 # Set configuration value
-bauplan config set profile_name value
+bauplan config set api_key your_key
 
 ```
 
@@ -1421,8 +1364,8 @@ Get the current configuration.
 
 **Usage:**
 
-```bash
-bauplan config get [flags] <NAME>
+```sh
+bauplan config get [flags]
 
 ```
 
@@ -1435,9 +1378,9 @@ bauplan config get [flags] <NAME>
 
 **Examples:**
 
-```bash
-# Get specific configuration
-bauplan config get profile_name
+```sh
+# Show the current profile
+bauplan config get
 
 # Get all profiles
 bauplan config get --all
@@ -1452,7 +1395,7 @@ Manage jobs.
 
 **Usage:**
 
-```bash
+```sh
 bauplan job <command> [flags]
 
 ```
@@ -1470,7 +1413,7 @@ List all available jobs.
 
 **Usage:**
 
-```bash
+```sh
 bauplan job ls [flags]
 
 ```
@@ -1492,7 +1435,7 @@ bauplan job ls [flags]
 
 **Examples:**
 
-```bash
+```sh
 # List recent jobs for current user
 bauplan job ls
 
@@ -1528,7 +1471,7 @@ Get information about a job.
 
 **Usage:**
 
-```bash
+```sh
 bauplan job get [flags] <JOB_ID>
 
 ```
@@ -1539,7 +1482,7 @@ bauplan job get [flags] <JOB_ID>
 
 **Examples:**
 
-```bash
+```sh
 # Get job details
 bauplan job get abc123def456
 
@@ -1551,7 +1494,7 @@ Get logs for a job.
 
 **Usage:**
 
-```bash
+```sh
 bauplan job logs [flags] <JOB_ID>
 
 ```
@@ -1566,7 +1509,7 @@ bauplan job logs [flags] <JOB_ID>
 
 **Examples:**
 
-```bash
+```sh
 # Get job logs
 bauplan job logs abc123def456
 
@@ -1581,7 +1524,7 @@ Stop a job.
 
 **Usage:**
 
-```bash
+```sh
 bauplan job stop [flags] <JOB_ID>
 
 ```
@@ -1592,7 +1535,7 @@ bauplan job stop [flags] <JOB_ID>
 
 **Examples:**
 
-```bash
+```sh
 # Stop a running job
 bauplan job stop abc123def456
 
@@ -1604,7 +1547,7 @@ bauplan job stop abc123def456
 
 ### Branch and Version Control
 
-```bash
+```sh
 # Create a development branch
 bauplan branch create username.dev_feature
 
@@ -1628,7 +1571,7 @@ bauplan branch rm username.dev_feature
 
 ### Data Exploration
 
-```bash
+```sh
 # List namespaces
 bauplan namespace ls
 
@@ -1648,7 +1591,7 @@ bauplan query --all-rows "SELECT * FROM raw_data.customers"
 
 ### Pipeline Execution
 
-```bash
+```sh
 # Dry run pipeline
 bauplan run --dry-run
 
@@ -1665,13 +1608,13 @@ bauplan run --detach
 bauplan run --ref main
 
 # Run with strict mode
-bauplan run --strict
+bauplan run --strict on
 
 ```
 
 ### Job Management
 
-```bash
+```sh
 # List recent jobs
 bauplan job ls --limit 20
 
@@ -1694,18 +1637,18 @@ bauplan job ls --created-after 2024-01-01 --status fail
 
 ### Table Operations
 
-```bash
+```sh
 # Create table from S3
-bauplan table create --name customers --search-uri s3://bucket/customers/*.parquet --namespace raw_data
+bauplan table create customers --search-uri s3://bucket/customers/*.parquet --namespace raw_data
 
 # Create plan before applying
-bauplan table create-plan --name orders --search-uri s3://bucket/orders/*.parquet --save-plan plan.json
+bauplan table create-plan orders --search-uri s3://bucket/orders/*.parquet --save-plan plan.json
 
 # Apply the plan
 bauplan table create-plan-apply --plan plan.json
 
 # Import additional data
-bauplan table import --name customers --search-uri s3://bucket/customers/new/*.parquet
+bauplan table import customers --search-uri s3://bucket/customers/new/*.parquet
 
 # Revert table
 bauplan table revert customers --source-ref main

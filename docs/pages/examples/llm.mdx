@@ -122,7 +122,7 @@ uv tool install bauplan --upgrade
 Using bauplan, it is easy to get acquainted with the dataset and its
 schema:
 
-```bash
+```sh
 bauplan table get public.amazon_products
 bauplan table get public.walmart_products
 bauplan table get public.matching_products
@@ -140,7 +140,7 @@ model as the ground truth.
 You can quantify the test set imbalance with a simple query directly in
 your CLI:
 
-```bash
+```sh
 bauplan query "SELECT label, COUNT(*) as _C FROM public.matching_products GROUP BY 1"
 ```
 
@@ -148,7 +148,7 @@ bauplan query "SELECT label, COUNT(*) as _C FROM public.matching_products GROUP 
 
 Create a [data branch](/tutorial/data_branches) to develop your application.
 
-```bash
+```sh
 cd src/bpln_pipeline
 bauplan branch create <YOUR_USERNAME>.product_matching
 bauplan branch checkout <YOUR_USERNAME>.product_matching
@@ -157,7 +157,7 @@ bauplan branch checkout <YOUR_USERNAME>.product_matching
 Now, add your OpenAI key as a secret to your project: this will allow
 bauplan to connect OpenAI securely:
 
-```bash
+```sh
 bauplan parameter set openai_api_key aaa --type secret
 ```
 
@@ -174,7 +174,7 @@ parameters:
 
 You can now run the DAG:
 
-```bash
+```sh
 bauplan run
 ```
 
@@ -182,7 +182,7 @@ Running the DAG will create a new table in your data lake branch names
 `product_llm_matches`. You can check the schema of the new table with
 the following command:
 
-```bash
+```sh
 bauplan table get product_llm_matches
 ```
 
@@ -194,7 +194,7 @@ running our pipeline. We provide a simple Streamlit app to do so.
 
 To run the app:
 
-```bash
+```sh
 cd src/app
 streamlit run explore_matches.py -- --bauplan_user_name <YOUR_USERNAME>
 ```

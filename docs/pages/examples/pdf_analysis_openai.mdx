@@ -83,7 +83,7 @@ Bauplan team for any questions or clarifications.
     replacing the value with your OpenAI token - This will allow Bauplan
     to connect OpenAI securely:
 
-```bash
+```sh
 bauplan parameter set openai_api_key aaa --type secret
 ```
 
@@ -105,14 +105,14 @@ parameters:
 Using Bauplan, it is simple to get acquainted with the dataset and its
 schema:
 
-```bash
+```sh
 bauplan table get public.sec_10_q_metadata
 ```
 
 Note that `pdf_path` contains the address in S3 of the PDF files we will
 analyze. Let\'s check them out with a simple query directly in your CLI:
 
-```bash
+```sh
 bauplan query --no-trunc "SELECT bucket || '/' || pdf_path as s3_path FROM public.sec_10_q_metadata"
 ```
 
@@ -121,7 +121,7 @@ bauplan query --no-trunc "SELECT bucket || '/' || pdf_path as s3_path FROM publi
 To run the pipeline - i.e. the DAG going from the metadata tables and
 files to the final report \-- you just need to create a [data branch](/tutorial/data_branches).
 
-```bash
+```sh
 cd src/bpln_pipeline
 bauplan branch create <YOUR_USERNAME>.sec_10
 bauplan branch checkout <YOUR_USERNAME>.sec_10
@@ -129,7 +129,7 @@ bauplan branch checkout <YOUR_USERNAME>.sec_10
 
 You can now run the DAG:
 
-```bash
+```sh
 bauplan run
 ```
 
@@ -137,14 +137,14 @@ You will notice that Bauplan streams back data in real-time, so every
 print statement will be visualized in your terminal. You can check that
 we successfully created the matching table with the following command:
 
-```bash
+```sh
 bauplan table get sec_10_q_markdown
 bauplan table get sec_10_q_analysis_openai
 ```
 
 and even inspect the distribution of the predictions:
 
-```bash
+```sh
 bauplan query "SELECT investment_sentiment, count(*) as _C FROM sec_10_q_analysis_openai GROUP BY 1"
 ```
 
@@ -156,7 +156,7 @@ pipeline. We provide a simple Streamlit app to do so.
 
 To run the app:
 
-```bash
+```sh
 uv run --with-requirements requirements.txt \
     streamlit run src/app/explore_analysis.py -- --bauplan_username <YOUR_USERNAME>
 ```

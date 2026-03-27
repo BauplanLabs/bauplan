@@ -30,13 +30,13 @@ names with your `username`. The default setting is that you are allowed
 to write in your own branches, but you can only read from somebody
 else\'s branches.
 
-```bash
+```sh
 bauplan branch create <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
 ```
 
 For example, to create a branch named `hello_bauplan` and switch to it:
 
-```bash
+```sh
 bauplan branch create <YOUR_USERNAME>.hello_bauplan
 bauplan checkout <YOUR_USERNAME>.hello_bauplan
 ```
@@ -44,13 +44,13 @@ bauplan checkout <YOUR_USERNAME>.hello_bauplan
 To see your current branch, run `bauplan branch ls`. This command displays
 all your branches, marking your active branch with a green star.
 
-```bash
+```sh
 bauplan branch ls
 ```
 
 To see the content of your newly created data branch:
 
-```bash
+```sh
 bauplan table ls
 ```
 
@@ -70,20 +70,20 @@ to get started.
 
 Make sure you're in your target branch:
 
-```bash
+```sh
 bauplan branch checkout <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
 ```
 
 Then create and import a new table:
 
-```bash
+```sh
 bauplan table create <YOUR_USERNAME>_green_taxi_table --search-uri 's3://alpha-hello-bauplan/green-taxi/*.parquet'
 bauplan table import <YOUR_USERNAME>_green_taxi_table --search-uri 's3://alpha-hello-bauplan/green-taxi/*.parquet'
 ```
 
 To verify the table creation:
 
-```bash
+```sh
 bauplan table get <YOUR_USERNAME>_green_taxi_table
 ```
 
@@ -97,7 +97,7 @@ To merge your `hello_bauplan` branch into the `main` branch:
 
 1.  Review the differences between branches:
 
-    ```bash
+    ```sh
     bauplan branch diff main
     ```
 
@@ -107,14 +107,14 @@ To merge your `hello_bauplan` branch into the `main` branch:
 
 2.  Switch to main and merge:
 
-    ```bash
+    ```sh
     bauplan branch checkout main
     bauplan branch merge <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
     ```
 
 3.  Check the schema of the merged table:
 
-    ```bash
+    ```sh
     bauplan table ls
     bauplan table get <YOUR_USERNAME>_green_taxi_table
     ```
@@ -122,7 +122,7 @@ To merge your `hello_bauplan` branch into the `main` branch:
 You can now query the table. For example, to find out how many records
 are in the table:
 
-```bash
+```sh
 bauplan query "SELECT COUNT(lpep_pickup_datetime) as number_of_trips FROM <YOUR_USERNAME>_green_taxi_table"
 ```
 

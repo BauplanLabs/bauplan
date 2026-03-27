@@ -40,7 +40,7 @@ injecting user-defined values into your models.
 
 You can define a parameter using the CLI:
 
-```bash
+```sh
 bauplan parameter set prompt_summary "Write a concise, incisive summary of the news article." --description "Prompt passed to GPT for article summarization"
 ```
 
@@ -59,7 +59,7 @@ parameters:
 For longer values like LLM prompts, SQL templates, or configuration
 blobs, you can load a parameter from a file:
 
-```bash
+```sh
 bauplan parameter set prompt_template --type str --file prompts/summary.txt
 ```
 
@@ -67,13 +67,13 @@ bauplan parameter set prompt_template --type str --file prompts/summary.txt
 
 To list all defined parameters:
 
-```bash
+```sh
 bauplan parameter ls
 ```
 
 To remove a parameter:
 
-```bash
+```sh
 bauplan parameter rm prompt_summary
 ```
 
