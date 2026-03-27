@@ -145,6 +145,25 @@ class TableCreatePlanContext:
 
 @final
 class TableCreatePlanState:
+    """
+    The result of a `plan_table_creation` call.
+
+    The `plan` field contains the schema plan as a YAML string. You can modify
+    it before applying, for example to add partitioning:
+
+    ```python
+    import yaml
+
+    plan = yaml.safe_load(plan_state.plan)
+    plan['schema_info']['partitions'] = [
+        {
+            'from_column_name': 'datetime_column',
+            'transform': {'name': 'year'},
+        }
+    ]
+    modified_plan = yaml.dump(plan)
+    ```
+    """
     def __repr__(self, /) -> str: ...
     @property
     def can_auto_apply(self, /) -> bool: ...
