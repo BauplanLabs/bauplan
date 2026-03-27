@@ -86,14 +86,14 @@ Yes, Bauplan enables **versioning** in two ways:
     in time.
  -   **Data branching**: isolate data changes safely, enabling
     experimentation without affecting production
-    ([docs](/tutorial/data_branches)).
+    ([docs](/concepts/git_for_data/data_branches)).
 
 All this, while ensuring **transactional consistency** and integrity
 across updates, merges, and queries.
 
 ## What file formats does Bauplan support in ingestion?
 
-Bauplan supports **CSV and Parquet**, stored in S3. Bauplan tables are
+Bauplan supports **CSV, Parquet, and JSONL**, stored in S3. Bauplan tables are
 represented as Iceberg tables. We currently do not support Delta tables
 and Hudi tables.
 
@@ -108,7 +108,7 @@ machines.
 ## I already have a lot of Spark code, can I run it with Bauplan?
 
 Yes, Bauplan supports **PySpark** functions - see our
-[docs](/reference/bauplan#bauplan__decorators_pyspark) for details - so you can
+[docs](/reference/bauplan#bauplan_pyspark) for details - so you can
 copy and paste your PySpark code and run it on Bauplan. However, for now
 we run your PySpark code on a **single-node architecture** rather than a
 distributed cluster, so you should ensure your jobs are not too large.
@@ -119,7 +119,7 @@ You can build any application that uses data pipelines and structured
 and semi-structured data. Today Bauplan is used for data transformation,
 data enrichment, ML pipelines, data products, user-facing analytics and
 AI applications. Here are some real-world examples:
-[here](/examples/).
+[here](https://github.com/BauplanLabs/examples).
 
 ## How does Bauplan simplify debugging in production?
 

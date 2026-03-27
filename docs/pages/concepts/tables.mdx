@@ -2,6 +2,8 @@
 title: "Tables"
 ---
 
+## Overview
+
 Bauplan uses **Apache Iceberg tables** to bring transactional, SQL-ready
 structure to your object storage. This gives you the best of both
 worlds: the scalability and openness of data lakes, with the reliability
@@ -19,3 +21,115 @@ In Bauplan, tables are first-class citizens - you create them, read from
 them, write to them, and revert them via simple code and commands. Every
 table lives inside a **branch**, can evolve independently, and is fully
 versioned.
+
+## Partitioning
+
+Bauplan exposes Iceberg's powerful partitioning capabilities through a
+declarative interface. This approach leverages [Iceberg's hidden
+partitioning](https://iceberg.apache.org/docs/1.4.0/partitioning/#icebergs-hidden-partitioning)
+while abstracting away the complexity of partition management.
+
+Supported partition types:
+
+-   **Time-based**: `year(col)`, `day(col)`, `hour(col)`
+-   **Bucket**: partition by any column (e.g., by client ID)
+
+<Note>
+While partitioning can increase write times to object storage, it
+significantly improves read performance when filtering by partitioned
+columns.
+</Note>
+
+### Partitioning during import
+
+Use the `partitioned_by` parameter when creating a table:
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+table = client.create_table(
+    table='my_partitioned_table',
+    search_uri='s3://your-bucket/data/*.parquet',
+    partitioned_by="hour(tpep_pickup_datetime), PULocationID",
+    branch='my_branch'
+)
+```
+
+The equivalent CLI command is:
+
+```bash
+bauplan table create my_partitioned_table \
+    --partitioned-by "hour(tpep_pickup_datetime), PULocationID" \
+    --search-uri 's3://your-bucket/data/*.parquet'
+```
+
+You can also add partitioning via an import plan:
+
+```python
+import bauplan
+import yaml
+
+client = bauplan.Client()
+
+plan_state = client.plan_table_creation(
+    table='my_partitioned_table',
+    search_uri='s3://your-data/*.parquet',
+    branch='my_branch'
+)
+
+plan = yaml.safe_load(plan_state.plan)
+plan['schema_info']['partitions'] = [
+    {
+        'from_column_name': 'datetime_column',
+        'transform': {'name': 'year'}
+    }
+]
+
+client.apply_table_creation_plan(plan)
+```
+
+### Partitioning in pipelines
+
+Use the `partitioned_by` parameter in the `@bauplan.model` decorator:
+
+```python
+import bauplan
+
+@bauplan.python('3.11')
+@bauplan.model(
+    partitioned_by=['day(pickup_datetime)', 'PULocationID'],
+    materialization_strategy='REPLACE'
+)
+def create_partitioned_table(
+    data=bauplan.Model(
+        'taxi_fhvhv',
+        columns=[
+            'PULocationID',
+            'trip_miles',
+            'tips',
+            'pickup_datetime'
+        ],
+        filter="pickup_datetime >= '2022-12-23T00:00:00-05:00'"
+    )
+):
+    """Creates a partitioned table from taxi data"""
+    return data
+```
+
+In SQL models, use comments:
+
+```sql
+-- bauplan: materialization_strategy=REPLACE
+-- bauplan: partitioned-by="day(pickup_datetime), PULocationID"
+
+SELECT
+    PULocationID,
+    trip_miles,
+    tips,
+    pickup_datetime
+FROM taxi_fhvhv
+WHERE
+    pickup_datetime >= '2022-12-25T00:00:00-05:00'
+```

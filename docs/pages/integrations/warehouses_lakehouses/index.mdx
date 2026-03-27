@@ -6,6 +6,7 @@ import DocCardList from '@theme/DocCardList';
 import snowflakeIcon from '@site/static/img/logos/snowflake.png';
 import bigqueryIcon from '@site/static/img/logos/bigquery.png';
 import gcsIcon from '@site/static/img/logos/gcs.png';
+import bauplanIcon from '@site/static/img/logos/bauplan.png';
 
 This section explains how to connect Bauplan‑managed Iceberg tables in your object storage to other
 platforms your teams already use, such as Databricks Unity Catalog, AWS Glue and Athena.
@@ -45,17 +46,31 @@ This approach works everywhere, but requires more operational overhead than cata
 <DocCardList items={[
   {
     type: 'link',
-    href: '/integrations/warehouses_lakehouses/snowflake',
-    label: 'Snowflake',
-    icon: snowflakeIcon,
-    description: 'Connect Snowflake to Bauplan using Iceberg REST catalog'
+    href: '/integrations/warehouses_lakehouses/snowflake_inbound',
+    label: 'Bauplan → Snowflake',
+    icon: bauplanIcon,
+    description: 'Register Bauplan data as an externally managed Iceberg table in Snowflake'
   },
   {
     type: 'link',
-    href: '/integrations/warehouses_lakehouses/big_query',
-    label: 'BigQuery',
+    href: '/integrations/warehouses_lakehouses/snowflake_outbound',
+    label: 'Snowflake → Bauplan',
+    icon: snowflakeIcon,
+    description: 'Pull Snowflake data into a Bauplan pipeline as an Arrow table'
+  },
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/big_query_inbound',
+    label: 'Bauplan → BigQuery',
+    icon: bauplanIcon,
+    description: 'Register Bauplan data as an external Iceberg table in BigQuery'
+  },
+  {
+    type: 'link',
+    href: '/integrations/warehouses_lakehouses/big_query_outbound',
+    label: 'BigQuery → Bauplan',
     icon: bigqueryIcon,
-    description: 'Query Bauplan data from BigQuery with external Iceberg tables'
+    description: 'Pull BigQuery data into a Bauplan pipeline as an Arrow table'
   },
   {
     type: 'link',

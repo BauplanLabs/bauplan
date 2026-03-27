@@ -1,0 +1,40 @@
+---
+title: "Skills setup"
+sidebar_label: "Skills setup"
+---
+
+# Skills setup
+
+## Prerequisites
+
+- [Bauplan CLI installed](/tutorial/installation) with a configured API key
+- An AI assistant that supports MCP (Claude Code, Cursor, Claude Desktop)
+
+## Install Bauplan Skills
+
+Bauplan skills are distributed as a [Claude Code plugin](https://code.claude.com/docs/en/plugins) that installs with a single command and stays up to date automatically.
+
+In Claude Code, run:
+
+```bash
+/plugin marketplace add https://github.com/BauplanLabs/bauplan-skills
+```
+
+Once installed, the following skills are available as slash commands:
+
+| Skill | Description |
+|-------|-------------|
+| **Data Pipeline** | Create a new pipeline project from scratch with proper setup, model definitions, source validation, and execution on a development branch. |
+| **Safe Ingestion** | Ingest data from S3 using the Write-Audit-Publish (WAP) pattern — data is loaded on an isolated branch, validated, and merged only after quality checks pass. |
+| **Explore Data** | Structured, read-only investigation of lakehouse data through schema inspection, sampling, profiling, and join discovery. Produces a `summary.md` report. |
+| **Data Assessment** | Evaluate whether a business question can be answered using lakehouse data. Maps concepts to tables, profiles quality, and delivers a feasibility verdict. |
+| **Data Quality Checks** | Generate quality check code as pipeline expectations (`@bauplan.expectation()`) and ingestion validation functions covering completeness, uniqueness, validity, freshness, consistency, and volume. |
+| **Debug and Fix Pipeline** | Structured diagnostics for failed jobs — pins the failure, collects evidence, identifies root cause, and applies a minimal fix with checkpoint reports. |
+
+Skills can be used together with the MCP server or with repository-based usage (CLI/SDK only).
+
+**Source:** [https://github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills)
+
+## Next steps
+
+- Learn more about the [MCP Server](https://github.com/BauplanLabs/bauplan-mcp-server) for direct lakehouse access via tool calls

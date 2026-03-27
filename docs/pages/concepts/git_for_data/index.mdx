@@ -7,5 +7,35 @@ slug: /concepts/git_for_data
 ---
 
 import DocCardList from '@theme/DocCardList';
+import { ShieldCheck, GitCommitHorizontal, Tag, GitBranch } from 'lucide-react';
 
-<DocCardList />
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/concepts/git_for_data/transactional_pipelines',
+    label: 'Transactional pipelines',
+    icon: <ShieldCheck />,
+    description: 'Every pipeline run is a database transaction - atomic, isolated, and safe to retry'
+  },
+  {
+    type: 'link',
+    href: '/concepts/git_for_data/commits_refs',
+    label: 'Commits and refs',
+    icon: <GitCommitHorizontal />,
+    description: 'How Bauplan versions code, data, and execution environments'
+  },
+  {
+    type: 'link',
+    href: '/concepts/git_for_data/tags',
+    label: 'Tags',
+    icon: <Tag />,
+    description: 'Mutable human-readable names that point to a specific commit'
+  },
+  {
+    type: 'link',
+    href: '/concepts/git_for_data/data_branches',
+    label: 'Data branches',
+    icon: <GitBranch />,
+    description: 'Isolated environments to safely import, test, and merge data changes'
+  },
+]} />
