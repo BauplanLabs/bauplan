@@ -32,35 +32,65 @@ function CardContainer({ className, href, children }) {
   return (
     <Link
       href={href}
-      className={clsx('card padding--lg', styles.cardContainer, className)}>
+      className={clsx('card padding--md', styles.cardContainer, className)}>
       {children}
     </Link>
   );
 }
 
-// Helper function to check if icon is a custom image
 function isCustomImage(icon) {
   if (!icon) return false;
-
-  // Check if it's an imported image (could be string URL or object with default)
   const iconSrc = typeof icon === 'object' ? icon.default : icon;
-
-  // If it's a string that looks like a path/URL (contains / or .)
   if (typeof iconSrc === 'string' && (iconSrc.includes('/') || iconSrc.includes('.'))) {
     return true;
   }
-
   return false;
 }
 
-// Helper function to get the actual src from an icon
 function getIconSrc(icon) {
   return typeof icon === 'object' ? icon.default : icon;
 }
 
-function CardLayout({ className, href, icon, title, description, isLargeImage }) {
+function CardLayout({ className, href, icon, title, description, isLargeImage, comingSoon }) {
   const hasCustomImage = isCustomImage(icon);
   const iconSrc = hasCustomImage ? getIconSrc(icon) : null;
+  const isReactIcon = React.isValidElement(icon);
+  const hasRichIcon = isReactIcon || hasCustomImage;
+
+  if (hasRichIcon) {
+    return (
+      <CardContainer href={href} className={clsx(className, styles.cardTwoColumn)}>
+        <div className={styles.cardTwoColumnIcon}>
+          {hasCustomImage && (
+            <div className={clsx(styles.cardIcon, isLargeImage && styles.cardIconLarge)}>
+              <img src={iconSrc} alt={title} />
+            </div>
+          )}
+          {isReactIcon && (
+            <div className={styles.cardLucideIcon}>
+              {icon}
+            </div>
+          )}
+        </div>
+        <div className={styles.cardTwoColumnContent}>
+          <Heading
+            as="h2"
+            className={clsx('text--truncate', styles.cardTitle)}
+            title={title}>
+            {title}
+            {comingSoon && <span className={styles.comingSoonBadge}>Coming soon</span>}
+          </Heading>
+          {description && (
+            <p
+              className={clsx('text--truncate', styles.cardDescription)}
+              {...(typeof description === 'string' ? { title: description } : {})}>
+              {description}
+            </p>
+          )}
+        </div>
+      </CardContainer>
+    );
+  }
 
   return (
     <CardContainer href={href} className={className}>
@@ -68,19 +98,14 @@ function CardLayout({ className, href, icon, title, description, isLargeImage })
         as="h2"
         className={clsx('text--truncate', styles.cardTitle)}
         title={title}>
-        {hasCustomImage && (
-          <div className={clsx(styles.cardIcon, isLargeImage && styles.cardIconLarge)}>
-            <img src={iconSrc} alt={title} />
-          </div>
-        )}
-
-        {!hasCustomImage && icon ? `${icon} ` : null}
+        {icon ? `${icon} ` : null}
         {title}
+        {comingSoon && <span className={styles.comingSoonBadge}>Coming soon</span>}
       </Heading>
       {description && (
         <p
           className={clsx('text--truncate', styles.cardDescription)}
-          title={description}>
+          {...(typeof description === 'string' ? { title: description } : {})}>
           {description}
         </p>
       )}
@@ -91,7 +116,6 @@ function CardLayout({ className, href, icon, title, description, isLargeImage })
 function CardCategory({ item }) {
   const href = findFirstSidebarItemLink(item);
   const categoryItemsPlural = useCategoryItemsPlural();
-  // Unexpected: categories that don't have a link have been filtered upfront
   if (!href) {
     return null;
   }
@@ -107,9 +131,9 @@ function CardCategory({ item }) {
 }
 
 function CardLink({ item }) {
-  const icon = item.icon || item.image || (isInternalUrl(item.href) ? '📄️' : '🔗');
+  const fallback = item.icon === null ? null : (isInternalUrl(item.href) ? '📄️' : '🔗');
+  const icon = item.icon || item.image || fallback;
   const doc = useDocById(item.docId ?? undefined);
-  // Use image property to determine if it should be larger
   const isLargeImage = !!item.image;
   return (
     <CardLayout
@@ -119,6 +143,7 @@ function CardLink({ item }) {
       title={item.label}
       description={item.description ?? doc?.description}
       isLargeImage={isLargeImage}
+      comingSoon={item.comingSoon}
     />
   );
 }

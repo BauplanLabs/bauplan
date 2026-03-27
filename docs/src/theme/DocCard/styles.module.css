@@ -3,15 +3,28 @@
   --ifm-link-hover-color: var(--ifm-color-emphasis-700);
   --ifm-link-hover-decoration: none;
 
-  box-shadow: 0 1.5px 3px 0 rgb(0 0 0 / 15%);
-  border: 1px solid var(--ifm-color-emphasis-200);
-  transition: all var(--ifm-transition-fast) ease;
-  transition-property: border, box-shadow;
+  border: 1px solid transparent !important;
+  box-shadow: 0 2px 4px 0 rgb(0 0 0 / 12%) !important;
+  background: var(--ifm-card-background-color) !important;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease-in-out !important;
 }
 
 .cardContainer:hover {
-  border-color: var(--ifm-color-primary);
-  box-shadow: 0 3px 6px 0 rgb(0 0 0 / 20%);
+  box-shadow: 0 4px 8px 0 rgb(0 0 0 / 16%) !important;
+  border-color: var(--ifm-color-primary) !important;
+  color: var(--ifm-color-emphasis-800) !important;
+}
+
+[data-theme='dark'] .cardContainer {
+  background: var(--ifm-card-background-color);
+  box-shadow: 0 2px 4px 0 rgb(255 255 255 / 12%) !important;
+}
+
+[data-theme='dark'] .cardContainer:hover {
+  box-shadow: 0 4px 8px 0 rgb(255 255 255 / 16%) !important;
+  border-color: var(--ifm-color-primary) !important;
 }
 
 .cardContainer *:last-child {
@@ -34,17 +47,109 @@
 }
 
 .cardTitle {
-  font-size: 1.2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  align-items: center;
+  margin-bottom: 0.25rem;
 }
 
 .cardDescription {
   font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0 !important;
 }
 
-[data-theme='dark'] .cardIcon {
-  background-color: black;
+[data-theme='dark'] .cardDescription {
+  color: var(--ifm-color-emphasis-500);
+}
+
+/* Lucide icon */
+.cardLucideIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--ifm-color-primary);
+  transition: color 0.15s ease;
+}
+
+.cardLucideIcon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Coming soon badge */
+.comingSoonBadge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* Two-column card layout: icon left, content right */
+.cardTwoColumn {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.cardTwoColumnIcon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 0.1rem;
+}
+
+.cardTwoColumnIcon .cardLucideIcon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.cardTwoColumnIcon .cardIcon {
+  margin-bottom: 0;
+}
+
+.cardTwoColumnContent {
+  min-width: 0;
+}
+
+.cardTwoColumnContent .cardTitle {
+  margin-bottom: 0.2rem;
+}
+
+.cardTwoColumnContent .cardDescription {
+  font-size: 0.8rem;
+}
+
+/* 3-column integrations grid */
+:global(.integrations-grid) :global(.col--6) {
+  --ifm-col-width: calc(4 / 12 * 100%);
+  max-width: calc(4 / 12 * 100%);
+  flex: 0 0 calc(4 / 12 * 100%);
+}
+
+:global(.integrations-grid) :global(.row) {
+  row-gap: 0;
+}
+
+:global(.integrations-grid) :global([class*="docCardListItem"]) {
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  :global(.integrations-grid) :global(.col--6) {
+    --ifm-col-width: 100%;
+    max-width: 100%;
+    flex: 0 0 100%;
+  }
 }

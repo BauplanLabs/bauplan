@@ -18,7 +18,7 @@ export const HomePage = () => {
                         <div className="text-sm ">Quick setup guide</div>
                     </div>
                 </a>
-                <a href="/examples" className="group flex items-center p-4 rounded-lg
+                <a href="https://github.com/BauplanLabs/examples" className="group flex items-center p-4 rounded-lg
                 bg-[var(--ifm-card-background-color)]
                 transition-all duration-300 ease-in-out hover:-translate-y-2
                 shadow-md
@@ -48,7 +48,7 @@ export const HomePage = () => {
 
             </div>
 
-            <a href="/llms" className="block no-underline text-[var(--docsearch-text-color)]">
+            <a href="/agents" className="block no-underline text-[var(--docsearch-text-color)]">
                 <div className="my-8 p-6 rounded-xl bg-[var(--ifm-card-background-color)] border border-[var(--ifm-border-color)] hover:scale-[1.01] hover:shadow-md transition-all duration-300 ease-in-out cursor-pointer">
                     <div className='text-[var(--docsearch-text-color)]'>
                         <div className='flex flex-row gap-4'>
@@ -57,9 +57,9 @@ export const HomePage = () => {
                                 alt="Rocket"
                                 style={{ transform: 'rotate(35deg)' }}
                             />
-                            <h3 className="text-xl font-bold mb-2">Manage Bauplan from AI Tools</h3>
+                            <h3 className="text-xl font-bold mb-2">AI Agents</h3>
                         </div>
-                        <p>Control Bauplan lakehouse from your favorite AI tools using simple, conversational commands with our MCP Server.</p>
+                        <p>Use AI Agents to build pipelines, explore data, and manage your lakehouse with MCP Server and Skills.</p>
                     </div>
                     <span>Learn more →</span>
                 </div>
