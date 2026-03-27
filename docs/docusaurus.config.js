@@ -1,8 +1,12 @@
 import { themes as prismThemes } from 'prism-react-renderer';
 import remarkHiddenLines from './src/plugins/remark-hidden-lines.js';
+import redirects from './redirects.js';
 
 export default {
-  clientModules: [require.resolve('./src/clientModules/scrollToAnchor.js')],
+  clientModules: [
+    require.resolve('./src/clientModules/scrollToAnchor.js'),
+    require.resolve('./src/clientModules/tabTocSync.js'),
+  ],
   title: "Bauplan Documentation",
   url: process.env.DOCS_URL || "https://docs.bauplanlabs.com",
   baseUrl: "/",
@@ -79,22 +83,10 @@ export default {
           label: "API Reference",
         },
         {
-          type: "docSidebar",
-          sidebarId: "buildWithLLMsSidebar",
-          position: "left",
-          label: "Build with LLMs",
-        },
-        {
-          type: "docSidebar",
-          sidebarId: "examplesSidebar",
+          href: "https://github.com/BauplanLabs/examples",
+          target: "_blank",
           position: "left",
           label: "Examples",
-        },
-        {
-          type: "docSidebar",
-          sidebarId: "integrationsSidebar",
-          position: "left",
-          label: "Integrations",
         },
       ],
     },
@@ -131,6 +123,7 @@ export default {
   },
   plugins: [
     require.resolve("./src/plugins/tailwind-config.js"),
+    ['@docusaurus/plugin-client-redirects', { redirects }],
   ],
 
   future: {

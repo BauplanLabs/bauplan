@@ -29,7 +29,41 @@
 html {
   --ifm-font-family-base: 'Satoshi', sans-serif;
   --ifm-font-family-monospace: 'IBMPlexMono', monospace;
+
+  /* DocSearch – aligned to site brand (#00B0FF) and palette */
   --docsearch-primary-color: #00B0FF;
+  --docsearch-soft-primary-color: rgba(0, 176, 255, 0.1);
+  --docsearch-highlight-color: #00B0FF;
+  --docsearch-focus-color: #008ECC;
+  --docsearch-logo-color: #00B0FF;
+  --docsearch-text-color: #000000;
+  --docsearch-secondary-text-color: #555555;
+  --docsearch-muted-color: #888888;
+  --docsearch-muted-color-darker: rgba(136, 136, 136, 0.25);
+  --docsearch-subtle-color: #d6d6e7;
+  --docsearch-icon-color: #555555;
+  --docsearch-icon-stroke-width: 1.4;
+  --docsearch-key-color: #000000;
+  --docsearch-key-background: #f7f7f7;
+  --docsearch-key-pressed-shadow: inset 0 2px 4px rgba(136, 136, 136, 0.25);
+  --docsearch-error-color: #ef5350;
+  --docsearch-success-color: #e8f5e9;
+  --docsearch-background-color: #f7f7f7;
+  --docsearch-container-background: rgba(0, 0, 0, 0.5);
+  --docsearch-modal-background: #f7f7f7;
+  --docsearch-modal-shadow: rgba(0, 0, 0, 0.2) 0px 12px 28px 0px,
+    rgba(0, 0, 0, 0.1) 0px 2px 4px 0px,
+    rgba(255, 255, 255, 0.05) 0px 0px 0px 1px inset;
+  --docsearch-searchbox-background: rgba(255, 255, 255, 0.65);
+  --docsearch-searchbox-focus-background: #ffffff;
+  --docsearch-search-button-background: #ffffff;
+  --docsearch-search-button-text-color: #555555;
+  --docsearch-hit-color: #444950;
+  --docsearch-hit-highlight-color: rgba(0, 176, 255, 0.1);
+  --docsearch-hit-background: #ffffff;
+  --docsearch-footer-background: rgba(255, 255, 255, 0.65);
+  --docsearch-footer-shadow: 0 -1px 0 0 #e0e3e8, 0 -3px 6px 0 rgba(69, 98, 155, 0.12);
+
   scroll-padding-top: 65px; /* Match navbar's height */
 }
 
@@ -127,6 +161,33 @@ hr.mermaid {
   --ifm-background-surface-color: #151616;
   --ifm-footer-background-color: #151616;
   --ifm-card-background-color: #262626;
+
+  /* DocSearch – dark theme */
+  --docsearch-text-color: #e0e0e0;
+  --docsearch-secondary-text-color: #aaaaaa;
+  --docsearch-muted-color: #777777;
+  --docsearch-muted-color-darker: rgba(119, 119, 119, 0.25);
+  --docsearch-subtle-color: #444444;
+  --docsearch-icon-color: #aaaaaa;
+  --docsearch-key-color: #aaaaaa;
+  --docsearch-key-background: #333333;
+  --docsearch-key-shadow: none;
+  --docsearch-key-pressed-shadow: none;
+  --docsearch-background-color: #151616;
+  --docsearch-container-background: rgba(0, 0, 0, 0.7);
+  --docsearch-modal-background: #1e1e1e;
+  --docsearch-modal-shadow: rgba(0, 0, 0, 0.4) 0px 12px 28px 0px,
+    rgba(0, 0, 0, 0.3) 0px 2px 4px 0px,
+    rgba(255, 255, 255, 0.05) 0px 0px 0px 1px inset;
+  --docsearch-searchbox-background: #262626;
+  --docsearch-searchbox-focus-background: #333333;
+  --docsearch-search-button-background: #262626;
+  --docsearch-search-button-text-color: #aaaaaa;
+  --docsearch-hit-color: #e0e0e0;
+  --docsearch-hit-highlight-color: rgba(0, 176, 255, 0.15);
+  --docsearch-hit-background: #262626;
+  --docsearch-footer-background: #1e1e1e;
+  --docsearch-footer-shadow: 0 -1px 0 0 #333333, 0 -3px 6px 0 rgba(0, 0, 0, 0.3);
 }
 
 [data-theme='dark'] code {
@@ -142,6 +203,23 @@ hr.mermaid {
 
 /* sidebar */
 @import './sidebar.css';
+
+/* Tabs - faint bottom line on hover */
+.tabs__item {
+  border-radius: 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+}
+
+.tabs__item:hover {
+  background-color: transparent;
+  border-bottom: 2px solid rgba(0, 176, 255, 0.3);
+}
+
+.tabs__item--active,
+.tabs__item--active:hover {
+  border-bottom: 2px solid var(--ifm-tabs-color-active);
+}
 
 /* CLI reference tables - wider Flag column */
 table th:first-child,

@@ -324,30 +324,11 @@ function main() {
   output.push(...renderItems(sidebar.documentationSidebar, docMap, 2));
   track(sidebar.documentationSidebar);
 
-  // These three sidebars are rendered as flat lists under a single heading.
+  // Reference sidebar is rendered as a flat list under a single heading.
   output.push(...renderFlatSection(
     'API Reference', null, sidebar.referenceSidebar, docMap,
   ));
   track(sidebar.referenceSidebar);
-
-  output.push(...renderFlatSection(
-    'Build with LLMs',
-    'Using Bauplan with AI coding assistants like Claude Code, Cursor, and GitHub Copilot.',
-    sidebar.buildWithLLMsSidebar, docMap,
-  ));
-  track(sidebar.buildWithLLMsSidebar);
-
-  output.push(...renderFlatSection(
-    'Examples', 'End-to-end examples and tutorials.',
-    sidebar.examplesSidebar, docMap,
-  ));
-  track(sidebar.examplesSidebar);
-
-  // Integrations sidebar renders with sub-headings per category.
-  output.push('');
-  output.push('## Integrations');
-  output.push(...renderItems(sidebar.integrationsSidebar, docMap, 3));
-  track(sidebar.integrationsSidebar);
 
   // Pages not referenced by any sidebar.
   const extras = Object.values(docMap)

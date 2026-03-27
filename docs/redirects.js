@@ -1,0 +1,28 @@
+const redirects = [
+  { from: '/guides/casting', to: '/concepts/schema_conflicts' },
+  { from: '/guides/schema_conflicts', to: '/concepts/schema_conflicts' },
+  { from: '/guides/detached_runs', to: '/reference/bauplan#bauplan_client_run' },
+  { from: '/guides/import_data', to: '/tutorial/import' },
+  { from: '/guides/parameters', to: '/concepts/pipelines#parameters' },
+  { from: '/guides/partitioning', to: '/concepts/tables#partitioning' },
+  { from: '/guides/secrets', to: '/concepts/pipelines#secrets' },
+  { from: '/llms', to: '/agents/' },
+  { from: '/llms/quick_start', to: '/agents/' },
+  { from: '/llms/explore_data', to: '/agents/' },
+  { from: '/llms/mcp_server', to: '/agents/#1-mcp-server' },
+  { from: '/llms/tutorial', to: '/agents/setup' },
+  { from: '/llms/tutorial/create', to: '/agents/setup' },
+  { from: '/llms/tutorial/publish', to: '/agents/setup' },
+  { from: '/llms/tutorial/test', to: '/agents/setup' },
+  { from: '/integrations/warehouses_lakehouses/snowflake/snowflake_inbound', to: '/integrations/warehouses_lakehouses/snowflake_inbound'},
+  { from: '/integrations/warehouses_lakehouses/snowflake/snowflake_outbound', to: '/integrations/warehouses_lakehouses/snowflake_outbound'},
+  { from: '/integrations/warehouses_lakehouses/big_query/big_query_inbound', to: '/integrations/warehouses_lakehouses/big_query_inbound' },
+  { from: '/integrations/warehouses_lakehouses/big_query/big_query_outbound', to: '/integrations/warehouses_lakehouses/big_query_outbound'},
+  { from: '/integrations/warehouses_lakehouses/snowflake', to: '/integrations/warehouses_lakehouses/snowflake_inbound'},
+  { from: '/integrations/warehouses_lakehouses/big_query', to: '/integrations/warehouses_lakehouses/big_query_inbound' },
+  { from: '/tutorial/03_pipelines', to: '/concepts/pipelines' },
+  { from: '/tutorial/04_import', to: '/tutorial/import' },
+  { from: '/concepts/git_for_data/walkthrough', to: '/concepts/git_for_data' },
+];
+
+export default redirects;
