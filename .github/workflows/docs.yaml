@@ -43,9 +43,6 @@ jobs:
   deploy:
     runs-on: blacksmith-16vcpu-ubuntu-2404
     environment: ${{ inputs.environment || 'dev' }}
-    env:
-      # Get the tests and the doc generation to share a virtualenv.
-      UV_PROJECT_ENVIRONMENT: ${{ github.workspace }}/docs/.venv
     steps:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v4
