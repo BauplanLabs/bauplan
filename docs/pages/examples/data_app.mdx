@@ -125,7 +125,7 @@ def top_pickup_locations(data=bauplan.Model('trips_and_zones')):
 
 First, create a new branch and switch to it.
 
-```bash
+```sh
 bauplan branch create <YOUR_BRANCH>
 bauplan branch checkout <YOUR_BRANCH>
 ```
@@ -136,7 +136,7 @@ table in it named `top_pickup_locations`,
 With the new branch checked out, run the pipeline to materialize the
 table `top_pickup_locations`.
 
-```bash
+```sh
 bauplan run
 ```
 
@@ -144,7 +144,7 @@ After the pipeline completes, inspect the newly created
 top_pickup_locations table in your branch to ensure
 everything ran successfully.
 
-```bash
+```sh
 bauplan table get top_pickup_locations
 ```
 
@@ -257,7 +257,7 @@ then run the Streamlit app. Remember that you will need to pass the
 branch in which you materialized the target table as an argument in the
 terminal.
 
-```bash
+```sh
 uv run --with-requirements requirements.txt \
     streamlit run viz_app.py -- --branch <YOUR_BRANCH>
 ```

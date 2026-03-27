@@ -34,7 +34,7 @@ fundamental units of change tracking in your data. Each commit contains:
 
 Here is a simple example of output from the commit API:
 
-```bash
+```sh
 bauplan commit --limit 1
 
 commit 4307792b4e2a325e4e42e3e0b595cf79c68016be6023314a5ac345c85833a9bc
@@ -80,7 +80,7 @@ let you perform **point-in-time operations** like:
 Refs are read-only: only **branches** can be used for write operations,
 because branches are mutable while refs point to commits which are not.
 
-```bash
+```sh
 bauplan query "SELECT * FROM my_table" --ref ciro.mybranch-run-20250517181234-ca3ad62f-a2c7-4ef4-b87a-53d12909fde
 ```
 

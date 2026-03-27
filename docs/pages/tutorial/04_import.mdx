@@ -34,7 +34,7 @@ The import process in bauplan consists of two main steps:
 
 Create an empty table using the `create` command:
 
-```bash
+```sh
 bauplan table create <YOUR_TABLE_NAME> --search-uri 's3://your-bucket/*.parquet'
 ```
 
@@ -48,7 +48,7 @@ This command will:
 
 After creating the table, import the data:
 
-```bash
+```sh
 bauplan table import <YOUR_TABLE_NAME> --search-uri 's3://your-bucket/*.parquet'
 ```
 
@@ -84,7 +84,7 @@ If schema conflicts occur between files during import:
 
 1. Generate an import plan:
 
-```bash
+```sh
 bauplan table create-plan <YOUR_TABLE_NAME> \
     --search-uri 's3://your-bucket/*.parquet' \
     --save-plan table_creation_plan.yml
@@ -95,7 +95,7 @@ bauplan table create-plan <YOUR_TABLE_NAME> \
 4. Ensure the `conflicts` field is empty (`conflicts: []`)
 5. Apply the modified plan:
 
-```bash
+```sh
 bauplan table create-plan-apply --plan table_creation_plan.yml
 ```
 

@@ -43,20 +43,20 @@ client.create_namespace(
 
 **CLI:**
 
-```bash
+```sh
 bauplan branch checkout ciro.feature_campaign_v2
 bauplan namespace create marketing_data
 ```
 
 You can reference a table in a namespace either using dot notation:
 
-```bash
+```sh
 # Query with fully qualified table name
 bauplan query "SELECT * FROM marketing_data.raw_events"
 ```
 
 or passing the namespace to the query API as a parameter:
 
-```bash
+```sh
 bauplan query "SELECT * FROM raw_events" --namespace marketing_data
 ```

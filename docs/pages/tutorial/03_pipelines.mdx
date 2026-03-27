@@ -48,7 +48,7 @@ development.
 To see a preview of the pipeline\'s tables in the terminal, add
 `--preview head`:
 
-```bash
+```sh
 bauplan run --dry-run --preview head
 ```
 
@@ -93,7 +93,7 @@ example, to change the Pandas version required by
 `normalized_taxi_trips` from `2.2.0` to `1.5.3`, simply modify the
 decorator:
 
-```bash notest
+```python type:ignore
 @bauplan.python('3.11', pip={'pandas': '1.5.3', 'numpy': '1.23.2'})
 ```
 
@@ -122,7 +122,7 @@ output will be materialized as an Iceberg table in the data catalog. In
 
 Then checkout to your `hello_bauplan` branch and run the pipeline:
 
-```bash
+```sh
 bauplan checkout <YOUR_USERNAME>.hello_bauplan
 bauplan run
 ```
@@ -133,7 +133,7 @@ pipeline!
 The table `normalize_taxi_trip` was materialized in your branch. You can
 now inspect the table, query it.
 
-```bash
+```sh
 bauplan table get normalize_taxi_trip
 bauplan query "SELECT * FROM normalize_taxi_trip LIMIT 5"
 ```

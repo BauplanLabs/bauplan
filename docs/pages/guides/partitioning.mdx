@@ -51,7 +51,7 @@ table = client.create_table(
 
 The equivalent CLI command is:
 
-```bash
+```sh
 bauplan table create my_partitioned_table \
     --partitioned-by "hour(tpep_pickup_datetime), PULocationID" \
     --search-uri 's3://your-bucket/data/*.parquet'

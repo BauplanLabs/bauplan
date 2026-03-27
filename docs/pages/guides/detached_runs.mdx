@@ -22,14 +22,14 @@ commands:
 
 **For regular runs:**
 
-```bash
+```sh
 bauplan run --detach
 ```
 
 **For data imports:**
 
-```bash
-bauplan table import --detach
+```sh
+bauplan table import <TABLE_NAME> --search-uri s3://bucket/path/*.parquet --detach
 ```
 
 You will see the output of planning the job, then the job will be
@@ -43,7 +43,7 @@ The job ID will be printed to the console when the job is submitted.
 
 To check the status of a detached job, use the `job get` subcommand:
 
-```bash
+```sh
 $ bauplan job get <YOUR_JOB_ID>
 Job ID:         <YOUR_JOB_ID>
 Status:         Running
@@ -59,7 +59,7 @@ running or has completed.
 You can see the status of recent jobs you have run with the `job ls`
 command:
 
-```bash
+```sh
 $ bauplan job ls
 ID        TYPE             USER          STATUS     CREATED        FINISHED
 9f4b6b03  CodeSnapshotRun  yourusername  Completed  3 minutes ago  2 minutes ago
@@ -96,7 +96,7 @@ troubleshoot jobs, after which they are deleted.
 
 To cancel a job that is running, use the `job stop` subcommand:
 
-```bash
+```sh
 $ bauplan job stop <YOUR_JOB_ID>
 Job <YOUR_JOB_ID> stopped
 ```

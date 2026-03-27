@@ -14,7 +14,7 @@ Learn more about expectations [here](/concepts/expectations).
 
 -   Install bauplan.
 
-```bash
+```sh
 uv tool install bauplan --upgrade
 ```
 
@@ -127,7 +127,7 @@ problems. Depending on the use case, we can program different workflows.
 In this example, we will make things a bit more interactive. Let us run
 the pipeline as is and see what happens:
 
-```bash
+```sh
 bauplan branch create <YOUR_USERNAME>.expectations
 bauplan branch checkout <YOUR_USERNAME>.expectations
 bauplan run
@@ -136,7 +136,7 @@ bauplan run
 Oh, shoot! Something is wrong with out data: clearly there are null
 values in the column `on_scene_datetime`.
 
-```bash
+```sh
 expectation. @ expectations.py:24 |  ---> Exception occurred: (expectation test failed: we expected on_scene_datetime to have no null values)
 expectation. @ expectations.py:24 |  ---> Stack trace:
 expectation. @ expectations.py:24 |  --->

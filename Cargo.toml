@@ -31,6 +31,7 @@ path = "src/main.rs"
 default = []
 python = ["dep:arrow-csv", "dep:parquet", "dep:pyo3", "dep:pyo3-arrow", "dep:pyo3-log", "dep:log", "pyo3/chrono", "pyo3/uuid"]
 _integration-tests = []
+_check-parse = []
 
 [dependencies]
 anyhow = "1"
@@ -90,6 +91,7 @@ tonic-prost-build = "0.14"
 assert_cmd = "2"
 assert_matches = "1"
 bstr = "1.12.1"
+escargot = "0.5"
 http-body-util = "0.1"
 predicates = "3"
 reqwest = { version = "0.12", features = ["json"] }

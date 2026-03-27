@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
 ## How to run it locally
 
-```bash
+```sh
 uv venv
 source .venv/bin/activate
 uv pip install dagster dagster-webserver bauplan
@@ -101,7 +101,7 @@ uv pip install dagster dagster-webserver bauplan
 
 Run Dagster’s UI and daemon for a lightweight local environment:
 
-```bash
+```sh
 dagster dev -m bauplan_dagster_flow
 ```
 
@@ -109,7 +109,7 @@ This launches the web UI and daemon together, usually on port 3000, and loads th
 
 Run in-process with `execute_in_process()` for fast iteration. Create a python file named `bauplan_dagster_flow.py`, paste the code above in it and run it in another window of your terminal.
 
-```bash
+```sh
 python bauplan_dagster_flow.py
 ```
 

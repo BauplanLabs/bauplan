@@ -91,7 +91,7 @@ if __name__ == "__main__":
 By default, this code runs fully local with Prefect. You do not need to run a Prefect API or server for this example. If you prefer to use Prefect Server or Cloud for observability and scheduling, you can do that later without changing the Bauplan code.
 Run the following commands in your terminal, after which you’ll be prompted in your browser to create or login to your free Prefect Cloud account. This commands use uv, a Python package manager. To install uv see the [uv Installation Guide](https://docs.astral.sh/uv/getting-started/installation/). To see the updated documentation on how to run Prefect locally see [here](https://docs.prefect.io/v3/get-started/quickstart).
 
-```bash
+```sh
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv venv
 source .venv/bin/activate
@@ -101,7 +101,7 @@ prefect cloud login
 
 Then create a python file named `bauplan_prefect_flow.py`, paste the code above in it and run it in another window of your terminal:
 
-```bash
+```sh
 python bauplan_prefect_flow.py
 ```
 
