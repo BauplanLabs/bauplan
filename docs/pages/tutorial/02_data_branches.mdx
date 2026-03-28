@@ -2,61 +2,18 @@
 title: "Data Branches"
 ---
 
-[Open in
-Github.](https://github.com/BauplanLabs/examples/tree/main/01-quick-start)
+In the [Quick Start](/tutorial/quick_start#create-a-branch) you created a branch and ran a pipeline on it. This guide goes deeper into branches - importing external data and merging results back to `main`.
 
-This guide will walk you through the core features of bauplan data
-catalog.
+If you don't already have a branch, create one now:
 
--   **Create** new data branches.
--   **Import** new data as Iceberg tables.
--   **Merge** branches.
-
-With bauplan, all tables created through uploads or business logic can
-be materialized and persisted in a data catalog as [Iceberg
-Tables](https://iceberg.apache.org/). A distinctive feature of bauplan
-is its ability to create branches of your data lake and write data
-artifacts within them. We call these *data branches*. Think of them as
-sandboxed data environments where you can manipulate production data
-without affecting the primary production environment. Data branches are
-powerful tools that allow your team to explore, develop, and debug data
-artifacts and pipelines before merging them into the main production
-environment - similar to code version control.
-
-## Create a branch
-
-Data branches are relative to your username, so you must prefix branch
-names with your `username`. The default setting is that you are allowed
-to write in your own branches, but you can only read from somebody
-else\'s branches.
-
-```sh
-bauplan branch create <YOUR_USERNAME>.<YOUR_BRANCH_NAME>
+```bash
+bauplan checkout -b <YOUR_USERNAME>.hello_bauplan
 ```
 
-For example, to create a branch named `hello_bauplan` and switch to it:
-
-```sh
-bauplan branch create <YOUR_USERNAME>.hello_bauplan
-bauplan checkout <YOUR_USERNAME>.hello_bauplan
+You can see your current branch marked with a star by running:
+```bash
+bauplan branch ls   # list your branches (active branch is marked with a star)
 ```
-
-To see your current branch, run `bauplan branch ls`. This command displays
-all your branches, marking your active branch with a green star.
-
-```sh
-bauplan branch ls
-```
-
-To see the content of your newly created data branch:
-
-```sh
-bauplan table ls
-```
-
-<Note>
-Even without writing new tables, your branch isn't empty. As it's a zero-copy of the `main` branch, it contains all tables existing in `main`.
-</Note>
 
 ## Import data in a branch
 
@@ -89,7 +46,7 @@ bauplan table get <YOUR_USERNAME>_green_taxi_table
 
 For detailed information about importing data, schema conflict
 resolution, and using the Python SDK for imports, see the
-[importing data](../guides/import_data.mdx) concept page.
+[importing data](/tutorial/import) page.
 
 ## Merge a branch
 
@@ -126,7 +83,7 @@ are in the table:
 bauplan query "SELECT COUNT(lpep_pickup_datetime) as number_of_trips FROM <YOUR_USERNAME>_green_taxi_table"
 ```
 
-👏👏 Congratulations, you just merged a data branch into the main data
+Congratulations, you just merged a data branch into the main data
 catalog!
 
 <Tip>

@@ -2,6 +2,9 @@
 title: "Pipelines"
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 In Bauplan, pipelines are implicitly defined by chaining models together
 through their declared inputs and outputs. Pipelines take the form of
 Directed Acyclic Graphs (DAGs).
@@ -63,6 +66,118 @@ output (e.g., a Pandas DataFrame or Arrow table).
 │  Model 1   │─────►│  Model 2   │─────►│  Model 4   │
 └────────────┘      └────────────┘      └────────────┘
 ```
+
+## Parameterize DAGs with parameters and secrets
+
+In production, it is common for the same DAG code to be run on different days, 
+or to call an external service (e.g., an LLM for data enrichment). 
+Bauplan supports these scenarios with parameters and secrets.
+
+
+You can define a parameter using the CLI:
+
+```sh
+bauplan parameter set prompt_summary "Write a concise, incisive summary of the news article." --description "Prompt passed to GPT for article summarization"
+```
+
+Each parameter is defined in `bauplan_project.yml` with a `type` and
+a `default` value.
+
+```yaml
+parameters:
+  interest_rate:
+    default: 3.5
+    type: float
+  loan_amount:
+    default: 200000
+    type: int
+```
+
+Parameters can be:
+
+-   **Strings** (`str`)
+-   **Numbers** (`int`, `float`)
+-   **Booleans** (`bool`)
+-   [Secrets](/concepts/pipelines#secrets) (encrypted API keys or credentials)
+
+### Parameters
+
+Parameters let you pass runtime values to models without changing code. They can be accessed in a variety of ways.
+
+Parameters can be passed in [`bauplan.Model`](/reference/bauplan#bauplan_model) as a filter,
+using the `$param_name` syntax:
+
+```python
+@bauplan.model()
+@bauplan.python('3.11')
+def qualifying_loans(
+    data=bauplan.Model(
+        'loans',
+        filter='interest_rate <= $interest_rate AND amount >= $loan_amount',
+    ),
+):
+    ...
+```
+
+<Note>
+To see how to use parameters in a model as a variable, see [reference](/reference/bauplan#bauplan_parameter).
+</Note>
+
+In SQL, use `$param_name` directly in your query:
+
+```sql
+SELECT * FROM loans
+WHERE interest_rate <= $interest_rate
+  AND amount >= $loan_amount
+```
+
+Defaults can be overridden at runtime:
+
+<Tabs queryString="interface">
+  <TabItem value="cli" label="CLI">
+
+```sh
+bauplan run --param interest_rate=4.5 --param loan_amount=500000
+```
+
+  </TabItem>
+  <TabItem value="sdk" label="SDK">
+
+```python
+import bauplan
+
+client = bauplan.Client()
+client.run(
+    project_dir="./pipeline",
+    parameters={"interest_rate": 4.5, "loan_amount": 500000},
+)
+```
+
+  </TabItem>
+</Tabs>
+
+### Secrets
+
+Secrets are encrypted parameters for sensitive values like API keys,
+database credentials, or tokens. They are encrypted, versioned, and
+injected into your pipeline code at runtime — avoiding hardcoding.
+
+Use the CLI with `--type secret` to create one:
+
+```sh
+bauplan parameter set openai_api_key sk-abc123... --type secret
+```
+
+Bauplan encrypts the value via AWS KMS and stores only the ciphertext
+in your `bauplan_project.yml`. Secrets are never stored or transmitted
+in plaintext.
+
+In your code, reference secrets with `bauplan.Parameter` just like
+regular parameters.
+
+For a complete walkthrough using secrets with an LLM pipeline, see the
+[Using LLMs with Secrets](https://github.com/BauplanLabs/examples/tree/main/learn/04-using-llms-with-secrets)
+example.
 
 ## Best Practices
 

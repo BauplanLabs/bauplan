@@ -5,20 +5,28 @@ export default {
     {
       type: "category",
       label: "Getting Started",
-      collapsed: false,
+      collapsed: true,
       items: [
         "tutorial/index",
         "tutorial/installation",
-        "tutorial/quick_start",
-        "tutorial/data_branches",
-        "tutorial/pipelines",
-        "tutorial/import",
+        {
+          type: "category",
+          label: "Quick Start",
+          link: {
+            type: "doc",
+            id: "tutorial/quick_start",
+          },
+          items: [
+            "tutorial/data_branches",
+            "tutorial/import",
+          ],
+        },
       ],
     },
     {
       type: "category",
-      label: "Overview",
-      collapsed: false,
+      label: "Platform Overview",
+      collapsed: true,
       link: {
         type: "doc",
         id: "overview/index",
@@ -32,7 +40,7 @@ export default {
     {
       type: "category",
       label: "Core Concepts",
-      collapsed: false,
+      collapsed: true,
       items: [
         "concepts/projects",
         "concepts/models",
@@ -40,6 +48,7 @@ export default {
         "concepts/tables",
         "concepts/namespaces",
         "concepts/expectations",
+        "concepts/schema_conflicts",
         {
           type: "category",
           label: "Git for Data",
@@ -52,81 +61,22 @@ export default {
             "concepts/git_for_data/commits_refs",
             "concepts/git_for_data/tags",
             "concepts/git_for_data/data_branches",
-            "concepts/git_for_data/walkthrough",
           ],
         },
       ],
     },
     {
       type: "category",
-      label: "Guides",
-      collapsed: false,
-      items: [
-        "guides/import_data",
-        "guides/schema_conflicts",
-        "guides/casting",
-        "guides/secrets",
-        "guides/parameters",
-        "guides/partitioning",
-        "guides/detached_runs",
-      ],
-    },
-    "faq",
-  ],
-  referenceSidebar: [
-    "reference/cli",
-    {
-      type: "category",
-      label: "SDK",
-      collapsed: false,
-      items: sdkPages,
-    },
-  ],
-  buildWithLLMsSidebar: [
-    "llms/index",
-    "llms/quick_start",
-    "llms/explore_data",
-    {
-      type: "category",
-      label: "Build and run a pipeline",
+      label: "Agents",
+      collapsed: true,
       link: {
         type: "doc",
-        id: "llms/tutorial/index",
+        id: "agents/index",
       },
-      collapsed: false,
       items: [
-        "llms/tutorial/create",
-        "llms/tutorial/test",
-        "llms/tutorial/publish",
+        "agents/setup",
       ],
     },
-    "llms/mcp_server",
-  ],
-  examplesSidebar: [
-    {
-      type: "category",
-      label: "Examples",
-      link: {
-        type: "doc",
-        id: "examples/index",
-      },
-      collapsed: false,
-      items: [
-        "examples/data_product",
-        "examples/rag",
-        "examples/medallion",
-        "examples/llm_tabular",
-        "examples/mongo",
-        "examples/import_data",
-        "examples/pdf_analysis_openai",
-        "examples/llm",
-        "examples/expectations",
-        "examples/nrt",
-        "examples/data_app",
-      ],
-    },
-  ],
-  integrationsSidebar: [
     {
       type: "category",
       label: "Integrations",
@@ -134,12 +84,12 @@ export default {
         type: "doc",
         id: "integrations/index",
       },
-      collapsed: false,
+      collapsed: true,
       items: [
         {
           type: "category",
           label: "Orchestrators",
-          collapsed: false,
+          collapsed: true,
           link: {
             type: "doc",
             id: "integrations/orchestrators/index",
@@ -156,7 +106,7 @@ export default {
         {
           type: "category",
           label: "Interactive notebooks and data apps",
-          collapsed: false,
+          collapsed: true,
           link: {
             type: "doc",
             id: "integrations/notebooks_data_apps/index",
@@ -170,43 +120,23 @@ export default {
         {
           type: "category",
           label: "Warehouses and Lakehouses",
-          collapsed: false,
+          collapsed: true,
           link: {
             type: "doc",
             id: "integrations/warehouses_lakehouses/index",
           },
           items: [
-            {
-              type: "category",
-              label: "Snowflake",
-              link: {
-                type: "doc",
-                id: "integrations/warehouses_lakehouses/snowflake/index",
-              },
-              items: [
-                "integrations/warehouses_lakehouses/snowflake/snowflake_inbound",
-                "integrations/warehouses_lakehouses/snowflake/snowflake_outbound",
-              ],
-            },
-            {
-              type: "category",
-              label: "Big Query",
-              link: {
-                type: "doc",
-                id: "integrations/warehouses_lakehouses/big_query/index",
-              },
-              items: [
-                "integrations/warehouses_lakehouses/big_query/big_query_inbound",
-                "integrations/warehouses_lakehouses/big_query/big_query_outbound",
-              ],
-            },
+            "integrations/warehouses_lakehouses/snowflake_inbound",
+            "integrations/warehouses_lakehouses/snowflake_outbound",
+            "integrations/warehouses_lakehouses/big_query_inbound",
+            "integrations/warehouses_lakehouses/big_query_outbound",
             "integrations/warehouses_lakehouses/gcs",
           ],
         },
         {
           type: "category",
           label: "BI tools and Postgres client",
-          collapsed: false,
+          collapsed: true,
           link: {
             type: "doc",
             id: "integrations/bi_tools_postgres/index",
@@ -216,7 +146,7 @@ export default {
         {
           type: "category",
           label: "Data Integration and ELT Tools",
-          collapsed: false,
+          collapsed: true,
           link: {
             type: "doc",
             id: "integrations/data_int_and_etl/index",
@@ -233,6 +163,16 @@ export default {
           className: "sidebar-standalone-header",
         },
       ],
+    },
+    "faq",
+  ],
+  referenceSidebar: [
+    "reference/cli",
+    {
+      type: "category",
+      label: "SDK",
+      collapsed: false,
+      items: sdkPages,
     },
   ],
 };

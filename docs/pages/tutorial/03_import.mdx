@@ -1,0 +1,172 @@
+---
+title: "Import"
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+This guide explains how to import data into bauplan's data catalog as Iceberg tables.
+
+## General Requirements
+
+- Data must be in Parquet or CSV format
+- Data must be in S3 - local files cannot be imported directly
+- S3 bucket must have proper permissions configured:
+  - For bauplan's clients, this is a one-off operation done during onboarding when pairing your data with the system
+  - For sandbox users, see sandbox requirements below
+
+## Sandbox Environment Requirements
+
+When using the bauplan sandbox (beta environment), additional requirements apply:
+
+- S3 bucket must be publicly readable
+- S3 bucket must have `ListObject` permission enabled
+
+<Note>
+These additional requirements exist because the sandbox runs in an isolated EC2 instance that can only access public data. In a production environment, the EC2 instance would be privately linked to your bucket through IAM.
+</Note>
+
+## Import Process Overview
+
+The import process in bauplan consists of two main steps:
+
+1. **Create Table**: Define the table schema based on your data files
+2. **Import Data**: Load the data into your newly created table
+
+<details>
+<summary>Using the Web UI instead?</summary>
+
+You can also import data through the Bauplan UI: navigate to **Import Data** in the left menu and drag and drop your files. Once uploaded, continue with the steps below to create a table and import the data.
+
+![image](/img/import.png)
+
+**Public Sandbox Notice:** This is a shared public environment. All data you upload will be visible to other users - **use only public datasets**.
+
+</details>
+
+<CollapsibleTip summary="You can use an AI Agent to safely import your data!">
+
+After completing the [agent setup](/agents/setup), ask your AI assistant to import data using the [safe-ingestion skill](https://github.com/BauplanLabs/bauplan-skills/tree/main/plugins/bauplan/skills/bauplan-safe-ingestion/SKILL.md). Simply say *"Import the Parquet files from s3://my-bucket/data/ into a table called my_table"* and the agent will handle branch creation, table creation, data import, validation, and merging automatically using a Write-Audit-Publish pattern.
+
+</CollapsibleTip>
+
+### Step 1: Create Table
+
+Create an empty table using the `create` command:
+
+<Tabs>
+<TabItem value="cli" label="CLI" default>
+
+```bash
+bauplan table create <YOUR_TABLE_NAME> --search-uri 's3://your-bucket/*.parquet'
+```
+
+</TabItem>
+<TabItem value="sdk" label="SDK">
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+client.create_table(
+    table='my_table_name',
+    search_uri='s3://path/to/my/files/*.parquet',
+    branch='my_branch_name'
+)
+```
+
+</TabItem>
+</Tabs>
+
+This command will:
+
+- Analyze your Parquet/CSV files to determine the schema
+- Create an empty table with the appropriate structure
+- Not yet import any data
+
+### Step 2: Import Data
+
+After creating the table, import the data:
+
+<Tabs>
+<TabItem value="cli" label="CLI" default>
+
+```bash
+bauplan table import <YOUR_TABLE_NAME> --search-uri 's3://your-bucket/*.parquet'
+```
+
+</TabItem>
+<TabItem value="sdk" label="SDK">
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+state = client.import_data(
+    table='my_table_name',
+    search_uri='s3://path/to/my/files/*.parquet',
+    branch='my_branch_name'
+)
+
+# Check for errors during import
+if state.error:
+    print(f"Import failed: {state.error}")
+```
+
+</TabItem>
+</Tabs>
+
+<Tip>
+**Scheduled imports:** You can import data on a schedule. See our [scheduled ingestion example](https://github.com/BauplanLabs/examples/tree/main/learn/03-safe-ingestion-on-a-schedule).
+</Tip>
+
+### Review changes with branch diff
+
+Before merging your import branch, you can review what's changed compared to
+`main` by running `branch diff`. This compares your **current branch** against a
+target branch:
+
+```bash
+bauplan branch diff main
+```
+
+This will show:
+
+- New tables in your branch that don't exist in `main`
+- Schema or data differences in existing tables
+- Tables deleted or renamed in your branch
+
+<Note>
+`branch diff` always compares **your active branch** to the branch you pass as an argument.
+</Note>
+
+## Handling Schema Conflicts
+
+If schema conflicts occur between files during import, you can generate an import
+plan, resolve the conflicts, and apply the corrected plan.
+
+A quick summary of the steps:
+
+1. Generate an import plan:
+
+```bash
+bauplan table create-plan <YOUR_TABLE_NAME> \
+    --search-uri 's3://your-bucket/*.parquet' \
+    --save-plan table_creation_plan.yml
+```
+
+2. Review the `table_creation_plan.yml` file for conflicts
+3. Modify the schema as needed
+4. Ensure the `conflicts` field is empty (`conflicts: []`)
+5. Apply the modified plan:
+
+```bash
+bauplan table create-plan-apply --plan table_creation_plan.yml
+```
+
+<Note>
+- For more details see [table create-plan](/reference/cli#table-create-plan) and [table create-plan-apply](/reference/cli#table-create-plan-apply).
+- For a complete import reference - including error handling and advanced import options, please consult the [reference documentation](/reference/bauplan).
+</Note>
