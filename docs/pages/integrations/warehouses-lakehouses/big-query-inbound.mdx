@@ -43,7 +43,7 @@ OPTIONS (
 )
 ```
 
-Note that in production Bauplan allows you (through its [Git-for-data](/concepts/git_for_data/data_branches) abstractions) to have multiple versions of the same table in different branches; moreover, a pipeline that runs every day will naturally advance the snapshot of the relevant final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop / cron / orchestrator, the workflow would look like this:
+Note that in production Bauplan allows you (through its [Git-for-data](/concepts/git-for-data/data-branches) abstractions) to have multiple versions of the same table in different branches; moreover, a pipeline that runs every day will naturally advance the snapshot of the relevant final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop / cron / orchestrator, the workflow would look like this:
 
 1. A Bauplan DAG is triggered on a job-related branch, replacing `my_table`.
 2. On success, the branch is merged and you now have a new version of `my_table`.
