@@ -181,8 +181,16 @@ pub enum ApiError {
         /// A longer description of the error encountered.
         message: Option<String>,
     },
-    /// The API response did not contain a code, but the HTTP status was non-200.
-    Other(http::StatusCode),
+    /// The API response did not contain a code or the code was unknown, but
+    /// the HTTP status was non-200.
+    Other {
+        /// The HTTP status on the overall response.
+        status: http::StatusCode,
+        /// The error code from the API.
+        kind: Option<String>,
+        /// A longer description of the error encountered.
+        message: Option<String>,
+    },
     /// The API response was invalid.
     InvalidResponse(http::StatusCode),
 }
@@ -196,8 +204,22 @@ impl std::fmt::Display for ApiError {
                     write!(f, ": {message}")?;
                 }
             }
-            ApiError::Other(status) => {
-                write!(f, "{status}")?;
+            ApiError::Other {
+                status,
+                message,
+                kind,
+            } => {
+                write!(f, "Unknown error ({}): ", status.as_u16())?;
+
+                if let Some(message) = &message {
+                    write!(f, "{message}")?;
+                } else {
+                    write!(f, "{status}")?;
+                }
+
+                if let Some(kind) = &kind {
+                    write!(f, " ({kind})")?;
+                }
             }
             ApiError::InvalidResponse(status) => {
                 write!(f, "Invalid response ({status})")?;
@@ -233,7 +255,11 @@ impl ApiError {
             },
             Err(e) => {
                 tracing::warn!("Failed to parse API error kind: {e}");
-                ApiError::InvalidResponse(status)
+                ApiError::Other {
+                    status,
+                    kind: Some(raw.r#type),
+                    message: raw.message,
+                }
             }
         }
     }
@@ -241,9 +267,8 @@ impl ApiError {
     /// The HTTP status code of the response.
     pub fn status(&self) -> http::StatusCode {
         match self {
-            ApiError::ErrorResponse { status, .. }
-            | ApiError::Other(status)
-            | ApiError::InvalidResponse(status) => *status,
+            ApiError::ErrorResponse { status, .. } | ApiError::Other { status, .. } => *status,
+            ApiError::InvalidResponse(status) => *status,
         }
     }
 
@@ -307,4 +332,34 @@ mod test {
         Ok(())
     }
 
+    #[test]
+    fn raw_unknown_error_kind() -> anyhow::Result<()> {
+        let raw: RawApiError = serde_json::from_str(
+            r#"{
+                "message": "something went wrong",
+                "type": "RetryError",
+                "context": {}
+            }"#,
+        )?;
+
+        let err = ApiError::from_raw(http::StatusCode::INTERNAL_SERVER_ERROR, raw);
+        let ApiError::Other {
+            status,
+            message,
+            kind,
+        } = &err
+        else {
+            bail!("expected ApiError::Other, got {err:?}");
+        };
+
+        assert_eq!(*status, http::StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(kind.as_deref(), Some("RetryError"));
+        assert_eq!(message.as_deref(), Some("something went wrong"));
+        assert_eq!(
+            err.to_string(),
+            "Unknown error (500): something went wrong (RetryError)"
+        );
+
+        Ok(())
+    }
 }

@@ -58,14 +58,22 @@ impl ApiResponse for IcebergTable {
                 super::ApiError::InvalidResponse(parts.status)
             })
         } else {
-            let raw: super::RawApiResponse<serde_json::Value> =
-                serde_json::from_reader(body).map_err(|_| super::ApiError::Other(parts.status))?;
+            let raw: super::RawApiResponse<serde_json::Value> = serde_json::from_reader(body)
+                .map_err(|_| super::ApiError::Other {
+                    status: parts.status,
+                    kind: None,
+                    message: None,
+                })?;
 
             match raw {
                 super::RawApiResponse::Error { error } => {
                     Err(super::ApiError::from_raw(parts.status, error))
                 }
-                _ => Err(super::ApiError::Other(parts.status)),
+                _ => Err(super::ApiError::Other {
+                    status: parts.status,
+                    kind: None,
+                    message: None,
+                }),
             }
         }
     }
