@@ -1,11 +1,11 @@
-import { themes as prismThemes } from 'prism-react-renderer';
-import remarkHiddenLines from './src/plugins/remark-hidden-lines.js';
-import redirects from './redirects.js';
+import { themes as prismThemes } from "prism-react-renderer";
+import remarkHiddenLines from "./src/plugins/remark-hidden-lines.js";
+import redirects from "./redirects.js";
 
 export default {
   clientModules: [
-    require.resolve('./src/clientModules/scrollToAnchor.js'),
-    require.resolve('./src/clientModules/tabTocSync.js'),
+    require.resolve("./src/clientModules/scrollToAnchor.js"),
+    require.resolve("./src/clientModules/tabTocSync.js"),
   ],
   title: "Bauplan Documentation",
   url: process.env.DOCS_URL || "https://docs.bauplanlabs.com",
@@ -14,10 +14,12 @@ export default {
     [
       "@docusaurus/preset-classic",
       {
-        gtag: process.env.GTAG_ID ? {
-          trackingID: process.env.GTAG_ID,
-          anonymizeIP: true,
-        } : false,
+        gtag: process.env.GTAG_ID
+          ? {
+              trackingID: process.env.GTAG_ID,
+              anonymizeIP: true,
+            }
+          : false,
         docs: {
           routeBasePath: "/", // The docs are served at the root.
           path: "pages", // The local path to the markdown files.
@@ -40,24 +42,24 @@ export default {
   customFields: {
     socials: [
       {
-        href: 'https://www.linkedin.com/company/bauplanlabs/',
-        src: '/img/icons/linkedin.avif',
-        alt: 'LinkedIn',
-        title: 'LinkedIn',
+        href: "https://www.linkedin.com/company/bauplanlabs/",
+        src: "/img/icons/linkedin.avif",
+        alt: "LinkedIn",
+        title: "LinkedIn",
         invertInLight: true,
       },
       {
-        href: 'https://github.com/BauplanLabs',
-        src: '/img/icons/github.avif',
-        alt: 'GitHub',
-        title: 'GitHub',
+        href: "https://github.com/BauplanLabs",
+        src: "/img/icons/github.avif",
+        alt: "GitHub",
+        title: "GitHub",
         invertInLight: true,
       },
       {
-        href: 'https://www.youtube.com/@bauplan_labs',
-        src: '/img/icons/youtube.avif',
-        alt: 'YouTube',
-        title: 'YouTube',
+        href: "https://www.youtube.com/@bauplan_labs",
+        src: "/img/icons/youtube.avif",
+        alt: "YouTube",
+        title: "YouTube",
         invertInLight: true,
       },
     ],
@@ -83,7 +85,7 @@ export default {
           label: "API Reference",
         },
         {
-          href: "https://github.com/BauplanLabs/examples",
+          href: "https://github.com/BauplanLabs/bauplan/tree/main/examples",
           target: "_blank",
           position: "left",
           label: "Examples",
@@ -100,30 +102,30 @@ export default {
       copyright: `Copyright © ${new Date().getFullYear()} Bauplan Inc.<br/> All rights reserved.`,
     },
     algolia: {
-      appId: 'X4Z23JL83Y',
-      apiKey: 'b460e7a7104d43707f168e267aa60788',
-      indexName: 'Bauplan Docs Website',
+      appId: "X4Z23JL83Y",
+      apiKey: "b460e7a7104d43707f168e267aa60788",
+      indexName: "Bauplan Docs Website",
       insights: true,
     },
     prism: {
-      additionalLanguages: ['bash'],
+      additionalLanguages: ["bash"],
       theme: prismThemes.vsDark,
     },
     mermaid: {
       theme: {
-        light: 'base',
-        dark: 'dark',
+        light: "base",
+        dark: "dark",
       },
       options: {
         themeVariables: {
-          fontFamily: 'IBMPlexMono, monospace',
+          fontFamily: "IBMPlexMono, monospace",
         },
       },
     },
   },
   plugins: [
     require.resolve("./src/plugins/tailwind-config.js"),
-    ['@docusaurus/plugin-client-redirects', { redirects }],
+    ["@docusaurus/plugin-client-redirects", { redirects }],
   ],
 
   future: {
