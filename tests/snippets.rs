@@ -8,9 +8,14 @@ use anyhow::{Context, bail};
 use bstr::ByteSlice as _;
 use regex::Regex;
 use tree_sitter::{Parser, Query, QueryCursor, StreamingIterator};
+use walkdir::WalkDir;
 
 const PY_DOCSTRINGS: &str = "(expression_statement (string (string_content) @doc))";
 const MD_CODE_BLOCKS: &str = "(fenced_code_block (info_string) @info (code_fence_content) @code)";
+
+// Whitelist the code snippet languages, so that snippets like ```pyfon or
+// ```bash don't sneak by.
+const ALLOWED_LANGUAGES: &[&str] = &["python", "sh", "sql", "json", "yaml", "mermaid", "text"];
 
 struct Snippet {
     code: String,
@@ -22,6 +27,14 @@ impl fmt::Display for Snippet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.path.display(), self.line)
     }
+}
+
+fn include_entry(entry: &walkdir::DirEntry) -> bool {
+    entry
+        .path()
+        .file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| !n.starts_with('.'))
 }
 
 /// Extract fenced code blocks from a markdown string.
@@ -52,7 +65,22 @@ fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec
         let code_node = mm.captures.iter().find(|c| c.index == code_idx).unwrap();
 
         let info = info_node.node.utf8_text(src.as_bytes())?;
+        let line = info_node.node.start_position().row;
+
         if !info.starts_with(lang) {
+            let lang = info.split_whitespace().next();
+
+            let Some(lang) = lang else {
+                bail!("{}:{line}: code snippet without language", path.display(),);
+            };
+
+            if !ALLOWED_LANGUAGES.contains(&lang) {
+                bail!(
+                    "{}:{line}: unexpected language {lang}, expected {ALLOWED_LANGUAGES:?}",
+                    path.display(),
+                );
+            }
+
             continue;
         }
 
@@ -61,7 +89,6 @@ fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec
             continue;
         }
 
-        let line = info_node.node.start_position().row;
         let code = code_node.node.utf8_text(src.as_bytes())?;
 
         // In rare cases (bulleted lists), the entire block might be indented.
@@ -157,11 +184,15 @@ fn docstrings() -> anyhow::Result<()> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     let mut snippets = Vec::new();
-    for entry in fs::read_dir(root.join("python/bauplan"))? {
-        let path = entry?.path();
+    for entry in WalkDir::new(root.join("python/bauplan"))
+        .into_iter()
+        .filter_entry(include_entry)
+    {
+        let entry = entry?;
+        let path = entry.path();
         if path.extension().is_some_and(|e| e == "pyi") {
-            let rel = path.strip_prefix(root).unwrap_or(&path);
-            let src = fs::read_to_string(&path)?;
+            let rel = path.strip_prefix(root).unwrap_or(path);
+            let src = fs::read_to_string(path)?;
             extract_pyi_snippets(rel, &src, &mut snippets)?;
         }
     }
@@ -170,19 +201,25 @@ fn docstrings() -> anyhow::Result<()> {
 }
 
 #[test]
-fn docs_website() -> anyhow::Result<()> {
+fn python_examples() -> anyhow::Result<()> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     let mut snippets = Vec::new();
-    for entry in walkdir::WalkDir::new(root.join("docs/pages")) {
+
+    let entries = ["docs/pages", "examples"]
+        .iter()
+        .flat_map(|p| WalkDir::new(p).into_iter().filter_entry(include_entry));
+    for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().is_some_and(|e| e == "mdx") {
-            let rel = path.strip_prefix(root).unwrap_or(path);
-            let src = fs::read_to_string(path)?;
-            for snippet in extract_md_snippets("python", &src, rel)? {
-                snippets.push(snippet);
-            }
+        if path.extension().is_none_or(|e| e != "mdx" && e != "md") {
+            continue;
+        }
+
+        let rel = path.strip_prefix(root).unwrap_or(path);
+        let src = fs::read_to_string(path)?;
+        for snippet in extract_md_snippets("python", &src, rel)? {
+            snippets.push(snippet);
         }
     }
 
@@ -191,7 +228,7 @@ fn docs_website() -> anyhow::Result<()> {
 
 /// Look for and validate `bauplan` invocations in the docs.
 #[test]
-fn cli() -> anyhow::Result<()> {
+fn cli_examples() -> anyhow::Result<()> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let bin = escargot::CargoBuild::new()
         .bin("bauplan")
@@ -210,10 +247,13 @@ fn cli() -> anyhow::Result<()> {
     let mut failures = Vec::new();
     let mut successes = 0;
 
-    for entry in walkdir::WalkDir::new(root.join("docs/pages")) {
+    let entries = ["docs/pages", "examples"]
+        .iter()
+        .flat_map(|p| WalkDir::new(p).into_iter().filter_entry(include_entry));
+    for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().is_none_or(|e| e != "mdx") {
+        if path.extension().is_none_or(|e| e != "mdx" && e != "md") {
             continue;
         }
 
