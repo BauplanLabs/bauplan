@@ -51,7 +51,7 @@ This creates three files:
 
 ## Run the pipeline
 
-The scaffolded project defines a small pipeline: it reads from the `titanic` table, computes survival rates by age, and validates the output with an expectation test. Let's run it:
+The generated project defines a small pipeline: it reads from the `titanic` table, computes survival rates by age, and validates the output with an expectation test. Let's run it:
 
 ```sh
 bauplan run
@@ -59,8 +59,8 @@ bauplan run
 
 Looking at `models.py`, you'll find two functions:
 
-- **`survival_rate_by_age`** — a model decorated with `@bauplan.model()`. It reads the `Age` and `Survived` columns from the `titanic` table, groups passengers by age, and computes the average survival rate per age group.
-- **`test_age`** — an [expectation](/concepts/expectations) decorated with `@bauplan.expectation()`. Expectations are Bauplan's built-in way to run data quality checks. This one verifies that the `Age` column in the output has no duplicate values.
+- **`survival_rate_by_age`:** a model decorated with `@bauplan.model()`. It reads the `Age` and `Survived` columns from the `titanic` table, groups passengers by age, and computes the average survival rate per age group.
+- **`test_age`:** an [expectation](/concepts/expectations) decorated with `@bauplan.expectation()`. Expectations are Bauplan's built-in way to run data quality checks. This one verifies that the `Age` column in the output has no duplicate values.
 
 ## Materialize the output as a table
 
@@ -71,7 +71,7 @@ bauplan table ls --name survival_rate_by_age
 ```
 
 You'll see that no new table was created for the model's output.
-By default, `materialization_strategy` parameter in `@bauplan.model()` is set to "NONE", which results in memory without writing anything to the catalog. To persist the output as a table, make this change to `models.py`:
+By default, `materialization_strategy` parameter in `@bauplan.model()` is set to `NONE`, which results in memory without writing anything to the catalog. To persist the output as a table, make this change to `models.py`:
 
 ```python type:ignore
 @bauplan.model(materialization_strategy='REPLACE')

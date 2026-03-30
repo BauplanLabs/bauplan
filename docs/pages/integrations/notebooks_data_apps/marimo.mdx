@@ -13,7 +13,7 @@ Bauplan exposes a Python SDK that lets you interact with your lakehouse in code:
 - Python 3.10 or above.
 - A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
 - marimo, Bauplan, Pandas, and Matplotlib installed.
-- Access to a Bauplan table you can query (i.e. `taxi_fhvhv`).
+- Access to a Bauplan table you can query (such as `taxi_fhvhv`).
 
 <Note>
 To isolate your data environment, run it on a branch (not on main). Branch names must be prefixed with your Bauplan username, for example `alice.exploration_app`.
@@ -21,13 +21,13 @@ To isolate your data environment, run it on a branch (not on main). Branch names
 
 [Learn more about branches](/concepts/git_for_data/data_branches)
 
-## **Quickstart: query Bauplan from a marimo app**
+## **Quickstart: Query Bauplan from a marimo app**
 
 This example reads from the `taxi_fhvhv` table in the Bauplan Sandbox (data for 2023). The app:
 
 - Authenticates with `bauplan.Client()` using your profile or `BAUPLAN_API_KEY`.
 - Uses Bauplan SDK to execute SQL against a table in a data branch (`<username>.exploration_app`) for a user-selected date range.
-- Visualizes the resulting table with marimo’s UI elements and a matplotlib bar chart, embedded in the app. Use `mo.ui.date_range` for inputs and mo.ui.table for interactive tabular display; render Matplotlib with `mo.mpl.interactive`.
+- Visualizes the resulting table with marimo’s UI elements and a Matplotlib bar chart, embedded in the app. Use `mo.ui.date_range` for inputs and `mo.ui.table` for interactive tabular display; render Matplotlib with `mo.mpl.interactive`.
 
 <Note>
 The Sandbox dataset is shared and meant for examples. In a private environment, you can replace the table name (and catalog/namespace if needed) while keeping the same pattern: *Client → branch → query → visualize*.

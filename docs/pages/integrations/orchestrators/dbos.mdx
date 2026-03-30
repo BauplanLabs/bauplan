@@ -6,11 +6,11 @@ hide_title: false
 
 DBOS is a distributed operating system for workflows: it gives you durable, exactly-once execution of Python functions, with built-in scheduling, retries, and observability. You write plain Python functions, annotate them with `@DBOS.workflow()` and `@DBOS.step()`, and DBOS takes care of orchestration, crash recovery, and state management under the hood.
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code — from running pipelines to managing branches and tables. DBOS is just Python too: workflows are annotated Python functions and steps are where you perform I/O. Integrating the two is straightforward: import the Bauplan SDK inside DBOS steps and call Bauplan methods as you would in a standalone script. DBOS handles orchestration, durability, retries, and scheduling, while Bauplan executes the data work. The result is a clean split: DBOS runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
+Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. DBOS is just Python too: workflows are annotated Python functions and steps are where you perform I/O. Integrating the two is straightforward: import the Bauplan SDK inside DBOS steps and call Bauplan methods as you would in a standalone script. DBOS handles orchestration, durability, retries, and scheduling, while Bauplan executes the data work. The result is a clean split; DBOS runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: run a Bauplan pipeline from an DBOS DAG
+# Quickstart: Run a Bauplan pipeline from an DBOS DAG
 
-**Goal:** Call a [Bauplan project](/concepts/projects) from a DBOS workflow in the smallest possible way: authenticate, run, check status, and fail the workflow if the Bauplan job fails.
+**Goal:** call a [Bauplan project](/concepts/projects) from a DBOS workflow in the smallest possible way: authenticate, run, check status, and fail the workflow if the Bauplan job fails.
 
 ## Prerequisites
 
@@ -121,9 +121,9 @@ This executes the DBOS workflow in a single process without any external schedul
 
 Bauplan looks for credentials in a clear precedence order:
 
-1. **Environment variable** — `BAUPLAN_API_KEY`
-2. **Profile name** — `BAUPLAN_PROFILE` (points to a saved profile)
-3. **Config file** — `~/.bauplan/config.yml`
+1. **Environment variable** - `BAUPLAN_API_KEY`
+2. **Profile name** - `BAUPLAN_PROFILE` (points to a saved profile)
+3. **Config file** - `~/.bauplan/config.yml`
 
 You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 

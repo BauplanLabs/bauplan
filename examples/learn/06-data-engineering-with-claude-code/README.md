@@ -1,4 +1,4 @@
-# Data Engineering with Claude Code
+# Data engineering with Claude Code
 
 Use [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with custom Bauplan skills to build a satellite telemetry ingestion pipeline through a guided, narrative-driven experience. The demo walks through three iterations: building a naive pipeline, discovering data quality issues, and adopting the Write-Audit-Publish (WAP) pattern - all with Bauplan's branch isolation protecting production data while AI builds the pipeline.
 
@@ -16,7 +16,7 @@ The scenario simulates a data team ingesting satellite telemetry data into a lak
 - `lakehouse_workflow/` - Python scripts for lakehouse operations (created during the demo)
 - `challenged_pipeline/` - Bauplan data pipeline (created during the demo)
 
-## Getting Started
+## Getting started
 
 To begin the challenge, prompt your LLM with:
 

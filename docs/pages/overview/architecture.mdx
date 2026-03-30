@@ -4,7 +4,7 @@ title: "Architecture"
 
 Bauplan\'s architecture is organized around three main layers:
 
-## Control Plane (Multi-tenant)
+## Control plane (multi-tenant)
 
 The **Control Plane** is Bauplan\'s central management layer, shared
 across tenants. It handles metadata, planning, and orchestration. No
@@ -19,7 +19,7 @@ user data ever reaches this layer.
 -   **Plan Compilation:** Generates an optimized physical execution
     plan, specifying exactly how functions will run and communicate.
 
-## Data Plane (Managed or BYOC)
+## Data plane (Managed or BYOC)
 
 The **Data Plane** executes your functions securely and efficiently
 within isolated, tenant-specific environments.
@@ -34,7 +34,7 @@ within isolated, tenant-specific environments.
     maximize resource usage and caches results to accelerate repeated
     data accesses.
 
-## Storage Layer (User-owned)
+## Storage layer (user-owned)
 
 Bauplan interacts directly with your existing object storage, ensuring
 you retain full control of your data.
@@ -48,7 +48,7 @@ you retain full control of your data.
     catalog, ensuring versioning, reproducibility, and full
     auditability.
 
-### Architectural Flow
+### Architectural flow
 
 The diagram below illustrates the flow from local development to
 execution and data storage:

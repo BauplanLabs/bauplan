@@ -1,4 +1,4 @@
-# Medallion Architecture for Telemetry Data
+# Medallion architecture for telemetry data
 
 Implement the [medallion architecture](https://www.databricks.com/glossary/medallion-architecture) (Bronze-Silver-Gold) for sensor telemetry data. The pipeline cleans and aggregates raw sensor readings through three layers, with data quality checks between stages and a [Streamlit](https://streamlit.io/) dashboard to visualize the results.
 

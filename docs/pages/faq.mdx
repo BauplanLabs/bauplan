@@ -95,7 +95,7 @@ across updates, merges, and queries.
 
 Bauplan supports **CSV, Parquet, and JSONL**, stored in S3. Bauplan tables are
 represented as Iceberg tables. We currently do not support Delta tables
-and Hudi tables.
+or Hudi tables.
 
 ## Does Bauplan run Spark under the hood?
 
@@ -140,7 +140,7 @@ efficiently:
 
 Not really. Bauplan does not force you to learn a new syntax. We provide
 lighting-fast feedback loop in the cloud by removing many bottlenecks
-you would normally have - network bandwidth, caching, containerization
+you would normally have - network bandwidth, caching, containerization,
 and data passing between functions: if a function or a pipeline runs on
 your laptop, it will run in Bauplan, faster, more robustly and directly
 integrated with our data lake. However, we do not change your code in
@@ -178,12 +178,12 @@ in your S3 bucket, making it accessible to any engine that supports
 
 No, please keep it. Bauplan is not an orchestrator, it's a serverless
 Data Lakehouse. We are good at being really fast, running pipelines,
-querying and branching data. We are not terribly good at scheduling,
+querying, and branching data. We are not terribly good at scheduling,
 re-try and fan-out. We integrate with the outermost layer of
 orchestration, so you can keep your favorite frameworks and maintain the
 capabilities that really matter for an orchestrator. For instance, you
-can call Bauplan functions and DAGs as Airflow tasks, they just will be
-run by Bauplan optimized runtime. [Do you wanna see an
+can call Bauplan functions and DAGs as Airflow tasks, and Bauplan's
+optimized runtime just runs them. [Do you wanna see an
 example?](https://github.com/BauplanLabs/wap_with_bauplan_and_prefect/tree/main)
 
 ## What does Bauplan mean?

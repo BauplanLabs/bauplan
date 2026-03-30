@@ -7,9 +7,9 @@ pipelines, configurations, and dependencies. Organizing your project
 effectively ensures maintainability, scalability, and ease of
 collaboration.
 
-## Recommended Folder Structure
+## Recommended folder structure
 
-To promote clarity and modularity, we recommend structuring your Bauplan
+To promote clarity and modularity, consider structuring your Bauplan
 projects as follows:
 
 ```text
@@ -45,7 +45,7 @@ my_bauplan_project/
     pipeline-specific data helpers.
 -   `README.md`: Documentation for the overall project.
 
-### Best Practices
+### Best practices
 
 -   **Modular Pipelines:** Keep each pipeline self-contained within its
     directory to facilitate independent development and testing.
@@ -54,7 +54,7 @@ my_bauplan_project/
 -   **Testing:** Implement tests for your models and pipelines to ensure
     correctness and facilitate refactoring.
 
-## The `bauplan_project.yml` Configuration file
+## The `bauplan_project.yml` configuration file
 
 Each pipeline should include a `bauplan_project.yml` file that defines
 its configuration. This file specifies parameters such as the project
@@ -95,12 +95,12 @@ parameters:
 
 Some pipelines benefit from interactive or external components:
 
--   **Apps** (e.g., Streamlit) built on top of model outputs.
+-   **Apps** (for example, Streamlit) built on top of model outputs.
 -   **Notebooks** used for exploration, debugging, and analysis.
--   **Orchestrators** (e.g., Airflow, Prefect) used to schedule and
+-   **Orchestrators** (for example, Airflow, Prefect) used to schedule and
     monitor the pipelines in production.
 
-We recommend to structure your project like this:
+The recommended project structure is:
 
 ```text
 my_bauplan_project/
@@ -128,16 +128,15 @@ my_bauplan_project/
 Notebooks using the Bauplan Python SDK are excellent for quick
 inspection and lightweight exploration on your local machine. However:
 
--   **You pay the memory cost locally.** Any data returned via
-    `client.query()` is loaded into the memory of your Notebook or
-    Python process. This is great for small-to-medium datasets, but
+-   **You pay the memory cost locally.** `client.query()` loads any
+    returned data into the memory of your notebook or Python process. This is great for small-to-medium datasets, but
     risky for multi-GB results.
 -   **Performance is significantly slower than remote execution.** Even
-    with efficient streaming (e.g., Arrow Flight), SDK-based retrieval
+    with efficient streaming (for example, Arrow Flight), SDK-based retrieval
     is slower and more resource-intensive than letting the computation
     run near the data.
 
-### Best Practices
+### Best practices
 
 -   Use the Notebooks for **exploratory workflows**, lightweight
     queries, and output inspection.
@@ -147,14 +146,14 @@ inspection and lightweight exploration on your local machine. However:
 ## Orchestrators
 
 To productionize your pipelines, you can trigger Bauplan runs from any
-external orchestrator (e.g., Airflow, Prefect, Dagster).
+external orchestrator (for example, Airflow, Prefect, Dagster).
 
 ### Requirements for a good orchestrator
 
 -   **Flexible inputs**: Support for scheduled, manual, or event-driven
     triggers.
 -   **Flexible task control**: Ability to run subsets of pipelines
-    (e.g., a specific model and its children).
+    (for example, a specific model and its children).
 -   **Backfills**: Easily reprocess historical data.
 -   **Logging UI**: Centralized access to job logs and statuses.
 -   **Retries**: Robust error handling and retries.
@@ -165,7 +164,7 @@ external orchestrator (e.g., Airflow, Prefect, Dagster).
     and how your data pipelines** run -- not to replicate their logic.
     Invoke Bauplan with the correct ref and parameters and let Bauplan
     handle execution and data versioning.
--   Store orchestrator config and code (e.g., Airflow DAGs) alongside
+-   Store orchestrator config and code (for example, Airflow DAGs) alongside
     the relevant pipeline.
 -   Use tags or branch naming conventions to trigger runs in dev vs.
     prod.

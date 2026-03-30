@@ -1,4 +1,4 @@
-# Iteration 2: Healthy Commitment - Implementing WAP Workflow
+# Iteration 2: Healthy commitment - implementing WAP workflow
 
 
 ## Overview
@@ -6,10 +6,10 @@
 Our data team has identified clear improvements that can be made to data quality, but are hesitant to make a significant change to their architecture. What is the shortest path to ensuring only cleaned data is used by their analysis software? Medallion architecture allows them to filter data before it goes into the silver layer, but removing that data directly or transactionally has its limitations. Transactional branches are a distinct approach they've heard of but not yet tried. Maybe a quick prototype will help them determine if it's worth a longer term commitment or if they'll need to go back to an older approach.
 
 
-## Agent Task List
+## Agent task list
 
 
-### Phase 1: Add Validation to Data Pipeline
+### Phase 1: add validation to data pipeline
 
 Update the data pipeline in `challenged_pipeline/` to include validation logic that runs during the bronze-to-silver transformation.
 
@@ -26,7 +26,7 @@ Update the data pipeline in `challenged_pipeline/` to include validation logic t
   - [ ] Document validation logic in model docstrings
 
 
-### Phase 2: Adopt WAP Pattern in Workflow Orchestration
+### Phase 2: adopt WAP pattern in workflow orchestration
 
 Use the WAP skill (see `.claude/skills/bauplan-wap/SKILL.md`) to update the workflow orchestration so that validation happens before publishing to main.
 
@@ -48,10 +48,10 @@ Run the updated WAP workflow to see transactional branches in action, observing 
 - [ ] Confirm main branch remains clean
 
 
-## Technical Details
+## Technical details
 
 
-### Validation in the Pipeline vs. Validation Around the Pipeline
+### Validation in the pipeline vs. validation around the pipeline
 
 This iteration moves validation INTO the data pipeline itself, not just around it. The pipeline
 validates data as part of the bronze-to-silver transformation, causing the pipeline run to fail if
@@ -64,7 +64,7 @@ Benefits:
 - Clear separation between infrastructure concerns (orchestration) and data concerns (pipeline logic)
 
 
-### Transactional Branches
+### Transactional branches
 
 Transactional branches keep failed pipeline runs accessible for debugging without polluting
 production. Unlike traditional database rollback, the staging branch remains open for investigation

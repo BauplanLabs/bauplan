@@ -2,7 +2,7 @@
 title: "Metabase"
 ---
 
-Metabase is a BI Tool available in both Open Source and Enterprise versions; it can be used locally (via `Docker`), Self-hosted, or you can use one of the available Metabase Cloud versions.
+Metabase is a BI tool available in both open source and enterprise versions; you can run it locally (via `Docker`), self-host it, or use one of the available Metabase Cloud versions.
 
 In this guide, we'll use the Open Source Docker version (v0.56.6) as a reference, but aside from setup, the final configurations remain replicable across all its versions.
 
@@ -29,7 +29,7 @@ Once service initialization is complete, you can access the Metabase server from
 ![Screenshot 2025-09-23 at 10.15.15.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.15.15.png)
 
 
-Complete the initial wizard by creating the (local) user associated with your temporary Metabase instance. Depending on the version in use, you may be asked to configure the connection directly in the welcome wizard.
+Complete the initial wizard by creating the (local) user associated with your temporary Metabase instance. Depending on the version in use, the welcome wizard may ask you to configure the connection directly.
 
 ![Screenshot 2025-09-23 at 10.17.08.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.17.08.png)
 
@@ -40,7 +40,7 @@ Click on `PostgreSQL` and fill in the following fields
 - **Display name**: `BauplanLabs` (you can change this)
 - **Hostname**: the hostname of your Bauplan server
 - **Port**: the port assigned by your server to the proxy
-- **Database name**: the ref or branch name you want to connect to (e.g., `main`)
+- **Database name**: the ref or branch name you want to connect to (for example, `main`)
 - **Username**: your username
 - **Password**: your API Key
 - **Use a secure connection (SSL)**: enable
@@ -61,7 +61,7 @@ Once synchronization is complete, you can view the list of tables by clicking fr
 
 ![Screenshot 2025-09-23 at 10.25.42.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.25.42.png)
 
-Let's click on a table (`Taxi Zones`) to view its content, confirming that the setup was successful.
+Let's click a table (`Taxi Zones`) to view its content, confirming that the setup was successful.
 
 ![Screenshot 2025-09-23 at 10.26.27.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.26.27.png)
 
@@ -85,7 +85,7 @@ Our dashboard is ready, we can now save it and access it directly from the `Our 
 
 ![Screenshot 2025-09-23 at 11.00.43.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.00.43.png)
 
-## Advanced Configurations
+## Advanced configurations
 
 The Bauplan connection configuration is available in the `Admin settings -> Databases` section accessible from the cog icon in the upper right of Metabase.
 

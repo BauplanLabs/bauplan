@@ -5,15 +5,15 @@ title: "Dagster"
 
 [Dagster](https://dagster.io/) is a modern orchestrator designed specifically for data applications. Instead of just scheduling tasks, it treats pipelines as first-class objects, with strong typing, assets, and metadata built in. This makes it attractive for teams who want observability and reproducibility beyond traditional DAGs.
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code — from running pipelines to managing branches and tables. Dagster, like Bauplan, is just Python: jobs and ops are regular functions decorated with Dagster’s APIs. Integrating the two is straightforward: import the Bauplan SDK inside your Dagster ops and call Bauplan methods as you would in a standalone script. Dagster handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split: Dagster runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
+Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Dagster, like Bauplan, is just Python: jobs and ops are regular functions decorated with Dagster’s APIs. Integrating the two is straightforward: import the Bauplan SDK inside your Dagster ops and call Bauplan methods as you would in a standalone script. Dagster handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Dagster runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: run a Bauplan pipeline from a Dagster job
+# Quickstart: Run a Bauplan pipeline from a Dagster job
 
-**Goal:** Call a [Bauplan project](/concepts/projects) from a Dagster job in the smallest possible way: authenticate, run, check status, and fail the job if the Bauplan run fails.
+**Goal:** call a [Bauplan project](/concepts/projects) from a Dagster job in the smallest possible way: authenticate, run, check status, and fail the job if the Bauplan run fails.
 
 ## Prerequisites
 
-- Python 3.10-3.13 (Dagster officially supports 3.9–3.13; Bauplan supports 3.10 and above). [PyPI](https://pypi.org/project/dagster/?utm_source=chatgpt.com).
+- Python 3.10-3.13 (Dagster officially supports 3.9-3.13; Bauplan supports 3.10 and above). [PyPI](https://pypi.org/project/dagster/?utm_source=chatgpt.com).
 - A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
 - A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
 - [Dagster](https://dagster.io/) installed. From PyPI. See Dagster’s install and quickstart docs for details.
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     assert result.success
 ```
 
-`execute_in_process()` runs the job synchronously in one process, which is ideal for quick debugging. The Dagster docs recommend this API for unit-style execution, while the UI/daemon-driven flow is used for orchestration.
+`execute_in_process()` runs the job synchronously in one process, which is ideal for quick debugging. The Dagster docs recommend this API for unit-style execution, while you use the UI/daemon-driven flow for orchestration.
 
 ## How to run it locally
 
@@ -107,7 +107,7 @@ dagster dev -m bauplan_dagster_flow
 
 This launches the web UI and daemon together, usually on port 3000, and loads the jobs from the specified module.
 
-Run in-process with `execute_in_process()` for fast iteration. Create a python file named `bauplan_dagster_flow.py`, paste the code above in it and run it in another window of your terminal.
+Run in-process with `execute_in_process()` for fast iteration. Create a Python file named `bauplan_dagster_flow.py`, paste the code above in it and run it in another window of your terminal.
 
 ```sh
 python bauplan_dagster_flow.py

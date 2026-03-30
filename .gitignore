@@ -71,3 +71,7 @@ docs/_build/
 
 # Pyenv
 .python-version
+
+# Vale
+styles
+!styles/config

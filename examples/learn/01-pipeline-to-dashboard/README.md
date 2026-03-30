@@ -1,4 +1,4 @@
-# Pipeline to Dashboard
+# Pipeline to dashboard
 
 Build a data pipeline over NYC taxi data and connect it to an interactive Streamlit dashboard. This is a good starting point if you're new to Bauplan.
 
