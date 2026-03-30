@@ -14,7 +14,7 @@ Bauplan requires Python 3.10 or higher. Make sure you have a compatible Python v
 
 Create an isolated [data branch](/concepts/git_for_data/data_branches) to work in - like a git branch, but for your lakehouse:
 
-```bash
+```sh
 bauplan checkout -b <YOUR_USERNAME>.quickstart # create a new branch, and switch to it
 ```
 
@@ -22,14 +22,14 @@ bauplan checkout -b <YOUR_USERNAME>.quickstart # create a new branch, and switch
 
 Bauplan sandbox comes with pre-loaded public datasets. This command will show you the tables in your checked out branch.
 
-```bash
+```sh
 bauplan table ls
 ```
 
 You will see a list of tables, this is because a newly created branch inherits all previously existing tables from its parent branch.
 Before getting into our project, let's explore the schema of the table we're going to be working with:
 
-```bash
+```sh
 bauplan table get titanic
 ```
 
@@ -39,7 +39,7 @@ You'll see the table's columns and their types - this is the input our pipeline 
 
 Run `bauplan init` to generate a ready-to-run project:
 
-```bash
+```sh
 bauplan init
 ```
 
@@ -53,7 +53,7 @@ This creates three files:
 
 The scaffolded project defines a small pipeline: it reads from the `titanic` table, computes survival rates by age, and validates the output with an expectation test. Let's run it:
 
-```bash
+```sh
 bauplan run
 ```
 
@@ -66,8 +66,8 @@ Looking at `models.py`, you'll find two functions:
 
 If you check the output of `bauplan run`, you'll see that the `survival_rate_by_age` model executed successfully, and the expectation test passed. However, if you look at your tables again:
 
-```bash
-bauplan table ls | grep survival_rate_by_age
+```sh
+bauplan table ls --name survival_rate_by_age
 ```
 
 You'll see that no new table was created for the model's output.
@@ -79,13 +79,13 @@ By default, `materialization_strategy` parameter in `@bauplan.model()` is set to
 
 This tells Bauplan to write (and fully replace on each run) the model's output as an Iceberg table in your branch. Run the pipeline again:
 
-```bash
+```sh
 bauplan run
 ```
 
 You can confirm the table is persisted by running:
 
-```bash
+```sh
 bauplan query "SELECT * FROM survival_rate_by_age" # only 10 rows are shown by default
 ```
 

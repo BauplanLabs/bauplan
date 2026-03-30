@@ -86,7 +86,12 @@ include = [
 ]
 
 [tool.ruff]
-exclude = ["tests/fixtures", "src/cli/init/models.py", "docs/gen_sdk_reference.py"]
+exclude = [
+    "tests/fixtures",
+    "src/cli/init/models.py",
+    "docs/gen_sdk_reference.py",
+    "examples",
+]
 
 [tool.ruff.lint]
 select = [
@@ -94,7 +99,12 @@ select = [
 ]
 
 [tool.ty.src]
-exclude = ["tests/fixtures", "src/cli/init/models.py", "docs/gen_sdk_reference.py"]
+exclude = [
+    "tests/fixtures",
+    "src/cli/init/models.py",
+    "docs/gen_sdk_reference.py",
+    "examples"
+]
 
 # Whitelist imports of bauplan._internal in __init__.py. The rust extension
 # module gets built there.

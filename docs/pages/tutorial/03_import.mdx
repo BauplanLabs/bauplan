@@ -57,7 +57,7 @@ Create an empty table using the `create` command:
 <Tabs>
 <TabItem value="cli" label="CLI" default>
 
-```bash
+```sh
 bauplan table create <YOUR_TABLE_NAME> --search-uri 's3://your-bucket/*.parquet'
 ```
 
@@ -92,7 +92,7 @@ After creating the table, import the data:
 <Tabs>
 <TabItem value="cli" label="CLI" default>
 
-```bash
+```sh
 bauplan table import <YOUR_TABLE_NAME> --search-uri 's3://your-bucket/*.parquet'
 ```
 
@@ -128,7 +128,7 @@ Before merging your import branch, you can review what's changed compared to
 `main` by running `branch diff`. This compares your **current branch** against a
 target branch:
 
-```bash
+```sh
 bauplan branch diff main
 ```
 
@@ -151,7 +151,7 @@ A quick summary of the steps:
 
 1. Generate an import plan:
 
-```bash
+```sh
 bauplan table create-plan <YOUR_TABLE_NAME> \
     --search-uri 's3://your-bucket/*.parquet' \
     --save-plan table_creation_plan.yml
@@ -162,7 +162,7 @@ bauplan table create-plan <YOUR_TABLE_NAME> \
 4. Ensure the `conflicts` field is empty (`conflicts: []`)
 5. Apply the modified plan:
 
-```bash
+```sh
 bauplan table create-plan-apply --plan table_creation_plan.yml
 ```
 

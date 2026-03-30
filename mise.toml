@@ -3,5 +3,6 @@ buf = "1"
 bun = "1.2.18"
 just = "latest"
 protoc = "31"
+rg = "15.1.0"
 rust = { version = "1.92.0", profile = "default" }
 uv = "0.10"
