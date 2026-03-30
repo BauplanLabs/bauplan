@@ -14,10 +14,10 @@ export default {
           label: "Quick Start",
           link: {
             type: "doc",
-            id: "tutorial/quick_start",
+            id: "tutorial/quick-start",
           },
           items: [
-            "tutorial/data_branches",
+            "tutorial/data-branches",
             "tutorial/import",
           ],
         },
@@ -32,7 +32,7 @@ export default {
         id: "overview/index",
       },
       items: [
-        "overview/execution_model",
+        "overview/execution-model",
         "overview/architecture",
         "overview/deployment",
       ],
@@ -48,19 +48,19 @@ export default {
         "concepts/tables",
         "concepts/namespaces",
         "concepts/expectations",
-        "concepts/schema_conflicts",
+        "concepts/schema-conflicts",
         {
           type: "category",
           label: "Git for Data",
           link: {
             type: "doc",
-            id: "concepts/git_for_data/index",
+            id: "concepts/git-for-data/index",
           },
           items: [
-            "concepts/git_for_data/transactional_pipelines",
-            "concepts/git_for_data/commits_refs",
-            "concepts/git_for_data/tags",
-            "concepts/git_for_data/data_branches",
+            "concepts/git-for-data/transactional-pipelines",
+            "concepts/git-for-data/commits-refs",
+            "concepts/git-for-data/tags",
+            "concepts/git-for-data/data-branches",
           ],
         },
       ],
@@ -109,12 +109,12 @@ export default {
           collapsed: true,
           link: {
             type: "doc",
-            id: "integrations/notebooks_data_apps/index",
+            id: "integrations/notebooks-data-apps/index",
           },
           items: [
-            "integrations/notebooks_data_apps/jupyter_notebooks",
-            "integrations/notebooks_data_apps/marimo",
-            "integrations/notebooks_data_apps/streamlit",
+            "integrations/notebooks-data-apps/jupyter-notebooks",
+            "integrations/notebooks-data-apps/marimo",
+            "integrations/notebooks-data-apps/streamlit",
           ],
         },
         {
@@ -123,14 +123,14 @@ export default {
           collapsed: true,
           link: {
             type: "doc",
-            id: "integrations/warehouses_lakehouses/index",
+            id: "integrations/warehouses-lakehouses/index",
           },
           items: [
-            "integrations/warehouses_lakehouses/snowflake_inbound",
-            "integrations/warehouses_lakehouses/snowflake_outbound",
-            "integrations/warehouses_lakehouses/big_query_inbound",
-            "integrations/warehouses_lakehouses/big_query_outbound",
-            "integrations/warehouses_lakehouses/gcs",
+            "integrations/warehouses-lakehouses/snowflake-inbound",
+            "integrations/warehouses-lakehouses/snowflake-outbound",
+            "integrations/warehouses-lakehouses/big-query-inbound",
+            "integrations/warehouses-lakehouses/big-query-outbound",
+            "integrations/warehouses-lakehouses/gcs",
           ],
         },
         {
@@ -139,9 +139,9 @@ export default {
           collapsed: true,
           link: {
             type: "doc",
-            id: "integrations/bi_tools_postgres/index",
+            id: "integrations/bi-tools-postgres/index",
           },
-          items: ["integrations/bi_tools_postgres/metabase"],
+          items: ["integrations/bi-tools-postgres/metabase"],
         },
         {
           type: "category",
@@ -149,11 +149,11 @@ export default {
           collapsed: true,
           link: {
             type: "doc",
-            id: "integrations/data_int_and_etl/index",
+            id: "integrations/data-int-and-etl/index",
           },
           items: [
-            "integrations/data_int_and_etl/fivetran",
-            "integrations/data_int_and_etl/estuary",
+            "integrations/data-int-and-etl/fivetran",
+            "integrations/data-int-and-etl/estuary",
           ],
         },
         {

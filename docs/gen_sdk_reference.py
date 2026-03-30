@@ -160,7 +160,7 @@ class TypeLinker:
 
                 match resolved.kind:
                     case griffe.Kind.CLASS:
-                        anchor = f'{page}_{member.name.lower()}'
+                        anchor = f'{page}-{member.name.lower()}'
                         self.register(resolved.name, page, anchor)
                         for cls_member in resolved.members.values():
                             if not cls_member.is_public or cls_member.name.startswith('_'):
@@ -171,10 +171,10 @@ class TypeLinker:
                                 logging.debug('Could not resolve class member %s', cls_member.name)
                                 continue
                             if cls_resolved.kind == griffe.Kind.FUNCTION:
-                                method_anchor = f'{anchor}_{cls_member.name.lower()}'
+                                method_anchor = f'{anchor}-{cls_member.name.lower()}'
                                 self.register(f'{resolved.name}.{cls_member.name}', page, method_anchor)
                     case griffe.Kind.FUNCTION:
-                        anchor = f'{page}_{member.name.lower()}'
+                        anchor = f'{page}-{member.name.lower()}'
                         self.register(resolved.name, page, anchor)
                     # MODULE case: handled by _walk_module_tree
 
@@ -451,7 +451,7 @@ def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) 
                             process_class(f, toc, member, linker, page_slug=name)
                     case griffe.Kind.FUNCTION:
                         with wrap(f, 'PyModuleMember', member.name):
-                            process_function(f, toc, 2, member, linker, slug=f'{name}_{member.name.lower()}')
+                            process_function(f, toc, 2, member, linker, slug=f'{name}-{member.name.lower()}')
                     case griffe.Kind.MODULE:
                         pass  # handled by _walk_module_tree
                     case _:
@@ -487,10 +487,10 @@ def get_base_class_link(base_class: griffe.Class) -> str:
     """Generate a link to a base class documentation."""
     # Get the module path from the parent module
     module_path = base_class.parent.path if base_class.parent else ''
-    base_module_path = module_path.replace('.', '_')
+    base_module_path = module_path.replace('.', '-')
 
     # Create the anchor (module_path + class_name in lowercase)
-    anchor = f'{base_module_path}_{base_class.name.lower()}'
+    anchor = f'{base_module_path}-{base_class.name.lower()}'
 
     return f'/reference/{base_module_path}#{anchor}'
 
@@ -571,7 +571,7 @@ def _get_class_bases(cls: griffe.Class, linker: TypeLinker) -> list[dict[str, st
 def process_class(
     output: TextIO, toc: list[dict], cls: griffe.Class, linker: TypeLinker, page_slug: str | None = None
 ) -> None:
-    slug = f'{page_slug}_{cls.name.lower()}' if page_slug else path_slug(cls)
+    slug = f'{page_slug}-{cls.name.lower()}' if page_slug else path_slug(cls)
     toc.append({'value': cls.name, 'id': slug, 'level': 2})
 
     is_enum = any('Enum' in str(b) for b in cls.bases)
@@ -644,7 +644,7 @@ def process_class(
 
     for member in functions:
         with wrap(output, 'PyClassMember', member.name):
-            process_function(output, toc, 3, member, linker, slug=f'{slug}_{member.name.lower()}')
+            process_function(output, toc, 3, member, linker, slug=f'{slug}-{member.name.lower()}')
 
     output.write('</PyClass>\n\n')
 
@@ -806,7 +806,7 @@ def jsx_comment(text: str) -> str:
 
 
 def path_slug(obj: griffe.Object) -> str:
-    return re.sub(r'[^a-z0-9_]', '_', obj.path.lower())
+    return re.sub(r'[^a-z0-9-]', '-', obj.path.lower())
 
 
 def resolve[T](obj: griffe.Alias | griffe.Object) -> T:

@@ -4,7 +4,7 @@ title: GCS (Google Cloud Storage)
 
 Connect your GCS bucket to Bauplan by creating an automated sync with the S3 bucket linked to your Bauplan lakehouse. This lets you run pipelines with all the safety and correctness guarantees of Bauplan, without moving from your current landing zone or relying on laborious manual processes.
 
-For querying the results of Bauplan pipelines from an external engine (for example, BigQuery) without any data copy, please refer to the [warehouse integration section](/integrations/warehouses_lakehouses/big_query_outbound).
+For querying the results of Bauplan pipelines from an external engine (for example, BigQuery) without any data copy, please refer to the [warehouse integration section](/integrations/warehouses-lakehouses/big-query-outbound).
 
 We recommend using the Enhanced [AWS DataSync](https://docs.aws.amazon.com/datasync/) service to transfer files between cloud providers. The Enhanced mode avoids deploying a data agent as additional infrastructure to provision and manage, and guarantees higher performance and bandwidth compared to the Basic mode. The mental model is straightforward; DataSync takes a source (your GCS bucket) and a destination (the S3 bucket associated with Bauplan), and periodically and incrementally keeps the two in sync.
 
