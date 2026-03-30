@@ -6,13 +6,13 @@ The example walkthrough below uses **PostgreSQL via CDC** as the source, but the
 
 ## When to use this integration
 
-- You want to stream operational data (e.g., from a relational database) into your Bauplan lakehouse with low latency.
+- You want to stream operational data (for example, from a relational database) into your Bauplan lakehouse with low latency.
 - You need CDC (inserts, updates, deletes) reflected in Iceberg tables on Bauplan.
 - You want to decouple your ingestion pipeline from your transformation logic in Bauplan.
 
 ## Prerequisites
 
-- A Bauplan account with the **OAuth client credentials** feature enabled (see Step 1 below — currently in beta).
+- A Bauplan account with the **OAuth client credentials** feature enabled (see Step 1 below - currently in beta).
 - An AWS account where you can create EMR Serverless applications, IAM users and roles, and SSM parameters.
 - An Estuary account.
 - A PostgreSQL instance (RDS or self-managed) with logical replication enabled.
@@ -64,25 +64,25 @@ ALTER PUBLICATION flow_publication ADD TABLE
     -- add additional tables here
 ```
 
-If your database is in a private subnet (e.g., RDS in an isolated VPC), you will need to expose it via an SSH bastion host with a **static public IP**. Estuary provides a list of source IPs to allowlist. Refer to the [Estuary PostgreSQL connector docs](https://docs.estuary.dev/reference/Connectors/capture-connectors/PostgreSQL/) for the SSH tunnel configuration.
+If your database is in a private subnet (for example, RDS in an isolated VPC), you will need to expose it via an SSH bastion host with a **static public IP**. Estuary provides a list of source IPs to allowlist. Refer to the [Estuary PostgreSQL connector docs](https://docs.estuary.dev/reference/Connectors/capture-connectors/PostgreSQL/) for the SSH tunnel configuration.
 
 ---
 
-## Step 3. Configure AWS for EMR Serverless
+## Step 3. configure AWS for EMR Serverless
 
 Estuary uses AWS EMR Serverless to run the Spark jobs that merge data into your Iceberg tables. You need four AWS resources.
 
-**3a. EMR Serverless Application**
+### EMR Serverless application
 
 Create an EMR Serverless application with the Spark runtime, release version **emr-7.12.0**, architecture **x86_64**. Enable **Automatically start application on job submission**. Configure VPC, subnets, and security groups so that EMR jobs can reach the Bauplan catalog endpoint over the internet. Note the **Application ID:** you will need it in Step 5.
 
-**3b. Staging S3 bucket**
+### Staging S3 bucket
 
-Create (or designate) an S3 bucket in the same region as the EMR application. Estuary stages Parquet and CSV data files, as well as the Python scripts executed by Spark jobs, in this bucket before merging them into Iceberg tables. We recommend using a dedicated prefix within your Bauplan data lake bucket (e.g. `estuary-staging/`).
+Create (or designate) an S3 bucket in the same region as the EMR application. Estuary stages Parquet and CSV data files, as well as the Python scripts executed by Spark jobs, in this bucket before merging them into Iceberg tables. We recommend using a dedicated prefix within your Bauplan data lake bucket (for example, `estuary-staging/`).
 
-**3c. IAM execution role**
+### IAM execution role
 
-This role is assumed by EMR Serverless at job runtime, referenced below as `<execution-role>`.
+EMR Serverless assumes this role at job runtime, referenced below as `<execution-role>`.
 
 *Permissions policy:*
 
@@ -150,7 +150,7 @@ This role is assumed by EMR Serverless at job runtime, referenced below as `<exe
 }
 ```
 
-**3d. IAM user**
+### IAM user
 
 Estuary uses this user to submit jobs and manage SSM secrets, referenced below as `<iam-user>`.
 
@@ -233,7 +233,7 @@ Generate an **Access Key ID (**`<aws-access-key-id>`) and **Secret Access Key**(
 
 ---
 
-## Step 4. Configure the Estuary capture (PostgreSQL source)
+## Step 4. configure the Estuary capture (PostgreSQL source)
 
 In the Estuary dashboard, create a new **PostgreSQL** capture connector. Supply the database hostname, port, database name, user credentials, the publication name (`flow_publication`), and the replication slot name. If using an SSH tunnel, configure it under **Advanced Options** with the bastion host address, port, and private key.
 
@@ -243,15 +243,15 @@ Refer to the [Estuary PostgreSQL capture docs](https://docs.estuary.dev/referenc
 
 ---
 
-## Step 5. Configure the Estuary materialization (Bauplan / Iceberg destination)
+## Step 5. configure the Estuary materialization (Bauplan / Iceberg destination)
 
 In Estuary, create a new **Apache Iceberg** materialization and configure it as follows.
 
-**Endpoint (Bauplan catalog):**
+### Endpoint (Bauplan catalog)
 
 | Field | Value |
 | --- | --- |
-| **URL** | `https://api.use1.aprod.bauplanlabs.com/iceberg` — to target a specific branch: `https://api.use1.aprod.bauplanlabs.com/iceberg/<branch_name>` |
+| **URL** | `https://api.use1.aprod.bauplanlabs.com/iceberg` - to target a specific branch: `https://api.use1.aprod.bauplanlabs.com/iceberg/<branch_name>` |
 | **Warehouse** | `default` |
 | **Namespace** | Your target namespace in Bauplan |
 | **Base Location** | `s3://<your-bauplan-bucket>/iceberg` |
@@ -260,7 +260,7 @@ In Estuary, create a new **Apache Iceberg** materialization and configure it as 
 | **Catalog Credential** | `<client_id>:<client_secret>` (from Step 1) |
 | **Scope** | *(leave empty)* |
 
-**Compute (EMR Serverless):**
+### Compute (EMR Serverless)
 
 | Field | Value |
 | --- | --- |
@@ -268,8 +268,8 @@ In Estuary, create a new **Apache Iceberg** materialization and configure it as 
 | **Application ID** | `<emr-application-id>` |
 | **Execution Role ARN** | `arn:aws:iam::<account-id>:role/<execution-role>` |
 | **Bucket** | `<your-bauplan-bucket>` |
-| **EMR Authentication** | `AWSAccessKey` — `<aws-access-key-id>` / `<aws-secret-access-key>` |
-| **Systems Manager Prefix** | `<ssm-prefix>` (must start and end with `/`, e.g. `/estuary/`) |
+| **EMR Authentication** | `AWSAccessKey` - `<aws-access-key-id>` / `<aws-secret-access-key>` |
+| **Systems Manager Prefix** | `<ssm-prefix>` (must start and end with `/`, for example, `/estuary/`) |
 
 Add your collections as **bindings**, mapping each Estuary collection to its target Iceberg table name. Set the namespace to match your target Bauplan namespace if you want to avoid the default. Save and publish the connector.
 

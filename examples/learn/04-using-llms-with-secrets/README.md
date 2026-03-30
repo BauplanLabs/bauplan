@@ -1,4 +1,4 @@
-# LLM to Tabular Pipelines with Bauplan
+# LLM to tabular pipelines with Bauplan
 
 Transform unstructured data from financial PDFs (SEC 10-Q filings) into structured, analyzable tabular datasets using a Large Language Model. The pipeline ingests raw PDFs, extracts relevant financial data, and structures it into a final dataset for analysis and visualization.
 
@@ -8,7 +8,7 @@ Given a set of financial PDFs (Amazon SEC 10-Q filings are included as sample da
 
 The final dataset is explored using a [Streamlit](https://streamlit.io/) application that fetches data directly from Bauplan via its Python APIs.
 
-Credits: The financial PDFs come from the [Llama Index SEC 10-Q dataset](https://llamahub.ai/).
+Credits: the financial PDFs come from the [Llama Index SEC 10-Q dataset](https://llamahub.ai/).
 
 ## Additional setup
 
@@ -77,7 +77,7 @@ cd app
 uv run streamlit run explore_analysis.py
 ```
 
-The dashboard displays a horizontal bar chart of mean USD values per financial statement type (e.g., net product sales, net service sales, net income) extracted from the SEC 10-Q filings by the LLM pipeline.
+The dashboard displays a horizontal bar chart of mean USD values per financial statement type (for example, net product sales, net service sales, net income) extracted from the SEC 10-Q filings by the LLM pipeline.
 
 ## Key takeaways
 

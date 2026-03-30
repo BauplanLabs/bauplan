@@ -27,15 +27,15 @@ With Bauplan, the agent workflow matches the way engineers ship code: create a b
 
 ## Design principles
 
-**Simple:** You and your AI agent write pipelines in pure Python and SQL and run them through a small set of commands and APIs. No Spark, Kubernetes, or a complex configuration surface.
+**Simple:** you and your AI agent write pipelines in pure Python and SQL and run them through a small set of commands and APIs. No Spark, Kubernetes, or a complex configuration surface.
 
-**Robust:** Every run is tied to a branch and a commit history, so results can be reproduced, reviewed, diffed, and rolled back. Production changes happen only through explicit publish.
+**Robust:** every run is tied to a branch and a commit history, so results can be reproduced, reviewed, diffed, and rolled back. Production changes happen only through explicit publish.
 
-**Interoperable:** All data is stored as Apache Iceberg tables on your object storage. Outputs remain fully compatible with existing query engines, catalogs, and BI tools, without locking teams into a siloed system.
+**Interoperable:** all data is stored as Apache Iceberg tables on your object storage. Outputs remain fully compatible with existing query engines, catalogs, and BI tools, without locking teams into a siloed system.
 
 ## Main features
 
-- **`Python-first`** write transformations in Python (and SQL where it makes sense) in your existing repo and IDE; run them on Bauplan optimized runtime without managing cloud execution infrastructure.
+- **`Python-first`** write transformations in Python (and SQL where it makes sense) in your existing repository and IDE; run them on Bauplan optimized runtime without managing cloud execution infrastructure.
 
 - **`Iceberg tables on object storage`** turn files ([Parquet](https://parquet.apache.org/), CSV) into [Apache Iceberg](https://iceberg.apache.org/) tables in your bucket; get schema and partition evolution, time travel, and transactional updates.
 

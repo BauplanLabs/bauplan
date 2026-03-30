@@ -55,9 +55,9 @@ Full applications that combine Bauplan with third-party tools and services. Find
 ## Learn more
 
 - [Bauplan documentation](https://docs.bauplanlabs.com/)
-- [Architecture paper](https://arxiv.org/pdf/2410.17465) — the design behind Bauplan
-- [Ergonomics paper](https://arxiv.org/pdf/2602.02335) — developer experience and API design
-- [bauplanlabs.com](https://www.bauplanlabs.com/) — product overview
+- [Architecture paper](https://arxiv.org/pdf/2410.17465) - the design behind Bauplan
+- [Ergonomics paper](https://arxiv.org/pdf/2602.02335) - developer experience and API design
+- [bauplanlabs.com](https://www.bauplanlabs.com/) - product overview
 
 ## License
 

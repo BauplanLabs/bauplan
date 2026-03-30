@@ -17,7 +17,7 @@ Traditional data systems make safe development hard:
 Data branches solve these problems by enabling version-controlled,
 zero-copy, namespace-aware data sandboxes.
 
-## Why Use Data Branches?
+## Why use data branches?
 
 Branches introduce Git-like workflows to data management, enabling
 robust development practices throughout the data application lifecycle:
@@ -27,7 +27,7 @@ robust development practices throughout the data application lifecycle:
 -   **Simplified rollbacks and debugging** using immutable Refs
 -   **Auditability and traceability** by design
 
-## Key Features
+## Key features
 
 -   **Zero-Copy Branching**: Creating a branch is instantaneous and
     cost-efficient. No data duplication; only metadata changes.
@@ -37,7 +37,7 @@ robust development practices throughout the data application lifecycle:
 -   **Main Branch Protection**: `main` is protected by default. Changes
     flow in via merges, keeping production safe.
 
-## Using Data Branches and Refs
+## Using data branches and refs
 | **Branch**                                   | **Ref**                                        |
 |----------------------------------------------|------------------------------------------------|
 | Mutable                                      | Immutable                                      |
@@ -47,16 +47,16 @@ robust development practices throughout the data application lifecycle:
 | Example: `ciro.feature_xyz`                  | Example: `ciro.feature@xyz-run-202505...`      |
 
 Each time you change the state of the lake, for instance when you run a
-pipeline, Bauplan creates a new Commit. If the run succeeds, the branch
-is updated to point to the new Ref. If it fails, the branch remains
-unchanged. This is what makes pipelines **transactional by default**.
+pipeline, Bauplan creates a new Commit. If the run succeeds, Bauplan
+updates the branch to point to the new Ref. If it fails, the branch
+remains unchanged. This is what makes pipelines **transactional by default**.
 
 <Tip>
 Think of a branch as your active sandbox and a Ref as a pointer to a
 timestamped, frozen snapshot created by any write operation on the lake.
 </Tip>
 
-## Basic Data Branch Operations
+## Basic data branch operations
 
 ```sh
 # Create and switch to a feature branch
@@ -82,7 +82,7 @@ bauplan branch rm ciro.feature_xyz
 A **tag** is an immutable, user-defined label that points to a specific
 commit hash.
 
--   Used to "freeze" a specific state of the lake (e.g.
+-   Used to "freeze" a specific state of the lake (for example,
     `v1.0-passed-qa`)
 -   Always points to a commit, never moves on its own.
 -   Useful for bookmarking releases, debugging points, or restoring

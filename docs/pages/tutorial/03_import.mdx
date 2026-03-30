@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 This guide explains how to import data into bauplan's data catalog as Iceberg tables.
 
-## General Requirements
+## General requirements
 
 - Data must be in Parquet or CSV format
 - Data must be in S3 - local files cannot be imported directly
@@ -15,7 +15,7 @@ This guide explains how to import data into bauplan's data catalog as Iceberg ta
   - For bauplan's clients, this is a one-off operation done during onboarding when pairing your data with the system
   - For sandbox users, see sandbox requirements below
 
-## Sandbox Environment Requirements
+## Sandbox environment requirements
 
 When using the bauplan sandbox (beta environment), additional requirements apply:
 
@@ -26,7 +26,7 @@ When using the bauplan sandbox (beta environment), additional requirements apply
 These additional requirements exist because the sandbox runs in an isolated EC2 instance that can only access public data. In a production environment, the EC2 instance would be privately linked to your bucket through IAM.
 </Note>
 
-## Import Process Overview
+## Import process overview
 
 The import process in bauplan consists of two main steps:
 
@@ -50,7 +50,7 @@ After completing the [agent setup](/agents/setup), ask your AI assistant to impo
 
 </CollapsibleTip>
 
-### Step 1: Create Table
+### Step 1: Create table
 
 Create an empty table using the `create` command:
 
@@ -85,7 +85,7 @@ This command will:
 - Create an empty table with the appropriate structure
 - Not yet import any data
 
-### Step 2: Import Data
+### Step 2: Import data
 
 After creating the table, import the data:
 
@@ -142,7 +142,7 @@ This will show:
 `branch diff` always compares **your active branch** to the branch you pass as an argument.
 </Note>
 
-## Handling Schema Conflicts
+## Handling schema conflicts
 
 If schema conflicts occur between files during import, you can generate an import
 plan, resolve the conflicts, and apply the corrected plan.

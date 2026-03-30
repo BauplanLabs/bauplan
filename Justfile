@@ -5,6 +5,15 @@ lint:
     buf lint
     cargo clippy -- -Dwarnings
 
+    # Prose linting.
+    vale sync
+    vale docs/pages examples --minAlertLevel warning
+
+    # Don't even think about it.
+    ! grep -rn '[—–]' \
+        --include="*.md" --include="*.mdx" \
+        docs/pages examples
+
     # These are technically tests, but they just check the source.
     cargo test --test snippets
 

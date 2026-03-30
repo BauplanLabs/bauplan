@@ -1,4 +1,4 @@
-# Data Quality and Expectations
+# Data quality and expectations
 
 Add expectation tests to a Bauplan pipeline to catch data quality issues before they reach production. Expectation tests are statistical and quality checks applied to Bauplan models - they help detect problems early and can halt the pipeline when critical issues are found.
 

@@ -17,7 +17,7 @@ Bauplan can use a GCP service account to access your BigQuery tables, which are 
 - A BigQuery dataset with tables in it.
 - A GCP service account with access to that dataset.
 
-## Step 1: store service account credentials in AWS Parameter Store
+## Step 1: Store service account credentials in AWS Parameter Store
 
 For the service account you'd like to use, [create a key pair](https://docs.cloud.google.com/iam/docs/service-account-creds) and download it as JSON. Then upload it to your AWS account as an [SSM Parameter](https://docs.aws.amazon.com/systems-manager/latest/userguide/sysman-paramstore-su-create.html). Use the path `/bauplan/connectors/bigquery/<name>`, for example `/bauplan/connectors/bigquery/my-service-account`.
 

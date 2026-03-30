@@ -2,7 +2,9 @@
 buf = "1"
 bun = "1.2.18"
 just = "latest"
+"npm:mdx2vast" = "0.3.1"
 protoc = "31"
 rg = "15.1.0"
 rust = { version = "1.92.0", profile = "default" }
 uv = "0.10"
+vale = "3.14.1"

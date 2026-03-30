@@ -22,11 +22,11 @@ In BigQuery, this pattern relies on a BigQuery [connection](https://docs.cloud.g
 - AWS account with permissions to create IAM policies and roles on the Bauplan bucket.
 - BigQuery role with privileges to create external connections.
 
-## Step 1. Create the AWS connection
+## Step 1. create the AWS connection
 
 To create a (read-only) connection between BigQuery and your AWS bucket containing a Bauplan table, you need to configure an IAM role and policy so BigQuery can securely access the Iceberg tables in it. Follow the [BigQuery Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection) for the exact steps.
 
-## Step 2. Table registration
+## Step 2. table registration
 
 Bauplan-managed tables can be registered "zero-copy" into BigQuery by issuing the following SQL command, where:
 

@@ -13,7 +13,7 @@ environments.
 -   **Execution environments** are expressed in code and versioned as
     well - Python versions, packages, parameters, and run metadata.
 
-## What is a Commit?
+## What is a commit?
 
 A **commit** is a record of a change in the data lake.
 
@@ -30,7 +30,7 @@ fundamental units of change tracking in your data. Each commit contains:
 -   Additional metadata such as `job-id` if created by a pipeline run,
     and `project-id`, `user-id`, `task-id`, etc.
 
-### Example: viewing commit history
+### Example: Viewing commit history
 
 Here is a simple example of output from the commit API:
 
@@ -55,7 +55,7 @@ Parent Hashes:
     Run job_id=7d3c81d7-a779-4754-8c72-2311cc905da7
 ```
 
-## What's a Ref?
+## What's a ref?
 
 A **Ref** is an immutable, addressable handle to a specific commit.
 Unlike commits, which are the record of a change, a Ref is what you use
@@ -69,7 +69,7 @@ let you perform **point-in-time operations** like:
 -   Reproducing a pipeline run
 -   Comparing development environments
 
-## Ref Syntax
+## Ref syntax
 
 -   A branch name, like `main`, is a shortcut that points to the latest
     commit on the branch.

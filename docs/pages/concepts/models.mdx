@@ -44,11 +44,11 @@ requires the name of the inputs and, optionally, the desired columns and
 filters.
 
 For example, you don't need to specify the type of `input_table`,
-whether it's an Iceberg Table, PyArrow Table, Pandas DataFrame, or
-Polars DataFrame. This approach makes the code fully portable, easier to
+whether it's an Iceberg Table, PyArrow Table, Pandas dataframe, or
+Polars dataframe. This approach makes the code fully portable, easier to
 reproduce across environments, and simpler to maintain.
 
-## Importing Python Packages
+## Importing Python packages
 
 Bauplan models are fully containerized, with each model running in the
 cloud as its own isolated environment (similar to Function-as-a-Service
@@ -59,7 +59,7 @@ Each model in Bauplan runs in its own isolated Python environment -
 defined by the interpreter version and uv dependencies you declare in
 code. They are expressed entirely in code using the decorator
 `@bauplan.python()`. This decorator specifies the Python interpreter
-version (e.g., `3.11` or `3.12`) and any additional libraries and their
+version (for example, `3.11` or `3.12`) and any additional libraries and their
 versions using uv.
 
 ```python
@@ -77,7 +77,7 @@ def my_model(data=bauplan.Model('input_table')):
     return df
 ```
 
-This approach allows you to run each bauplan model as an independent
+This approach allows you to run each Bauplan model as an independent
 unit in a fully declarative way: all you need to run a Bauplan model
 deterministically in the cloud is the code.
 
@@ -103,7 +103,7 @@ def step_2(data=bauplan.Model('step_1')):
     ...
 ```
 
-## Materializing Tables with Models
+## Materializing tables with models
 
 To write the output of a model as a table into the data catalog, use the
 `materialization_strategy` parameter in the `@bauplan.model()`
@@ -120,7 +120,7 @@ Regardless of the `materialization_strategy` parameter, running models
 with the dry run flag - `bauplan run --dry-run` - will force the
 system to run in memory (see using `--dry-run` in the tutorial).
 
-### Overwrite Partitions
+### Overwrite partitions
 
 `OVERWRITE_PARTITIONS` deletes all rows matching an `overwrite_filter` expression,
 then appends the new rows produced by the model. This is useful when you need to
@@ -175,7 +175,7 @@ def my_model(
     return output_table
 ```
 
-## Best Practices
+## Best practices
 
 1. **Input Declaration**
   - Specify required columns explicitly.

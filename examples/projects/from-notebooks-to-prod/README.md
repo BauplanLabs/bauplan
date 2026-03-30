@@ -1,4 +1,4 @@
-# From Notebook to Production with Bauplan and marimo
+# From notebook to production with Bauplan and marimo
 
 Go from an interactive [marimo](https://marimo.io) notebook to a production Bauplan pipeline - same Python functions, no rewrite.
 

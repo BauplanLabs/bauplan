@@ -13,7 +13,7 @@ You don't need to define a DAG manually, because Bauplan automatically
 analyzes the dependency graph based on model declarations and
 automatically infers the correct execution order.
 
-To chain models into a DAG, simply pass a previous bauplan model as an
+To chain models into a DAG, simply pass a previous Bauplan model as an
 input.
 
 ```python
@@ -33,10 +33,10 @@ def step_3(data=bauplan.Model('step_2')):
     ...
 ```
 
-## Pipeline Constraints
+## Pipeline constraints
 
 Models can take multiple tabular inputs but must return a single tabular
-output (e.g., a Pandas DataFrame or Arrow table).
+output (for example, a Pandas `DataFrame` or Arrow table).
 
 ```text
 ✅ -- This is a valid Bauplan DAG
@@ -70,7 +70,7 @@ output (e.g., a Pandas DataFrame or Arrow table).
 ## Parameterize DAGs with parameters and secrets
 
 In production, it is common for the same DAG code to be run on different days, 
-or to call an external service (e.g., an LLM for data enrichment). 
+or to call an external service (for example, an LLM for data enrichment). 
 Bauplan supports these scenarios with parameters and secrets.
 
 
@@ -160,7 +160,7 @@ client.run(
 
 Secrets are encrypted parameters for sensitive values like API keys,
 database credentials, or tokens. They are encrypted, versioned, and
-injected into your pipeline code at runtime — avoiding hardcoding.
+injected into your pipeline code at runtime, avoiding hardcoding.
 
 Use the CLI with `--type secret` to create one:
 
@@ -179,7 +179,7 @@ For a complete walkthrough using secrets with an LLM pipeline, see the
 [Using LLMs with Secrets](https://github.com/BauplanLabs/bauplan/tree/main/examples/learn/04-using-llms-with-secrets)
 example.
 
-## Best Practices
+## Best practices
 
 To keep your project organized and make it easy to run, test, and
 inspect individual pipelines, we recommend the following structure. See

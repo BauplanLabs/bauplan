@@ -1,4 +1,4 @@
-# Iteration 0: Introduction - Initializing the Problematic Scenario
+# Iteration 0: Introduction - initializing the problematic scenario
 
 ## Overview
 
@@ -17,21 +17,21 @@ data appeared correct initially but new batches are showing degradations.
   - `uvx bauplan` doesn't require the CLI to be globally installed
 
 
-## Agent Task List
+## Agent task list
 
 
 ### Phase 1: Preparation
 
 - [ ] Read the README and internalize the skills in the project
-- [ ] Create a `pyproject.toml` at the project root with the required dependencies (e.g. `bauplan`, `pyarrow`) so that `uv sync` can install them
+- [ ] Create a `pyproject.toml` at the project root with the required dependencies (for example, `bauplan`, `pyarrow`) so that `uv sync` can install them
 - [ ] Install python dependencies: `uv sync --all-extras --all-groups`
 
 
-### Phase 2: Workflow Script Creation
+### Phase 2: workflow script creation
 
 Create python scripts for a Bauplan lakehouse workflow in `lakehouse_workflow/` to implement the
 data ingestion and transformation process. *Ingestion* refers to the whole process of *importing*
-raw data from external storage (e.g. S3) into the data lakehouse then curating and transforming it
+raw data from external storage (for example, S3) into the data lakehouse then curating and transforming it
 into some desirable form. This includes a "staging branch" where work is materialized and
 conditionally published to production (the "main branch").
 
@@ -89,23 +89,23 @@ The workflow scripts use the Bauplan SDK to orchestrate ingestion of satellite t
 
 ### Phase 3: Execution
 
-Run the naive workflow to prepare for the next iteration (Iteration 01: In plain sight).
+Run the naive workflow to prepare for the next iteration (iteration 01, "In plain sight").
 
 - [ ] Execute naive workflow with env file:
   - `uv run --env-file .env.example python -m lakehouse_workflow`
 
 
-## Technical Details
+## Technical details
 
-### Data Source
+### Data source
 We use an S3 bucket available to Bauplan alpha users for imports. Data can be uploaded to this
-bucket through the alpha webapp.
+bucket through the alpha web app.
 
 - **S3 Bucket**: `bauplan-alpha-user-import-uploads`
 - **S3 Path**: `user-uploads/case-study-intella/telemetry/raw/`
 
 
-### Bronze and Silver Layers
+### Bronze and silver layers
 The bronze layer for this demo consists of one table, `telemetry.signal_bronze`, and contains raw
 imported data from parquet files in S3.
 
@@ -117,9 +117,9 @@ minimal validation on the bronze layer. This represents a scenario where data is
 the lakehouse *before* it is **correctly** validated.
 
 
-### Environment Configuration
+### Environment configuration
 The environment file `.env.example` can be used directly or as a template to create your own
-environment file, e.g. `.env`.
+environment file, for example, `.env`.
 
 An environment file can be used with `uv` via the `--env-file` run option and it provides an
 explicit method to define environment variables. This demo uses environment files for S3 and

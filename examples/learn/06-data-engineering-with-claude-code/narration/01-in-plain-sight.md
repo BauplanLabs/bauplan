@@ -1,4 +1,4 @@
-# Iteration 1: In Plain Sight - Discovering Data Quality Issues
+# Iteration 1: In plain sight - discovering data quality issues
 
 
 ## Overview
@@ -8,10 +8,10 @@ looks good initially but anomaly detection degrades over time. Perhaps missing d
 impact than they first anticipated, and so they begin their investigation.
 
 
-## Agent Task List
+## Agent task list
 
 
-### Phase 1: Data Validation Pipeline
+### Phase 1: data validation pipeline
 
 - [ ] Create pipeline execution logic `lakehouse_workflow/run_validation_pipeline.py`
   - Use Bauplan SDK to validate data in the silver layer on the main branch
@@ -36,10 +36,10 @@ Run the validation workflow to observe the problem that will be addressed in the
   - `uv run --env-file .env.example python lakehouse_workflow/run_validation_pipeline.py`
 
 
-## Technical Details
+## Technical details
 
 
-### Silver Layer
+### Silver layer
 
 The silver layer for this demo consists of one table, `telemetry.signal`, and contains filtered and
 transformed data from the bronze layer.
@@ -49,7 +49,7 @@ minimal validation on the bronze layer. This represents a scenario where we are 
 *after* it has been materialized in the lakehouse.
 
 
-### Validation Rules
+### Validation rules
 
 1. **Type validation**: The `value` column must contain only `double` (float64) values
 2. **Null checks**: The columns `value`, `dateTime`, and `signal` must not contain null values

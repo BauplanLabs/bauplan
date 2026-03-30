@@ -21,26 +21,26 @@ Post-hoc validation frameworks, like [dbt tests](https://docs.getdbt.com/docs/bu
 
 Observability and monitoring platforms, like [Monte Carlo](https://www.montecarlodata.com/), run on schedules independent of pipeline execution. They typically profile tables, track distributions, and alert on anomalies or drift. They are not focused on preventing invalid data from being written and do not integrate with pipeline control flow.
 
-## Why Use Expectations?
+## Why use expectations?
 
-### Early Detection
+### Early detection
 Expectations catch data quality issues before they propagate through your pipeline, preventing downstream failures and incorrect results.
 
-### Data Contracts
+### Data contracts
 Well-documented expectations serve as implicit data contracts between teams, systems, and data providers. They codify assumptions about data structure, ranges, completeness, and relationships.
 
-### Domain Knowledge Capture
+### Domain knowledge capture
 Expectations encode domain-specific rules and business logic directly in your data infrastructure. For example, "transaction amounts must be positive" or "user IDs must be unique."
 
-### Validation at Critical Points
+### Validation at critical points
 Key use cases include:
 - **External data validation**: Validate data from vendors, partner teams, or APIs by writing to an isolated branch, running expectations, then publishing only if all checks pass
 - **Model output validation**: Ensure transformations produce expected results
 - **Pre-deployment checks**: Validate data before promoting pipelines to production
 
-## How Expectations Work
+## How expectations work
 
-### Basic Structure
+### Basic structure
 
 Expectations are Python functions decorated with `@bauplan.expectation()`:
 
@@ -60,7 +60,7 @@ def test_critical_field_completeness(
     return expect_column_no_nulls(data, 'critical_field')
 ```
 
-### Standard Expectations Library
+### Standard expectations library
 
 Bauplan provides a built-in library covering common validation scenarios:
 
@@ -73,7 +73,7 @@ Bauplan provides a built-in library covering common validation scenarios:
 
 You can also write custom expectations or integrate other libraries like [Great Expectations](https://github.com/great-expectations/great_expectations).
 
-## Nullness Checks
+## Nullness checks
 ```python
 #! import pyarrow
 #! table = pyarrow.table({'user_id': [1], 'deprecated_field': [None], 'middle_name': [None]})
@@ -93,7 +93,7 @@ expect_column_all_null(table, 'deprecated_field')
 expect_column_some_null(table, 'middle_name')
 ```
 
-## Value Constraints
+## Value constraints
 
 ```python
 #! import pyarrow
@@ -115,7 +115,7 @@ expect_column_accepted_values(
 )
 ```
 
-## Statistical Validations
+## Statistical validations
 
 ```python
 #! import pyarrow
@@ -130,7 +130,7 @@ expect_column_mean_greater_than(data, 'order_amount', 10.0)
 expect_column_mean_smaller_than(data, 'order_amount', 10000.0)
 ```
 
-## Derived Column Validation
+## Derived column validation
 
 ```python
 #! import pyarrow
@@ -146,7 +146,7 @@ expect_column_equal_concatenation(
 )
 ```
 
-## Uniqueness Checks
+## Uniqueness checks
 ```python
 #! import pyarrow
 #! table = pyarrow.table({'transaction_id': [1, 2], 'customer_id': [1, 1]})
@@ -162,11 +162,11 @@ expect_column_all_unique(table, 'transaction_id')
 expect_column_not_unique(table, 'customer_id')
 ```
 
-## Failure Handling Strategies
+## Failure handling strategies
 
 Expectations offer flexible failure handling to match the severity of different data quality issues.
 
-### Hard Failures (Assert)
+### Hard failures (assert)
 
 Use assertions to halt the pipeline immediately when critical issues are detected:
 
@@ -182,9 +182,9 @@ def test_mandatory_field(data=bauplan.Model('model', columns=['field'])):
     return is_valid
 ```
 
-**Use for**: Data quality issues that would lead to incorrect results, system failures, or compliance violations.
+**Use for**: data quality issues that would lead to incorrect results, system failures, or compliance violations.
 
-### Soft Failures (Log and Continue)
+### Soft failures (log and continue)
 
 Log issues without stopping the pipeline for non-critical problems:
 
@@ -207,7 +207,7 @@ def test_data_freshness(data=bauplan.Model('model', columns=['timestamp'])):
     return is_fresh
 ```
 
-**Use for**: Issues you want to monitor but that don't require immediate pipeline termination, allowing you to collect metrics and set up alerts.
+**Use for**: issues you want to monitor but that don't require immediate pipeline termination, allowing you to collect metrics and set up alerts.
 
 ## Summary
 

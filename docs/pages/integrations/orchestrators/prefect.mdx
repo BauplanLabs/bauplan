@@ -6,11 +6,11 @@ title: "Prefect"
 
 [Prefect](https://www.prefect.io/) is a modern workflow orchestrator built entirely in Python. Instead of managing YAML or DSLs, you define flows and tasks as plain Python functions, and Prefect takes care of scheduling, retries, logging, and observability. This makes it easy to embed external libraries and SDKs directly into your workflows.
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code — from running pipelines to managing branches and tables. Integrating the two is straightforward: you import the Bauplan SDK inside your Prefect tasks and call Bauplan methods as you would in a standalone script. Prefect handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split: Prefect runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
+Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Integrating the two is straightforward: you import the Bauplan SDK inside your Prefect tasks and call Bauplan methods as you would in a standalone script. Prefect handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Prefect runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: run a Bauplan pipeline from a Prefect flow
+# Quickstart: Run a Bauplan pipeline from a Prefect flow
 
-**Goal:** Call a [Bauplan project](/concepts/projects) from a Prefect flow in the smallest possible way: authenticate, run, check status, and fail the flow if the Bauplan job fails.
+**Goal:** call a [Bauplan project](/concepts/projects) from a Prefect flow in the smallest possible way: authenticate, run, check status, and fail the flow if the Bauplan job fails.
 
 ## Prerequisites
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
 ## How to run it
 
 By default, this code runs fully local with Prefect. You do not need to run a Prefect API or server for this example. If you prefer to use Prefect Server or Cloud for observability and scheduling, you can do that later without changing the Bauplan code.
-Run the following commands in your terminal, after which you’ll be prompted in your browser to create or login to your free Prefect Cloud account. This commands use uv, a Python package manager. To install uv see the [uv Installation Guide](https://docs.astral.sh/uv/getting-started/installation/). To see the updated documentation on how to run Prefect locally see [here](https://docs.prefect.io/v3/get-started/quickstart).
+Run the following commands in your terminal; your browser will then prompt you to create or log in to your free Prefect Cloud account. These commands use uv, a Python package manager. To install uv see the [uv Installation Guide](https://docs.astral.sh/uv/getting-started/installation/). To see the updated documentation on how to run Prefect locally see [here](https://docs.prefect.io/v3/get-started/quickstart).
 
 ```sh
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -99,7 +99,7 @@ uv pip install prefect bauplan
 prefect cloud login
 ```
 
-Then create a python file named `bauplan_prefect_flow.py`, paste the code above in it and run it in another window of your terminal:
+Then create a Python file named `bauplan_prefect_flow.py`, paste the code above in it and run it in another window of your terminal:
 
 ```sh
 python bauplan_prefect_flow.py
@@ -109,9 +109,9 @@ python bauplan_prefect_flow.py
 
 Bauplan looks for credentials in a clear precedence order:
 
-1. **Environment variable** – `BAUPLAN_API_KEY`
-2. **Profile name** – `BAUPLAN_PROFILE` (points to a saved profile)
-3. **Config file** – `~/.bauplan/config.yml`
+1. **Environment variable** - `BAUPLAN_API_KEY`
+2. **Profile name** - `BAUPLAN_PROFILE` (points to a saved profile)
+3. **Config file** - `~/.bauplan/config.yml`
 
 This means you can either set a key directly in your code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
@@ -196,4 +196,4 @@ if __name__ == "__main__":
 
 ```
 
-This will run the a bauplan project in a certain branch, applying `start_time="2023-01-01T00:00:00-05:00"` inside the model, so only the rides after the 01-01-2023 are processed.
+This runs a Bauplan project on a given branch, applying `start_time="2023-01-01T00:00:00-05:00"` inside the model, so the pipeline processes only rides after 2023-01-01.

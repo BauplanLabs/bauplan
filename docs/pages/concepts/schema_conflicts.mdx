@@ -18,7 +18,7 @@ When this happens, you might see an error like:
 To fix this, you will have to generate a custom import plan and manually
 resolve the conflicts.
 
-## Create a Table Plan
+## Create a table plan
 
 Instead of letting Bauplan infer the schema automatically, you'll
 create a plan file and save it in a `yml` file, where
@@ -37,7 +37,7 @@ This generates a `table_plan.yml` file that includes:
 -   Detected conflicts
 -   Metadata about the data files
 
-## Understand the YAML Structure
+## Understand the YAML structure
 
 The plan has a `schema_info` section that looks like this:
 
@@ -151,7 +151,7 @@ client = bauplan.Client()
 plan = generate_plan(client=client, table='your_table', search_uri='s3://your-bucket/*.parquet', branch='import_branch')
 ```
 
-### Overriding Column Types in a Schema Plan
+### Overriding column types in a schema plan
 
 Sometimes you know more about your data than Bauplan's automatic
 inference - for example, when a column should be interpreted as a
@@ -161,7 +161,7 @@ modifying the `dst_datatype` field in the schema plan.
 This pattern is especially useful when:
 
 -   You want schema logic to live in code and version control
--   You have known transformations (e.g., parsing timestamp strings)
+-   You have known transformations (for example, parsing timestamp strings)
 -   You want repeatable, auditable data type enforcement
 
 Here's a reusable helper to apply type overrides based on a `type_map`:

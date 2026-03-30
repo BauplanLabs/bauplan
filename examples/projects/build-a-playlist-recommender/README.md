@@ -6,7 +6,9 @@ We use the _Spotify Million Playlist Dataset_ (originally from [AI Crowd](https:
 
 See the companion [blog post](https://www.bauplanlabs.com/blog/embedding-based-recommender-systems-with-bauplan-and-mongodb) for full context on the use case.
 
-_Credits_: The data wrangling code is adapted from the [NYU Machine Learning System Course](https://github.com/jacopotagliabue/MLSys-NYU-2022) by [Jacopo Tagliabue](https://jacopotagliabue.it/) and [Ethan Rosenthal](https://www.ethanrosenthal.com/).
+### Credits
+
+The data wrangling code is adapted from the [NYU Machine Learning System Course](https://github.com/jacopotagliabue/MLSys-NYU-2022) by [Jacopo Tagliabue](https://jacopotagliabue.it/) and [Ethan Rosenthal](https://www.ethanrosenthal.com/).
 
 ## Overview
 
@@ -14,11 +16,11 @@ Given sequences of music tracks (Spotify playlists), the pipeline learns an embe
 
 ### Data flow
 
-1. The original dataset is stored as a Bauplan-backed Iceberg table, available in the sandbox as "One Big Table".
+1. The original dataset is stored as a Bauplan-backed Iceberg table, available in the sandbox as `One Big Table`.
 2. The pipeline in `pipeline/` handles data preparation, training, and embedding persistence - both in an Iceberg table and in MongoDB Atlas.
 3. The Streamlit app in `app/` retrieves embeddings from Bauplan (high throughput) and MongoDB (low latency) to explore the vector space and get recommendations.
 
-![bpln_mongo_pipeline](https://github.com/user-attachments/assets/ae59c15b-3ad0-4605-953d-13ffda1249a1)
+![Pipeline diagram](https://github.com/user-attachments/assets/ae59c15b-3ad0-4605-953d-13ffda1249a1)
 
 ## Additional setup
 

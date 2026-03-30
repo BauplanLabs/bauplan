@@ -6,15 +6,15 @@ title: "Airflow 3"
 
 [Airflow](https://airflow.apache.org/) is one of the most widely adopted orchestrators in data engineering. It provides a central way to define, schedule, and monitor workflows, making it the backbone for many production data platforms. With the modern TaskFlow API introduced in Airflow 3, pipelines can be written as plain Python functions, keeping code simple and maintainable.
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Airflow 3 is just Python: with the TaskFlow API, tasks are regular Python functions and DAGs are defined in code. Integrating the two is straightforward: import the Bauplan SDK inside Airflow tasks and call Bauplan methods as you would in a standalone script. Airflow handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split: Airflow runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
+Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Airflow 3 is just Python: with the TaskFlow API, tasks are regular Python functions and DAGs are defined in code. Integrating the two is straightforward: import the Bauplan SDK inside Airflow tasks and call Bauplan methods as you would in a standalone script. Airflow handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Airflow runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: run a Bauplan pipeline from an Airflow DAG
+# Quickstart: Run a Bauplan pipeline from an Airflow DAG
 
-**Goal:** Call a [Bauplan project](/concepts/projects) from an Airflow DAG in the smallest possible way: authenticate, run, check status, and fail the DAG if the Bauplan job fails.
+**Goal:** call a [Bauplan project](/concepts/projects) from an Airflow DAG in the smallest possible way: authenticate, run, check status, and fail the DAG if the Bauplan job fails.
 
 ## Prerequisites
 
-- Python 3.10–3.12 (Airflow 3 supports these, Bauplan support 3.10 and above).
+- Python 3.10-3.12 (Airflow 3 supports these, Bauplan support 3.10 and above).
 - A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
 - A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
 - Airflow 3 installed. See “Installation from PyPI” and “Quick Start.”
