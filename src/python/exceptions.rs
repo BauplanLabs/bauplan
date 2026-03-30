@@ -227,8 +227,14 @@ impl ApiError {
                 status,
                 kind,
                 message,
-            } => (status.as_u16(), Some(kind), message.unwrap_or_default()),
-            ApiError::Other(status) => (status.as_u16(), None, status.to_string()),
+            } => (
+                status.as_u16(),
+                Some(kind),
+                message.unwrap_or(status.to_string()),
+            ),
+            ApiError::Other {
+                status, message, ..
+            } => (status.as_u16(), None, message.unwrap_or(status.to_string())),
             ApiError::InvalidResponse(status) => (
                 status.as_u16(),
                 None,
