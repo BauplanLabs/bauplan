@@ -61,7 +61,7 @@ function getAllMdxFiles(dir, baseDir = dir) {
 
 /** Docusaurus strips leading number prefixes (e.g. "03_") from doc IDs. */
 function stripNumberPrefix(segment) {
-  return segment.replace(/^\d+_/, '');
+  return segment.replace(/^\d+[-_]/, '');
 }
 
 /** Convert a file's relative path to its Docusaurus doc ID. */
@@ -197,7 +197,12 @@ function buildDocMap() {
       || docId.split('/').pop();
     const description = fm.description || extractDescription(raw);
     // URL mirrors what generate-llm-docs.js writes into static/
-    const url = `${BASE_URL}/${relativePath.replace(/\.mdx$/, '.md')}`;
+    // Strip numeric prefixes from path segments to match the output filenames.
+    const cleanPath = relativePath
+      .split(path.sep)
+      .map(s => s.replace(/^\d+[-_]/, ''))
+      .join('/');
+    const url = `${BASE_URL}/${cleanPath.replace(/\.mdx$/, '.md')}`;
 
     map[docId] = { title, description, url, docId, relativePath };
   }
@@ -335,8 +340,6 @@ function main() {
     .filter(doc => !usedIds.has(doc.docId))
     .filter(doc => {
       if (doc.docId === 'integrations/index') return false;
-      // Skip drafts (files with ≥3-digit numeric prefixes like 022_)
-      if (/\b\d{3,}_/.test(doc.relativePath)) return false;
       return true;
     })
     .sort((a, b) => a.docId.localeCompare(b.docId));
