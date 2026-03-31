@@ -3,7 +3,8 @@
 /**
  * Generate LLM-friendly markdown files from .mdx source files.
  * Copies all .mdx files from pages/ to static/ with .md extension,
- * making them accessible at URLs like /tutorial/00_installation.md
+ * stripping numeric prefixes so URLs match Docusaurus routes
+ * (e.g. 03-import.mdx → import.md, accessible at /tutorial/import.md).
  */
 
 const fs = require('fs');
@@ -258,6 +259,14 @@ function cleanMdxContent(content) {
   return cleaned;
 }
 
+/** Strip leading numeric prefixes (e.g. "03-import" → "import") from each path segment. */
+function stripNumberPrefixes(relativePath) {
+  return relativePath
+    .split(path.sep)
+    .map(segment => segment.replace(/^\d+[-_]/, ''))
+    .join(path.sep);
+}
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -271,8 +280,8 @@ function main() {
   let count = 0;
 
   for (const { fullPath, relativePath } of mdxFiles) {
-    // Convert .mdx to .md extension
-    const outputRelativePath = relativePath.replace(/\.mdx$/, '.md');
+    // Convert .mdx to .md and strip numeric prefixes from path segments
+    const outputRelativePath = stripNumberPrefixes(relativePath).replace(/\.mdx$/, '.md');
     const outputPath = path.join(STATIC_DIR, outputRelativePath);
 
     // Ensure output directory exists
