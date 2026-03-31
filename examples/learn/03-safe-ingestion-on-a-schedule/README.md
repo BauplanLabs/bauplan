@@ -2,7 +2,7 @@
 
 Implement the Write-Audit-Publish (WAP) pattern using [Prefect](https://www.prefect.io/) and Bauplan to safely ingest data into the lakehouse on a recurring schedule.
 
-This example is implemented using Prefect, for other orchestration tools (for example, Airflow, Temporal) see our integration guide - https://docs.bauplanlabs.com/integrations/orchestrators/
+This example is implemented using Prefect, for other orchestration tools (like Airflow or Temporal) see our integration guide - https://docs.bauplanlabs.com/integrations/orchestrators/
 
 ## Overview
 
