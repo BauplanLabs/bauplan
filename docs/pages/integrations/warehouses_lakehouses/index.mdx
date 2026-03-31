@@ -28,7 +28,7 @@ Most modern engines now support the **Iceberg REST catalog**. This lets them att
 
 - **Bauplan catalog endpoint:** `https://api.use1.aprod.bauplanlabs.com/iceberg`
 - **Auth:** `Bearer <token>` (we recommend a read-only Bauplan user)
-- **Storage:** Your object store (that is, Amazon S3). Engines authenticate with their own IAM/service accounts.
+- **Storage:** Your object store (usually Amazon S3). Engines authenticate with their own IAM/service accounts.
 - **Engines supported:** Snowflake Open Catalog, Databricks Unity Catalog, BigQuery, Trino, Athena, Spark, DuckDB, and others with native Iceberg connectors.
 
 ### **Option 2: External tables (per-table)**
