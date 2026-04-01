@@ -127,8 +127,49 @@ code[class*="language-"] {
   padding: 2em;
 }
 
+/* Make text/yaml/yml blocks: visually distinct from sh/bash blocks */
+pre[class*="language-text"],
+pre[class*="language-yaml"] {
+  background: #e0e0e0 !important;
+  border-left: 3px solid #888 !important;
+  border-radius: 0 !important;
+}
+
+pre[class*="language-text"] code,
+pre[class*="language-text"] code span,
+pre[class*="language-yaml"] code,
+pre[class*="language-yaml"] code span {
+  color: #222 !important;
+}
+
+[data-theme='dark'] pre[class*="language-text"],
+[data-theme='dark'] pre[class*="language-yaml"] {
+  background: #1e1e1e !important;
+  border-left: 3px solid #555 !important;
+}
+
+[data-theme='dark'] pre[class*="language-text"] code,
+[data-theme='dark'] pre[class*="language-text"] code span,
+[data-theme='dark'] pre[class*="language-yaml"] code,
+[data-theme='dark'] pre[class*="language-yaml"] code span {
+  color: #bbb !important;
+}
+/* end */
+
 a:hover {
   color: #00B0FF;
+}
+
+a:has(> code):hover {
+  text-decoration: none !important;
+}
+
+a:has(> code):hover code {
+  background: #f0f8ff;
+}
+
+[data-theme='dark'] a:has(> code):hover code {
+  background: rgba(255, 252, 227, 1);
 }
 
 footer {
