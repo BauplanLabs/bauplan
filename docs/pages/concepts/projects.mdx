@@ -91,14 +91,16 @@ parameters:
     default: true
 ```
 
-## Notebooks
+## Make it interesting: Notebooks, Apps, and Orchestrators
 
 Some pipelines benefit from interactive or external components:
 
--   **Apps** (for example, Streamlit) built on top of model outputs.
--   **Notebooks** used for exploration, debugging, and analysis.
--   **Orchestrators** (for example, Airflow, Prefect) used to schedule and
+-   **[Apps](/integrations/notebooks-data-apps/)** (for example, [Streamlit](/integrations/notebooks-data-apps/streamlit)) built on top of model outputs.
+-   **[Notebooks](/integrations/notebooks-data-apps/)** used for exploration, debugging, and analysis.
+-   **[Orchestrators](/integrations/orchestrators/)** (for example, [Airflow](/integrations/orchestrators/airflow), [Prefect](/integrations/orchestrators/prefect)) used to schedule and
     monitor the pipelines in production.
+
+### Notebooks & Apps
 
 The recommended project structure is:
 
@@ -123,7 +125,7 @@ my_bauplan_project/
 └── README.md
 ```
 
-### Notebooks and the SDK
+#### Notebooks and the SDK
 
 Notebooks using the Bauplan Python SDK are excellent for quick
 inspection and lightweight exploration on your local machine. However:
@@ -132,23 +134,27 @@ inspection and lightweight exploration on your local machine. However:
     returned data into the memory of your notebook or Python process. This is great for small-to-medium datasets, but
     risky for multi-GB results.
 -   **Performance is significantly slower than remote execution.** Even
-    with efficient streaming (for example, Arrow Flight), SDK-based retrieval
+    with efficient streaming (for example, [Arrow Flight](https://arrow.apache.org/docs/format/Flight.html)), SDK-based retrieval
     is slower and more resource-intensive than letting the computation
     run near the data.
 
-### Best practices
+#### Best practices
 
 -   Use the Notebooks for **exploratory workflows**, lightweight
     queries, and output inspection.
 -   Keep notebook results small and filtered - use `LIMIT` or `WHERE`
     clauses.
 
-## Orchestrators
+<Note>
+You can learn more about notebooks and apps integrations in the [Integrations section](/integrations/notebooks-data-apps/).
+</Note>
+
+### Orchestrators
 
 To productionize your pipelines, you can trigger Bauplan runs from any
-external orchestrator (for example, Airflow, Prefect, Dagster).
+external orchestrator (for example, [Airflow](/integrations/orchestrators/airflow), [Prefect](/integrations/orchestrators/prefect), [Dagster](/integrations/orchestrators/dagster)).
 
-### Requirements for a good orchestrator
+#### Requirements for a good orchestrator
 
 -   **Flexible inputs**: Support for scheduled, manual, or event-driven
     triggers.
@@ -158,13 +164,17 @@ external orchestrator (for example, Airflow, Prefect, Dagster).
 -   **Logging UI**: Centralized access to job logs and statuses.
 -   **Retries**: Robust error handling and retries.
 
-### Best practices
+#### Best practices
 
 -   Keep orchestration lightweight: external orchestrators manage **when
-    and how your data pipelines** run -- not to replicate their logic.
+    and how your data pipelines** run - not to replicate their logic.
     Invoke Bauplan with the correct ref and parameters and let Bauplan
     handle execution and data versioning.
 -   Store orchestrator config and code (for example, Airflow DAGs) alongside
     the relevant pipeline.
 -   Use tags or branch naming conventions to trigger runs in dev vs.
     prod.
+
+<Note>
+You can learn more about orchestrator integrations in the [Integrations section](/integrations/orchestrators/).
+</Note>

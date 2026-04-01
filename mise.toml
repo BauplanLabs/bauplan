@@ -2,6 +2,7 @@
 buf = "1"
 bun = "1.2.18"
 just = "latest"
+node = "lts"
 "npm:mdx2vast" = "0.3.1"
 protoc = "31"
 rust = { version = "1.92.0", profile = "default" }

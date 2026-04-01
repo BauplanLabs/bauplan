@@ -48,7 +48,6 @@ export default {
         "concepts/tables",
         "concepts/namespaces",
         "concepts/expectations",
-        "concepts/schema-conflicts",
         {
           type: "category",
           label: "Git for Data",
@@ -76,6 +75,23 @@ export default {
       items: [
         "agents/setup",
       ],
+    },
+    {
+      type: "category",
+      label: "Common Scenarios",
+      collapsed: true,
+      // link: {
+      //   type: "doc",
+      //   id: "common-scenarios/index",
+      // },
+      items: [
+        "common-scenarios/multi-stage-pipelines",
+        "common-scenarios/schema-conflicts",
+        "common-scenarios/branching-workflows",
+        "common-scenarios/detached-runs",
+        "common-scenarios/parameterized-runs",
+        "common-scenarios/sdk-or-cli",
+      ],  
     },
     {
       type: "category",

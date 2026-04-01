@@ -1,0 +1,161 @@
+---
+title: "Parameterized Runs"
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
+In production, it is common for the same DAG code to be run on different days,
+or to call an external service (for example, an LLM for data enrichment).
+Bauplan supports these scenarios with parameters and secrets.
+
+You can define a parameter using the CLI either as a simple value or by loading from a file.
+
+<div id="parameter-set">
+  <Tabs>
+    <TabItem value="variable" label="Value">
+      ```sh
+      bauplan parameter set prompt_summary "Write a concise, incisive summary of the news article." --description "Prompt passed to GPT for article summarization"
+      ```
+    </TabItem>
+    <TabItem value="filter" label="File">
+    For longer values like LLM prompts, SQL templates, or configuration
+    blobs, you can load a parameter from a file:
+
+    ```sh
+    bauplan parameter set prompt_template --type str --file prompts/summary.txt
+    ```
+    </TabItem>
+
+  </Tabs>
+</div>
+
+<Note>
+  For other commands related to parameters, see the
+  [reference](/reference/cli#parameter).
+</Note>
+
+Each parameter is defined in `bauplan_project.yml` with a `type` and
+a `default` value.
+
+```yaml
+parameters:
+  interest_rate:
+    default: 3.5
+    type: float
+  loan_amount:
+    default: 200000
+    type: int
+```
+
+Parameters can be:
+
+- **Strings** (`str`)
+- **Numbers** (`int`, `float`)
+- **Booleans** (`bool`)
+- [Secrets](#secrets) (a special, encrypted type of parameter used for API keys or credentials)
+
+## Parameters
+
+Parameters let you pass runtime values to models without changing code. They can be accessed in a variety of ways.
+
+<div id="parameter-usage">
+<Tabs>
+    <TabItem value="variable" label="As a variable">
+        Parameters can be passed as variables to your model code:
+
+        ```python
+        @bauplan.model()
+        @bauplan.python('3.11')
+        def loan_model(
+            interest_rate=bauplan.Parameter('interest_rate'), # passing parameters as variables
+            loan_amount=bauplan.Parameter('loan_amount'),
+            loan_term_years=bauplan.Parameter('loan_term_years'),
+        ):
+            ...
+        ```
+
+        <Note>
+        To learn more, see [reference](/reference/bauplan#bauplan-parameter).
+        </Note>
+    </TabItem>
+    <TabItem value="filter" label="As a filter">
+        Parameters can be passed in [`bauplan.Model`](/reference/bauplan#bauplan-model) as a filter,
+        using the `$param_name` syntax:
+
+        ```python
+        @bauplan.model()
+        @bauplan.python('3.11')
+        def qualifying_loans(
+            data=bauplan.Model(
+                'loans',
+                filter='interest_rate <= $interest_rate AND amount >= $loan_amount',
+            ),
+        ):
+            ...
+        ```
+    </TabItem>
+    <TabItem value="sql" label="SQL query">
+        In SQL, use `$param_name` directly in your query:
+
+        ```sql
+        SELECT * FROM loans
+        WHERE interest_rate <= $interest_rate
+        AND amount >= $loan_amount
+        ```
+    </TabItem>
+
+</Tabs>
+</div>
+
+Defaults can be overridden at runtime:
+
+<div id="interface">
+<Tabs>
+  <TabItem value="cli" label="CLI">
+
+    ```sh
+    bauplan run --param interest_rate=4.5 --param loan_amount=500000
+    ```
+
+  </TabItem>
+  <TabItem value="sdk" label="SDK">
+
+```python
+import bauplan
+
+client = bauplan.Client()
+client.run(
+    project_dir="./pipeline",
+    parameters={"interest_rate": 4.5, "loan_amount": 500000},
+)
+```
+
+  </TabItem>
+</Tabs>
+</div>
+
+---
+
+### Secrets
+
+Secrets are encrypted parameters for sensitive values like API keys,
+database credentials, or tokens. They are encrypted, versioned, and
+injected into your pipeline code at runtime, avoiding hardcoding.
+
+Use the CLI with `--type secret` to create one:
+
+```sh
+bauplan parameter set openai_api_key sk-abc123... --type secret
+```
+
+Bauplan encrypts the value via AWS KMS and stores only the ciphertext
+in your `bauplan_project.yml`. Secrets are never stored or transmitted
+in plaintext.
+
+In your code, reference secrets with [`bauplan.Parameter`](/reference/bauplan#bauplan-parameter) just like
+regular parameters.
+
+For a complete walkthrough using secrets with an LLM pipeline, see the
+[Using LLMs with Secrets](https://github.com/BauplanLabs/bauplan/tree/main/examples/learn/04-using-llms-with-secrets)
+example.

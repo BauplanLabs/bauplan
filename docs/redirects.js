@@ -1,8 +1,9 @@
 const redirects = [
   // Legacy guides redirects
-  { from: '/guides/casting', to: '/concepts/schema-conflicts' },
-  { from: '/guides/schema_conflicts', to: '/concepts/schema-conflicts' },
-  { from: '/guides/detached_runs', to: '/reference/bauplan#bauplan-client-run' },
+  { from: '/guides/casting', to: '/common-scenarios/schema-conflicts' },
+  { from: '/guides/schema_conflicts', to: '/common-scenarios/schema-conflicts' },
+  { from: '/concepts/schema-conflicts', to: '/common-scenarios/schema-conflicts' },
+  { from: '/guides/detached_runs', to: '/common-scenarios/detached-runs' },
   { from: '/guides/import_data', to: '/tutorial/import' },
   { from: '/guides/parameters', to: '/concepts/pipelines#parameters' },
   { from: '/guides/partitioning', to: '/concepts/tables#partitioning' },
@@ -29,6 +30,7 @@ const redirects = [
   // Legacy tutorial paths
   { from: '/tutorial/03_pipelines', to: '/concepts/pipelines' },
   { from: '/tutorial/04_import', to: '/tutorial/import' },
+  { from: '/tutorial/pipelines', to: '/concepts/pipelines' },
 
   // Legacy git_for_data paths
   { from: '/concepts/git_for_data/walkthrough', to: '/concepts/git-for-data' },
@@ -38,7 +40,7 @@ const redirects = [
   { from: '/tutorial/data_branches', to: '/tutorial/data-branches' },
   { from: '/tutorial/s3_permissions', to: '/tutorial/s3-permissions' },
   { from: '/overview/execution_model', to: '/overview/execution-model' },
-  { from: '/concepts/schema_conflicts', to: '/concepts/schema-conflicts' },
+  { from: '/concepts/schema_conflicts', to: 'common-scenarios/schema-conflicts' },
   { from: '/concepts/git_for_data', to: '/concepts/git-for-data' },
   { from: '/concepts/git_for_data/transactional_pipelines', to: '/concepts/git-for-data/transactional-pipelines' },
   { from: '/concepts/git_for_data/commits_refs', to: '/concepts/git-for-data/commits-refs' },
