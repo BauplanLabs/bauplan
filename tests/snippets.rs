@@ -15,7 +15,7 @@ const MD_CODE_BLOCKS: &str = "(fenced_code_block (info_string) @info (code_fence
 
 // Whitelist the code snippet languages, so that snippets like ```pyfon or
 // ```bash don't sneak by.
-const ALLOWED_LANGUAGES: &[&str] = &["python", "sh", "sql", "json", "yaml", "mermaid", "text"];
+const ALLOWED_LANGUAGES: &[&str] = &["python", "sh", "sql", "json", "yaml", "mermaid", "text", "shell-session"];
 
 struct Snippet {
     code: String,
