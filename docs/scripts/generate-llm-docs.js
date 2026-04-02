@@ -225,6 +225,28 @@ function stripJsxComponents(content) {
   return content;
 }
 
+const UNICODE_TO_ASCII = {
+  '+': '┌┐└┘├┤┬┴┼╋╔╗╚╝╠╣╦╩╬',
+  '-': '─━═',
+  '|': '│┃║',
+  'v': '▼▽⬇',
+  '^': '▲△⬆',
+  '>': '▶▷►',
+  '<': '◀◁◄',
+};
+
+const UNICODE_CHAR_MAP = new Map();
+for (const [ascii, unicodeChars] of Object.entries(UNICODE_TO_ASCII)) {
+  for (const ch of unicodeChars) UNICODE_CHAR_MAP.set(ch, ascii);
+}
+UNICODE_CHAR_MAP.set('…', '...');
+
+const UNICODE_RE = new RegExp(`[${[...UNICODE_CHAR_MAP.keys()].join('')}]`, 'g');
+
+function normalizeUnicodeToAscii(text) {
+  return text.replace(UNICODE_RE, (ch) => UNICODE_CHAR_MAP.get(ch));
+}
+
 function cleanMdxContent(content) {
   let cleaned = content;
 
@@ -246,6 +268,9 @@ function cleanMdxContent(content) {
 
   // Restore code blocks
   cleaned = cleaned.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, i) => codeBlocks[i]);
+
+  // Normalize Unicode box-drawing / tree characters to ASCII equivalents
+  cleaned = normalizeUnicodeToAscii(cleaned);
 
   // Remove lines that are only whitespace
   cleaned = cleaned.replace(/^\s+$/gm, '');
