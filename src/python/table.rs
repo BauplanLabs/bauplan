@@ -353,7 +353,7 @@ impl Client {
     ///     raise Exception(f"Planning failed: {plan_state.error}")
     ///
     /// if plan_state.can_auto_apply:
-    ///     # No schema conflicts — table was already created automatically
+    ///     # No schema conflicts - table was already created automatically.
     ///     print("Table created automatically (no conflicts)")
     /// else:
     ///     # Schema conflicts detected (e.g. same column name, different types across files).

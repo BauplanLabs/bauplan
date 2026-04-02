@@ -203,7 +203,7 @@ class Client:
             raise Exception(f"Planning failed: {plan_state.error}")
 
         if plan_state.can_auto_apply:
-            # No schema conflicts — table was already created automatically
+            # No schema conflicts - the table was already created automatically.
             print("Table created automatically (no conflicts)")
         else:
             # Schema conflicts detected (e.g. same column name, different types across files).
@@ -1784,7 +1784,7 @@ class Client:
         )
 
         if str(run_state.job_status).lower() != "success":
-            raise Exception(f"{run_state.job_id} failed: {run_state.job_status} — {run_state.error}")
+            raise Exception(f"{run_state.job_id} failed: {run_state.job_status} - {run_state.error}")
         ```
 
         Parameters:
