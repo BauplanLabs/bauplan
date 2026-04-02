@@ -292,7 +292,7 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
 
     let mut client = grpc::Client::new_lazy(
         &cli.profile,
-        cli.timeout.unwrap_or(time::Duration::from_secs(10)),
+        cli.timeout.unwrap_or(time::Duration::from_secs(5)),
     )?;
 
     let resp = client
