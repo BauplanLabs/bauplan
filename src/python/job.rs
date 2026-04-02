@@ -431,7 +431,8 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     all_users: Optional[bool]: Whether to list jobs from all users or only the current user.
+    ///     filter_by_current_user: Optional[bool]: If True (the default), only return jobs
+    ///         belonging to the current user. Mutually exclusive with filter_by_users.
     ///     filter_by_ids: Optional[Union[str, List[str]]]: Optional, filter by job IDs.
     ///     filter_by_users: Optional[Union[str, List[str]]]: Optional, filter by job users.
     ///     filter_by_kinds: Optional[Union[str, JobKind, List[Union[str, JobKind]]]]: Optional, filter by job kinds.
@@ -444,7 +445,7 @@ impl Client {
     ///     An iterator over `bauplan.schema.Job` objects.
     #[pyo3(signature = (
         *,
-        all_users=false,
+        filter_by_current_user=true,
         filter_by_ids=None,
         filter_by_users=None,
         filter_by_kinds=None,
@@ -457,7 +458,7 @@ impl Client {
     fn get_jobs(
         &self,
         py: Python<'_>,
-        all_users: bool,
+        filter_by_current_user: bool,
         filter_by_ids: Option<JobListArg>,
         filter_by_users: Option<JobListArg>,
         filter_by_kinds: Option<JobKindListArg>,
@@ -477,7 +478,16 @@ impl Client {
 
         let job_ids = filter_by_ids.unwrap_or_default().0;
         let filter_users = filter_by_users.unwrap_or_default().0;
-        let all_users = all_users || !filter_users.is_empty();
+
+        // The server requires all_users to be:
+        //  - true, if filter_users is nonempty
+        //  - false, if only the current user's jobs are desired
+        let all_users = if !filter_users.is_empty() {
+            true
+        } else {
+            !filter_by_current_user
+        };
+
         let filter_kinds: Vec<i32> = filter_by_kinds.unwrap_or_default().into();
         let filter_statuses: Vec<i32> = filter_by_statuses.unwrap_or_default().into();
 
