@@ -1,0 +1,83 @@
+---
+title: "Branching Workflows"
+---
+
+# Branching Workflows
+
+## Overview
+
+Bauplan replaces traditional dev/staging/prod environment separation with **branch-based isolation**. Every branch operates on a full, isolated copy of your data catalog without duplicating storage (powered by Apache Iceberg under the hood). This means multiple developers can work simultaneously without risk of corrupting production data.
+
+There are two recommended patterns for integrating work into production. Both are valid; the right choice depends on your team’s priorities around speed vs. assurance.
+
+---
+
+## Approach 1: Data-First
+
+**Philosophy:** _“Trust the data. If the output looks right in the branch, promote it directly.”_
+
+### How it works
+
+1. **Create a branch** - Developer creates a Bauplan [data branch](/concepts/git-for-data/data-branches) (similar to a Git branch, but for your tables).
+2. **Run your pipeline** - Execute your code against the branch. The [pipeline](/concepts/pipelines) materializes new/updated tables in the branch.
+3. **Inspect the data** - Review outputs, run data [expectations/quality checks](/concepts/expectations), diff against production tables.
+4. **Merge to main** - When satisfied, merge. The merge operation is **instantaneous** - the already-materialized tables become production. No recompute required.
+
+### Key advantages
+
+- **Zero recompute on merge** - Tables are computed once in the branch; merge just flips a pointer.
+- **Faster time to production** - No second pipeline run needed.
+- **PR-like feel** - You can review data diffs before merging, similar to reviewing code in a pull request.
+
+### Trade-off
+
+You trust that the branch environment is representative enough. If the data in the branch was computed with slightly different conditions (for example, timing, upstream changes), the merged result reflects the branch run, not a fresh run against the latest main.
+
+---
+
+## Approach 2: Code-First
+
+**Philosophy:** _“Trust the code. The branch is proof the code works; re-run transactionally in main for full assurance.”_
+
+### How it works
+
+1. **Create a branch** - Same as above.
+2. **Run your pipeline in the branch** - This serves as proof that the code runs correctly and passes all [data expectations](/concepts/expectations).
+3. **Open a PR in GitHub** - Submit a normal code PR. The branch data acts as evidence that the code is sound.
+4. **Merge the code** - When the code PR is approved and merged into main…
+5. **Re-run transactionally in main** - The pipeline re-executes against production data. [Data expectations](/concepts/expectations) run again in main before anything is promoted. Note that you can still run on a transactional branch here etc., but the key observation is that since you promoted the code, and the data is a byproduct of the code in Bauplan, you are re-generating the data assets with the very last available source inputs.
+
+### Key advantages
+
+- **Double assurance** - [Data expectations](/concepts/expectations) run both in the branch AND in main before tables are promoted.
+- **Familiar GitHub workflow** - Code review happens in your existing PR process; the data branch is supporting evidence.
+- **Reproducibility** - Since the only way to change data in Bauplan is by running code, you can always reproduce any state as long as you have the code that produced it.
+
+### Trade-off
+
+You compute tables twice (once in the branch, once in main), which uses more compute time. However, you get stronger guarantees that what lands in production is validated end-to-end.
+
+---
+
+## Side-by-Side Comparison
+
+|                       | Data-First                        | Code-First                          |
+| --------------------- | --------------------------------- | ----------------------------------- |
+| **Merge speed**       | Instant (pointer swap)            | Requires re-run in main             |
+| **Compute cost**      | 1x (branch only)                  | 2x (branch + main)                  |
+| **Assurance level**   | Single validation pass            | Double validation pass              |
+| **Best for**          | Fast iteration, trusted pipelines | Regulated environments, team safety |
+| **Code review**       | Optional (data is the artifact)   | Standard GitHub PR process          |
+| **Data expectations** | Run in branch                     | Run in branch AND main              |
+
+---
+
+## Key Concept: Why This Works
+
+In Bauplan, **the only way to change data is by running code**. This is a fundamental design principle. It means:
+
+- Every data state is reproducible from its source code.
+- There is no manual data manipulation that can bypass your review process.
+- Branches provide full isolation - nothing in a branch can affect production until explicitly merged.
+
+This eliminates the need for separate dev/staging/prod environments while actually providing _stronger guarantees_ than traditional environment separation, because branch isolation is transactional and enforced at the platform level.

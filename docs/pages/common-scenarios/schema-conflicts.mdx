@@ -1,5 +1,5 @@
 ---
-title: "Handle schema conflicts during import"
+title: "Import schema conflicts"
 ---
 
 When importing a dataset, Bauplan scans your files to infer the table
@@ -10,7 +10,7 @@ This page shows how to resolve conflicts using either a YAML plan or the Python 
 
 When this happens, you might see an error like:
 
-```sh
+```text
 2025-05-26 14:12:14 WRN The produced plan contains conflicts
 2025-05-26 14:12:14 ERR cannot automatically create table from search string. here are conflicts
 ```
@@ -28,14 +28,14 @@ programmatically.
 To create an import plan use
 
 ```sh
-bauplan table create-plan <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet' --save-plan your_table_plan.yml
+$ bauplan table create-plan <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet' --save-plan your_table_plan.yml
 ```
 
 This generates a `table_plan.yml` file that includes:
 
--   The inferred schema
--   Detected conflicts
--   Metadata about the data files
+- The inferred schema
+- Detected conflicts
+- Metadata about the data files
 
 ## Understand the YAML structure
 
@@ -58,13 +58,13 @@ schema_info:
 
 For each conflicting column:
 
- -  `src_datatypes` lists the types Bauplan found across
-    your files.
- -  `dst_datatype` lists the possible target types - **you
-    must pick one.** By declaring the value of this field you will tell
-    the system to cast a specific data type for a column.
- -  The `conflicts:` field explains what to do by explicitly
-    telling you the `reconcile_step`.
+- `src_datatypes` lists the types Bauplan found across
+  your files.
+- `dst_datatype` lists the possible target types - **you
+  must pick one.** By declaring the value of this field you will tell
+  the system to cast a specific data type for a column.
+- The `conflicts:` field explains what to do by explicitly
+  telling you the `reconcile_step`.
 
 ## Cast types and resolve conflicts
 
@@ -98,13 +98,13 @@ conflicts: []
 Apply your edited schema plan:
 
 ```sh
-bauplan table create-plan-apply --plan table_plan.yml
+$ bauplan table create-plan-apply --plan table_plan.yml
 ```
 
 Then import the data as usual:
 
 ```sh
-bauplan table import <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet'
+$ bauplan table import <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet'
 ```
 
 This manual step ensures you're making intentional decisions about your
@@ -160,9 +160,9 @@ modifying the `dst_datatype` field in the schema plan.
 
 This pattern is especially useful when:
 
--   You want schema logic to live in code and version control
--   You have known transformations (for example, parsing timestamp strings)
--   You want repeatable, auditable data type enforcement
+- You want schema logic to live in code and version control
+- You have known transformations (for example, parsing timestamp strings)
+- You want repeatable, auditable data type enforcement
 
 Here's a reusable helper to apply type overrides based on a `type_map`:
 a Python dictionary where each key is a column name and the value is a
