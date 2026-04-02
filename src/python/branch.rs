@@ -11,7 +11,7 @@ use crate::{
     },
     python::{
         paginate::PyPaginator,
-        refs::{BranchArg, RefArg},
+        refs::{BranchArg, PyBranch, PyRef, RefArg},
     },
 };
 
@@ -154,6 +154,21 @@ impl Client {
     /// )
     /// ```
     ///
+    /// The returned branch can also be used as a context manager. On exit,
+    /// the branch is automatically deleted, making it safe to perform
+    /// destructive operations:
+    ///
+    /// ```python
+    /// #! client = bauplan.Client()
+    /// with client.create_branch('username.scratch', from_ref='main') as b:
+    ///     # Any tables or data created here are cleaned up with the branch.
+    ///     ...
+    /// ```
+    ///
+    /// Note: the branch will only be deleted if it was actually created by
+    /// `create_branch`. For example, if `if_not_exists=True` was passed and the
+    /// branch was already created, it will not be deleted.
+    ///
     /// Parameters:
     ///     branch: The name of the new branch.
     ///     from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
@@ -175,18 +190,26 @@ impl Client {
         if_not_exists: "bool" = false,
     ) -> "Branch")]
     fn create_branch(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         branch: BranchArg,
         from_ref: RefArg,
         if_not_exists: bool,
-    ) -> PyResult<Branch> {
+    ) -> PyResult<Py<PyBranch>> {
         let req = CreateBranch {
             name: &branch.0,
             from_ref: &from_ref.0,
         };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(b) => Ok(b),
+            Ok(b) => {
+                let (mut pybranch, pyref) = PyRef::branch(b.name, b.hash);
+
+                // Setting the client indicates the branch was actually created,
+                // and we can ues it as a context manager.
+                pybranch.client = Some(self.clone());
+                Py::new(py, (pybranch, pyref))
+            }
             Err(e) => {
                 if let Some(ApiErrorKind::BranchExists {
                     catalog_ref: CatalogRef::Branch { name, hash },
@@ -194,10 +217,8 @@ impl Client {
                 }) = e.kind()
                     && if_not_exists
                 {
-                    Ok(Branch {
-                        name: name.clone(),
-                        hash: hash.clone(),
-                    })
+                    let (pybranch, pyref) = PyRef::branch(name.clone(), hash.clone());
+                    Py::new(py, (pybranch, pyref))
                 } else {
                     Err(e.into())
                 }
@@ -239,7 +260,12 @@ impl Client {
         branch: "str | Branch",
         new_branch: "str | Branch",
     ) -> "Branch")]
-    fn rename_branch(&self, py: Python<'_>, branch: BranchArg, new_branch: BranchArg) -> PyResult<Branch> {
+    fn rename_branch(
+        &self,
+        py: Python<'_>,
+        branch: BranchArg,
+        new_branch: BranchArg,
+    ) -> PyResult<Branch> {
         let req = RenameBranch {
             name: &branch.0,
             new_name: &new_branch.0,
@@ -291,7 +317,8 @@ impl Client {
         commit_properties: "dict[str, str] | None" = None,
     ) -> "Branch")]
     fn merge_branch(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         source_ref: RefArg,
         into_branch: BranchArg,
         commit_message: Option<&str>,

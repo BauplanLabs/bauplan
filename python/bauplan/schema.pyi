@@ -1,5 +1,6 @@
 from datetime import datetime
-from typing import Final, final
+from types import TracebackType
+from typing import Final, Literal, final
 from uuid import UUID
 
 @final
@@ -24,6 +25,15 @@ class Branch(Ref):
     """
     A data branch, used to isolate data changes before merging into main.
     """
+
+    def __enter__(self, /) -> Branch: ...
+    def __exit__(
+        self,
+        /,
+        _exc_type: type[BaseException] | None,
+        _exc_val: BaseException | None,
+        _exc_tb: TracebackType | None,
+    ) -> Literal[False]: ...
 
 @final
 class Commit:

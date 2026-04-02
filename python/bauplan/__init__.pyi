@@ -281,6 +281,21 @@ class Client:
         )
         ```
 
+        The returned branch can also be used as a context manager. On exit,
+        the branch is automatically deleted, making it safe to perform
+        destructive operations:
+
+        ```python
+        #! client = bauplan.Client()
+        with client.create_branch('username.scratch', from_ref='main') as b:
+            # Any tables or data created here are cleaned up with the branch.
+            ...
+        ```
+
+        Note: the branch will only be deleted if it was actually created by
+        ``create_branch``. For example, if ``if_not_exists=True`` was passed and the
+        branch was already created, it will not be deleted.
+
         Parameters:
             branch: The name of the new branch.
             from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
