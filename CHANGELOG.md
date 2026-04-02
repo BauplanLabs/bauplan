@@ -1,4 +1,14 @@
 
+## [0.1.10] - 2026-04-02
+
+### New Features
+
+- Map untyped error responses to ApiError::Other (ac9ab2b6dda8685569a6414cefa2ef07c5f83323)
+
+### Bugfixes
+
+- [cli] Tweak get_info timeout (e1678b8725b8423a1d854845f865027e256073f5)
+
 ## [0.1.9] - 2026-03-17
 
 ### Bugfixes
