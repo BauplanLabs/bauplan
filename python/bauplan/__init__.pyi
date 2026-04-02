@@ -150,6 +150,24 @@ class Client:
     client.query("SELECT count(*) FROM titanic", ref="main")
     ```
 
+    #### Pagination
+
+    Methods like `get_branches` and `get_tables` return a lazy paginating iterator:
+
+    ```python
+    #! client = bauplan.Client()
+    for branch in client.get_branches():
+        ...
+    ```
+
+    As a general rule, you should try to avoid eagerly evaluating them, as the lists can be very large.
+
+    ```
+    #! client = bauplan.Client()
+    # Don't do this!
+    branches = list(client.get_branches())
+    ```
+
     ## Examples
 
     ```python
@@ -1044,7 +1062,7 @@ class Client:
         """
         Get the tables and views in the target branch.
 
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        On failure, raises `bauplan.exceptions.BauplanError`.
 
         ```python
         import bauplan
