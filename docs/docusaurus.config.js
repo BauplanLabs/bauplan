@@ -108,7 +108,7 @@ export default {
       insights: true,
     },
     prism: {
-      additionalLanguages: ["bash"],
+      additionalLanguages: ["bash", "shell-session"],
       theme: prismThemes.vsDark,
     },
     mermaid: {

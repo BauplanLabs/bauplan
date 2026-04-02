@@ -90,6 +90,7 @@ export default {
         "common-scenarios/branching-workflows",
         "common-scenarios/detached-runs",
         "common-scenarios/parameterized-runs",
+        "common-scenarios/sdk-or-cli",
       ],  
     },
     {

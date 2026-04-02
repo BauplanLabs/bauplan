@@ -1,0 +1,40 @@
+---
+title: "SDK or CLI?"
+sidebar_label: "SDK or CLI?"
+---
+
+All Bauplan functionalities are available both as CLI commands and through the [Python SDK](/reference/bauplan).
+Most read-only operations are also available in the [web app](https://app.bauplanlabs.com/dashboard).
+
+There is no rigid rule on what to use when - the three interfaces complement each other. Below are best practices drawn from real-world usage.
+
+## CLI - interactive development
+
+The CLI is **stateful**: the same command may produce different results depending on your active [branch](/concepts/git-for-data/data-branches) or working directory. This makes it ideal for quick, exploratory work:
+
+- Iterate on code with `--dry-run` before committing to a full pipeline run
+- Explore data with ad-hoc [queries](/reference/cli#query)
+- Navigate branches, inspect tables, and check pipeline status
+
+**Typical workflow:** edit your model code, run `bauplan run --dry-run`, query the output, tweak, repeat.
+
+## SDK - automation and production workflows
+
+The SDK is **stateless**: you pass branches, namespaces, and other parameters explicitly. This makes it the right choice for complex, programmatic workflows:
+
+- [CI/CD data merges](/common-scenarios/branching-workflows) - create a branch, run a pipeline, merge on success
+- [Scheduled and detached runs](/common-scenarios/detached-runs) - trigger pipelines on a cadence
+- [Orchestrator integrations](/integrations/orchestrators) - embed Bauplan steps in Airflow, Prefect, Dagster, and others
+- [Data apps](/integrations/notebooks-data-apps) - power Streamlit or Marimo apps with live lakehouse data
+
+Being Python, it is straightforward to interleave Bauplan cloud operations (which look like simple function calls) with custom logic and other tools. While you _could_ shell out to the CLI from a script, the SDK provides a native experience with full type checking in your IDE.
+
+## Web app - observability
+
+The web app is best for **monitoring and exploration**:
+
+- Review your recent queries and pipeline runs at a glance
+- Time-travel to a previous commit and re-run a query to compare results
+- Share a visual overview of your data with teammates
+
+By design, all writes in Bauplan happen through code - keeping a clean separation between interfaces that _observe_ the system and commands that _change_ it.

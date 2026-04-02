@@ -29,6 +29,7 @@ const redirects = [
   // Legacy tutorial paths
   { from: '/tutorial/03_pipelines', to: '/concepts/pipelines' },
   { from: '/tutorial/04_import', to: '/tutorial/import' },
+  { from: '/tutorial/pipelines', to: '/concepts/pipelines' },
 
   // Legacy git_for_data paths
   { from: '/concepts/git_for_data/walkthrough', to: '/concepts/git-for-data' },

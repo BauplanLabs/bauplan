@@ -127,7 +127,7 @@ code[class*="language-"] {
   padding: 2em;
 }
 
-/* Make text/yaml/yml blocks: visually distinct from sh/bash blocks */
+/* Make text/yaml/yml blocks visually distinct from sh/bash blocks */
 pre[class*="language-text"],
 pre[class*="language-yaml"] {
   background: #e0e0e0 !important;
@@ -142,6 +142,23 @@ pre[class*="language-yaml"] code span {
   color: #222 !important;
 }
 
+/* Style the title bar and container when it belongs to a text/yaml block */
+div[class*="codeBlockContainer"]:has(pre[class*="language-text"]),
+div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) {
+  border-left: 3px solid #888 !important;
+}
+
+div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) div[class*="codeBlockTitle"],
+div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) div[class*="codeBlockTitle"] {
+  background: #c8c8c8 !important;
+  color: #222 !important;
+}
+
+div[class*="codeBlockContainer"] pre[class*="language-text"],
+div[class*="codeBlockContainer"] pre[class*="language-yaml"] {
+  border-left: none !important;
+}
+
 [data-theme='dark'] pre[class*="language-text"],
 [data-theme='dark'] pre[class*="language-yaml"] {
   background: #1e1e1e !important;
@@ -153,6 +170,22 @@ pre[class*="language-yaml"] code span {
 [data-theme='dark'] pre[class*="language-yaml"] code,
 [data-theme='dark'] pre[class*="language-yaml"] code span {
   color: #bbb !important;
+}
+
+[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]),
+[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) {
+  border-left: 3px solid #555 !important;
+}
+
+[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) div[class*="codeBlockTitle"],
+[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) div[class*="codeBlockTitle"] {
+  background: #2a2a2a !important;
+  color: #bbb !important;
+}
+
+[data-theme='dark'] div[class*="codeBlockContainer"] pre[class*="language-text"],
+[data-theme='dark'] div[class*="codeBlockContainer"] pre[class*="language-yaml"] {
+  border-left: none !important;
 }
 /* end */
 

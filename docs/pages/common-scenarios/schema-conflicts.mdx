@@ -28,7 +28,7 @@ programmatically.
 To create an import plan use
 
 ```sh
-bauplan table create-plan <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet' --save-plan your_table_plan.yml
+$ bauplan table create-plan <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet' --save-plan your_table_plan.yml
 ```
 
 This generates a `table_plan.yml` file that includes:
@@ -98,13 +98,13 @@ conflicts: []
 Apply your edited schema plan:
 
 ```sh
-bauplan table create-plan-apply --plan table_plan.yml
+$ bauplan table create-plan-apply --plan table_plan.yml
 ```
 
 Then import the data as usual:
 
 ```sh
-bauplan table import <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet'
+$ bauplan table import <your_table_name> --search-uri 's3://your/s3/bucket/*.parquet'
 ```
 
 This manual step ensures you're making intentional decisions about your

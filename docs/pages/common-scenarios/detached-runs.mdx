@@ -11,7 +11,7 @@ then the job can be followed up on later.
 
 When to use:
 
-- **Production / scheduled pipelines** - a scheduler (e.g. Airflow, cron) triggers a pipeline on a recurring cadence and does not need to hold a connection open for the entire run.
+- **Production / scheduled pipelines** - a scheduler (for example Airflow, cron) triggers a pipeline on a recurring cadence and does not need to hold a connection open for the entire run.
 - **Long-running jobs** - large data imports or complex DAGs that may take minutes or hours to complete.
 - **Unreliable connectivity** - you cannot guarantee a stable connection between your client and the Bauplan server for the duration of the job.
 
@@ -24,7 +24,7 @@ is the recommended approach.
 **For regular runs:**
 
 <div id="detached-runs-run">
-<Tabs>
+<Tabs groupId="cli-sdk">
   <TabItem value="cli" label="CLI">
 
 ```sh
@@ -54,11 +54,11 @@ The job ID is available on the returned state object via `.job_id`.
 **For data imports:**
 
 <div id="detached-runs-import">
-<Tabs>
+<Tabs groupId="cli-sdk">
   <TabItem value="cli" label="CLI">
 
 ```sh
-bauplan table import --search-uri s3://my-bucket/path --detach my_table
+$ bauplan table import --search-uri s3://my-bucket/path --detach my_table
 ```
 
 The job ID is printed to the console.
@@ -85,7 +85,7 @@ The job ID is available on the returned state object via `.job_id`.
 ## Checking Job Status
 
 <div id="detached-runs-status">
-<Tabs>
+<Tabs groupId="cli-sdk">
   <TabItem value="cli" label="CLI">
 
 Use [`job get`](/reference/cli#job-get) to check a single job:
@@ -102,7 +102,7 @@ Created:        23 seconds ago
 
 Use [`job ls`](/reference/cli#job-ls--job-list) to see recent jobs:
 
-```sh
+```shell-session
 $ bauplan job ls
 ID        TYPE             USER          STATUS     CREATED        FINISHED
 9f4b6b03  CodeSnapshotRun  yourusername  Completed  3 minutes ago  2 minutes ago
@@ -151,10 +151,10 @@ Logs are persisted for 24 hours as a way to troubleshoot jobs, after
 which they are deleted.
 
 <div id="detached-runs-logs">
-<Tabs>
+<Tabs groupId="cli-sdk">
   <TabItem value="cli" label="CLI">
 
-```sh
+```shell-session
 $ bauplan job logs <YOUR_JOB_ID>
 This is the 0th time I'm very sleepy, and I've become exceedingly efficient at it
 This is the 1st time I'm very sleepy, and I've become exceedingly efficient at it
@@ -180,7 +180,7 @@ To cancel a running job, use the CLI or SDK. When a job is
 successfully cancelled, its status changes to `Aborted`.
 
 <div id="detached-runs-cancel">
-<Tabs>
+<Tabs groupId="cli-sdk">
   <TabItem value="cli" label="CLI">
 
 ```sh
