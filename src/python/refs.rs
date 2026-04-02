@@ -55,9 +55,9 @@ pub struct PyRef {
 }
 
 impl PyRef {
-    fn branch(name: String, hash: String) -> (PyBranch, Self) {
+    pub(crate) fn branch(name: String, hash: String) -> (PyBranch, Self) {
         (
-            PyBranch,
+            PyBranch { client: None },
             PyRef {
                 name,
                 hash,
@@ -119,9 +119,13 @@ impl PyRefType {
 }
 
 /// A data branch, used to isolate data changes before merging into main.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[pyclass(name = "Branch", module = "bauplan.schema", extends = PyRef, from_py_object)]
-pub struct PyBranch;
+pub struct PyBranch {
+    /// Set when the branch is created via `Client.create_branch`, so that
+    /// `__exit__` can delete it. `None` for branches from `get_branch` etc.
+    pub(crate) client: Option<super::Client>,
+}
 
 /// A tag reference returned by the API.
 #[derive(Debug, Clone, Copy)]
@@ -247,6 +251,35 @@ impl<'py> IntoPyObject<'py> for Branch {
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
         Ok(Py::new(py, PyRef::branch(self.name, self.hash))?.into_bound(py))
+    }
+}
+
+#[pymethods]
+impl PyBranch {
+    fn __enter__(slf: pyo3::PyRef<'_, Self>) -> pyo3::PyRef<'_, Self> {
+        slf
+    }
+
+    fn __exit__(
+        slf: pyo3::PyRef<'_, Self>,
+        _exc_type: Option<&Bound<'_, PyAny>>,
+        _exc_val: Option<&Bound<'_, PyAny>>,
+        _exc_tb: Option<&Bound<'_, PyAny>>,
+    ) -> PyResult<bool> {
+        if let Some(client) = &slf.client {
+            let py = slf.py();
+            let name = &slf.as_super().name;
+            let req = crate::branch::DeleteBranch { name };
+
+            if let Err(e) = super::roundtrip(py, req, &client.profile, &client.agent) {
+                if !matches!(e.kind(), Some(crate::ApiErrorKind::BranchNotFound { .. })) {
+                    return Err(e.into());
+                }
+            }
+        }
+
+        // Don't suppress exceptions.
+        Ok(false)
     }
 }
 

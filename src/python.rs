@@ -135,7 +135,8 @@ impl ClientError {
 ///     api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) .bauplan/config.yml
 ///     client_timeout: The client timeout in seconds for all the requests.
 ///     config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
-#[pyclass(module = "bauplan")]
+#[pyclass(module = "bauplan", skip_from_py_object)]
+#[derive(Clone, Debug)]
 pub(crate) struct Client {
     pub(crate) profile: Profile,
     pub(crate) agent: ureq::Agent,

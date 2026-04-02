@@ -797,7 +797,8 @@ impl Client {
         namespace: "str | Namespace | None" = None,
     ) -> "Table")]
     fn get_table(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<NamespaceArg>,
@@ -847,7 +848,8 @@ impl Client {
         namespace: "str | Namespace | None" = None,
     ) -> "bool")]
     fn has_table(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         table: TableArg,
         r#ref: RefArg,
         namespace: Option<NamespaceArg>,
@@ -918,7 +920,8 @@ impl Client {
     ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn delete_table(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         table: TableArg,
         branch: BranchArg,
         namespace: Option<NamespaceArg>,
@@ -1002,7 +1005,8 @@ impl Client {
         overwrite: "bool" = false,
     ) -> "Table")]
     fn create_external_table_from_metadata(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         table: &str,
         metadata_json_uri: &str,
         namespace: &str,
@@ -1087,7 +1091,8 @@ impl Client {
     ) -> "Branch")]
     #[allow(clippy::too_many_arguments)]
     fn revert_table(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         table: TableArg,
         namespace: Option<NamespaceArg>,
         source_ref: RefArg,
