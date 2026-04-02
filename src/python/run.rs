@@ -212,7 +212,7 @@ impl Client {
     /// )
     ///
     /// if str(run_state.job_status).lower() != "success":
-    ///     raise Exception(f"{run_state.job_id} failed: {run_state.job_status} — {run_state.error}")
+    ///     raise Exception(f"{run_state.job_id} failed: {run_state.job_status} - {run_state.error}")
     /// ```
     ///
     /// Parameters:
