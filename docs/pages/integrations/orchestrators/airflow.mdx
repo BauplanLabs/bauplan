@@ -20,7 +20,10 @@ Bauplan exposes a Python SDK that lets you do everything with your lakehouse in 
 - Airflow 3 installed. See “Installation from PyPI” and “Quick Start.”
 
 <Note>
-If your pipeline writes data, run it on a branch (not on `main`). Branch names must be prefixed with your Bauplan username, for example `alice.airflow_docs`. [Learn more about branches](/concepts/git-for-data/data-branches).
+  If your pipeline writes data, run it on a branch (not on `main`). Branch names
+  must be prefixed with your Bauplan username, for example `alice.airflow_docs`.
+  Our example code creates one for you. [Learn more about
+  branches](/concepts/git-for-data/data-branches).
 </Note>
 
 ## Minimal DAG
@@ -46,10 +49,12 @@ def run_pipeline(
     Raises:
         AirflowException if the job did not finish with status 'success'.
     """
-    client = bauplan.Client()  # build client inside the task
+    client = bauplan.Client() # build client inside the task
 
-    username = client.info().user.username  # get username # type:ignore
-    branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
+    username = client.info().user.username # get username # type:ignore
+    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=project_dir, ref=branch)
 
@@ -92,7 +97,7 @@ if __name__ == "__main__":
     dag.test()
 ```
 
-This uses Airflow 3’s public Task SDK (`airflow.sdk`) to define DAGs and tasks as plain Python functions.  `dag.test()` lets you execute the DAG in a single process for fast local debugging.
+This uses Airflow 3's public Task SDK (`airflow.sdk`) to define DAGs and tasks as plain Python functions. `dag.test()` lets you execute the DAG in a single process for fast local debugging.
 
 ## How to run it locally
 
@@ -194,10 +199,12 @@ def run_with_parameters_task(
     bauplan_branch_suffix: str,
     parameters: dict,
 ) -> dict:
-    client = bauplan.Client()  # build client inside the task
+    client = bauplan.Client() # build client inside the task
 
     username = client.info().user.username
     branch = f"{username}.{bauplan_branch_suffix}"
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
 
@@ -217,8 +224,8 @@ def run_with_parameters_task(
 )
 def run_with_parameters(
     project_dir: str,
-    bauplan_branch_suffix: str,  # your own branch
-    parameters: dict,            # your arbitrary parameters
+    bauplan_branch_suffix: str, # your own branch
+    parameters: dict,           # your arbitrary parameters
 ):
     run_with_parameters_task(
         project_dir=project_dir,
