@@ -20,9 +20,10 @@ Bauplan exposes a Python SDK that lets you do everything with your lakehouse in 
 - Prefect 3 installed.
 
 <Note>
-If your pipeline writes data, run it on a data branch (not on `main`). Branch names must be prefixed with your Bauplan username, for example `alice.prefect_docs`.
-
-[Learn more about branches.](/concepts/git-for-data/data-branches)
+  If your pipeline writes data, run it on a branch (not on `main`). Branch names
+  must be prefixed with your Bauplan username, for example `alice.prefect_docs`.
+  Our example code creates one for you. [Learn more about
+  branches](/concepts/git-for-data/data-branches).
 </Note>
 
 ## Minimal flow
@@ -46,10 +47,12 @@ def run_pipeline(
     Raises:
         RuntimeError if the job did not finish with status 'success'.
     """
-    client = bauplan.Client()  # build client inside the task
+    client = bauplan.Client() # build client inside the task
 
-    username = client.info().user.username  # get username # type:ignore
-    branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
+    username = client.info().user.username # get username # type:ignore
+    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=project_dir, ref=branch)
 
@@ -131,12 +134,12 @@ Suppose you have a [Bauplan model](/concepts/models) that filters rows by a para
 ```yaml
 # bauplan_project.yml
 project:
-    id: 2b74eb5c-548f-4192-bf18-fcfa33a0746f
-    name: test-pipeline
+  id: 2b74eb5c-548f-4192-bf18-fcfa33a0746f
+  name: test-pipeline
 parameters:
-    start_time:
-        type: str
-        default: "2022-12-15T00:00:00-05:00"
+  start_time:
+    type: str
+    default: "2022-12-15T00:00:00-05:00"
 ```
 
 ```python title="models.py"
@@ -168,14 +171,16 @@ import bauplan
 @flow
 def run_with_parameters(
         project_dir: str,
-        bauplan_branch_suffix: str,  # your own branch
+        bauplan_branch_suffix: str, # your own branch
         parameters: dict # your arbitrary parameters
     ):
 
-    client = bauplan.Client()  # build client inside the task
+    client = bauplan.Client() # build client inside the task
 
-    username = client.info().user.username  # get username # type:ignore
-    branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
+    username = client.info().user.username # get username # type:ignore
+    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
 

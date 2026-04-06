@@ -2,6 +2,7 @@
 title: "DBOS"
 hide_title: false
 ---
+
 # DBOS
 
 DBOS is a distributed operating system for workflows: it gives you durable, exactly-once execution of Python functions, with built-in scheduling, retries, and observability. You write plain Python functions, annotate them with `@DBOS.workflow()` and `@DBOS.step()`, and DBOS takes care of orchestration, crash recovery, and state management under the hood.
@@ -14,16 +15,19 @@ Bauplan exposes a Python SDK that lets you do everything with your lakehouse in 
 
 ## Prerequisites
 
-- Python 3.10-3.12.
+- Python 3.10-3.13.
 
-    Bauplan supports 3.10+, and DBOS supports Python 3.9+; 3.10-3.12 is a good overlap.
+  Bauplan supports 3.10+, and DBOS supports Python 3.9+; 3.10-3.13 is a good overlap.
 
 - A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
 - A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
 - DBOS installed.
 
 <Note>
-If your pipeline writes data, run it on a branch (not on `main`). Branch names must be prefixed with your Bauplan username, for example `alice.dbos_docs`. [Learn more about branches.](/concepts/git-for-data/data-branches)
+  If your pipeline writes data, run it on a branch (not on `main`). Branch names
+  must be prefixed with your Bauplan username, for example `alice.dbos_docs`.
+  Our example code creates one for you. [Learn more about
+  branches.](/concepts/git-for-data/data-branches)
 </Note>
 
 ## Minimal DBOS app
@@ -58,9 +62,11 @@ def run_bauplan_step(project_dir: str, bauplan_branch_suffix: str,
     Raises:
         RuntimeError if the job did not finish with status 'success'.
     """
-    client = bauplan.Client()  # build client inside the step (I/O)
-    username = client.info().user.username  # get username # type:ignore
-    branch = f"{username}.{bauplan_branch_suffix}"  # construct branch name
+    client = bauplan.Client() # build client inside the step (I/O)
+    username = client.info().user.username # get username # type:ignore
+    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters or {})
 
@@ -194,9 +200,11 @@ def run_with_parameters_step(
     bauplan_branch_suffix: str,
     parameters: Dict[str, Any],
 ) -> Dict[str, Any]:
-    client = bauplan.Client()  # build client inside the step
+    client = bauplan.Client() # build client inside the step
     username = client.info().user.username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
 
@@ -209,8 +217,8 @@ def run_with_parameters_step(
 @DBOS.workflow()
 def run_with_parameters_workflow(
     project_dir: str,
-    bauplan_branch_suffix: str,  # your own branch
-    parameters: Optional[Dict[str, Any]],  # your arbitrary parameters
+    bauplan_branch_suffix: str, # your own branch
+    parameters: Optional[Dict[str, Any]], # your arbitrary parameters
 ) -> Dict[str, Any]:
     return run_with_parameters_step(project_dir, bauplan_branch_suffix, parameters or {})
 

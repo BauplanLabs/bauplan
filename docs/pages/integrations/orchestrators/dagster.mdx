@@ -1,6 +1,7 @@
 ---
 title: "Dagster"
 ---
+
 # Dagster
 
 [Dagster](https://dagster.io/) is a modern orchestrator designed specifically for data applications. Instead of just scheduling tasks, it treats pipelines as first-class objects, with strong typing, assets, and metadata built in. This makes it attractive for teams who want observability and reproducibility beyond traditional DAGs.
@@ -19,7 +20,10 @@ Bauplan exposes a Python SDK that lets you do everything with your lakehouse in 
 - [Dagster](https://dagster.io/) installed. From PyPI. See Dagster’s install and quickstart docs for details.
 
 <Note>
-If your pipeline writes data, run it on a branch (not on `main`). Branch names must be prefixed with your Bauplan username, for example `alice.dev_branch`. [Learn more about branches](/concepts/git-for-data/data-branches).
+  If your pipeline writes data, run it on a branch (not on `main`). Branch names
+  must be prefixed with your Bauplan username, for example `alice.dev_branch`.
+  Our example code creates one for you. [Learn more about
+  branches](/concepts/git-for-data/data-branches).
 </Note>
 
 ## Minimal job
@@ -43,11 +47,12 @@ def run_pipeline(context) -> dict:
     Raises:
         dg.Failure if the job did not finish with status 'success'.
     """
-    client = bauplan.Client()  # build client inside the op
-
-    #! username = client.info().user.username # type:ignore
+    client = bauplan.Client() # build client inside the op
+    username = client.info().user.username # type:ignore
     cfg = context.op_config
-    branch = f"{username}.{cfg['bauplan_branch_suffix']}"  # construct branch name
+    branch = f"{username}.{cfg['bauplan_branch_suffix']}" # construct branch name
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=cfg["project_dir"], ref=branch)
 
@@ -99,7 +104,7 @@ source .venv/bin/activate
 uv pip install dagster dagster-webserver bauplan
 ```
 
-Run Dagster’s UI and daemon for a lightweight local environment:
+Run Dagster's UI and daemon for a lightweight local environment:
 
 ```sh
 dagster dev -m bauplan_dagster_flow
@@ -113,7 +118,7 @@ Run in-process with `execute_in_process()` for fast iteration. Create a Python f
 python bauplan_dagster_flow.py
 ```
 
-This executes the job directly from Python without starting the daemon or webserver, which is ideal for quick debugging. See [Dagster’s API](https://docs.dagster.io/api) and [execution guides](https://docs.dagster.io/getting-started/quickstart) for details on programmatic runs and run configuration.
+This executes the job directly from Python without starting the daemon or webserver, which is ideal for quick debugging. See [Dagster's API](https://docs.dagster.io/api) and [execution guides](https://docs.dagster.io/getting-started/quickstart) for details on programmatic runs and run configuration.
 
 ## Bauplan authentication
 
@@ -178,15 +183,16 @@ import bauplan
     config_schema={
         "project_dir": str,
         "bauplan_branch_suffix": str,
-        "parameters": dict,   # arbitrary parameters for your Bauplan project
+        "parameters": dict, # arbitrary parameters for your Bauplan project
     },
 )
 def run_with_parameters(context) -> dict:
-    client = bauplan.Client()  # build client inside the op
-
+    client = bauplan.Client() # build client inside the op
     username = client.info().user.username # type:ignore
     cfg = context.op_config
     branch = f"{username}.{cfg['bauplan_branch_suffix']}"
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(
         project_dir=cfg["project_dir"],

@@ -16,10 +16,13 @@ Bauplan exposes a Python SDK that lets you do everything with your lakehouse in 
 - A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
 - A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
 - Temporal installed for local development:
-    - Install the Temporal CLI and start the dev server with `temporal server start-dev`. This also launches the Web UI at `http://localhost:8233`.
+  - Install the Temporal CLI and start the dev server with `temporal server start-dev`. This also launches the Web UI at `http://localhost:8233`.
 
 <Note>
-If your pipeline writes data, run it on a branch (not on `main`). Branch names must be prefixed with your Bauplan username, for example `alice.temporal_docs`. [Learn more](/concepts/git-for-data/data-branches).
+  If your pipeline writes data, run it on a branch (not on `main`). Branch names
+  must be prefixed with your Bauplan username, for example
+  `alice.temporal_docs`. Our example code creates one for you. [Learn
+  more](/concepts/git-for-data/data-branches).
 </Note>
 
 ## Minimal workflow
@@ -50,7 +53,7 @@ class BauplanWorkflow:
         result = await workflow.execute_activity(
             run_bauplan_activity,
             args=[pipeline_dir, bauplan_branch_suffix],
-            schedule_to_close_timeout=timedelta(minutes=60),  # required by Temporal
+            schedule_to_close_timeout=timedelta(minutes=60), # required by Temporal
         )
         await workflow.execute_activity(
             report_success_activity,
@@ -81,8 +84,8 @@ async def main():
             id=f"bauplan-{uuid4()}",
             task_queue=task_queue,
             args=[
-                "your_bauplan_project",  # change this with the path to your bauplan project
-                "temporal_docs",         # change this with your branch suffix
+                "your_bauplan_project", # change this with the path to your bauplan project
+                "temporal_docs",        # change this with your branch suffix
             ],
         )
         print("Workflow result:", await handle.result())
@@ -105,9 +108,11 @@ def run_bauplan_activity(project_dir: str, bauplan_branch_suffix: str) -> dict:
     if not project_path.exists():
         raise RuntimeError(f"Project path does not exist: {project_path}")
 
-    client = bauplan.Client()  # credentials: BAUPLAN_API_KEY / BAUPLAN_PROFILE / ~/.bauplan/config.yml
+    client = bauplan.Client() # credentials: BAUPLAN_API_KEY / BAUPLAN_PROFILE / ~/.bauplan/config.yml
     username = client.info().user.username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"
+
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
     state = client.run(project_dir=str(project_path), ref=branch)
     if str(state.job_status).lower() != "success":
@@ -121,7 +126,7 @@ def report_success_activity(result: dict) -> None:
 
 ```
 
-This uses Temporal’s Python SDK to define Workflows and Activities as plain Python functions, runs a Worker, and starts the Workflow in-process for fast local debugging. The Activity timeout on `execute_activity` is required and ensures correct retry/failure semantics. The `imports_passed_through()` block prevents the workflow sandbox from importing `bauplan` (which would violate determinism).
+This uses Temporal's Python SDK to define Workflows and Activities as plain Python functions, runs a Worker, and starts the Workflow in-process for fast local debugging. The Activity timeout on `execute_activity` is required and ensures correct retry/failure semantics. The `imports_passed_through()` block prevents the workflow sandbox from importing `bauplan` (which would violate determinism).
 
 # How to run it locally
 
@@ -233,6 +238,8 @@ def run_with_parameters_activity(
     username = client.info().user.username # type:ignore
     branch = f"{username}.{bauplan_branch_suffix}"
 
+    client.create_branch(branch, from_ref="main", if_not_exists=True)
+
     state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
 
     if str(state.job_status).lower() != "success":
@@ -292,8 +299,8 @@ async def main():
             id=f"bauplan-params-{uuid4()}",
             task_queue=task_queue,
             args=[
-                "your_bauplan_project",  # change this with the path to your bauplan project
-                "temporal_docs",           # change this with your branch suffix
+                "your_bauplan_project", # change this with the path to your bauplan project
+                "temporal_docs",        # change this with your branch suffix
                 {"start_time": "2023-01-01T00:00:00-05:00"},
             ],
         )
