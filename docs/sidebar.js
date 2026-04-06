@@ -68,11 +68,8 @@ export default {
       type: "category",
       label: "Agents",
       collapsed: true,
-      link: {
-        type: "doc",
-        id: "agents/index",
-      },
       items: [
+        "agents/overview",
         "agents/setup",
       ],
     },

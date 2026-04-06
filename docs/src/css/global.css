@@ -205,6 +205,21 @@ a:has(> code):hover code {
   background: rgba(255, 252, 227, 1);
 }
 
+/* Inline code inside admonitions: force opaque background so the
+   admonition's own background doesn't bleed through the code pill. */
+.theme-admonition code {
+  background: var(--ifm-code-background);
+}
+
+.theme-admonition a:has(> code) {
+  text-decoration: none;
+}
+
+[data-theme='dark'] .theme-admonition code {
+  background: rgb(255, 252, 227);
+  color: #000;
+}
+
 footer {
   border-top: 0.5px solid var(--ifm-table-border-color);
 }

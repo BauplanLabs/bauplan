@@ -45,7 +45,7 @@ You trust that the branch environment is representative enough. If the data in t
 2. **Run your pipeline in the branch** - This serves as proof that the code runs correctly and passes all [data expectations](/concepts/expectations).
 3. **Open a PR in GitHub** - Submit a normal code PR. The branch data acts as evidence that the code is sound.
 4. **Merge the code** - When the code PR is approved and merged into main…
-5. **Re-run transactionally in main** - The pipeline re-executes against production data. [Data expectations](/concepts/expectations) run again in main before anything is promoted. Note that you can still run on a transactional branch here etc., but the key observation is that since you promoted the code, and the data is a byproduct of the code in Bauplan, you are re-generating the data assets with the very last available source inputs.
+5. **Re-run transactionally in main** - The pipeline re-executes against production data. Running transactionally means the run is atomic: either every table materializes successfully and [data expectations](/concepts/expectations) pass, or nothing is promoted. A failure mid-run cannot leave `main` in a partial or corrupted state. Note that you can still run on a transactional branch here, but the key observation is that since you promoted the code, and the data is a byproduct of the code in Bauplan, you are re-generating the data assets with the very last available source inputs.
 
 ### Key advantages
 

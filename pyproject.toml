@@ -65,6 +65,7 @@ dev = [
     "pandas-stubs>=2.3.3.260113",
     "pendulum>=3.2.0",
     "plotly>=6.6.0",
+    "polars>=1.15.0",
     "prefect>=3.6.23",
     "pyiceberg>=0.11.1",
     "streamlit>=1.55.0",

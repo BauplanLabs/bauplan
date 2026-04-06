@@ -11,7 +11,7 @@ then the job can be followed up on later.
 
 When to use:
 
-- **Production / scheduled pipelines** - a scheduler (for example Airflow, cron) triggers a pipeline on a recurring cadence and does not need to hold a connection open for the entire run.
+- **Production / scheduled pipelines** - a scheduler (for example Airflow, Prefect) triggers a pipeline on a recurring cadence and does not need to hold a connection open for the entire run.
 - **Long-running jobs** - large data imports or complex DAGs that may take minutes or hours to complete.
 - **Unreliable connectivity** - you cannot guarantee a stable connection between your client and the Bauplan server for the duration of the job.
 
@@ -37,6 +37,8 @@ The job ID is printed to the console.
   <TabItem value="sdk" label="SDK">
 
 ```python
+#! import bauplan
+#! client = bauplan.Client()
 run_state = client.run(
     project_dir='path/to/project',
     ref='yourusername.your_branch',
@@ -66,7 +68,9 @@ The job ID is printed to the console.
   </TabItem>
   <TabItem value="sdk" label="SDK">
 
-```python notest
+```python
+#! import bauplan
+#! client = bauplan.Client()
 import_state = client.import_data(
     table='my_table',
     search_uri='s3://my-bucket/path',
@@ -120,15 +124,20 @@ fetch more, or `--created-after` / `--created-before` to filter by date.
 
 Use [`get_job`](/reference/bauplan#bauplan-client-get_job) to check a single job:
 
-```python notest
+```python
+#! import bauplan
+#! client = bauplan.Client()
+#! job_id = "1234"
 job = client.get_job(job_id)
 print(f'Status: {job.status}')
 ```
 
 Use [`get_jobs`](/reference/bauplan#bauplan-client-get_jobs) to list recent jobs with optional filters:
 
-```python notest
-from datetime import datetime
+```python
+#! import bauplan
+#! client = bauplan.Client()
+from datetime import datetime, timezone
 
 for job in client.get_jobs(limit=10):
     print(f'{job.id}  {job.status}')
@@ -165,6 +174,9 @@ This is the 2nd time I'm very sleepy, and I've become exceedingly efficient at i
   <TabItem value="sdk" label="SDK">
 
 ```python notest
+#! import bauplan
+#! client = bauplan.Client()
+#! job_id = "1234"
 logs = client.get_job_logs(job_id)
 for log_line in logs:
     print(f'[{log_line.stream}] {log_line.message}')
@@ -197,6 +209,9 @@ until the job reaches
 and then returns.
 
 ```python notest
+#! import bauplan
+#! client = bauplan.Client()
+#! job_id = "1234"
 client.cancel_job(job_id)
 ```
 
@@ -209,7 +224,6 @@ client.cancel_job(job_id)
 Both [`run()`](/reference/bauplan#bauplan-client-run) and [`import_data()`](/reference/bauplan#bauplan-client-import_data) methods support the `detach` parameter. The following snippet shows how the primitives above - launching a job, polling for status, and retrieving logs - can be combined programmatically in a single script.
 
 ```python notest
-import os
 import time
 import bauplan
 from bauplan.schema import JobState
