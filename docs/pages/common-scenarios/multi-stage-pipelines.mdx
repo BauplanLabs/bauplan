@@ -96,6 +96,8 @@ def purchase_events(
     import polars as pl
 
     df = pl.from_arrow(raw)
+    assert isinstance(df, pl.DataFrame)
+
     result = df.with_columns(
         pl.col('brand').fill_null('Unknown'),
         pl.col('category_code').fill_null('uncategorized'),
@@ -136,7 +138,11 @@ def purchases_by_segment(
     import polars as pl
 
     purchases_df = pl.from_arrow(purchases)
+    assert isinstance(purchases_df, pl.DataFrame)
+
     users_df = pl.from_arrow(users)
+    assert isinstance(users_df, pl.DataFrame)
+
     result = purchases_df.join(
         users_df,
         on='user_id',
@@ -176,6 +182,8 @@ def daily_segment_stats(
     import polars as pl
 
     df = pl.from_arrow(data)
+    assert isinstance(df, pl.DataFrame)
+
     result = df.with_columns(
         pl.col('event_time').str.slice(0, 10).alias('date'),
     ).group_by(['date', 'customer_segment']).agg([

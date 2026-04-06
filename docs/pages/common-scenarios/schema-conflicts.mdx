@@ -1,12 +1,18 @@
 ---
-title: "Import schema conflicts"
+title: "Create table schema conflicts"
 ---
 
 When you're passing in a dataset via `--search-uri` option in [`table create`](/reference/cli#table-create) command, Bauplan scans your files to infer the table
 schema. If your files have **inconsistent columns or types**, the create
 will fail with a schema conflict.
 
-This page shows how to resolve conflicts using either a YAML plan or the Python SDK.
+Under the hood, the [`table create`](/reference/cli#table-create)
+command runs two steps: it **plans** the table (inferring the schema from your
+source files) and then **applies** the plan. Normally these are bundled into a
+single command, but when planning detects conflicts, the combined command
+fails. In that case you can split the flow into its two parts - generate the
+plan explicitly, resolve the conflicts in the YAML (or programmatically), then
+apply it which is what the rest of this page walks through.
 
 <Note>
   The dataset example you pass using `--search-uri` is not inserted into the

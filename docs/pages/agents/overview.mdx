@@ -1,6 +1,6 @@
 ---
-title: "Agents"
-sidebar_label: "Agents"
+title: "Overview"
+sidebar_label: "Overview"
 ---
 
 There are **three complementary ways** to use AI agents with Bauplan. They are not mutually exclusive and can be combined depending on the workflow.
@@ -53,3 +53,10 @@ Skills encode best practices and sequencing for tasks that are otherwise easy to
 Each skill defines the intent, constraints, and expected steps of a workflow, while still operating on the same underlying Bauplan primitives (branches, runs, validation, publish). Skills can be used together with the MCP server or with repository-based usage.
 
 See: [https://github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills)
+
+## Feeding documentation to LLMs
+
+Bauplan's documentation is available in LLM-friendly formats:
+
+- **[llms.txt](/llms.txt)** - a single-page summary of Bauplan following the [llms.txt convention](https://llmstxt.org/), designed to fit in a single context window.
+- **Markdown versions of every page** - append `.md` to any documentation URL to get a plain Markdown version (for example, `https://docs.bauplanlabs.com/agents/overview` → `https://docs.bauplanlabs.com/agents/overview.md`). This is useful for feeding specific pages into an LLM as context.

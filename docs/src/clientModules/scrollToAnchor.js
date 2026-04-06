@@ -83,7 +83,6 @@ export function onRouteUpdate() {
     const tabList = tab.closest("[role='tablist']");
     if (!tabList) return;
 
-    const allTabs = tabList.querySelectorAll("[role='tab']");
     // Find the TabItem value: match by position with the Tabs children
     // Docusaurus tab text = label ?? value, so we use text as the value
     const groupId = wrapper.id;
