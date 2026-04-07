@@ -139,7 +139,7 @@ impl Client {
         {
             time::Duration::from_secs(v)
         } else {
-            self.client_timeout
+            time::Duration::from_secs(1800)
         }
     }
 
@@ -227,7 +227,7 @@ impl Client {
     ///     preview: Whether to enable or disable preview mode for the run.
     ///     args: Additional arguments (optional).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     ///     detach: Whether to detach the run and return immediately instead of blocking on log streaming.
     /// Returns:
     ///     `bauplan.state.RunState`: The state of the run.

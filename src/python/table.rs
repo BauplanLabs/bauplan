@@ -74,7 +74,7 @@ impl Client {
     ///     replace: Replace the table if it already exists.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     A `bauplan.schema.Table` object.
     ///
@@ -224,7 +224,7 @@ impl Client {
     ///     replace: Replace the table if it already exists.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     ///
     /// Returns:
     ///     A `bauplan.state.TableCreatePlanState` object.
@@ -373,7 +373,7 @@ impl Client {
     ///     plan: The plan to apply.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     A `bauplan.state.TableCreatePlanApplyState` object.
     ///
@@ -476,7 +476,7 @@ impl Client {
     ///     preview: Whether to enable or disable preview mode for the import.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
     /// Returns:
     ///     A `bauplan.state.TableDataImportState` object.
@@ -603,7 +603,7 @@ impl Client {
     ///     overwrite: Whether to delete and recreate the table if it already exists.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     ///     detach: Whether to detach the job and return immediately without waiting for the job to finish.
     ///
     /// Returns:

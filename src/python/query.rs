@@ -228,7 +228,7 @@ impl Client {
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     The query results as a `pyarrow.Table`.
     #[pyo3(signature = (
@@ -302,7 +302,7 @@ impl Client {
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: `None`).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     ///
     /// Yields:
     ///     A dictionary representing a row of query results.
@@ -370,7 +370,7 @@ impl Client {
     ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     The path of the file written.
     #[pyo3(signature = (
@@ -445,7 +445,7 @@ impl Client {
     ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     The path of the file written.
     #[pyo3(signature = (
@@ -521,7 +521,7 @@ impl Client {
     ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     The path of the file written.
     #[pyo3(signature = (
@@ -630,7 +630,7 @@ impl Client {
     ///     namespace: The Namespace to run the scan in. If not set, the scan will be run in the default namespace for your account.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
-    ///     client_timeout: seconds to timeout; this also cancels the remote job execution.
+    ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
     /// Returns:
     ///     The scan results as a `pyarrow.Table`.
     #[pyo3(signature = (
