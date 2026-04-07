@@ -6,6 +6,7 @@ generate:
     uv run gen_sdk_reference.py
     bun run generate-llm-docs
     bun run generate-llms-txt
+    cargo run --quiet --manifest-path ../Cargo.toml --bin gen-cli-docs > pages/reference/cli.mdx
 
 build out_dir="./build": install generate
     bun run docusaurus build --out-dir "{{ out_dir }}"
