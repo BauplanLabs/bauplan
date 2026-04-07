@@ -4,6 +4,7 @@ install:
 generate:
     uv sync --reinstall-package bauplan
     uv run gen_sdk_reference.py
+    cargo run --quiet --manifest-path ../Cargo.toml --bin gen-cli-docs > pages/reference/cli.mdx
     bun run generate-llm-docs
     bun run generate-llms-txt
 
