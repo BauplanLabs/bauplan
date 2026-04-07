@@ -223,7 +223,7 @@ class Client:
             plan: The plan to apply.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             A `bauplan.state.TableCreatePlanApplyState` object.
 
@@ -387,7 +387,7 @@ class Client:
             overwrite: Whether to delete and recreate the table if it already exists.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
             detach: Whether to detach the job and return immediately without waiting for the job to finish.
 
         Returns:
@@ -481,7 +481,7 @@ class Client:
             replace: Replace the table if it already exists.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             The created `bauplan.schema.Table`.
 
@@ -1285,7 +1285,7 @@ class Client:
             preview: Whether to enable or disable preview mode for the import.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
             detach: Whether to detach the job and return immediately without waiting for the job to finish.
         Returns:
             A `bauplan.state.TableDataImportState` object.
@@ -1402,7 +1402,7 @@ class Client:
             replace: Replace the table if it already exists.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
 
         Returns:
             A `bauplan.state.TableCreatePlanState` object.
@@ -1454,7 +1454,7 @@ class Client:
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             The query results as a `pyarrow.Table`.
         """
@@ -1495,7 +1495,7 @@ class Client:
             cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             The path of the file written.
         """
@@ -1538,7 +1538,7 @@ class Client:
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: `None`).
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
 
         Yields:
             A dictionary representing a row of query results.
@@ -1582,7 +1582,7 @@ class Client:
             cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             The path of the file written.
         """
@@ -1623,7 +1623,7 @@ class Client:
             cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             The path of the file written.
         """
@@ -1799,7 +1799,7 @@ class Client:
             preview: Whether to enable or disable preview mode for the run.
             args: Additional arguments (optional).
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
             detach: Whether to detach the run and return immediately instead of blocking on log streaming.
         Returns:
             `bauplan.state.RunState`: The state of the run.
@@ -1850,7 +1850,7 @@ class Client:
             namespace: The Namespace to run the scan in. If not set, the scan will be run in the default namespace for your account.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
-            client_timeout: seconds to timeout; this also cancels the remote job execution.
+            client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
         Returns:
             The scan results as a `pyarrow.Table`.
         """
