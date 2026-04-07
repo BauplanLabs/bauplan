@@ -142,7 +142,7 @@ client = bauplan.Client(api_key="YOUR_KEY")
 
 When running Bauplan with an orchestrator, parameters are the key to making your flows reusable and dynamic.
 
-Instead of hardcoding values, parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters and row limits. This is especially important in scheduled environments, where orchestrators trigger the same job many times, so the same flow can run daily with different inputs. To learn how to set up parameters in Bauplan, see [this page](/reference/cli#parameter-set).
+Instead of hardcoding values, parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters and row limits. This is especially important in scheduled environments, where orchestrators trigger the same job many times, so the same flow can run daily with different inputs. To learn how to set up parameters in Bauplan, see [this page](/reference/cli#bauplan-parameter-set).
 
 Suppose you have a Bauplan model that filters rows by a parameter `start_time`:
 
