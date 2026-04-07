@@ -127,6 +127,20 @@ code[class*="language-"] {
   padding: 2em;
 }
 
+.cli-reference-page .cli-synopsis-block pre[class*="language-"] {
+  padding-left: 0.85rem;
+  position: relative;
+}
+
+.cli-reference-page .cli-synopsis-block pre[class*="language-"]::before {
+  color: currentColor;
+  content: "$";
+  left: 0.85rem;
+  opacity: 0.55;
+  position: absolute;
+  top: 1rem;
+}
+
 /* Make text/yaml/yml blocks visually distinct from sh/bash blocks */
 pre[class*="language-text"],
 pre[class*="language-yaml"] {
