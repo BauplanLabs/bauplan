@@ -103,7 +103,7 @@ fn config_set(args: ConfigSetArgs, global: GlobalArgs) -> anyhow::Result<()> {
 fn config_get(args: ConfigGetArgs, global: GlobalArgs) -> anyhow::Result<()> {
     let mut out = anstream::stdout().lock();
 
-    match (global.output.unwrap_or_default(), args.all) {
+    match (global.output, args.all) {
         (Output::Tty, false) => {
             let profile = match global.profile {
                 Some(name) => Profile::from_env(&name)?,

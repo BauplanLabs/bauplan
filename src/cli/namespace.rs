@@ -123,7 +123,7 @@ fn list_namespaces(
 
     let namespaces = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let all_namespaces = namespaces.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_namespaces)?;

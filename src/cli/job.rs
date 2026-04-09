@@ -294,7 +294,7 @@ async fn handle_ls(cli: &Cli, args: JobLsArgs) -> anyhow::Result<()> {
     .try_flatten()
     .map_ok(Job::from);
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let jobs: Vec<Job> = stream.try_collect().await?;
             serde_json::to_writer(stdout(), &jobs)?;
@@ -382,7 +382,7 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
         bail!("job not found: {}", args.job_id);
     };
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             serde_json::to_writer(stdout(), &[job])?;
             println!();
@@ -474,7 +474,7 @@ async fn handle_logs(cli: &Cli, args: JobLogsArgs) -> anyhow::Result<()> {
         }
     });
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             serde_json::to_writer(stdout(), &entries.collect::<Vec<_>>())?;
             println!();

@@ -383,7 +383,7 @@ fn handle_list_tables(
 
     let tables = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_tables)?;
@@ -422,7 +422,7 @@ fn handle_get_table(
     };
 
     let resp = cli.roundtrip(req)?;
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             serde_json::to_writer(stdout(), &resp)?;
             println!();
