@@ -64,6 +64,25 @@ def expect_column_equal_concatenation(
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_equal_concatenation
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_full_name_is_concat(
+        data=bauplan.Model('customers'),
+    ):
+        assert expect_column_equal_concatenation(
+            data,
+            target_column='full_name',
+            columns=['first_name', 'last_name'],
+            separator=' ',
+        )
+        return True
+    ```
     """
     # produce a new column that is the concatenation of the columns in the list
     # and compare the new column with the target column
@@ -89,6 +108,20 @@ def expect_column_mean_greater_than(
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_mean_greater_than
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_positive_avg_fare(
+        data=bauplan.Model('normalized_taxi_trips'),
+    ):
+        assert expect_column_mean_greater_than(data, 'fare_amount', 0.0)
+        return True
+    ```
     """
     mean_ = _calculate_column_mean(table, column_name)
     return mean_ > value
@@ -108,6 +141,20 @@ def expect_column_mean_greater_or_equal_than(
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_mean_greater_or_equal_than
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_avg_rating_at_least_three(
+        data=bauplan.Model('product_reviews'),
+    ):
+        assert expect_column_mean_greater_or_equal_than(data, 'rating', 3.0)
+        return True
+    ```
     """
     mean_ = _calculate_column_mean(table, column_name)
     return mean_ >= value
@@ -127,6 +174,20 @@ def expect_column_mean_smaller_than(
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_mean_smaller_than
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_error_rate_below_five_percent(
+        data=bauplan.Model('request_logs'),
+    ):
+        assert expect_column_mean_smaller_than(data, 'error_rate', 0.05)
+        return True
+    ```
     """
     mean_ = _calculate_column_mean(table, column_name)
     return mean_ < value
@@ -146,6 +207,20 @@ def expect_column_mean_smaller_or_equal_than(
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_mean_smaller_or_equal_than
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_avg_latency_within_slo(
+        data=bauplan.Model('request_logs'),
+    ):
+        assert expect_column_mean_smaller_or_equal_than(data, 'latency_ms', 250.0)
+        return True
+    ```
     """
     mean_ = _calculate_column_mean(table, column_name)
     return mean_ <= value
@@ -166,6 +241,20 @@ def expect_column_some_null(table: pa.Table, column_name: str) -> bool:
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_some_null
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_optional_notes_has_nulls(
+        data=bauplan.Model('customers'),
+    ):
+        assert expect_column_some_null(data, 'optional_notes')
+        return True
+    ```
     """
     return _column_nulls(table, column_name) > 0
 
@@ -181,6 +270,22 @@ def expect_column_no_nulls(table: pa.Table, column_name: str) -> bool:
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_no_nulls
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_no_null_pickup_datetime(
+        data=bauplan.Model('normalized_taxi_trips'),
+    ):
+        column = 'pickup_datetime'
+        ok = expect_column_no_nulls(data, column)
+        assert ok, f'expected {column} to have no nulls'
+        return ok
+    ```
     """
     return _column_nulls(table, column_name) == 0
 
@@ -196,6 +301,20 @@ def expect_column_all_null(table: pa.Table, column_name: str) -> bool:
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_all_null
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_legacy_user_id_fully_blanked(
+        data=bauplan.Model('customers'),
+    ):
+        assert expect_column_all_null(data, 'legacy_user_id')
+        return True
+    ```
     """
     return _column_nulls(table, column_name) == table[column_name].length()
 
@@ -215,6 +334,20 @@ def expect_column_all_unique(table: pa.Table, column_name: str) -> bool:
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_all_unique
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_trip_id_is_unique(
+        data=bauplan.Model('normalized_taxi_trips'),
+    ):
+        assert expect_column_all_unique(data, 'trip_id')
+        return True
+    ```
     """
     return _column_unique(table, column_name) == len(table[column_name])
 
@@ -230,6 +363,20 @@ def expect_column_not_unique(table: pa.Table, column_name: str) -> bool:
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_not_unique
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_customer_id_repeats_in_orders(
+        data=bauplan.Model('orders'),
+    ):
+        assert expect_column_not_unique(data, 'customer_id')
+        return True
+    ```
     """
     return _column_unique(table, column_name) < len(table[column_name])
 
@@ -254,6 +401,24 @@ def expect_column_accepted_values(
     Returns:
         a boolean.
 
+    ## Examples
+
+    ```python
+    import bauplan
+    from bauplan.standard_expectations import expect_column_accepted_values
+
+    @bauplan.expectation()
+    @bauplan.python('3.11')
+    def test_order_status_domain(
+        data=bauplan.Model('orders'),
+    ):
+        assert expect_column_accepted_values(
+            data,
+            'order_status',
+            ['pending', 'paid', 'shipped', 'cancelled'],
+        )
+        return True
+    ```
     """
 
     return _column_accepted_values(table, column_name, accepted_values)

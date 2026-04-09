@@ -107,7 +107,7 @@ pub(crate) struct BranchCreateArgs {
 pub(crate) struct BranchRmArgs {
     /// Branch name
     pub branch_name: String,
-    /// Do not fail if the branch does not exist
+    /// Command succeeds even if the branch does not exist
     #[arg(long)]
     pub if_exists: bool,
 }
