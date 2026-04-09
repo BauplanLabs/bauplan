@@ -7,6 +7,15 @@ generate:
     bun run generate-llm-docs
     bun run generate-llms-txt
 
+# Generate SDK reference from the local bauplan source (../python) instead of the released package.
+generate-local bauplan_path="../python":
+    BAUPLAN_LOCAL_PATH="{{ bauplan_path }}" uv run gen_sdk_reference.py
+    bun run generate-llm-docs
+    bun run generate-llms-txt
+
+serve-local: install generate-local
+    bun run docusaurus start
+
 build out_dir="./build": install generate
     bun run docusaurus build --out-dir "{{ out_dir }}"
 

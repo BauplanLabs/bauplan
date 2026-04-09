@@ -3,6 +3,7 @@
 import html
 import json
 import logging
+import os
 import re
 from contextlib import contextmanager
 from pathlib import Path
@@ -407,7 +408,11 @@ def main() -> None:
     output_dir = Path(__file__).parent / 'pages' / 'reference'
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    bauplan = griffe.load('bauplan')
+    local_path = os.getenv('BAUPLAN_LOCAL_PATH')
+    kwargs = {'search_paths': [local_path]} if local_path else {}
+    if local_path:
+        logging.info('Loading bauplan from local path: %s', local_path)
+    bauplan = griffe.load('bauplan', **kwargs)
 
     assert isinstance(bauplan, griffe.Module)
     linker = TypeLinker()
