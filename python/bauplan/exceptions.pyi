@@ -274,6 +274,9 @@ class ApiErrorKind:
         def __new__(cls, /) -> ApiErrorKind.Unauthorized: ...
 
 class BauplanError(Exception):
+    """
+    Base class for all bauplan SDK exceptions.
+    """
     def __new__(cls, /, *_args) -> BauplanError: ...
 
 class BauplanHTTPError(BauplanError):
@@ -294,6 +297,9 @@ class BauplanHTTPError(BauplanError):
 
 @final
 class TableCreatePlanApplyStatusError(BauplanError):
+    """
+    Raised when a table-create plan apply job finishes in a non-success state.
+    """
     def __new__(
         cls, /, message: str, state: TableCreatePlanApplyState
     ) -> TableCreatePlanApplyStatusError: ...
@@ -303,10 +309,16 @@ class TableCreatePlanApplyStatusError(BauplanError):
     def state(self, /) -> TableCreatePlanApplyState: ...
 
 class TableCreatePlanError(BauplanError):
+    """
+    Base class for errors raised during a table-create plan workflow.
+    """
     def __new__(cls, /) -> TableCreatePlanError: ...
 
 @final
 class TableCreatePlanStatusError(TableCreatePlanError):
+    """
+    Raised when a table-create plan job finishes in a non-success state.
+    """
     def __new__(
         cls, /, message: str, state: TableCreatePlanState
     ) -> TableCreatePlanStatusError: ...
@@ -316,70 +328,163 @@ class TableCreatePlanStatusError(TableCreatePlanError):
     def state(self, /) -> TableCreatePlanState: ...
 
 # 400 Bad Request
-class BadRequestError(BauplanHTTPError): ...
-class InvalidDataError(BadRequestError): ...
-class InvalidRefError(BadRequestError): ...
-class NotABranchRefError(InvalidRefError): ...
-class NotATagRefError(InvalidRefError): ...
-class NotAWriteBranchRefError(NotABranchRefError): ...
-class SameRefError(InvalidRefError): ...
+class BadRequestError(BauplanHTTPError):
+    """Raised on an HTTP 400 response from the API."""
+
+class InvalidDataError(BadRequestError):
+    """Raised on an HTTP 400 response from the API."""
+
+class InvalidRefError(BadRequestError):
+    """Raised when the provided string is not a valid `bauplan.schema.Ref`."""
+
+class NotABranchRefError(InvalidRefError):
+    """Raised when the provided `bauplan.schema.Ref` is not of type BRANCH."""
+
+class NotATagRefError(InvalidRefError):
+    """Raised when the provided `bauplan.schema.Ref` is not of type TAG."""
+
+class NotAWriteBranchRefError(NotABranchRefError):
+    """Raised when a write operation is attempted against a bauplan.schema.Ref that is not of type BRANCH."""
+
+class SameRefError(InvalidRefError):
+    """Raised when the source and destination `bauplan.schema.Ref` resolve to the same commit hash, making the operation a no-op."""
 
 # 401 Unauthorized
-class UnauthorizedError(BauplanHTTPError): ...
+class UnauthorizedError(BauplanHTTPError):
+    """Raised on an HTTP 401 response: missing or invalid credentials."""
 
 # 403 Forbidden
-class ForbiddenError(BauplanHTTPError): ...
-class CreateBranchForbiddenError(ForbiddenError): ...
-class CreateNamespaceForbiddenError(ForbiddenError): ...
-class CreateTagForbiddenError(ForbiddenError): ...
-class DeleteBranchForbiddenError(ForbiddenError): ...
-class DeleteNamespaceForbiddenError(ForbiddenError): ...
-class DeleteTableForbiddenError(ForbiddenError): ...
-class DeleteTagForbiddenError(ForbiddenError): ...
-class MergeForbiddenError(ForbiddenError): ...
-class RenameBranchForbiddenError(ForbiddenError): ...
-class RenameTagForbiddenError(ForbiddenError): ...
-class RevertTableForbiddenError(ForbiddenError): ...
+class ForbiddenError(BauplanHTTPError):
+    """Raised on an HTTP 403 response: the caller is not permitted to perform the action."""
+
+class CreateBranchForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to create a `bauplan.schema.Branch`."""
+
+class CreateNamespaceForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to create a `bauplan.schema.Namespace`."""
+
+class CreateTagForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to create a `bauplan.schema.Tag`."""
+
+class DeleteBranchForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to delete a `bauplan.schema.Branch`."""
+
+class DeleteNamespaceForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to delete a `bauplan.schema.Namespace`."""
+
+class DeleteTableForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to delete tables."""
+
+class DeleteTagForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to delete a `bauplan.schema.Tag`."""
+
+class MergeForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to merge a `bauplan.schema.Branch`."""
+
+class RenameBranchForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to rename a `bauplan.schema.Branch`."""
+
+class RenameTagForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to rename a `bauplan.schema.Tag`."""
+
+class RevertTableForbiddenError(ForbiddenError):
+    """Raised when the caller is not permitted to revert tables."""
 
 # 404 Not Found
-class NotFoundError(BauplanHTTPError): ...
-class ResourceNotFoundError(NotFoundError): ...
-class TableNotFoundError(ResourceNotFoundError): ...
-class NamespaceNotFoundError(ResourceNotFoundError): ...
-class BranchNotFoundError(ResourceNotFoundError): ...
-class RefNotFoundError(ResourceNotFoundError): ...
-class TagNotFoundError(ResourceNotFoundError): ...
-class ApiMethodError(ResourceNotFoundError): ...
+class NotFoundError(BauplanHTTPError):
+    """Raised on an HTTP 404 response from the API."""
+
+class ResourceNotFoundError(NotFoundError):
+    """Raised when a requested catalog resource does not exist."""
+
+class TableNotFoundError(ResourceNotFoundError):
+    """Raised when the referenced table does not exist on the given `bauplan.schema.Ref`."""
+
+class NamespaceNotFoundError(ResourceNotFoundError):
+    """Raised when the referenced `bauplan.schema.Namespace` does not exist on the given `bauplan.schema.Ref`."""
+
+class BranchNotFoundError(ResourceNotFoundError):
+    """Raised when the referenced `bauplan.schema.Branch` does not exist."""
+
+class RefNotFoundError(ResourceNotFoundError):
+    """Raised when the referenced `bauplan.schema.Ref` does not exist."""
+
+class TagNotFoundError(ResourceNotFoundError):
+    """Raised when the referenced `bauplan.schema.Tag` does not exist."""
+
+class ApiMethodError(ResourceNotFoundError):
+    """Raised on an HTTP 404 response from the API."""
 
 # 405 Method Not Allowed
-class MethodNotAllowedError(BauplanHTTPError): ...
-class ApiRouteError(MethodNotAllowedError): ...
+class MethodNotAllowedError(BauplanHTTPError):
+    """Raised on an HTTP 405 response from the API."""
+
+class ApiRouteError(MethodNotAllowedError):
+    """Raised on an HTTP 405 response from the API."""
 
 # 409 Conflict
-class ConflictError(BauplanHTTPError): ...
-class UpdateConflictError(ConflictError): ...
-class BranchExistsError(UpdateConflictError): ...
-class TableExistsError(UpdateConflictError): ...
-class TagExistsError(UpdateConflictError): ...
-class NamespaceExistsError(UpdateConflictError): ...
-class NamespaceUnresolvedError(ConflictError): ...
-class BranchHeadChangedError(UpdateConflictError): ...
-class MergeConflictError(UpdateConflictError): ...
-class NamespaceIsNotEmptyError(UpdateConflictError): ...
-class RevertDestinationTableExistsError(UpdateConflictError): ...
-class RevertIdenticalTableError(UpdateConflictError): ...
+class ConflictError(BauplanHTTPError):
+    """Raised on an HTTP 409 response from the API."""
+
+class UpdateConflictError(ConflictError):
+    """Raised when an update conflicts with the current catalog state."""
+
+class BranchExistsError(UpdateConflictError):
+    """Raised when creating a `bauplan.schema.Branch` that already exists."""
+
+class TableExistsError(UpdateConflictError):
+    """Raised when creating a table that already exists on the target `bauplan.schema.Ref`."""
+
+class TagExistsError(UpdateConflictError):
+    """Raised when creating a `bauplan.schema.Tag` that already exists."""
+
+class NamespaceExistsError(UpdateConflictError):
+    """Raised when creating a `bauplan.schema.Namespace` that already exists on the target `bauplan.schema.Ref`."""
+
+class NamespaceUnresolvedError(ConflictError):
+    """Raised when a bauplan.schema.Namespace is specified both in the table name (e.g. ns.table) and through an explicit namespace parameter, resulting in an ambiguous reference."""
+
+class BranchHeadChangedError(UpdateConflictError):
+    """Raised when the `bauplan.schema.Branch` head hash has changed since it was last read."""
+
+class MergeConflictError(UpdateConflictError):
+    """Raised when a merge cannot be completed due to conflicting changes."""
+
+class NamespaceIsNotEmptyError(UpdateConflictError):
+    """Raised when attempting to delete a `bauplan.schema.Namespace` that still contains tables."""
+
+class RevertDestinationTableExistsError(UpdateConflictError):
+    """Raised when the destination of a revert operation already exists."""
+
+class RevertIdenticalTableError(UpdateConflictError):
+    """Raised when the source and destination of a revert point to the same table snapshot."""
 
 # 429 Too Many Requests
-class TooManyRequestsError(BauplanHTTPError): ...
+class TooManyRequestsError(BauplanHTTPError):
+    """Raised on an HTTP 429 response from the API."""
 
 # 5xx Server Errors
-class InternalError(BauplanHTTPError): ...
-class BadGatewayError(BauplanHTTPError): ...
-class ServiceUnavailableError(BauplanHTTPError): ...
-class GatewayTimeoutError(BauplanHTTPError): ...
+class InternalError(BauplanHTTPError):
+    """Raised on an HTTP 500 response from the API."""
+
+class BadGatewayError(BauplanHTTPError):
+    """Raised on an HTTP 502 response from the API."""
+
+class ServiceUnavailableError(BauplanHTTPError):
+    """Raised on an HTTP 503 response from the API."""
+
+class GatewayTimeoutError(BauplanHTTPError):
+    """Raised on an HTTP 504 response from the API."""
 
 # Non-HTTP errors
-class BauplanJobError(BauplanError): ...
-class BauplanQueryError(BauplanJobError): ...
-class NoResultsFoundError(BauplanError): ...
-class InvalidPlanError(BauplanError): ...
+class BauplanJobError(BauplanError):
+    """Base class for errors raised by bauplan job execution."""
+
+class BauplanQueryError(BauplanJobError):
+    """Raised when a query job fails."""
+
+class NoResultsFoundError(BauplanError):
+    """Raised when a query returns no results."""
+
+class InvalidPlanError(BauplanError):
+    """Raised when a pipeline or table-create plan is invalid."""
