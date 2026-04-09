@@ -15,6 +15,18 @@ pub(crate) enum Format {
     Fuller,
 }
 
+impl std::fmt::Display for Format {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Format::Oneline => write!(f, "oneline"),
+            Format::Short => write!(f, "short"),
+            Format::Medium => write!(f, "medium"),
+            Format::Full => write!(f, "full"),
+            Format::Fuller => write!(f, "fuller"),
+        }
+    }
+}
+
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Show recent commits on active branch
@@ -57,8 +69,8 @@ pub(crate) struct CommitArgs {
     #[arg(short = 'n', long, visible_alias = "limit", default_value = "10")]
     pub max_count: usize,
     /// How to format commits.
-    #[arg(long, alias = "pretty")]
-    pub format: Option<Format>,
+    #[arg(long, default_value_t = Format::default(), alias = "pretty")]
+    pub format: Format,
 }
 
 pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
@@ -110,7 +122,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
             let mut out = anstream::stdout().lock();
             for commit in commits {
                 let commit = commit?;
-                print_commit(&mut out, &commit, args.format.unwrap_or_default())?;
+                print_commit(&mut out, &commit, args.format)?;
             }
         }
     }
