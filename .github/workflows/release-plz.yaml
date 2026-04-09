@@ -39,6 +39,7 @@ jobs:
     if: ${{ needs.release-plz-release.outputs.releases_created == 'true' }}
     permissions:
       contents: write
+      id-token: write
     uses: ./.github/workflows/publish.yaml
     with:
       tag: ${{ needs.release-plz-release.outputs.tag }}
