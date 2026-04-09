@@ -32,7 +32,6 @@ on:
         default: dev
 
 permissions:
-  id-token: write # Required for AWS OIDC authentication
   contents: read
 
 concurrency:
@@ -41,16 +40,21 @@ concurrency:
 
 jobs:
   deploy:
+    name: Deploy
+    permissions:
+      id-token: write # Required for AWS OIDC authentication
     runs-on: blacksmith-16vcpu-ubuntu-2404
     environment: ${{ inputs.environment || 'dev' }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
         with:
           working_directory: ./docs
 
       - uses: ./.github/actions/setup-caches
-      - uses: actions/cache@v4
+      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: docs/node_modules
           key: ${{ runner.os }}-${{ runner.arch }}-bun-${{ hashFiles('docs/bun.lock') }}
@@ -59,7 +63,7 @@ jobs:
 
       # Configure AWS credentials
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v5
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
         with:
           role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
           role-session-name: DeployDocsWebsite
@@ -83,6 +87,10 @@ jobs:
         run: rm /tmp/build/robots.txt
 
       - name: aws s3 sync
-        run: aws s3 sync /tmp/build s3://${{ vars.DOCS_S3_BUCKET }} --delete
+        run: aws s3 sync /tmp/build s3://${DOCS_S3_BUCKET} --delete
+        env:
+          DOCS_S3_BUCKET: ${{ vars.DOCS_S3_BUCKET }}
       - name: invalidate cloudfront
-        run: aws cloudfront create-invalidation --distribution-id "${{ vars.DOCS_CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*" --output text --query "Invalidation.Id"
+        run: aws cloudfront create-invalidation --distribution-id "${DOCS_CLOUDFRONT_DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id"
+        env:
+          DOCS_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.DOCS_CLOUDFRONT_DISTRIBUTION_ID }}

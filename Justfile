@@ -17,6 +17,9 @@ lint:
     # These are technically tests, but they just check the source.
     cargo test --test snippets
 
+    # Lint CI/CD
+    zizmor . --persona pedantic
+
 test: lint
     cargo test --features _integration-tests -- --test-threads=4
     uv run pytest -v
