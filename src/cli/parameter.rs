@@ -62,7 +62,7 @@ pub(crate) enum ParameterCommand {
 "))]
 pub(crate) struct ParameterLsArgs {
     /// Path to the root Bauplan project directory.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = ".")]
     pub project_dir: Option<PathBuf>,
 }
 
@@ -78,7 +78,7 @@ pub(crate) struct ParameterRmArgs {
     /// Name of the parameter to remove
     pub name: String,
     /// Path to the root Bauplan project directory.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = ".")]
     pub project_dir: Option<PathBuf>,
 }
 
@@ -123,7 +123,7 @@ pub(crate) struct ParameterSetArgs {
     #[arg(short, long)]
     pub file: Option<PathBuf>,
     /// Path to the root Bauplan project directory.
-    #[arg(short, long)]
+    #[arg(short, long, default_value = ".")]
     pub project_dir: Option<PathBuf>,
 }
 
