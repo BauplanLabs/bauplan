@@ -11,13 +11,13 @@ lint:
 
     # Don't even think about it.
     ! grep -rn '[—–]' \
-        --include="*.md" --include="*.mdx" \
-        docs/pages examples
+        --include="*.md" --include="*.mdx" --include "*.rs" --include "*.pyi" \
+        docs/pages examples python src
 
     # These are technically tests, but they just check the source.
     cargo test --test snippets
 
-    # Lint CI/CD
+    # Lint CI/CD.
     zizmor . --persona pedantic
 
 test: lint

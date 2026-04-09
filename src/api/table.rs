@@ -15,7 +15,12 @@ use crate::{
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "TableField", module = "bauplan.schema", from_py_object, get_all)
+    pyo3::pyclass(
+        name = "TableField",
+        module = "bauplan.schema",
+        from_py_object,
+        get_all
+    )
 )]
 pub struct TableField {
     /// The field ID.
@@ -32,7 +37,12 @@ pub struct TableField {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "python",
-    pyo3::pyclass(name = "PartitionField", module = "bauplan.schema", from_py_object, get_all)
+    pyo3::pyclass(
+        name = "PartitionField",
+        module = "bauplan.schema",
+        from_py_object,
+        get_all
+    )
 )]
 pub struct PartitionField {
     /// The partition field name.
@@ -630,8 +640,8 @@ mod test {
         };
         roundtrip(req)?;
 
-        // Now the table exists on the branch again. Try to revert without
-        // replace — should fail.
+        // Now the table exists on the branch again. Reverting without `replace`
+        // should fail.
         let req = RevertTable {
             name: "titanic",
             source_ref: "main",
