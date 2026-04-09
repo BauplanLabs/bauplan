@@ -157,6 +157,7 @@ pub mod exceptions {
     }
 }
 
+/// Base class for all bauplan SDK exceptions.
 #[pyclass(extends=pyo3::exceptions::PyException, subclass, module="bauplan.exceptions")]
 pub(crate) struct BauplanError;
 
@@ -343,143 +344,331 @@ impl ApiError {
 }
 
 // 400 Bad Request
-pyo3::create_exception!(bauplan.exceptions, BadRequestError, BauplanHTTPError);
-pyo3::create_exception!(bauplan.exceptions, InvalidDataError, BadRequestError);
-pyo3::create_exception!(bauplan.exceptions, InvalidRefError, BadRequestError);
-pyo3::create_exception!(bauplan.exceptions, NotABranchRefError, InvalidRefError);
-pyo3::create_exception!(bauplan.exceptions, NotATagRefError, InvalidRefError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    BadRequestError,
+    BauplanHTTPError,
+    "Raised on an HTTP 400 response from the API."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    InvalidDataError,
+    BadRequestError,
+    "Raised on an HTTP 400 response from the API."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    InvalidRefError,
+    BadRequestError,
+    "Raised when the provided string is not a valid `bauplan.schema.Ref`."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    NotABranchRefError,
+    InvalidRefError,
+    "Raised when the provided `bauplan.schema.Ref` is not of type BRANCH."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    NotATagRefError,
+    InvalidRefError,
+    "Raised when the provided `bauplan.schema.Ref` is not of type TAG."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     NotAWriteBranchRefError,
-    NotABranchRefError
+    NotABranchRefError,
+    "Raised when a write operation is attempted against a bauplan.schema.Ref that is not of type BRANCH."
 );
-pyo3::create_exception!(bauplan.exceptions, SameRefError, InvalidRefError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    SameRefError,
+    InvalidRefError,
+    "Raised when the source and destination `bauplan.schema.Ref` resolve to the same commit hash, making the operation a no-op."
+);
 
 // 401 Unauthorized
-pyo3::create_exception!(bauplan.exceptions, UnauthorizedError, BauplanHTTPError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    UnauthorizedError,
+    BauplanHTTPError,
+    "Raised on an HTTP 401 response: missing or invalid credentials."
+);
 
 // 403 Forbidden
-pyo3::create_exception!(bauplan.exceptions, ForbiddenError, BauplanHTTPError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    ForbiddenError,
+    BauplanHTTPError,
+    "Raised on an HTTP 403 response: the caller is not permitted to perform the action."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     CreateBranchForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to create a `bauplan.schema.Branch`."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     CreateNamespaceForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to create a `bauplan.schema.Namespace`."
 );
-pyo3::create_exception!(bauplan.exceptions, CreateTagForbiddenError, ForbiddenError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    CreateTagForbiddenError,
+    ForbiddenError,
+    "Raised when the caller is not permitted to create a `bauplan.schema.Tag`."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     DeleteBranchForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to delete a `bauplan.schema.Branch`."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     DeleteNamespaceForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to delete a `bauplan.schema.Namespace`."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     DeleteTableForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to delete tables."
 );
-pyo3::create_exception!(bauplan.exceptions, DeleteTagForbiddenError, ForbiddenError);
-pyo3::create_exception!(bauplan.exceptions, MergeForbiddenError, ForbiddenError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    DeleteTagForbiddenError,
+    ForbiddenError,
+    "Raised when the caller is not permitted to delete a `bauplan.schema.Tag`."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    MergeForbiddenError,
+    ForbiddenError,
+    "Raised when the caller is not permitted to merge a `bauplan.schema.Branch`."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     RenameBranchForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to rename a `bauplan.schema.Branch`."
 );
-pyo3::create_exception!(bauplan.exceptions, RenameTagForbiddenError, ForbiddenError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    RenameTagForbiddenError,
+    ForbiddenError,
+    "Raised when the caller is not permitted to rename a `bauplan.schema.Tag`."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     RevertTableForbiddenError,
-    ForbiddenError
+    ForbiddenError,
+    "Raised when the caller is not permitted to revert tables."
 );
 
 // 404 Not Found
-pyo3::create_exception!(bauplan.exceptions, NotFoundError, BauplanHTTPError);
-pyo3::create_exception!(bauplan.exceptions, ResourceNotFoundError, NotFoundError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    NotFoundError,
+    BauplanHTTPError,
+    "Raised on an HTTP 404 response from the API."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    ResourceNotFoundError,
+    NotFoundError,
+    "Raised when a requested catalog resource does not exist."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     TableNotFoundError,
-    ResourceNotFoundError
+    ResourceNotFoundError,
+    "Raised when the referenced table does not exist on the given `bauplan.schema.Ref`."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     NamespaceNotFoundError,
-    ResourceNotFoundError
+    ResourceNotFoundError,
+    "Raised when the referenced `bauplan.schema.Namespace` does not exist on the given `bauplan.schema.Ref`."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     BranchNotFoundError,
-    ResourceNotFoundError
+    ResourceNotFoundError,
+    "Raised when the referenced `bauplan.schema.Branch` does not exist."
 );
-pyo3::create_exception!(bauplan.exceptions, RefNotFoundError, ResourceNotFoundError);
-pyo3::create_exception!(bauplan.exceptions, TagNotFoundError, ResourceNotFoundError);
-pyo3::create_exception!(bauplan.exceptions, ApiMethodError, ResourceNotFoundError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    RefNotFoundError,
+    ResourceNotFoundError,
+    "Raised when the referenced `bauplan.schema.Ref` does not exist."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TagNotFoundError,
+    ResourceNotFoundError,
+    "Raised when the referenced `bauplan.schema.Tag` does not exist."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    ApiMethodError,
+    ResourceNotFoundError,
+    "Raised on an HTTP 404 response from the API."
+);
 
 // 405 Method Not Allowed
-pyo3::create_exception!(bauplan.exceptions, MethodNotAllowedError, BauplanHTTPError);
-pyo3::create_exception!(bauplan.exceptions, ApiRouteError, MethodNotAllowedError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    MethodNotAllowedError,
+    BauplanHTTPError,
+    "Raised on an HTTP 405 response from the API."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    ApiRouteError,
+    MethodNotAllowedError,
+    "Raised on an HTTP 405 response from the API."
+);
 
 // 409 Conflict
-pyo3::create_exception!(bauplan.exceptions, ConflictError, BauplanHTTPError);
-pyo3::create_exception!(bauplan.exceptions, UpdateConflictError, ConflictError);
-pyo3::create_exception!(bauplan.exceptions, BranchExistsError, UpdateConflictError);
-pyo3::create_exception!(bauplan.exceptions, TableExistsError, UpdateConflictError);
-pyo3::create_exception!(bauplan.exceptions, TagExistsError, UpdateConflictError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    ConflictError,
+    BauplanHTTPError,
+    "Raised on an HTTP 409 response from the API."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    UpdateConflictError,
+    ConflictError,
+    "Raised when an update conflicts with the current catalog state."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    BranchExistsError,
+    UpdateConflictError,
+    "Raised when creating a `bauplan.schema.Branch` that already exists."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TableExistsError,
+    UpdateConflictError,
+    "Raised when creating a table that already exists on the target `bauplan.schema.Ref`."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TagExistsError,
+    UpdateConflictError,
+    "Raised when creating a `bauplan.schema.Tag` that already exists."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     NamespaceExistsError,
-    UpdateConflictError
+    UpdateConflictError,
+    "Raised when creating a `bauplan.schema.Namespace` that already exists on the target `bauplan.schema.Ref`."
 );
-pyo3::create_exception!(bauplan.exceptions, NamespaceUnresolvedError, ConflictError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    NamespaceUnresolvedError,
+    ConflictError,
+    "Raised when a bauplan.schema.Namespace is specified both in the table name (e.g. ns.table) and through an explicit namespace parameter, resulting in an ambiguous reference."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     BranchHeadChangedError,
-    UpdateConflictError
+    UpdateConflictError,
+    "Raised when the `bauplan.schema.Branch` head hash has changed since it was last read."
 );
-pyo3::create_exception!(bauplan.exceptions, MergeConflictError, UpdateConflictError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    MergeConflictError,
+    UpdateConflictError,
+    "Raised when a merge cannot be completed due to conflicting changes."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     NamespaceIsNotEmptyError,
-    UpdateConflictError
+    UpdateConflictError,
+    "Raised when attempting to delete a `bauplan.schema.Namespace` that still contains tables."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     RevertDestinationTableExistsError,
-    UpdateConflictError
+    UpdateConflictError,
+    "Raised when the destination of a revert operation already exists."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     RevertIdenticalTableError,
-    UpdateConflictError
+    UpdateConflictError,
+    "Raised when the source and destination of a revert point to the same table snapshot."
 );
 
 // 429 Too Many Requests
-pyo3::create_exception!(bauplan.exceptions, TooManyRequestsError, BauplanHTTPError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TooManyRequestsError,
+    BauplanHTTPError,
+    "Raised on an HTTP 429 response from the API."
+);
 
 // 5xx Server Errors
-pyo3::create_exception!(bauplan.exceptions, InternalError, BauplanHTTPError);
-pyo3::create_exception!(bauplan.exceptions, BadGatewayError, BauplanHTTPError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    InternalError,
+    BauplanHTTPError,
+    "Raised on an HTTP 500 response from the API."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    BadGatewayError,
+    BauplanHTTPError,
+    "Raised on an HTTP 502 response from the API."
+);
 pyo3::create_exception!(
     bauplan.exceptions,
     ServiceUnavailableError,
-    BauplanHTTPError
+    BauplanHTTPError,
+    "Raised on an HTTP 503 response from the API."
 );
-pyo3::create_exception!(bauplan.exceptions, GatewayTimeoutError, BauplanHTTPError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    GatewayTimeoutError,
+    BauplanHTTPError,
+    "Raised on an HTTP 504 response from the API."
+);
 
 // Non-HTTP errors
-pyo3::create_exception!(bauplan.exceptions, BauplanJobError, BauplanError);
-pyo3::create_exception!(bauplan.exceptions, BauplanQueryError, BauplanJobError);
-pyo3::create_exception!(bauplan.exceptions, NoResultsFoundError, BauplanError);
-pyo3::create_exception!(bauplan.exceptions, InvalidPlanError, BauplanError);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    BauplanJobError,
+    BauplanError,
+    "Base class for errors raised by bauplan job execution."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    BauplanQueryError,
+    BauplanJobError,
+    "Raised when a query job fails."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    NoResultsFoundError,
+    BauplanError,
+    "Raised when a query returns no results."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    InvalidPlanError,
+    BauplanError,
+    "Raised when a pipeline or table-create plan is invalid."
+);
 use crate::python::run::state::{TableCreatePlanApplyState, TableCreatePlanState};
 
+/// Base class for errors raised during a table-create plan workflow.
 #[pyclass(extends=BauplanError, subclass, module="bauplan.exceptions")]
 pub(crate) struct TableCreatePlanError;
 
@@ -491,6 +680,7 @@ impl TableCreatePlanError {
     }
 }
 
+/// Raised when a table-create plan job finishes in a non-success state.
 #[pyclass(extends=TableCreatePlanError, module="bauplan.exceptions")]
 pub(crate) struct TableCreatePlanStatusError {
     #[pyo3(get)]
@@ -515,6 +705,7 @@ impl TableCreatePlanStatusError {
     }
 }
 
+/// Raised when a table-create plan apply job finishes in a non-success state.
 #[pyclass(extends=BauplanError, module="bauplan.exceptions")]
 pub(crate) struct TableCreatePlanApplyStatusError {
     #[pyo3(get)]
