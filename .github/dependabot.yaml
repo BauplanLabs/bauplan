@@ -9,6 +9,8 @@ updates:
     open-pull-requests-limit: 0
     commit-message:
       prefix: "chore"
+    cooldown:
+      default-days: 7
   - package-ecosystem: uv
     directory: /
     schedule:
@@ -18,3 +20,5 @@ updates:
     open-pull-requests-limit: 0
     commit-message:
       prefix: "chore(pysdk)"
+    cooldown:
+      default-days: 7
