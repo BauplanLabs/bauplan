@@ -1,0 +1,82 @@
+---
+title: "CLI Reference"
+hide_table_of_contents: false
+---
+
+# CLI reference
+
+Complete reference documentation for the Bauplan Command Line Interface (CLI).
+
+## Global options
+
+<CliOptions>
+{%- for opt in global_args %}
+  <CliOption
+    flag="{{ opt.long }}"
+    {%- if opt.short %} short="{{ opt.short }}"{% endif %}
+    {%- if opt.value_name %} value="{{ opt.value_name }}"{% endif %}
+    type="{{ opt.type_name }}"
+    {%- if opt.default %} default="{{ opt.default }}"{% endif %}
+  >{`{{ opt.description }}`}</CliOption>
+{%- endfor %}
+</CliOptions>
+
+{% for cmd in commands %}
+{%- if cmd.is_top_level %}
+
+---
+{% endif %}
+{{ cmd.heading_prefix }} {{ cmd.full_name }} {{ "{#" }}{{ cmd.id }}}
+
+{% if cmd.about %}{{ cmd.about }}
+
+{% endif -%}
+{% if cmd.aliases | length > 0 %}**Aliases:** {% for a in cmd.aliases %}`{{ a }}`{% if not loop.last %}, {% endif %}{% endfor %}
+
+{% endif -%}
+```sh type:ignore
+{{ cmd.synopsis }}
+```
+
+{% if cmd.subcommands | length > 0 %}<CliSubcommands>
+{%- for sub in cmd.subcommands %}
+  <CliSubcommandLink name="{{ sub.name }}" href="#{{ sub.id }}">{{ sub.about }}</CliSubcommandLink>
+{%- endfor %}
+</CliSubcommands>
+
+{% endif -%}
+{% if cmd.positional | length > 0 %}**Arguments**
+
+<CliArguments>
+{%- for arg in cmd.positional %}
+  <CliArgument name="{{ arg.name }}" type="{{ arg.type_name }}">{`{{ arg.description }}`}</CliArgument>
+{%- endfor %}
+</CliArguments>
+
+{% endif -%}
+{% if cmd.options | length > 0 %}**Options**
+
+<CliOptions>
+{%- for opt in cmd.options %}
+  <CliOption
+    flag="{{ opt.long }}"
+    {%- if opt.short %} short="{{ opt.short }}"{% endif %}
+    {%- if opt.value_name %} value="{{ opt.value_name }}"{% endif %}
+    type="{{ opt.type_name }}"
+    {%- if opt.default %} default="{{ opt.default }}"{% endif %}
+    {%- if opt.repeatable %} repeatable{% endif %}
+  >{`{{ opt.description }}`}</CliOption>
+{%- endfor %}
+</CliOptions>
+
+{% endif -%}
+{% if cmd.examples %}<CliExamples>
+
+```sh
+{{ cmd.examples }}
+```
+
+</CliExamples>
+
+{% endif -%}
+{% endfor %}
