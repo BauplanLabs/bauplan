@@ -75,17 +75,17 @@ pub(crate) struct RunArgs {
     #[arg(short, long)]
     pub namespace: Option<String>,
     /// Set the cache mode.
-    #[arg(long)]
-    pub cache: Option<OnOff>,
+    #[arg(long, default_value_t = OnOff::On)]
+    pub cache: OnOff,
     /// Set the preview mode.
     #[arg(long, default_value_t = Preview::default())]
     pub preview: Preview,
     /// Exit upon encountering runtime warnings (e.g., invalid column output)
-    #[arg(long)]
-    pub strict: Option<OnOff>,
+    #[arg(long, default_value_t = OnOff::Off)]
+    pub strict: OnOff,
     /// Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to the branch in which this run is happening
-    #[arg(short, long)]
-    pub transaction: Option<OnOff>,
+    #[arg(short, long, default_value_t = OnOff::On)]
+    pub transaction: OnOff,
     /// Dry run the job without materializing any models.
     #[arg(long)]
     pub dry_run: bool,
@@ -302,9 +302,9 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         r#ref,
         namespace,
         dry_run,
-        transaction: transaction.unwrap_or(OnOff::On).to_string(),
-        strict: strict.unwrap_or(OnOff::Off).to_string(),
-        cache: cache.unwrap_or(OnOff::On).to_string(),
+        transaction: transaction.to_string(),
+        strict: strict.to_string(),
+        cache: cache.to_string(),
         preview: preview.to_string(),
         project_id: project.project.id.as_hyphenated().to_string(),
         project_name: project.project.name.clone().unwrap_or_default(),

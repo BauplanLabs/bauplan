@@ -51,8 +51,8 @@ pub(crate) struct QueryArgs {
     #[arg(short, long, conflicts_with = "sql")]
     pub file: Option<PathBuf>,
     /// Set the cache mode.
-    #[arg(long)]
-    pub cache: Option<OnOff>,
+    #[arg(long, default_value_t = OnOff::On)]
+    pub cache: OnOff,
     /// Limit number of returned rows. (use --all-rows to disable this)
     #[arg(long, default_value = "10")]
     pub max_rows: Option<u64>,
@@ -114,7 +114,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         job_request_common: Some(job_request_common),
         r#ref,
         sql_query,
-        cache: cache.unwrap_or(OnOff::On).to_string(),
+        cache: cache.to_string(),
         namespace,
     };
 
