@@ -11,8 +11,8 @@ lint:
 
     # Don't even think about it.
     ! grep -rn '[—–]' \
-        --include="*.md" --include="*.mdx" \
-        docs/pages examples
+        --include="*.md" --include="*.mdx" --include "*.pyi" \
+        docs/pages examples python
 
     # These are technically tests, but they just check the source.
     cargo test --test snippets
