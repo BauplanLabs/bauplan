@@ -919,7 +919,7 @@ class Client:
         self,
         /,
         *,
-        all_users: bool = False,
+        filter_by_current_user: bool = True,
         filter_by_ids: str | list[str] | list[Job] | None = None,
         filter_by_users: str | list[str] | None = None,
         filter_by_kinds: str | JobKind | list[str] | list[JobKind] | None = None,
@@ -940,7 +940,8 @@ class Client:
         ```
 
         Parameters:
-            all_users: Optional[bool]: Whether to list jobs from all users or only the current user.
+            filter_by_current_user: Optional[bool]: If True (the default), only return jobs
+                belonging to the current user. Mutually exclusive with filter_by_user.
             filter_by_ids: Optional[Union[str, List[str]]]: Optional, filter by job IDs.
             filter_by_users: Optional[Union[str, List[str]]]: Optional, filter by job users.
             filter_by_kinds: Optional[Union[str, JobKind, List[Union[str, JobKind]]]]: Optional, filter by job kinds.
