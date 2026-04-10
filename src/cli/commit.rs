@@ -112,7 +112,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
 
     let commits = bauplan::paginate(req, Some(args.max_count), |r| cli.roundtrip(r))?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let all_commits = commits.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_commits)?;

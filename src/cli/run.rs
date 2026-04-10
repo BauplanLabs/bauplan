@@ -78,8 +78,8 @@ pub(crate) struct RunArgs {
     #[arg(long)]
     pub cache: Option<OnOff>,
     /// Set the preview mode.
-    #[arg(long)]
-    pub preview: Option<Preview>,
+    #[arg(long, default_value_t = Preview::default())]
+    pub preview: Preview,
     /// Exit upon encountering runtime warnings (e.g., invalid column output)
     #[arg(long)]
     pub strict: Option<OnOff>,
@@ -305,7 +305,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         transaction: transaction.unwrap_or(OnOff::On).to_string(),
         strict: strict.unwrap_or(OnOff::Off).to_string(),
         cache: cache.unwrap_or(OnOff::On).to_string(),
-        preview: preview.unwrap_or_default().to_string(),
+        preview: preview.to_string(),
         project_id: project.project.id.as_hyphenated().to_string(),
         project_name: project.project.name.clone().unwrap_or_default(),
         parameters,
@@ -500,7 +500,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         }
     }
 
-    if cli.global.output == Some(crate::cli::Output::Json) {
+    if cli.global.output == crate::cli::Output::Json {
         // Redirect any further writes to stderr, so that they don't get
         // interleaved with the json to stdout.
         cli.multiprogress

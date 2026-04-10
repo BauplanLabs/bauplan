@@ -234,7 +234,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
 
     let branches = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let all_branches = branches.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_branches)?;
@@ -281,7 +281,7 @@ fn get_branch(cli: &Cli, args: BranchGetArgs) -> anyhow::Result<()> {
 
     let tables = bauplan::paginate(req, None, |r| cli.roundtrip(r))?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_tables)?;
@@ -427,7 +427,7 @@ fn diff_branch(cli: &Cli, args: BranchDiffArgs) -> anyhow::Result<()> {
     let tables_a = collect_tables(cli, branch_a, namespace.as_deref())?;
     let tables_b = collect_tables(cli, branch_b, namespace.as_deref())?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let added: Vec<_> = tables_b
                 .iter()

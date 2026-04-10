@@ -51,6 +51,15 @@ pub(crate) enum Output {
     Tty,
 }
 
+impl std::fmt::Display for Output {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Output::Json => write!(f, "json"),
+            Output::Tty => write!(f, "tty"),
+        }
+    }
+}
+
 /// A priority for a job, from 1-10, where 10 is the highest.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub(crate) struct Priority(u32);
@@ -125,8 +134,8 @@ pub(crate) struct GlobalArgs {
     #[arg(long, short = 'P', global = true)]
     pub profile: Option<String>,
     /// Output format
-    #[arg(long, short = 'O', global = true)]
-    pub output: Option<Output>,
+    #[arg(long, short = 'O', global = true, default_value_t = Output::default())]
+    pub output: Output,
     /// Timeout (in seconds) for client operations (-1 = no timeout)
     #[arg(long, global = true)]
     pub client_timeout: Option<i64>,

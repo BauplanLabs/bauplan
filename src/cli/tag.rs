@@ -110,7 +110,7 @@ fn list_tags(cli: &Cli, TagLsArgs { name, limit }: TagLsArgs) -> anyhow::Result<
 
     let tags = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
 
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Json => {
             let all_tags = tags.collect::<anyhow::Result<Vec<_>>>()?;
             serde_json::to_writer(stdout(), &all_tags)?;

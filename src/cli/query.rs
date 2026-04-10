@@ -180,7 +180,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
     futures::pin_mut!(batches);
 
     progress.finish_with_done();
-    match cli.global.output.unwrap_or_default() {
+    match cli.global.output {
         Output::Tty => print_tty(schema, batches, !no_trunc).await,
         Output::Json => print_json(batches, &job_id).await,
     }
