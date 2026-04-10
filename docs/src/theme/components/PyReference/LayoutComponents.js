@@ -212,8 +212,8 @@ export function PyAttribute({ name, type, description, isOdd = false }) {
         )}
       </div>
       {description && (
-        <div className="text-sm text-[var(--docsearch-hit-color)] leading-relaxed">
-          {description}
+        <div className="text-sm text-[var(--docsearch-hit-color)] leading-relaxed [&_p]:m-0 [&_p]:inline">
+          <Markdown inline>{description}</Markdown>
         </div>
       )}
     </div>
@@ -250,8 +250,8 @@ export function PyAttributeRow({ name, type, description, index = 0 }) {
           <span className="text-gray-700"> ({type})</span>
         )}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-700 leading-relaxed">
-        {description}
+      <td className="px-6 py-4 text-sm text-gray-700 leading-relaxed [&_p]:m-0 [&_p]:inline">
+        <Markdown inline>{description}</Markdown>
       </td>
     </tr>
   );

@@ -653,6 +653,8 @@ def process_class_attribute(output: TextIO, attr: griffe.Attribute, linker: Type
     name = attr.name
     annotation = linker.format_annotation(str(attr.annotation)) if attr.annotation else ''
     description = attr.docstring.value if attr.docstring else ''
+    if description:
+        description = linker.resolve_bauplan_refs(description)
     output.write(
         f'<PyAttribute name="{escape_xml_attribute(name)}" type="{escape_xml_attribute(annotation)}" description="{escape_xml_attribute(description)}" isOdd={{{str(is_odd).lower()}}}/>\n'
     )
