@@ -7,8 +7,8 @@ on:
       - .github/workflows/vale.yaml
       - .vale.ini
       - styles/**
-      - docs/pages/*.md
-      - docs/pages/*.mdx
+      - docs/pages/**/*.md
+      - docs/pages/**/*.mdx
       - examples/**/*.md
 
 permissions:
