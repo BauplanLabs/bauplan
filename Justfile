@@ -6,8 +6,10 @@ lint:
     cargo clippy -- -Dwarnings
 
     # Prose linting.
+    # https://github.com/vale-cli/vale/issues/575
     vale sync
-    vale docs/pages examples --minAlertLevel warning
+    vale docs/pages examples --minAlertLevel warning |\
+        awk 'BEGIN {status = 1} 1; END {if(/^✔/) status = 0; exit(status)}'
 
     # Don't even think about it.
     ! grep -rn '[—–]' \

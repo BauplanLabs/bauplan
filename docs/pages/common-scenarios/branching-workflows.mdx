@@ -2,7 +2,7 @@
 title: "Branching Workflows"
 ---
 
-# Branching Workflows
+# Branching workflows
 
 ## Overview
 
@@ -12,7 +12,7 @@ There are two recommended patterns for integrating work into production. Both ar
 
 ---
 
-## Approach 1: Data-First
+## Approach 1: Data-first
 
 **Philosophy:** _“Trust the data. If the output looks right in the branch, promote it directly.”_
 
@@ -35,7 +35,7 @@ You trust that the branch environment is representative enough. If the data in t
 
 ---
 
-## Approach 2: Code-First
+## Approach 2: Code-first
 
 **Philosophy:** _“Trust the code. The branch is proof the code works; re-run transactionally in main for full assurance.”_
 
@@ -59,7 +59,7 @@ You compute tables twice (once in the branch, once in main), which uses more com
 
 ---
 
-## Side-by-Side Comparison
+## Side-by-side comparison
 
 |                       | Data-First                        | Code-First                          |
 | --------------------- | --------------------------------- | ----------------------------------- |
@@ -72,7 +72,7 @@ You compute tables twice (once in the branch, once in main), which uses more com
 
 ---
 
-## Key Concept: Why This Works
+## Why this works
 
 In Bauplan, **the only way to change data is by running code**. This is a fundamental design principle. It means:
 

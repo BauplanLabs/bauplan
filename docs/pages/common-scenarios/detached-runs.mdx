@@ -19,7 +19,7 @@ During interactive development, attached mode ([`bauplan run`](/reference/baupla
 real-time feedback. Once a pipeline moves to production, detached mode
 is the recommended approach.
 
-## Running in Detached Mode
+## Running in detached mode
 
 **For regular runs:**
 
@@ -86,7 +86,7 @@ The job ID is available on the returned state object via `.job_id`.
 </Tabs>
 </div>
 
-## Checking Job Status
+## Checking job status
 
 <div id="detached-runs-status">
 <Tabs groupId="cli-sdk">
@@ -154,7 +154,7 @@ for job in client.get_jobs(
 </Tabs>
 </div>
 
-## Retrieving Job Output
+## Retrieving job output
 
 Logs are persisted for 24 hours as a way to troubleshoot jobs, after
 which they are deleted.
@@ -186,7 +186,7 @@ for log_line in logs:
 </Tabs>
 </div>
 
-## Cancel a Job
+## Cancel a job
 
 To cancel a running job, use the CLI or SDK. When a job is
 successfully cancelled, its status changes to `Aborted`.
