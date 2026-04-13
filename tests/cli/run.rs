@@ -12,8 +12,7 @@ fn dry_run() {
             "--ref",
             "main",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/simple_taxi_dag",
         ])
@@ -30,8 +29,7 @@ fn run_json_output() {
             "json",
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/simple_taxi_dag",
         ])
@@ -48,8 +46,7 @@ fn executor_pip_install_error() {
             "--ref",
             "main",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/simple_taxi_dag",
             "--arg",
@@ -66,10 +63,8 @@ fn expectations_returns_int() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "--strict",
-            "on",
             "-p",
             "tests/fixtures/expectation_returns_int",
         ])
@@ -87,10 +82,8 @@ fn run_failing_expectation() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "--strict",
-            "on",
             "-p",
             "tests/fixtures/failing_expectation",
         ])
@@ -105,10 +98,8 @@ fn run_failing_expectation_strict_on() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "--strict",
-            "on",
             "-p",
             "tests/fixtures/assert_in_expectation",
         ])
@@ -123,10 +114,7 @@ fn failing_expectation() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
-            "--strict",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/failing_expectation",
         ])
@@ -140,10 +128,7 @@ fn run_assert_in_expectation() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
-            "--strict",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/assert_in_expectation",
         ])
@@ -156,8 +141,7 @@ fn invalid_package_ppandas() {
     bauplan()
         .args([
             "run",
-            "--cache",
-            "off",
+            "--no-cache",
             "--dry-run",
             "--project-dir",
             "tests/fixtures/invalid_package_pppandas",
@@ -181,8 +165,7 @@ fn materialize_partitioned_by_year() {
             "run",
             "--ref",
             &branch.name,
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/materialize_partitioned_by_year",
         ])
@@ -196,8 +179,7 @@ fn multiparent() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/multiparent",
         ])
@@ -240,7 +222,7 @@ fn multiparent() {
 //     bauplan()
 //         .args([
 //             "run",
-//             "--cache", "off",
+//             "--no-cache",
 //             "--branch", BRANCH_NAME,
 //             "--param", "child_1_should_fail=false",
 //             "--param", "child_2_should_fail=false",
@@ -264,8 +246,7 @@ fn parameters_project() {
     bauplan()
         .args([
             "run",
-            "--cache",
-            "off",
+            "--no-cache",
             "--dry-run",
             "-p",
             "tests/fixtures/parameters",
@@ -295,8 +276,7 @@ fn parameters_project_default_values() {
     bauplan()
         .args([
             "run",
-            "--cache",
-            "off",
+            "--no-cache",
             "--dry-run",
             "-p",
             "tests/fixtures/parameters",
@@ -329,7 +309,7 @@ fn parameters_project_kms_ssm() {
     bauplan()
         .args([
             "run",
-            "--cache", "off",
+            "--no-cache",
             "--dry-run",
             "-p", "tests/fixtures/parameters_kms_ssm",
             "--param", "my_secret_key_2=this is another secret",
@@ -362,8 +342,7 @@ fn parquet_field_ids() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/parquet_field_ids",
         ])
@@ -380,8 +359,7 @@ fn prophet_with_materialization() {
             "run",
             "--ref",
             &branch.name,
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/prophet",
         ])
@@ -396,8 +374,7 @@ fn prophet() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/prophet",
         ])
@@ -412,8 +389,7 @@ fn pyspark() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/pyspark",
         ])
@@ -428,8 +404,7 @@ fn python_3_10() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/python_3_10",
         ])
@@ -444,8 +419,7 @@ fn python_3_12() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/python_3_12",
         ])
@@ -460,8 +434,7 @@ fn sdk_expectations_project() {
         .args([
             "run",
             "--dry-run",
-            "--cache",
-            "off",
+            "--no-cache",
             "-p",
             "tests/fixtures/python_3_12",
         ])
@@ -477,10 +450,7 @@ fn with_transaction() {
     bauplan()
         .args([
             "run",
-            "--transaction",
-            "on",
-            "--cache",
-            "off",
+            "--no-cache",
             "--ref",
             &branch.name,
             "-p",

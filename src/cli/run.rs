@@ -19,7 +19,7 @@ use tabwriter::TabWriter;
 use tracing::{debug, error, info};
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Priority,
+    Cli, KeyValue, Priority, on_off,
     color::*,
     format_grpc_status,
     parameter::{parse_parameter, resolve_project_dir},
@@ -56,7 +56,7 @@ impl Display for Preview {
   bauplan run --dry-run
 
   # Run with strict mode and preview
-  bauplan run --strict on --preview head
+  bauplan run --strict --preview head
 
   # Run on specific branch with parameters
   bauplan run --ref main --param env=prod
@@ -74,18 +74,18 @@ pub(crate) struct RunArgs {
     /// Namespace to run the job in. If not set, the job will be run in the default namespace for the project.
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// Set the cache mode.
+    /// Disable caching.
     #[arg(long)]
-    pub cache: Option<OnOff>,
+    pub no_cache: bool,
     /// Set the preview mode.
     #[arg(long)]
     pub preview: Option<Preview>,
     /// Exit upon encountering runtime warnings (e.g., invalid column output)
     #[arg(long)]
-    pub strict: Option<OnOff>,
-    /// Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to the branch in which this run is happening
-    #[arg(short, long)]
-    pub transaction: Option<OnOff>,
+    pub strict: bool,
+    /// Disable transactional execution.
+    #[arg(long)]
+    pub no_transaction: bool,
     /// Dry run the job without materializing any models.
     #[arg(long)]
     pub dry_run: bool,
@@ -263,10 +263,10 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         project_dir,
         r#ref,
         namespace,
-        cache,
+        no_cache,
         preview,
         strict,
-        transaction,
+        no_transaction,
         dry_run,
         param,
         detach,
@@ -302,9 +302,9 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         r#ref,
         namespace,
         dry_run,
-        transaction: transaction.unwrap_or(OnOff::On).to_string(),
-        strict: strict.unwrap_or(OnOff::Off).to_string(),
-        cache: cache.unwrap_or(OnOff::On).to_string(),
+        transaction: on_off(!no_transaction),
+        strict: on_off(strict),
+        cache: on_off(!no_cache),
         preview: preview.unwrap_or_default().to_string(),
         project_id: project.project.id.as_hyphenated().to_string(),
         project_name: project.project.name.clone().unwrap_or_default(),
