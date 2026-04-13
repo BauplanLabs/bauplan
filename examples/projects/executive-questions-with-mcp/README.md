@@ -39,7 +39,7 @@ When the agent files a Linear issue for path B, the following happens automatica
 1. Linear syncs the issue to GitHub.
 2. A GitHub Action picks it up and runs a Claude Code agent against this repository.
 3. The agent reads the issue, the lakehouse architecture in `docs/lakehouse.md`, and the semantic layer in `docs/semantics.md`, then converts the one-off query into a proper medallion pipeline: silver base models, any necessary enriched silver models, and a gold model with `materialization_strategy='REPLACE'`.
-4. The agent validates the pipeline with `bauplan run --dry-run --strict on` and opens a pull request.
+4. The agent validates the pipeline with `bauplan run --dry-run --strict` and opens a pull request.
 5. An available engineer reviews the pull request, checks correctness, and merges.
 6. On merge, a scheduler (not provided here) picks up the new pipeline and materializes the gold table on `main`.
 

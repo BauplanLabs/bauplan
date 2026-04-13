@@ -23,11 +23,11 @@ jobs:
     if: github.event.issue.body != ''
     runs-on: ubuntu-latest
     permissions:
-      contents: write       # create branches and push commits
-      pull-requests: write  # open the pull request
-      issues: write         # post a comment with the run report
-      id-token: write       # required by the claude-code-action
-      actions: read         # required for Claude to read CI results on PRs
+      contents: write # create branches and push commits
+      pull-requests: write # open the pull request
+      issues: write # post a comment with the run report
+      id-token: write # required by the claude-code-action
+      actions: read # required for Claude to read CI results on PRs
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -45,7 +45,7 @@ jobs:
           BRANCH="bauplan/issue-${ISSUE_NUMBER}"
           echo "Working branch: $BRANCH"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
- 
+
       # We create and check out the working branch ourselves, so Claude genuinely
       # works "on the current branch".
       - name: Create working branch
@@ -78,17 +78,17 @@ jobs:
           prompt: |
             A new data pipeline has been requested through the GitHub issue below.
             Implement it on the current branch.
- 
+
             First read the repository conventions: CLAUDE.md, docs/linear.md,
             docs/lakehouse.md, docs/semantics.md. Then reimplement the request as a
             proper medallion pipeline following those rules: silver and gold models
             written in Python with Polars (never pandas), the gold model with
             materialization_strategy='REPLACE', expectations added, validated with
-            `uv run bauplan run --dry-run --strict on`. Never run on main; use a Bauplan
+            `uv run bauplan run --dry-run --strict`. Never run on main; use a Bauplan
             data branch prefixed with your username.
- 
+
             Do not commit; the workflow commits and pushes your changes for you.
- 
+
             When you are done, return the structured output with these fields,
             which are used to build the pull request description:
             - summary: what you implemented (pipeline name, what it does, tables in and out)
@@ -97,9 +97,9 @@ jobs:
             - problems: errors or blockers, or "None"
             - tradeoffs: design tradeoffs, or "None"
             - verification: what you verified and how
- 
+
             --- ISSUE #${{ github.event.issue.number }}: ${{ github.event.issue.title }} ---
- 
+
             ${{ github.event.issue.body }}
           claude_args: |
             --allowedTools "Bash(uv *),Bash(bauplan *),WebFetch,Read,Write,Edit,Grep,Glob"
@@ -157,7 +157,7 @@ jobs:
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
             "HEAD:refs/heads/${BRANCH}"
           echo "pushed=true" >> "$GITHUB_OUTPUT"
-   
+
       - name: Open pull request
         if: steps.push.outputs.pushed == 'true'
         env:
@@ -168,9 +168,9 @@ jobs:
         run: |
           # Build PR body: link the originating issue, then append the report
           PR_BODY="Closes #$ISSUE_NUMBER
-  
+
           $(cat /tmp/pr_body.md)"
-  
+
           # Idempotent for reopened issues: update the existing PR instead of
           # masking a failed create.
           EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')
@@ -183,4 +183,3 @@ jobs:
           else
             gh pr edit "$BRANCH" --body "$PR_BODY"
           fi
-   

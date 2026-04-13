@@ -20,7 +20,7 @@ use tabwriter::TabWriter;
 use tracing::{debug, error, info};
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Priority,
+    Cli, KeyValue, Priority, on_off,
     color::*,
     format_grpc_status,
     parameter::{parse_parameter, resolve_project_dir},
@@ -57,7 +57,7 @@ impl Display for Preview {
   bauplan run --dry-run
 
   # Run with strict mode and preview
-  bauplan run --strict on --preview head
+  bauplan run --strict --preview head
 
   # Run on specific branch with parameters
   bauplan run --ref main --param env=prod
@@ -75,18 +75,18 @@ pub(crate) struct RunArgs {
     /// Namespace to run the job in. If not set, the job will be run in the default namespace for the project.
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// Set the cache mode.
-    #[arg(long, default_value_t = OnOff::On)]
-    pub cache: OnOff,
+    /// Disable caching.
+    #[arg(long)]
+    pub no_cache: bool,
     /// Set the preview mode.
     #[arg(long, default_value_t = Preview::default())]
     pub preview: Preview,
     /// Exit upon encountering runtime warnings (e.g., invalid column output)
-    #[arg(long, default_value_t = OnOff::Off)]
-    pub strict: OnOff,
-    /// Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to the branch in which this run is happening
-    #[arg(short, long, default_value_t = OnOff::On)]
-    pub transaction: OnOff,
+    #[arg(long)]
+    pub strict: bool,
+    /// Disable transactional execution.
+    #[arg(long)]
+    pub no_transaction: bool,
     /// Dry run the job without materializing any models.
     #[arg(long)]
     pub dry_run: bool,
@@ -281,10 +281,10 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         project_dir,
         r#ref,
         namespace,
-        cache,
+        no_cache,
         preview,
         strict,
-        transaction,
+        no_transaction,
         dry_run,
         param,
         detach,
@@ -320,9 +320,9 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         r#ref,
         namespace,
         dry_run,
-        transaction: transaction.to_string(),
-        strict: strict.to_string(),
-        cache: cache.to_string(),
+        transaction: on_off(!no_transaction),
+        strict: on_off(strict),
+        cache: on_off(!no_cache),
         preview: preview.to_string(),
         project_id: project.project.id.as_hyphenated().to_string(),
         project_name: project.project.name.clone().unwrap_or_default(),
