@@ -72,4 +72,4 @@ Models live in `src/pipelines/gold/models.py`. Quality tests live in `src/pipeli
 | 2. **Decide: extend or create** | If an existing model covers 80%+ of the need, add the missing columns or join to it. If the grain or purpose is fundamentally different, create a new model function in the right layer. |
 | 3. **Place it in the right layer** | Cleaned/conformed data reusable across use cases goes in `src/pipelines/silver/`. Aggregated, metric-defined, or consumer-specific table goes in `src/pipelines/gold/`. Gold reads only from silver. If a bronze table has no silver model yet, create one before building on it. |
 | 4. **Add or update expectations** | `src/pipelines/silver/expectations.py` or `src/pipelines/gold/expectations.py` cover nulls, uniqueness, and accepted values for any new or changed columns. |
-| 5. **Run and validate** | Run `uv run bauplan run --dry-run --strict on` against the project to build the tables and execute the expectations from step 4. |
+| 5. **Run and validate** | Run `uv run bauplan run --dry-run --strict` against the project to build the tables and execute the expectations from step 4. |

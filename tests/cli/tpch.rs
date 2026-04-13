@@ -6,8 +6,7 @@ fn query_tpch_1_01() {
     bauplan()
         .args([
             "query",
-            "--cache",
-            "off",
+            "--no-cache",
             "--file",
             "tests/fixtures/queries/tpch_1.q01.sql",
         ])
@@ -24,8 +23,7 @@ fn query_tpch_1_q15() {
     bauplan()
         .args([
             "query",
-            "--cache",
-            "off",
+            "--no-cache",
             "-f",
             "tests/fixtures/queries/tpch_1.q13.sql",
         ])

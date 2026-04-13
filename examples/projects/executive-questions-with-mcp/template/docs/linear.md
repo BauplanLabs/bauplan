@@ -46,7 +46,7 @@ Paste this block at the end of the issue body. It is the brief for the agent tha
 > - Follow `docs/semantics.md` for what the data means; pin the grain and the metric before writing the models.
 > - Write the models in Python with Polars, as native DataFrame and expression operations (`select`, `filter`, `group_by`, `join`, `with_columns`). Polars is mandatory unless an extreme case genuinely rules it out. Do not use Polars' SQL interface (`SQLContext` / `.sql()`), and never use pandas.
 > - Set `materialization_strategy='REPLACE'` on the gold model.
-> - Add expectations for every new or changed table, and validate with `uv run bauplan run --dry-run --strict on` (`--strict on` is required, otherwise expectations are skipped). Create your own Bauplan data branch prefixed with your username; never run on `main`.
+> - Add expectations for every new or changed table, and validate with `uv run bauplan run --dry-run --strict` (`--strict` is required, otherwise expectations are skipped). Create your own Bauplan data branch prefixed with your username; never run on `main`.
 
 ## 4. Report to the user
 

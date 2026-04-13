@@ -47,8 +47,7 @@ fn import_create_table_and_query() {
     bauplan()
         .args([
             "query",
-            "--cache",
-            "off",
+            "--no-cache",
             "--ref",
             &branch.name,
             "--namespace",
@@ -126,8 +125,7 @@ fn import_manually() {
     bauplan()
         .args([
             "query",
-            "--cache",
-            "off",
+            "--no-cache",
             "--ref",
             &branch.name,
             "SELECT COUNT(*) FROM table_with_partitions",

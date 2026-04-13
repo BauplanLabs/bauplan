@@ -1,7 +1,7 @@
 use std::{fmt::Write as _, io::Write, path::PathBuf, time};
 
 use crate::cli::{
-    Cli, KeyValue, OnOff, Output, Priority, format_grpc_status,
+    Cli, KeyValue, Output, Priority, format_grpc_status, on_off,
     run::{job_request_common, monitor_job_progress},
     spinner::ProgressExt,
 };
@@ -52,9 +52,9 @@ pub(crate) struct QueryArgs {
     /// Read query from file
     #[arg(short, long, conflicts_with = "sql")]
     pub file: Option<PathBuf>,
-    /// Set the cache mode.
-    #[arg(long, default_value_t = OnOff::On)]
-    pub cache: OnOff,
+    /// Disable caching.
+    #[arg(long)]
+    pub no_cache: bool,
     /// Limit number of returned rows. (use --all-rows to disable this)
     #[arg(long, default_value_t = 10)]
     pub max_rows: u64,
@@ -78,7 +78,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         r#ref,
         namespace,
         file,
-        cache,
+        no_cache,
         max_rows,
         all_rows,
         no_trunc,
@@ -113,7 +113,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         job_request_common: Some(job_request_common),
         r#ref,
         sql_query,
-        cache: cache.to_string(),
+        cache: on_off(!no_cache),
         namespace,
     };
 
