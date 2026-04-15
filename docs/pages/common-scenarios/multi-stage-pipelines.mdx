@@ -258,12 +258,12 @@ output column declarations - without materializing anything:
 bauplan run --dry-run
 ```
 
-Add `--strict on` during development to fail immediately on runtime
+Add `--strict` during development to fail immediately on runtime
 warnings (such as column mismatches or failing [expectations](/concepts/expectations)) instead of
 completing with a warning:
 
 ```sh
-bauplan run --dry-run --strict on
+bauplan run --dry-run --strict
 ```
 
 Once the dry run passes, execute the pipeline:

@@ -111,7 +111,7 @@ bauplan run [flags]
 | --- | --- | --- | --- | --- |
 | `--arg` | `-a` | string (repeatable) | - | Arguments to pass to the job. Format: key=value |
 | `--project-dir` | `-p` | string | "." | Path to the root Bauplan project directory |
-| `--cache` | - | string | - | Set the cache mode. [on, off] |
+| `--nocache` | - | string | - | Disable caching |
 | `--summary-no-trunc` | - | boolean | false | Do not truncate summary output |
 | `--preview` | - | string | - | Set the preview mode. [on, off, head, tail] |
 | `--strict` | - | string | - | Exit upon encountering runtime warnings (for example, invalid column output). [on, off] |
@@ -119,7 +119,7 @@ bauplan run [flags]
 | `--namespace` | `-n` | string | - | Namespace to run the job in. If not set, the job will be run in the default namespace for the project |
 | `--ref` | `-r` | string | - | Ref or branch name from which to run the job |
 | `--dry-run` | - | boolean | false | Dry run the job without materializing any models |
-| `--transaction` | `-t` | string | - | Run the dag as a transaction. Will create a temporary branch where models are materialized. Once all models succeed, it will be merged to branch in which this run is happening in |
+| `--no-transaction` | `-t` | string | - | Disable transactional branching. Without this flag, the server will create a temporary branch where models are materialized. Once all models succeed, it will be merged to branch in which this run is happening in |
 | `--detach` | `-d` | boolean | false | Run the job in the background instead of streaming logs |
 | `--priority` | - | int | - | Set the job priority (1-10, where 10 is highest priority) |
 | `--help` | `-h` | - | - | Show help |
@@ -134,7 +134,7 @@ bauplan run
 bauplan run --dry-run
 
 # Run with strict mode and preview
-bauplan run --strict on --preview head
+bauplan run --strict --preview head
 
 # Run on specific branch with custom parameters
 bauplan run --ref main --param env=prod
@@ -200,7 +200,7 @@ bauplan query [flags] [SQL]
 | Flag | Short | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `--no-trunc` | - | boolean | false | Do not truncate output |
-| `--cache` | - | string | - | Set the cache mode. [on, off] |
+| `--no-cache` | - | string | - | Disable caching |
 | `--file` | `-f` | string | - | Read query from file |
 | `--arg` | `-a` | string (repeatable) | - | Arguments to pass to the job. Format: key=value |
 | `--ref` | `-r` | string | - | Ref or branch name to run query against |
@@ -1608,7 +1608,7 @@ bauplan run --detach
 bauplan run --ref main
 
 # Run with strict mode
-bauplan run --strict on
+bauplan run --strict
 
 ```
 

@@ -65,9 +65,9 @@ taxi_trip_waiting_times done
 zone_avg_waiting_times done
 ```
 
-The expectation flags a data quality issue - there are null values in `on_scene_datetime` - but it doesn't block the rest of the pipeline. If you want to fail the pipeline based on the failed expectation you can add `--strict on` to the CLI command, like so:
+The expectation flags a data quality issue - there are null values in `on_scene_datetime` - but it doesn't block the rest of the pipeline. If you want to fail the pipeline based on the failed expectation you can add `--strict` to the CLI command, like so:
 ```sh
-bauplan run --project-dir pipeline --strict on
+bauplan run --project-dir pipeline --strict
 ```
 
 To fix the underlying data issue, open `models.py` and add a filter before line 37 (`return result.to_arrow()`) in `normalized_taxi_trips`:
@@ -91,5 +91,5 @@ This time the expectation test will pass - no nulls in `on_scene_datetime` - and
 
 - `@bauplan.expectation()` attaches data quality checks directly to a model - they run as part of the pipeline, not as a separate step
 - By default, a failed expectation surfaces the issue without blocking downstream models, so you get visibility without pipeline-wide halts
-- When a check is critical, running the pipeline with `--strict on` will fail it immediately
+- When a check is critical, running the pipeline with `--strict` will fail it immediately
 - Expectations are flexible: use built-in checks from `bauplan.standard_expectations`, write your own, or plug in libraries like Great Expectations

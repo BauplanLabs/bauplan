@@ -94,28 +94,8 @@ impl FromStr for KeyValue {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
-pub(crate) enum OnOff {
-    On,
-    Off,
-}
-
-impl std::fmt::Display for OnOff {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            OnOff::On => write!(f, "on"),
-            OnOff::Off => write!(f, "off"),
-        }
-    }
-}
-
-impl From<OnOff> for bool {
-    fn from(value: OnOff) -> Self {
-        match value {
-            OnOff::On => true,
-            OnOff::Off => false,
-        }
-    }
+pub(crate) fn on_off(value: bool) -> String {
+    if value { "on" } else { "off" }.to_string()
 }
 
 #[derive(Debug, clap::Args)]
