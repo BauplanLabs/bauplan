@@ -7,7 +7,9 @@ Connect Snowflake to Bauplan by treating Bauplan as an Iceberg REST catalog and 
 Snowflake uses the catalog integration to discover table metadata, and the external volume to read objects in your S3 bucket.
 
 <Note>
-In Snowflake, this pattern relies on three objects: an external volume (S3 access), a catalog integration (Iceberg REST endpoint), and an externally managed Iceberg table. See Snowflake Documentation.
+  In Snowflake, this pattern relies on three objects: an external volume (S3
+  access), a catalog integration (Iceberg REST endpoint), and an externally
+  managed Iceberg table. See Snowflake Documentation.
 </Note>
 
 ## When to use this integration
@@ -21,8 +23,8 @@ Snowflake Open Catalog and Iceberg REST are based on the open Iceberg REST speci
 ## Prerequisites
 
 - Bauplan Iceberg REST endpoint and API key
-    - Endpoint: `https://api.use1.aprod.bauplanlabs.com/iceberg`
-    - Auth: Bearer token (we suggest a read-only Bauplan user).
+  - Endpoint: `https://api.use1.aprod.bauplanlabs.com/iceberg`
+  - Auth: Bearer token (we suggest a read-only Bauplan user).
 - An S3 bucket that stores your Bauplan table data and Iceberg metadata.
 - Snowflake role with privileges to create external volumes, catalog integrations, and tables.
 
@@ -53,6 +55,19 @@ CREATE OR REPLACE CATALOG INTEGRATION BAUPLAN_CATALOG_MAIN
 
 ```
 
+Registering a Bauplan catalog is effectively equivalent to registering a certain [data branch](/concepts/git-for-data/data-branches) in that catalog. By default the branch is `main`.
+
+It is possible to register a specific branch other than `main` by simply pointing to the branch in the endpoint specification. Modify the previous snippet as follows:
+
+```sql
+CREATE OR REPLACE CATALOG INTEGRATION BAUPLAN_CATALOG_MAIN
+...
+  REST_CONFIG = (
+    CATALOG_URI = 'https://api.use1.aprod.bauplanlabs.com/iceberg/<your_username>.<your_branch_name>'
+  )
+...
+```
+
 To check the catalog contents, use system functions to return JSON with namespaces and tables discovered from the REST catalog.
 
 ```sql
@@ -62,14 +77,6 @@ SELECT SYSTEM$LIST_NAMESPACES_FROM_CATALOG('BAUPLAN_CATALOG_MAIN');
 -- list tables in a namespace
 SELECT SYSTEM$LIST_ICEBERG_TABLES_FROM_CATALOG('BAUPLAN_CATALOG_MAIN', 'tpch_1');
 
-```
-
-Registering a Bauplan catalog is effectively equivalent to registering a certain [data branch](/concepts/git-for-data/data-branches) in that catalog. By default the branch is `main`.
-
-It is possible to register a specific branch other than `main` by simply pointing to the branch in the endpoint specification.
-
-```sh
-CATALOG_URI[https://api.use1.aprod.bauplanlabs.com/iceberg/](https://api.use1.aprod.bauplanlabs.com/iceberg/ciao.ciro)<your_username>.<branch_name>
 ```
 
 ## Step 3. Create an externally managed Iceberg table in Snowflake
@@ -89,5 +96,8 @@ CREATE ICEBERG TABLE dev_taxi_zones
 ```
 
 <Note>
-When a table is managed by an external catalog, Snowflake typically treats it as read-only from Snowflake’s side. Writes remain managed by the external engine and catalog. Confirm current write support in Snowflake for your catalog type and region if you plan to write. Snowflake Documentation
+  When a table is managed by an external catalog, Snowflake typically treats it
+  as read-only from Snowflake’s side. Writes remain managed by the external
+  engine and catalog. Confirm current write support in Snowflake for your
+  catalog type and region if you plan to write. Snowflake Documentation
 </Note>
