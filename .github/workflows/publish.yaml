@@ -25,6 +25,9 @@ jobs:
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read # Clone repo at release tag
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         include:
@@ -36,6 +39,12 @@ jobs:
             arch: arm64
           - runner: macos-latest
             os: macos
+            arch: arm64
+          - runner: windows-latest
+            os: windows
+            arch: amd64
+          - runner: windows-11-arm
+            os: windows
             arch: arm64
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -60,10 +69,12 @@ jobs:
         run: uv python install 3.10 3.11 3.12 3.13 3.14
 
       - name: Build CLI binary
+        env:
+          BIN_EXT: ${{ matrix.os == 'windows' && '.exe' || '' }}
         run: |
           cargo build --release --bin bauplan
           rm -f python/data/scripts/.gitkeep python/data/scripts/.gitignore
-          cp target/release/bauplan python/data/scripts/
+          cp "target/release/bauplan${BIN_EXT}" python/data/scripts/
 
       - name: Build wheels
         uses: PyO3/maturin-action@04ac600d27cdf7a9a280dadf7147097c42b757ad # v1.50.1
@@ -89,9 +100,10 @@ jobs:
           TAG: ${{ inputs.tag }}
           OS: ${{ matrix.os }}
           ARCH: ${{ matrix.arch }}
+          BIN_EXT: ${{ matrix.os == 'windows' && '.exe' || '' }}
         run: |
           mkdir -p "${RUNNER_TEMP}/${TAG}"
-          cp target/release/bauplan README.md CHANGELOG.md LICENSE* \
+          cp "target/release/bauplan${BIN_EXT}" README.md CHANGELOG.md LICENSE* \
             "${RUNNER_TEMP}/${TAG}"
           tar -C "${RUNNER_TEMP}" --numeric-owner \
             -cvzf "bauplan-${TAG}-${OS}-${ARCH}.tar.gz" "${TAG}"
