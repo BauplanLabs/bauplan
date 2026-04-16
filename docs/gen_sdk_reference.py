@@ -174,7 +174,7 @@ class TypeLinker:
                                 method_anchor = f'{anchor}-{cls_member.name.lower()}'
                                 self.register(f'{resolved.name}.{cls_member.name}', page, method_anchor)
                     case griffe.Kind.FUNCTION:
-                        anchor = f'{page}-{member.name.lower()}'
+                        anchor = function_slug(page, member.name)
                         self.register(resolved.name, page, anchor)
                     # MODULE case: handled by _walk_module_tree
 
@@ -451,7 +451,7 @@ def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) 
                             process_class(f, toc, member, linker, page_slug=name)
                     case griffe.Kind.FUNCTION:
                         with wrap(f, 'PyModuleMember', member.name):
-                            process_function(f, toc, 2, member, linker, slug=f'{name}-{member.name.lower()}')
+                            process_function(f, toc, 2, member, linker, slug=function_slug(name, member.name))
                     case griffe.Kind.MODULE:
                         pass  # handled by _walk_module_tree
                     case _:
@@ -803,6 +803,10 @@ def wrap(output: TextIO, component_name: str, comment: str | None = None) -> Ite
 
 def jsx_comment(text: str) -> str:
     return '{/* ' + html.escape(text) + ' */}'
+
+
+def function_slug(page_slug: str, function_name: str) -> str:
+    return f'{page_slug}-{function_name.lower()}-function'
 
 
 def path_slug(obj: griffe.Object) -> str:
