@@ -1,0 +1,4 @@
+[project]
+name = "avg_Fare"
+requires-python = "~=3.12"
+dependencies = ["bauplan~=0.1.9"]

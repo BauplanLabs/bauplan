@@ -1,0 +1,14 @@
+project:
+  id: 44a8ca27-9bf5-440f-9d3c-fc9934708bdc
+  name: update_table_wrong
+parameters:
+  year:
+    type: int
+    default: 1912
+    description: "Year at which new fare is computed, adjusted to inflation"
+    required: true
+  inflation_rate:
+    type: float
+    default: 0.2
+    description: "(Flat) inflation rate"
+    required: true

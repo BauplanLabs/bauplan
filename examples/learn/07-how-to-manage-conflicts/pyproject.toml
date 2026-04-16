@@ -1,0 +1,10 @@
+[project]
+name = "07-how-to-manage-conflicts"
+version = "1.0.0"
+description = "Examples of how to manage conflicts in Bauplan"
+readme = "README.md"
+requires-python = "==3.13.*"
+dependencies = [
+    "bauplan~=0.1.10",
+    "typer~=0.24.1",
+]

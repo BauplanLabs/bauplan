@@ -1,0 +1,4 @@
+[project]
+name = "update_table_fixed"
+requires-python = "~=3.12"
+dependencies = ["bauplan~=0.1.9"]
