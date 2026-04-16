@@ -1,0 +1,4 @@
+[project]
+name = "user_A_pipeline"
+requires-python = "~=3.12"
+dependencies = ["bauplan~=0.1.9"]
