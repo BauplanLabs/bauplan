@@ -4,7 +4,6 @@ build
 
 # Generated SDK reference docs
 pages/reference/*
-!pages/reference/cli.mdx
 
 # Generated LLM-friendly markdown files (built from pages/*.mdx)
 static/**/*.md

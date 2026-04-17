@@ -1,0 +1,98 @@
+---
+title: "CLI Reference"
+hide_table_of_contents: false
+---
+
+<div className="cli-reference-page">
+
+{% macro cli_option(opt) -%}
+<CliOption
+  flag="{% if opt.long %}{{ opt.long }}{% else %}-{% endif %}"
+  {%- if opt.short %} short="{{ opt.short }}"{% endif %}
+  {%- if opt.value_name %} value="{{ opt.value_name }}"{% endif %}
+  {%- if opt.default %} default="{{ opt.default }}"{% endif %}
+  {%- if opt.repeatable %} repeatable{% endif %}
+>{`{{ opt.description }}`}</CliOption>
+{%- endmacro cli_option %}
+
+# CLI reference
+
+Complete reference documentation for the Bauplan Command Line Interface (CLI).
+
+## Global options
+
+<CliOptions>
+  {%- for opt in global_args %}
+  {{ self::cli_option(opt=opt) }}
+  {%- endfor %}
+</CliOptions>
+
+{%- for cmd in commands %}
+{% if cmd.depth == 0 %}
+
+---
+{% endif %}
+{% if cmd.depth == 0 %}
+## <span style={% raw %}{{ fontFamily: "var(--ifm-font-family-monospace)" }}{% endraw %}>{{ cmd.path_parts | join(sep=" ") }}</span>
+{% elif cmd.depth == 1 %}
+### <span style={% raw %}{{ fontFamily: "var(--ifm-font-family-monospace)" }}{% endraw %}>{{ cmd.path_parts | join(sep=" ") }}</span>
+{% elif cmd.depth == 2 %}
+#### <span style={% raw %}{{ fontFamily: "var(--ifm-font-family-monospace)" }}{% endraw %}>{{ cmd.path_parts | join(sep=" ") }}</span>
+{% else %}
+##### <span style={% raw %}{{ fontFamily: "var(--ifm-font-family-monospace)" }}{% endraw %}>{{ cmd.path_parts | join(sep=" ") }}</span>
+{% endif %}
+
+{% if cmd.about %}
+{{ cmd.about }}
+{% endif %}
+{% if cmd.aliases | length > 0 %}
+**Aliases:**
+{%- for a in cmd.aliases %} `{{ a }}`{% if not loop.last %}, {% endif %}{%- endfor %}
+{% endif %}
+<div className="cli-synopsis-block">
+```sh
+{{ cmd.path_parts | join(sep=" ") }}
+{%- if cmd.options | length > 0 %} [OPTIONS]{% endif -%}
+{%- for arg in cmd.positional %}
+{%- if arg.required %} <{{ arg.name }}>{% else %} [{{ arg.name }}]{% endif -%}
+{%- endfor %}
+```
+</div>
+
+  {% if cmd.subcommands | length > 0 %}
+  <CliSubcommands>
+    {%- for sub in cmd.subcommands %}
+    <CliSubcommandLink name="{{ sub.name }}" href="#{{ sub.id }}">{{ sub.summary }}</CliSubcommandLink>
+    {%- endfor %}
+  </CliSubcommands>
+  {% endif %}
+  {% if cmd.positional | length > 0 %}
+  **Arguments**
+
+  <CliArguments>
+    {%- for arg in cmd.positional %}
+    <CliArgument name="<{{ arg.name }}>">{`{{ arg.description }}`}</CliArgument>
+    {%- endfor %}
+  </CliArguments>
+  {% endif %}
+  {% if cmd.options | length > 0 %}
+  **Options**
+
+  <CliOptions>
+    {%- for opt in cmd.options %}
+    {{ self::cli_option(opt=opt) }}
+    {%- endfor %}
+  </CliOptions>
+  {% endif %}
+  {% if cmd.examples %}
+  <CliExamples>
+
+    ```sh
+    {{ cmd.examples }}
+    ```
+
+  </CliExamples>
+  {% endif %}
+  {% endfor %}
+
+</div>

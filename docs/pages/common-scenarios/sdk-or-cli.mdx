@@ -13,7 +13,7 @@ There is no rigid rule on what to use when - the three interfaces complement eac
 The CLI is **stateful**: the same command may produce different results depending on your active [branch](/concepts/git-for-data/data-branches) or working directory. This makes it ideal for quick, exploratory work:
 
 - Iterate on code with `--dry-run` before committing to a full pipeline run
-- Explore data with ad-hoc [queries](/reference/cli#query)
+- Explore data with ad-hoc [queries](/reference/cli#bauplan-query)
 - Navigate branches, inspect tables, and check pipeline status
 
 **Typical workflow:** edit your model code, run `bauplan run --dry-run`, query the output, tweak, repeat.

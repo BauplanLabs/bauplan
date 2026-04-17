@@ -2,11 +2,11 @@
 title: "Create table schema conflicts"
 ---
 
-When you're passing in a dataset via `--search-uri` option in [`table create`](/reference/cli#table-create) command, Bauplan scans your files to infer the table
+When you're passing in a dataset via `--search-uri` option in [`table create`](/reference/cli#bauplan-table-create) command, Bauplan scans your files to infer the table
 schema. If your files have **inconsistent columns or types**, the create
 will fail with a schema conflict.
 
-Under the hood, the [`table create`](/reference/cli#table-create)
+Under the hood, the [`table create`](/reference/cli#bauplan-table-create)
 command runs two steps: it **plans** the table (inferring the schema from your
 source files) and then **applies** the plan. Normally these are bundled into a
 single command, but when planning detects conflicts, the combined command
@@ -17,7 +17,7 @@ apply it which is what the rest of this page walks through.
 <Note>
   The dataset example you pass using `--search-uri` is not inserted into the
   table. It's only used to infer the schema and create an empty table. You can
-  import the data later via [`table import`](/reference/cli#table-import), using
+  import the data later via [`table import`](/reference/cli#bauplan-table-import), using
   the same `--search-uri` or a different one with the same schema.
 </Note>
 
