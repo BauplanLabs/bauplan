@@ -29,23 +29,30 @@ jobs:
       run:
         shell: bash
     strategy:
+      fail-fast: false
       matrix:
         include:
           - runner: blacksmith-16vcpu-ubuntu-2404
             os: linux
             arch: amd64
+            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
           - runner: blacksmith-16vcpu-ubuntu-2404-arm
             os: linux
             arch: arm64
+            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
           - runner: macos-latest
             os: macos
             arch: arm64
+            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
           - runner: windows-latest
             os: windows
             arch: amd64
+            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
           - runner: windows-11-arm
             os: windows
             arch: arm64
+            # python-build-standalone only publishes Windows ARM64 builds from 3.12 onwards.
+            pythons: "python3.12 python3.13 python3.14"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -66,7 +73,9 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
 
       - name: Install Python versions
-        run: uv python install 3.10 3.11 3.12 3.13 3.14
+        env:
+          PYTHONS: ${{ matrix.pythons }}
+        run: uv python install $PYTHONS
 
       - name: Build CLI binary
         env:
@@ -81,7 +90,7 @@ jobs:
         with:
           args: >-
             --release --out dist
-            -i python3.10 python3.11 python3.12 python3.13 python3.14
+            -i ${{ matrix.pythons }}
           docker-options: -v ~/.cargo:/root/.cargo
           before-script-linux: |
             ARCH=$(uname -m | sed 's/aarch64/aarch_64/')
