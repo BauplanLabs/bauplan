@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     CatalogRef, PaginatedResponse,
-    api::{ApiRequest, DataResponse},
+    api::{ApiRequest, DataResponse, PathArgs, urlformat},
 };
 
 /// A branch in the catalog.
@@ -32,8 +32,8 @@ pub struct GetBranch<'a> {
 impl ApiRequest for GetBranch<'_> {
     type Response = Branch;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/branches/{}", self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/branches/{}", self.name)
     }
 }
 
@@ -58,8 +58,8 @@ struct GetBranchesQuery<'a> {
 impl ApiRequest for GetBranches<'_> {
     type Response = PaginatedResponse<Branch>;
 
-    fn path(&self) -> String {
-        "/catalog/v0/branches".to_string()
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/branches")
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -93,8 +93,8 @@ impl ApiRequest for CreateBranch<'_> {
         http::Method::POST
     }
 
-    fn path(&self) -> String {
-        "/catalog/v0/branches".to_string()
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/branches")
     }
 
     fn body(&self) -> Option<impl Serialize> {
@@ -119,8 +119,8 @@ impl ApiRequest for DeleteBranch<'_> {
         http::Method::DELETE
     }
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/branches/{}", self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/branches/{}", self.name)
     }
 }
 
@@ -146,8 +146,8 @@ impl ApiRequest for RenameBranch<'_> {
         http::Method::PATCH
     }
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/branches/{}", self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/branches/{}", self.name)
     }
 
     fn body(&self) -> Option<impl Serialize> {
@@ -193,10 +193,11 @@ impl ApiRequest for MergeBranch<'_> {
         http::Method::POST
     }
 
-    fn path(&self) -> String {
-        format!(
+    fn path(&self) -> PathArgs {
+        urlformat!(
             "/catalog/v0/refs/{}/merge/{}",
-            self.source_ref, self.into_branch
+            self.source_ref,
+            self.into_branch,
         )
     }
 

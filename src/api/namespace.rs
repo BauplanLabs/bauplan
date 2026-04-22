@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     CatalogRef, PaginatedResponse,
-    api::{ApiRequest, DataResponse, commit::CommitOptions},
+    api::{ApiRequest, DataResponse, PathArgs, commit::CommitOptions, urlformat},
 };
 
 /// A container for organizing tables.
@@ -41,8 +41,12 @@ pub struct GetNamespace<'a> {
 impl ApiRequest for GetNamespace<'_> {
     type Response = Namespace;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/refs/{}/namespaces/{}", self.at_ref, self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!(
+            "/catalog/v0/refs/{}/namespaces/{}",
+            self.at_ref,
+            self.name,
+        )
     }
 }
 
@@ -65,8 +69,8 @@ struct GetNamespacesQuery<'a> {
 impl ApiRequest for GetNamespaces<'_> {
     type Response = PaginatedResponse<Namespace>;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/refs/{}/namespaces", self.at_ref)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/refs/{}/namespaces", self.at_ref)
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -103,8 +107,8 @@ impl ApiRequest for CreateNamespace<'_> {
         http::Method::POST
     }
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/branches/{}/namespaces", self.branch)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/branches/{}/namespaces", self.branch)
     }
 
     fn body(&self) -> Option<impl Serialize> {
@@ -141,10 +145,11 @@ impl ApiRequest for DeleteNamespace<'_> {
         http::Method::DELETE
     }
 
-    fn path(&self) -> String {
-        format!(
+    fn path(&self) -> PathArgs {
+        urlformat!(
             "/catalog/v0/branches/{}/namespaces/{}",
-            self.branch, self.name
+            self.branch,
+            self.name,
         )
     }
 

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ApiRequest;
 
-use super::{ApiError, ApiResponse, RawApiResponse};
+use super::{ApiError, ApiResponse, PathArgs, RawApiResponse};
 
 /// A request with a pagination token and limit attached.
 pub struct PaginatedRequest<'a, T> {
@@ -40,7 +40,7 @@ where
 impl<T: ApiRequest> ApiRequest for PaginatedRequest<'_, T> {
     type Response = T::Response;
 
-    fn path(&self) -> String {
+    fn path(&self) -> PathArgs {
         self.base.path()
     }
 

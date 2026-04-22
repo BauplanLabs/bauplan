@@ -1,8 +1,10 @@
 // ApiError is just over the threshold.
 #![allow(clippy::result_large_err)]
 
+use std::borrow::Cow;
 use std::io::Read;
 
+use percent_encoding::{AsciiSet, CONTROLS, PercentEncode, utf8_percent_encode};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
@@ -22,6 +24,32 @@ pub(crate) mod testutil;
 
 pub use error::*;
 pub use paginate::*;
+
+/// A percent-encoded URL path for an API request.
+#[derive(Debug)]
+pub struct PathArgs(Cow<'static, str>);
+
+fn encode_segment(s: &str) -> PercentEncode<'_> {
+    // WHATWG path percent-encode set (https://url.spec.whatwg.org/#path-percent-encode-set)
+    // extended with `/` and `%` to treat the input as a single segment.
+    const SEGMENT: &AsciiSet = &CONTROLS
+        .add(b' ').add(b'"').add(b'<').add(b'>').add(b'`')
+        .add(b'#').add(b'?').add(b'{').add(b'}')
+        .add(b'/').add(b'%');
+    utf8_percent_encode(s, SEGMENT)
+}
+
+macro_rules! urlformat {
+    ($fmt:literal) => {
+        $crate::api::PathArgs(::std::borrow::Cow::Borrowed($fmt))
+    };
+    ($fmt:literal, $($arg:expr),+ $(,)?) => {
+        $crate::api::PathArgs(::std::borrow::Cow::Owned(format!(
+            $fmt, $($crate::api::encode_segment($arg)),+
+        )))
+    };
+}
+pub(crate) use urlformat;
 
 #[derive(Debug, Deserialize)]
 struct RawMetadata {
@@ -47,8 +75,8 @@ pub trait ApiRequest: Sized {
     /// The corresponding response type.
     type Response: ApiResponse;
 
-    /// The path that the request should take.
-    fn path(&self) -> String;
+    /// The path that the request should take. Construct with [`urlformat!`].
+    fn path(&self) -> PathArgs;
 
     /// The method to use.
     fn method(&self) -> http::Method {
@@ -69,10 +97,11 @@ pub trait ApiRequest: Sized {
     /// to your favorite HTTP client.
     fn into_request(self, profile: &Profile) -> Result<http::Request<String>, http::Error> {
         let method = self.method();
-        let mut path = self.path();
+        let path = self.path().0;
         let mut parts = profile.api_endpoint.clone().into_parts();
 
-        if let Some(qs) = self.query() {
+        let path = if let Some(qs) = self.query() {
+            let mut path = path.into_owned();
             path.push('?');
 
             // SAFETY: query strings should only be valid UTF-8.
@@ -80,7 +109,11 @@ pub trait ApiRequest: Sized {
                 serde_qs::to_writer(&qs, &mut path.as_mut_vec())
                     .expect("query string serialization should be infallible");
             }
-        }
+
+            Cow::Owned(path)
+        } else {
+            path
+        };
 
         parts.path_and_query = Some(path.parse()?);
 
@@ -181,5 +214,38 @@ impl ApiResponse for CatalogRef {
             }
             RawApiResponse::Error { error } => Err(ApiError::from_raw(parts.status, error)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+
+    #[test]
+    fn urlformat_static_is_borrowed() {
+        let p = urlformat!("/catalog/v0/branches").0;
+        assert!(matches!(p, Cow::Borrowed("/catalog/v0/branches")));
+    }
+
+    #[test]
+    fn urlformat_parameterized_is_owned_and_encoded() {
+        let p = urlformat!("/catalog/v0/branches/{}", "feature/foo").0;
+        assert!(matches!(p, Cow::Owned(s) if s == "/catalog/v0/branches/feature%2Ffoo"));
+    }
+
+    #[test]
+    fn urlformat_encodes_expected_chars() {
+        assert_eq!(urlformat!("/{}", "main").0, "/main");
+        assert_eq!(urlformat!("/{}", "main@abc123").0, "/main@abc123");
+        assert_eq!(urlformat!("/{}", "a b").0, "/a%20b");
+        assert_eq!(urlformat!("/{}", "100%").0, "/100%25");
+        assert_eq!(urlformat!("/{}", "café").0, "/caf%C3%A9");
+        // Iceberg multi-level namespace separator (U+001F) must encode to %1F.
+        assert_eq!(urlformat!("/{}", "a\u{1f}b").0, "/a%1Fb");
+        // Multi-arg: each segment is encoded independently.
+        assert_eq!(
+            urlformat!("/refs/{}/namespaces/{}", "feature/foo", "a b").0,
+            "/refs/feature%2Ffoo/namespaces/a%20b",
+        );
     }
 }
