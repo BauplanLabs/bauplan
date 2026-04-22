@@ -1,6 +1,14 @@
 [workspace]
 git_only = true
 publish = false
+
+[[package]]
+name = "bauplan"
+release = true
+changelog_update = true
+changelog_path = "./CHANGELOG.md"
+git_tag_enable = true
+git_release_enable = true
 git_tag_name = "v{{ version }}"
 git_release_name = "v{{ version }}"
 
@@ -8,6 +16,14 @@ git_release_name = "v{{ version }}"
 name = "bauplan-longbow"
 release = false
 changelog_update = false
+git_tag_enable = false
+git_release_enable = false
+# This seems to be the only way to get `release-plz release-pr` to ignore
+# bauplan-longbow (it should be ignored because of release = false).
+# This works because it thinks it's the initial release of bauplan-longbow each
+# time.
+# https://github.com/release-plz/release-plz/issues/2595
+git_tag_name = "_nonexistent"
 
 [changelog]
 trim = true
