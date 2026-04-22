@@ -155,11 +155,7 @@ pub async fn fetch_query_results(
                         return Ok(Some((batch, state)));
                     }
                 }
-                None => {
-                    // The conn.close() in Drop sends the close frame.
-                    // Endpoint cleanup happens asynchronously.
-                    return Ok(None);
-                }
+                None => return Ok(None),
             }
         }
     }));
