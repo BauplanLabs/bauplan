@@ -125,11 +125,7 @@ impl ArrowIPCServer {
 
         // Signal that no more data will be sent.
         let _ = self.send.finish();
-
-        // Wait briefly for the FIN to be acknowledged, but don't block
-        // indefinitely — QUIC's reliability layer ensures delivery.
-        let _ =
-            tokio::time::timeout(std::time::Duration::from_millis(500), self.send.stopped()).await;
+        self.send.stopped().await.map_err(|_| Error::StreamClosed)?;
 
         self.endpoint.close().await;
         Ok(())
