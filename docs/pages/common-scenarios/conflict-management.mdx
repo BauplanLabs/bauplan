@@ -52,6 +52,13 @@ automatically, so it rejects the merge to protect `main` rather than silently
 overwrite user A's work. User B should re-run the pipeline on a fresh branch
 off the new `main`.
 
+<Note>
+  We recommend that writes to `main` happen exclusively through scheduled jobs, 
+  after changes have been merged via a reviewed CI/CD pipeline. This gives you 
+  two guarantees: only approved code can alter `main`, and concurrency conflicts 
+  are largely avoided since there is a single, serialized path that writes to it.
+</Note>
+
 ---
 
 ## Naming conflict
