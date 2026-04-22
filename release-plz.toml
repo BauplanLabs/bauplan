@@ -1,6 +1,13 @@
 [workspace]
 git_only = true
 publish = false
+git_tag_name = "v{{ version }}"
+git_release_name = "v{{ version }}"
+
+[[package]]
+name = "bauplan-longbow"
+release = false
+changelog_update = false
 
 [changelog]
 trim = true
