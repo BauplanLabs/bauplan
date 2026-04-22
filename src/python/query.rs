@@ -121,9 +121,13 @@ impl Client {
             let addr = bauplan_longbow::iroh::EndpointAddr::new(public_key);
             let addr = preset.add_relay_urls(addr);
 
-            let (schema, stream) = bauplan_longbow::fetch_query_results(preset, addr)
-                .await
-                .map_err(query_err)?;
+            let (schema, stream) = tokio::time::timeout(timeout, async {
+                bauplan_longbow::fetch_query_results(preset, addr)
+                    .await
+                    .map_err(query_err)
+            })
+            .await
+            .map_err(|_| query_err("timed out fetching query results"))??;
 
             let schema: Schema = schema.as_ref().clone();
             return Ok((schema, Either::Left(stream.map_err(query_err))));
