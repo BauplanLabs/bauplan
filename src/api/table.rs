@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use crate::{
     CatalogRef, PaginatedResponse,
-    api::{ApiRequest, DataResponse, commit::CommitOptions},
+    api::{ApiRequest, DataResponse, PathArgs, commit::CommitOptions, urlformat},
 };
 
 /// A field in a table schema.
@@ -197,8 +197,12 @@ struct GetTableQuery<'a> {
 impl ApiRequest for GetTable<'_> {
     type Response = Table;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/refs/{}/tables/{}", self.at_ref, self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!(
+            "/catalog/v0/refs/{}/tables/{}",
+            self.at_ref,
+            self.name,
+        )
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -234,8 +238,8 @@ struct GetTablesQuery<'a> {
 impl ApiRequest for GetTables<'_> {
     type Response = PaginatedResponse<Table>;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/refs/{}/tables", self.at_ref)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/refs/{}/tables", self.at_ref)
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -283,9 +287,12 @@ impl ApiRequest for DeleteTable<'_> {
         http::Method::DELETE
     }
 
-    fn path(&self) -> String {
-        let DeleteTable { branch, name, .. } = self;
-        format!("/catalog/v0/branches/{branch}/tables/{name}")
+    fn path(&self) -> PathArgs {
+        urlformat!(
+            "/catalog/v0/branches/{}/tables/{}",
+            self.branch,
+            self.name,
+        )
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -339,15 +346,13 @@ impl ApiRequest for RevertTable<'_> {
         http::Method::POST
     }
 
-    fn path(&self) -> String {
-        let Self {
-            name,
-            source_ref,
-            into_branch,
-            ..
-        } = self;
-
-        format!("/catalog/v0/refs/{source_ref}/tables/{name}/revert/{into_branch}")
+    fn path(&self) -> PathArgs {
+        urlformat!(
+            "/catalog/v0/refs/{}/tables/{}/revert/{}",
+            self.source_ref,
+            self.name,
+            self.into_branch,
+        )
     }
 
     fn body(&self) -> Option<impl Serialize> {

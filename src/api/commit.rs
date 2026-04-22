@@ -5,7 +5,11 @@ use std::collections::BTreeMap;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{CatalogRef, PaginatedResponse, api::ApiRequest, branch::Branch};
+use crate::{
+    CatalogRef, PaginatedResponse,
+    api::{ApiRequest, PathArgs, urlformat},
+    branch::Branch,
+};
 
 /// An actor (author or committer) in a commit.
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -216,8 +220,8 @@ struct GetCommitsQuery<'a> {
 impl ApiRequest for GetCommits<'_> {
     type Response = PaginatedResponse<Commit>;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/refs/{}/commits", self.at_ref)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/refs/{}/commits", self.at_ref)
     }
 
     fn query(&self) -> Option<impl Serialize> {

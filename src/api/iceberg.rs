@@ -6,7 +6,10 @@
 
 use iceberg_catalog_rest::{LoadTableResult as IcebergTable, RegisterTableRequest};
 
-use crate::{ApiRequest, ApiResponse};
+use crate::{
+    ApiRequest, ApiResponse,
+    api::{PathArgs, urlformat},
+};
 
 /// Register a table in a namespace on a branch, using an existing metadata
 /// file.
@@ -31,10 +34,11 @@ impl ApiRequest for RegisterTable<'_> {
         http::Method::POST
     }
 
-    fn path(&self) -> String {
-        format!(
+    fn path(&self) -> PathArgs {
+        urlformat!(
             "/iceberg/v1/{}/namespaces/{}/register",
-            self.branch, self.namespace,
+            self.branch,
+            self.namespace,
         )
     }
 

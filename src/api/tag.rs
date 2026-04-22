@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     PaginatedResponse,
-    api::{ApiRequest, DataResponse},
+    api::{ApiRequest, DataResponse, PathArgs, urlformat},
 };
 
 /// A tag in the catalog.
@@ -28,8 +28,8 @@ pub struct GetTag<'a> {
 impl ApiRequest for GetTag<'_> {
     type Response = Tag;
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/tags/{}", self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/tags/{}", self.name)
     }
 }
 
@@ -49,8 +49,8 @@ struct GetTagsQuery<'a> {
 impl ApiRequest for GetTags<'_> {
     type Response = PaginatedResponse<Tag>;
 
-    fn path(&self) -> String {
-        "/catalog/v0/tags".to_string()
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/tags")
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -83,8 +83,8 @@ impl ApiRequest for CreateTag<'_> {
         http::Method::POST
     }
 
-    fn path(&self) -> String {
-        "/catalog/v0/tags".to_string()
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/tags")
     }
 
     fn body(&self) -> Option<impl Serialize> {
@@ -109,8 +109,8 @@ impl ApiRequest for DeleteTag<'_> {
         http::Method::DELETE
     }
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/tags/{}", self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/tags/{}", self.name)
     }
 }
 
@@ -136,8 +136,8 @@ impl ApiRequest for RenameTag<'_> {
         http::Method::PATCH
     }
 
-    fn path(&self) -> String {
-        format!("/catalog/v0/tags/{}", self.name)
+    fn path(&self) -> PathArgs {
+        urlformat!("/catalog/v0/tags/{}", self.name)
     }
 
     fn body(&self) -> Option<impl Serialize> {
