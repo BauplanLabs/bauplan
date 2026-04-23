@@ -1,0 +1,5 @@
+# Statically link the MSVC runtime (VCRUNTIME140, MSVCP140, ...) into
+# Windows binaries and cdylibs so the wheel and the standalone .exe
+# work on machines without the Visual C++ Redistributable installed.
+[target.'cfg(all(windows, target_env = "msvc"))']
+rustflags = ["-C", "target-feature=+crt-static"]
