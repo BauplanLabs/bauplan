@@ -1,11 +1,11 @@
-use crate::cli::{bauplan, username, test_branch};
+use crate::cli::{bauplan, test_branch, username};
 use predicates::prelude::PredicateBooleanExt as _;
 use predicates::str::{contains, starts_with};
 
 #[test]
 fn ls_json_output() {
     bauplan()
-        .args(["-O", "json", "branch", "ls"])
+        .args(["-O", "json", "branch", "ls", "--limit", "10"])
         .assert()
         .success()
         .stdout(starts_with("["));
@@ -14,7 +14,7 @@ fn ls_json_output() {
 #[test]
 fn ls() {
     bauplan()
-        .args(["branch", "ls"])
+        .args(["branch", "ls", "--limit", "10"])
         .assert()
         .success()
         .stdout(contains("main"));
@@ -30,7 +30,7 @@ fn create_and_delete() {
     let branch = test_branch("cli_create_delete");
 
     bauplan()
-        .args(["branch", "ls", "--all-zones"])
+        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
         .assert()
         .success()
         .stdout(contains(&branch.name));
@@ -43,7 +43,7 @@ fn create_and_delete() {
         .stderr(contains(format!("Deleted branch \"{}\"", branch.name)));
 
     bauplan()
-        .args(["branch", "ls", "--all-zones"])
+        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
         .assert()
         .success()
         .stdout(contains(&branch.name).not());
@@ -110,7 +110,7 @@ fn rename() {
 
     // Old name should be gone, new name should exist.
     bauplan()
-        .args(["branch", "ls", "--all-zones"])
+        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
         .assert()
         .success()
         .stdout(contains(&branch.name))
