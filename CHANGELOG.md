@@ -1,4 +1,15 @@
 
+## [0.1.12] - 2026-04-24
+
+### New Features
+
+- Fetch query results directly from the runtimes (927f146f6663d682d9b4af4b856ea9a750285d34)
+
+### Bugfixes
+
+- [pysdk] Respect timeout when fetching query results over longbow (b612e2a64f04653940d2f93cde60301b1207a471)
+- Percent-encode URL path segments (5e5ec8ebca521e5d60aa141c906ea5c16f62f8c1)
+
 
 ## [0.1.10] - 2026-04-07
 
