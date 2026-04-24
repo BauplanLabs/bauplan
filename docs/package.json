@@ -1,8 +1,9 @@
 {
   "scripts": {
+    "generate-cli-docs": "cargo run --quiet --manifest-path ../Cargo.toml --bin gen-cli-docs > pages/reference/cli.mdx",
     "generate-llm-docs": "node scripts/generate-llm-docs.js",
     "generate-llms-txt": "node scripts/generate-llms-txt.js",
-    "prebuild": "npm run generate-llm-docs && npm run generate-llms-txt",
+    "prebuild": "npm run generate-cli-docs && npm run generate-llm-docs && npm run generate-llms-txt",
     "build": "docusaurus build",
     "start": "docusaurus start",
     "serve": "docusaurus serve",
