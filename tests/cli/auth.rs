@@ -6,7 +6,7 @@ use predicates::str::contains;
 fn invalid_api_key() {
     bauplan()
         .env("BAUPLAN_API_KEY", "invalid")
-        .args(["branch", "ls"])
+        .args(["branch", "ls", "--limit", "10"])
         .assert()
         .failure()
         .stderr(contains("UNAUTHORIZED"))
