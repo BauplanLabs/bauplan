@@ -427,7 +427,8 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     all_users: Optional[bool]: Whether to list jobs from all users or only the current user.
+    ///     filter_by_current_user: Optional[bool]: If True (the default), only return jobs
+    ///         belonging to the current user. Mutually exclusive with filter_by_user.
     ///     filter_by_ids: Optional[Union[str, List[str]]]: Optional, filter by job IDs.
     ///     filter_by_users: Optional[Union[str, List[str]]]: Optional, filter by job users.
     ///     filter_by_kinds: Optional[Union[str, JobKind, List[Union[str, JobKind]]]]: Optional, filter by job kinds.
@@ -440,7 +441,7 @@ impl Client {
     ///     An iterator over `bauplan.schema.Job` objects.
     #[pyo3(signature = (
         *,
-        all_users=false,
+        filter_by_current_user=true,
         filter_by_ids=None,
         filter_by_users=None,
         filter_by_kinds=None,
@@ -453,7 +454,7 @@ impl Client {
     fn get_jobs(
         &self,
         py: Python<'_>,
-        all_users: bool,
+        filter_by_current_user: bool,
         filter_by_ids: Option<JobListArg>,
         filter_by_users: Option<JobListArg>,
         filter_by_kinds: Option<JobKindListArg>,
@@ -482,7 +483,7 @@ impl Client {
         PyPaginator::new(py, limit, move |py, token, page_limit| {
             let mut req = Request::new(commanderpb::GetJobsRequest {
                 job_ids: job_ids.clone(),
-                all_users,
+                all_users: !filter_by_current_user,
                 filter_users: filter_users.clone(),
                 filter_kinds: filter_kinds.clone(),
                 filter_statuses: filter_statuses.clone(),
