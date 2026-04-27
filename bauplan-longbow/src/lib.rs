@@ -163,7 +163,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use anyhow::Context as _;
+    use anyhow::{Context as _, bail};
     use arrow::{
         array::{Int32Array, StringArray},
         datatypes::{DataType, Field, Schema},
@@ -238,6 +238,58 @@ mod tests {
         for (got, expected) in received.iter().zip(&batches) {
             assert_eq!(got, expected);
         }
+
+        server_task.await??;
+        Ok(())
+    }
+
+    #[cfg(all(feature = "server", feature = "client"))]
+    #[test_log::test(tokio::test)]
+    async fn attached_task() -> anyhow::Result<()> {
+        use iroh::EndpointAddr;
+        use tokio::io::AsyncReadExt;
+
+        let secret_key = iroh::SecretKey::generate(&mut rand::rng());
+        let public_key = secret_key.public();
+
+        let server_task = tokio::spawn(async move {
+            let (_endpoint, conn) = accept_connection(BauplanPreset::default(), secret_key).await?;
+
+            let (mut stdout_send, mut stderr_send) = {
+                let (tok_a, send_a) = accept_stream(&conn).await?;
+                let (tok_b, send_b) = accept_stream(&conn).await?;
+                match (tok_a, tok_b) {
+                    (StreamToken::UserCodeStdout, StreamToken::UserCodeStderr) => (send_a, send_b),
+                    (StreamToken::UserCodeStderr, StreamToken::UserCodeStdout) => (send_b, send_a),
+                    (a, b) => bail!("expected stdout and stderr streams, got {a:?} + {b:?}"),
+                }
+            };
+
+            stdout_send.write_all(b"hello from stdout").await?;
+            stdout_send.finish()?;
+            stdout_send.stopped().await?;
+
+            stderr_send.write_all(b"hello from stderr").await?;
+            stderr_send.finish()?;
+            stderr_send.stopped().await?;
+
+            Ok::<_, anyhow::Error>(())
+        });
+
+        let preset = BauplanPreset::default();
+        let server_addr = preset.add_relay_urls(EndpointAddr::new(public_key));
+
+        let mut task = attach_task(preset, server_addr)
+            .await
+            .context("attach_task failed")?;
+
+        let mut stdout = String::new();
+        task.stdout.read_to_string(&mut stdout).await?;
+        assert_eq!(stdout, "hello from stdout");
+
+        let mut stderr = String::new();
+        task.stderr.read_to_string(&mut stderr).await?;
+        assert_eq!(stderr, "hello from stderr");
 
         server_task.await??;
         Ok(())
