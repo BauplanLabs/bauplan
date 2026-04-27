@@ -63,9 +63,9 @@ anstream = "0.6"
 anstyle = "1"
 anyhow.workspace = true
 bauplan-longbow = { path = "bauplan-longbow", default-features = false, features = ["client"] }
-arrow = { version = "57", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
-arrow-csv = { version = "57", optional = true }
-arrow-flight = "57"
+arrow = { version = "58", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
+arrow-csv = { version = "58", optional = true }
+arrow-flight = "58"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
@@ -74,18 +74,18 @@ futures.workspace = true
 gethostname = "1"
 http = "1"
 humantime = "2"
-iceberg-catalog-rest = "0.8"
+iceberg-catalog-rest = { git = "https://github.com/apache/iceberg-rust.git", rev = "1b640095" }
 indicatif = "0.18"
 log = { version = "0.4", optional = true }
 nondestructive = { version = "0.0.28", features = ["serde", "yaml"] }
 opentelemetry = { version = "0.28", default-features = false, features = ["trace"] }
-parquet = { version = "57", optional = true }
+parquet = { version = "58", optional = true }
 polyglot-sql = "0.1"
 prost = "0.14"
 prost-types = "0.14"
 percent-encoding = "2"
 pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
-pyo3-arrow = { version = "0.16", optional = true }
+pyo3-arrow = { version = "0.17", optional = true }
 pyo3-log = { version = "0.13", optional = true }
 rand = "0.8"
 regex = "1"
