@@ -1,6 +1,9 @@
 //! Python bindings for the Bauplan client.
 
-use std::{sync::OnceLock, time};
+use std::{
+    sync::{Arc, OnceLock},
+    time,
+};
 
 use pyo3::{exceptions::PyValueError, marker::Ungil, prelude::*};
 use tokio::runtime::Runtime;
@@ -164,7 +167,7 @@ pub(crate) struct Client {
     /// finished out long before we drop the client. If any are still open when
     /// we drop, then the server will have to wait for the idle timeout, but
     /// that's not that tragic.
-    pub(crate) longbow_endpoint: tokio::sync::OnceCell<bauplan_longbow::iroh::Endpoint>,
+    pub(crate) longbow_endpoint: Arc<tokio::sync::OnceCell<bauplan_longbow::iroh::Endpoint>>,
 }
 
 #[pymethods]
@@ -230,7 +233,7 @@ impl Client {
             agent,
             grpc,
             client_timeout,
-            longbow_endpoint: tokio::sync::OnceCell::new(),
+            longbow_endpoint: Arc::new(tokio::sync::OnceCell::new()),
         })
     }
 }

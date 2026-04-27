@@ -2,7 +2,7 @@ use arrow::{array::RecordBatch, buffer::Buffer, datatypes::SchemaRef, ipc::reade
 use futures::stream::{self, Stream};
 use iroh::{
     Endpoint, EndpointAddr,
-    endpoint::{ConnectError, Connection, RecvStream},
+    endpoint::{ConnectError, Connection, ConnectionState, RecvStream},
 };
 use n0_error::StdResultExt;
 use tracing::debug;
@@ -19,6 +19,23 @@ struct ArrowStreamState {
 }
 
 impl Drop for ArrowStreamState {
+    fn drop(&mut self) {
+        self.conn.close(0_u8.into(), b"done");
+    }
+}
+
+/// An attached user code task. Dropping closes the connection.
+#[derive(Debug)]
+pub struct AttachedTask {
+    /// Stdout from the task.
+    pub stdout: RecvStream,
+    /// Stderr from the task.
+    pub stderr: RecvStream,
+
+    conn: Connection,
+}
+
+impl Drop for AttachedTask {
     fn drop(&mut self) {
         self.conn.close(0_u8.into(), b"done");
     }
@@ -72,6 +89,60 @@ async fn connect(
     };
 
     Ok((conn, recv))
+}
+
+/// Connect to an endpoint with the intention to stream user code stdout/stderr.
+///
+/// Returns a handle with a separate stream for stdout and stderr, respectively.
+/// Dropping the handle closes the connection.
+pub async fn attach_task(endpoint: &Endpoint, server: EndpointAddr) -> Result<AttachedTask, Error> {
+    let connecting = endpoint
+        .connect_with_opts(server, ALPN, Default::default())
+        .await
+        .map_err(ConnectError::from)?;
+
+    let conn = match connecting.into_0rtt() {
+        Ok(outgoing) => {
+            let stdout_fut = request_stream(&outgoing, StreamToken::UserCodeStdout);
+            let stderr_fut = request_stream(&outgoing, StreamToken::UserCodeStderr);
+            let (stdout_recv, stderr_recv) =
+                futures::future::try_join(stdout_fut, stderr_fut).await?;
+
+            match outgoing
+                .handshake_completed()
+                .await
+                .map_err(ConnectError::from)?
+            {
+                iroh::endpoint::ZeroRttStatus::Accepted(conn) => {
+                    return Ok(AttachedTask {
+                        stdout: stdout_recv,
+                        stderr: stderr_recv,
+                        conn,
+                    });
+                }
+                iroh::endpoint::ZeroRttStatus::Rejected(conn) => {
+                    // The streams don't exist from the perspective of
+                    // the server.
+                    debug!("0rtt rejected");
+                    conn
+                }
+            }
+        }
+        Err(conn) => {
+            debug!("0rtt not possible");
+            conn.await.map_err(ConnectError::from)?
+        }
+    };
+
+    let stdout_fut = request_stream(&conn, StreamToken::UserCodeStdout);
+    let stderr_fut = request_stream(&conn, StreamToken::UserCodeStderr);
+    let (stdout_recv, stderr_recv) = futures::future::try_join(stdout_fut, stderr_fut).await?;
+
+    Ok(AttachedTask {
+        stdout: stdout_recv,
+        stderr: stderr_recv,
+        conn,
+    })
 }
 
 /// Connect to an endpoint with the intention to download query results.
@@ -156,4 +227,14 @@ pub async fn fetch_query_results(
     }));
 
     Ok((schema, stream))
+}
+
+async fn request_stream(
+    conn: &Connection<impl ConnectionState>,
+    token: StreamToken,
+) -> Result<RecvStream, Error> {
+    let (mut send, recv) = conn.open_bi().await?;
+    send.write_all(token.as_bytes()).await.anyerr()?;
+    send.finish().map_err(|_| Error::StreamClosed)?;
+    Ok(recv)
 }

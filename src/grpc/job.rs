@@ -1,9 +1,26 @@
 //! Job types returned by the gRPC API.
 
-use chrono::{DateTime, TimeZone, Utc};
-use serde::Serialize;
+use std::{
+    collections::BTreeMap,
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
+};
 
-use crate::{grpc::generated as commanderpb, project};
+use bauplan_longbow::{BauplanPreset, iroh};
+use chrono::{DateTime, TimeZone, Utc};
+use futures::StreamExt;
+use serde::Serialize;
+use tokio_util::codec::{FramedRead, LinesCodec};
+use tracing::{debug, error};
+
+use crate::{
+    grpc::generated::{
+        self as commanderpb, RuntimeLogEvent, SubscribeLogsResponse, TaskMetadata, TaskStartEvent,
+        runner_event::Event as RunnerEvent,
+    },
+    project,
+};
 
 /// The execution state of a job.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -241,6 +258,10 @@ impl From<commanderpb::JobInfo> for Job {
     }
 }
 
+fn pb_to_chrono(ts: prost_types::Timestamp) -> Option<DateTime<Utc>> {
+    Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
+}
+
 impl From<project::ParameterValue> for commanderpb::parameter::Value {
     fn from(param: project::ParameterValue) -> Self {
         match param {
@@ -270,6 +291,174 @@ impl From<project::ParameterValue> for commanderpb::parameter::Value {
     }
 }
 
-fn pb_to_chrono(ts: prost_types::Timestamp) -> Option<DateTime<Utc>> {
-    Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum Stdio {
+    Stdout,
+    Stderr,
+}
+
+/// A wrapper around the event stream created by SubscribeLogs, with one
+/// additional trick: in order to bridge functionality between the new python
+/// runtime and the old python runtime, it supports "attaching" to those tasks
+/// and synthesizing old-style RuntimeUserLog events to match.
+///
+/// The way that works is that it streams the events as normal, but, when it
+/// encounters a TaskStartEvent with a nonempty `longbow_public_key`, it spawns
+/// a task to to push log lines into the event stream in parallel.
+pub(super) struct JobEventStream {
+    inner: tonic::Streaming<SubscribeLogsResponse>,
+    longbow_output_rx: tokio::sync::mpsc::UnboundedReceiver<((String, Stdio), String)>,
+    longbow_output_tx: tokio::sync::mpsc::UnboundedSender<((String, Stdio), String)>,
+    endpoint: Arc<tokio::sync::OnceCell<iroh::Endpoint>>,
+    task_metadata: BTreeMap<String, TaskMetadata>,
+}
+
+impl JobEventStream {
+    pub(super) fn new(
+        inner: tonic::Streaming<SubscribeLogsResponse>,
+        endpoint: Arc<tokio::sync::OnceCell<iroh::Endpoint>>,
+    ) -> Self {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        Self {
+            inner,
+            longbow_output_rx: rx,
+            longbow_output_tx: tx,
+            endpoint,
+            task_metadata: BTreeMap::new(),
+        }
+    }
+}
+
+impl JobEventStream {
+    /// Attach to the task using longbow, then push events into the
+    /// longbow_output_tx channel.
+    fn attach_task(&mut self, event: &TaskStartEvent) {
+        let task_id = event.task_id.clone();
+        if let Some(metadata) = event.task_metadata.clone() {
+            self.task_metadata.insert(task_id.clone(), metadata);
+        } else {
+            error!(task_id, "task_metadata missing");
+            return;
+        }
+
+        let Ok(public_key) = iroh::PublicKey::try_from(event.longbow_public_key.as_slice()) else {
+            error!(task_id = event.task_id, "invalid longbow public key");
+            return;
+        };
+
+        let tx = self.longbow_output_tx.clone();
+        let endpoint = self.endpoint.clone();
+
+        tokio::spawn(async move {
+            let preset = BauplanPreset::default();
+            let addr = preset.add_relay_urls(iroh::EndpointAddr::new(public_key));
+
+            let endpoint = match endpoint
+                .get_or_try_init(|| iroh::Endpoint::bind(preset))
+                .await
+            {
+                Ok(ep) => ep,
+                Err(e) => {
+                    error!(task_id, err = %e, "failed to attach to task");
+                    return;
+                }
+            };
+
+            let mut task = match bauplan_longbow::attach_task(endpoint, addr).await {
+                Ok(task) => task,
+                Err(e) => {
+                    error!(task_id, err = %e, "failed to attach to task");
+                    return;
+                }
+            };
+
+            debug!(task_id, "attached to task");
+
+            let codec = LinesCodec::new_with_max_length(1024 * 1024);
+            let stdout =
+                FramedRead::new(&mut task.stdout, codec.clone()).map(|line| (Stdio::Stdout, line));
+            let stderr =
+                FramedRead::new(&mut task.stderr, codec.clone()).map(|line| (Stdio::Stderr, line));
+            let mut lines = futures::stream::select(stdout, stderr);
+
+            while let Some((stdio, line)) = lines.next().await {
+                match line {
+                    Ok(line) => {
+                        if tx.send(((task_id.clone(), stdio), line)).is_err() {
+                            // Receiver dropped.
+                            break;
+                        }
+                    }
+                    Err(e) => {
+                        error!(stream = ?stdio, err = %e, "error from task stream");
+                        break;
+                    }
+                };
+            }
+
+            debug!(task_id, "detached from task");
+        });
+    }
+}
+
+impl futures::Stream for JobEventStream {
+    type Item = Result<RunnerEvent, tonic::Status>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let this = self.get_mut();
+
+        loop {
+            if let Poll::Ready(v) = Pin::new(&mut this.inner).poll_next(cx) {
+                let Some(resp) = v else {
+                    return Poll::Ready(None);
+                };
+
+                let resp = resp?;
+                let Some(event) = resp.runner_event.and_then(|e| e.event) else {
+                    // Empty event.
+                    continue;
+                };
+
+                // If the task has output to stream via longbow, connect to it
+                // and synthesize RuntimeLogEvents for the output lines.
+                if let RunnerEvent::TaskStart(st) = &event
+                    && !st.longbow_public_key.is_empty()
+                {
+                    this.attach_task(st);
+                }
+
+                return Poll::Ready(Some(Ok(event)));
+            } else if let Poll::Ready(v) = this.longbow_output_rx.poll_recv(cx) {
+                let Some(((task_id, stdio), line)) = v else {
+                    continue;
+                };
+
+                let metadata = this.task_metadata.get(&task_id);
+                let ev = synthetic_line_event(metadata, stdio, line);
+                return Poll::Ready(Some(Ok(ev)));
+            }
+
+            return Poll::Pending;
+        }
+    }
+}
+
+/// Synthesizes a runner event from a longbow output line.
+fn synthetic_line_event(metadata: Option<&TaskMetadata>, stdio: Stdio, msg: String) -> RunnerEvent {
+    use commanderpb::runtime_log_event::*;
+
+    let output_stream = match stdio {
+        Stdio::Stdout => OutputStream::Stdout,
+        Stdio::Stderr => OutputStream::Stderr,
+    };
+
+    RunnerEvent::RuntimeUserLog(RuntimeLogEvent {
+        level: LogLevel::Debug.into(),
+        output_stream: output_stream.into(),
+        r#type: LogType::User.into(),
+        emit_timestamp_ns: 0,
+        msg,
+        task_metadata: metadata.cloned(),
+        job_id: String::new(),
+    })
 }

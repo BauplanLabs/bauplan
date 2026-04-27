@@ -111,6 +111,7 @@ ureq = { version = "3", features = ["platform-verifier"] }
 url.workspace = true
 uuid = { version = "1", features = ["serde", "v4"] }
 zip = { version = "4", default-features = false, features = ["deflate"] }
+tokio-util = { version = "0.7.18", features = ["codec"] }
 
 [build-dependencies]
 anyhow = "1"
