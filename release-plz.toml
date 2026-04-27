@@ -39,6 +39,7 @@ body = """
 {% endfor %}
 """
 commit_parsers = [
+  { message = '^\w+\(longbow\)', skip = true },
   { message = "^feat", group = "<!-- 0 -->New Features" },
   { message = "^fix", group = "<!-- 1 -->Bugfixes" },
   { message = "^doc", skip = true },
@@ -47,6 +48,6 @@ commit_parsers = [
   { message = "^style", skip = true },
   { message = "^test", skip = true },
   { message = "^chore|^ci", skip = true },
-  { message = "build", skip = true },
+  { message = "^build", skip = true },
   { message = "^revert", skip = true },
 ]
