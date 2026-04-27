@@ -84,7 +84,7 @@ impl Client {
         req.set_timeout(timeout);
 
         let mut client = self.grpc.clone();
-        let stream = client.monitor_job(req);
+        let stream = client.monitor_job(req, self.longbow_endpoint.clone());
         futures::pin_mut!(stream);
 
         let mut flight_event = None;

@@ -1,5 +1,6 @@
 use std::{
-    cell::RefCell, collections::BTreeMap, fmt::Display, io::Write as _, path::PathBuf, time,
+    cell::RefCell, collections::BTreeMap, fmt::Display, io::Write as _, path::PathBuf, sync::Arc,
+    time,
 };
 
 use anyhow::{Context as _, bail};
@@ -214,7 +215,8 @@ pub(crate) async fn monitor_job_progress(
         monitor_req.set_timeout(timeout);
     }
 
-    let stream = client.monitor_job(monitor_req);
+    let endpoint = std::sync::Arc::new(tokio::sync::OnceCell::new());
+    let stream = client.monitor_job(monitor_req, Arc::clone(&endpoint));
     futures::pin_mut!(stream);
 
     loop {
@@ -234,6 +236,10 @@ pub(crate) async fn monitor_job_progress(
                 if e.code() == tonic::Code::Cancelled
                     || e.code() == tonic::Code::DeadlineExceeded =>
             {
+                if let Some(ep) = endpoint.get() {
+                    ep.close().await;
+                }
+
                 return kill_job("execution timed out").await;
             }
             Err(e) => return Err(e.into()),
@@ -252,7 +258,13 @@ pub(crate) async fn monitor_job_progress(
 
                 handler(event);
             }
-            RunnerEvent::JobCompletion(ev) => return Ok(grpc::interpret_outcome(ev.outcome)?),
+            RunnerEvent::JobCompletion(ev) => {
+                if let Some(ep) = endpoint.get() {
+                    ep.close().await;
+                }
+
+                return Ok(grpc::interpret_outcome(ev.outcome)?);
+            }
             _ => handler(event),
         }
     }

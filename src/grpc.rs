@@ -2,9 +2,10 @@
 
 pub mod job;
 
-use std::time;
+use std::{sync::Arc, time};
 
-use futures::{Stream, StreamExt, TryStreamExt, stream};
+use bauplan_longbow::iroh;
+use futures::{Stream, TryStreamExt, stream};
 use rsa::{RsaPublicKey, pkcs8::DecodePublicKey as _};
 use tonic::{
     IntoRequest,
@@ -30,6 +31,7 @@ use crate::{
         SubscribeLogsRequest, cancel_job_response::CancelStatus, job_complete_event::Outcome,
         job_failure::ErrorCode, runner_event::Event as RunnerEvent,
     },
+    grpc::job::JobEventStream,
 };
 use generated::v2_commander_service_client::V2CommanderServiceClient;
 
@@ -111,19 +113,17 @@ impl Client {
     pub fn monitor_job(
         &mut self,
         req: impl IntoRequest<SubscribeLogsRequest>,
+        endpoint: Arc<tokio::sync::OnceCell<iroh::Endpoint>>,
     ) -> impl Stream<Item = Result<RunnerEvent, tonic::Status>> {
         let req = req.into_request();
         let mut client = self.clone();
+
         stream::once(async move {
             let stream = client.subscribe_logs(req).await?.into_inner();
+            let stream = JobEventStream::new(stream, endpoint);
             Ok::<_, tonic::Status>(stream)
         })
         .try_flatten()
-        .filter_map(async |ev| match ev {
-            // Unwrap the nested struct.
-            Ok(evt) => Some(Ok(evt.runner_event?.event?)),
-            Err(e) => Some(Err(e)),
-        })
     }
 }
 

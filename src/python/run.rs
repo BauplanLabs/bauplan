@@ -51,7 +51,7 @@ impl Client {
         req.set_timeout(timeout);
 
         let mut stream_client = grpc.clone();
-        let stream = stream_client.monitor_job(req);
+        let stream = stream_client.monitor_job(req, self.longbow_endpoint.clone());
         futures::pin_mut!(stream);
 
         loop {

@@ -700,6 +700,7 @@ dependencies = [
  "textwrap",
  "thiserror 2.0.18",
  "tokio",
+ "tokio-util",
  "toml",
  "tonic",
  "tonic-prost",
