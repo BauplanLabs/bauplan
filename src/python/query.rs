@@ -130,6 +130,7 @@ impl Client {
             .map_err(|_| query_err("timed out fetching query results"))??;
 
             let schema: Schema = schema.as_ref().clone();
+            let stream = flight::limit_rows(stream, max_rows);
             return Ok((schema, Either::Left(stream.map_err(query_err))));
         }
 
