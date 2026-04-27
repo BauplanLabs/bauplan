@@ -697,7 +697,7 @@ impl Client {
             _ => builder::select([builder::star()]),
         };
 
-        query = query.from_expr(builder::Expr(Expression::Table(table_expr)));
+        query = query.from_expr(builder::Expr(Expression::Table(Box::new(table_expr))));
 
         if let Some(f) = filters {
             let Some(expr) = parse_expr(f) else {
