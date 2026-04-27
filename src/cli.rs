@@ -208,6 +208,16 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
 
     // Allows error responses to be parsed.
     let mut cfg = ureq::config::Config::builder().http_status_as_error(false);
+    // Trust macOS Keychain CAs in dev builds so devs can use Keychain-managed
+    // certs (e.g. mkcert) without extra setup.
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    {
+        cfg = cfg.tls_config(
+            ureq::tls::TlsConfig::builder()
+                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                .build(),
+        );
+    }
     let timeout = match args.global.client_timeout {
         Some(-1) | None => None,
         Some(v) if v > 0 => Some(time::Duration::from_secs(v as _)),

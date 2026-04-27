@@ -202,9 +202,18 @@ impl Client {
             .map(time::Duration::from_secs)
             .unwrap_or(time::Duration::from_secs(30));
 
-        let cfg = ureq::config::Config::builder()
-            .http_status_as_error(false)
-            .timeout_global(Some(client_timeout));
+        let mut cfg = ureq::config::Config::builder().http_status_as_error(false);
+        // Trust macOS Keychain CAs in dev builds so devs can use Keychain-managed
+        // certs (e.g. mkcert) without extra setup.
+        #[cfg(all(debug_assertions, target_os = "macos"))]
+        {
+            cfg = cfg.tls_config(
+                ureq::tls::TlsConfig::builder()
+                    .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                    .build(),
+            );
+        }
+        cfg = cfg.timeout_global(Some(client_timeout));
         let agent = ureq::Agent::new_with_config(cfg.build());
 
         let grpc = {
