@@ -10,21 +10,11 @@ use tracing::debug;
 use crate::{ALPN, Error, StreamToken};
 
 struct ArrowStreamState {
-    conn: Connection,
     recv: RecvStream,
     decoder: StreamDecoder,
     remaining: Buffer,
     batch: Option<RecordBatch>,
     _endpoint: Endpoint,
-}
-
-impl Drop for ArrowStreamState {
-    fn drop(&mut self) {
-        // Iroh says to use Endpoint::close, which waits for the
-        // CONNECTION_CLOSE to reach the server. But we don't care, because
-        // we're the only ones receiving data, and the extra latency is stupid.
-        self.conn.close(0_u8.into(), b"done");
-    }
 }
 
 /// An attached user code task. Dropping closes the connection.
@@ -157,8 +147,9 @@ pub async fn fetch_query_results(
             Some(chunk) => {
                 remaining = Buffer::from(chunk.bytes);
                 if let Some(batch) = decoder.decode(&mut remaining)? {
+                    let schema = batch.schema();
                     first_batch = Some(batch);
-                    break decoder.schema().unwrap();
+                    break schema;
                 }
 
                 if let Some(schema) = decoder.schema() {
@@ -173,7 +164,6 @@ pub async fn fetch_query_results(
     };
 
     let state = ArrowStreamState {
-        conn,
         recv,
         decoder,
         remaining,

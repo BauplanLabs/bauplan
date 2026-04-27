@@ -127,7 +127,10 @@ impl ArrowIPCServer {
         let _ = self.send.finish();
         self.send.stopped().await.map_err(|_| Error::StreamClosed)?;
 
-        self.endpoint.close().await;
+        // We don't call _endpoint.close() here because we know we're done; we
+        // sent all the data and the client ack'd it all. We can just "unsafely"
+        // tear down the connection and the client will do the same.
+
         Ok(())
     }
 }
