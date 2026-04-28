@@ -41,7 +41,7 @@ use tabwriter::TabWriter;
   bauplan query --no-trunc \"SELECT * FROM wide_table\"
 "))]
 pub(crate) struct QueryArgs {
-    /// Sql
+    /// SQL query. Column and table names are case-sensitive
     pub sql: Option<String>,
     /// Ref or branch name to run query against [default: active branch]
     #[arg(short, long)]
