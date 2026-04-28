@@ -1508,7 +1508,7 @@ class Client:
         ```
 
         Parameters:
-            query: The Bauplan query to execute.
+            query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
             cache: Whether to enable or disable caching for the query.
@@ -1550,7 +1550,7 @@ class Client:
 
         Parameters:
             path: The name or path of the file csv to write the results to.
-            query: The Bauplan query to execute.
+            query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
             cache: Whether to enable or disable caching for the query.
@@ -1592,7 +1592,7 @@ class Client:
         ```
 
         Parameters:
-            query: The Bauplan query to execute.
+            query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
             cache: Whether to enable or disable caching for the query.
@@ -1636,7 +1636,7 @@ class Client:
 
         Parameters:
             path: The name or path of the file json to write the results to.
-            query: The Bauplan query to execute.
+            query: The Bauplan query to execute. Column and table names are case-sensitive.
             file_format: The format to write the results in; default: `json`. Allowed values are 'json' and 'jsonl'.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
@@ -1678,7 +1678,7 @@ class Client:
 
         Parameters:
             path: The name or path of the file parquet to write the results to.
-            query: The Bauplan query to execute.
+            query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
             cache: Whether to enable or disable caching for the query.
