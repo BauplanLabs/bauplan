@@ -13,7 +13,7 @@ use arrow::{
     util::display::{ArrayFormatter, FormatOptions},
 };
 use arrow_flight::error::{FlightError, Result as FlightResult};
-use bauplan::flight::fetch_flight_results;
+use bauplan::flight::{fetch_flight_results, limit_rows};
 use bauplan::grpc::{self, generated as commanderpb};
 use bauplan_longbow::BauplanPreset;
 use commanderpb::runner_event::Event as RunnerEvent;
@@ -56,8 +56,8 @@ pub(crate) struct QueryArgs {
     #[arg(long, default_value_t = OnOff::On)]
     pub cache: OnOff,
     /// Limit number of returned rows. (use --all-rows to disable this)
-    #[arg(long, default_value = "10")]
-    pub max_rows: Option<u64>,
+    #[arg(long, default_value_t = 10)]
+    pub max_rows: u64,
     /// Do not limit returned rows. Supersedes --max-rows
     #[arg(long)]
     pub all_rows: bool,
@@ -96,11 +96,8 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         _ => bail!("exactly one of either '--file' or inline SQL must be specified"),
     };
 
-    let row_limit = if let Some(n) = max_rows
-        && n > 0
-        && !all_rows
-    {
-        Some(n)
+    let row_limit = if max_rows > 0 && !all_rows {
+        Some(max_rows)
     } else {
         None
     };
@@ -196,6 +193,7 @@ async fn fetch_results(
         let schema: Schema = schema.as_ref().clone();
         let stream = stream
             .map(|r| r.map_err(|e| FlightError::Arrow(ArrowError::ExternalError(Box::new(e)))));
+        let stream = limit_rows(stream, row_limit);
         return Ok((schema, Either::Left(stream)));
     }
 

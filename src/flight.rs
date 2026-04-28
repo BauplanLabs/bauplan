@@ -1,12 +1,6 @@
 //! Support for fetching query results via Arrow Flight.
 
-use std::{
-    sync::{
-        Arc,
-        atomic::{AtomicI64, Ordering},
-    },
-    time,
-};
+use std::{pin::Pin, time};
 
 use arrow::{array::RecordBatch, datatypes::Schema};
 use arrow_flight::{
@@ -26,7 +20,10 @@ pub async fn fetch_flight_results(
     client_timeout: time::Duration,
     row_limit: Option<u64>,
     traceparent: Option<&str>,
-) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>> + use<>)> {
+) -> FlightResult<(
+    Schema,
+    impl Stream<Item = FlightResult<RecordBatch>> + use<>,
+)> {
     let channel = Channel::builder(endpoint)
         .tls_config(ClientTlsConfig::new().with_native_roots())
         .unwrap()
@@ -38,30 +35,7 @@ pub async fn fetch_flight_results(
     let (schema, batches) =
         fetch(channel.clone(), auth_token.clone(), criteria, traceparent).await?;
 
-    // We'll enforce the row limit on the client side. To do that, we allocate
-    // rows from the total to each RecordBatch, using an atomic int to track it.
-    let remaining = row_limit.map(|v| Arc::new(AtomicI64::new(v as _)));
-    let batches = batches
-        .map_ok(move |b| {
-            let Some(remaining) = remaining.as_ref() else {
-                return b;
-            };
-
-            let n = b.num_rows() as i64;
-
-            // Subtract our rows from the total. The return value is the
-            // value before the subtraction.
-            let r = remaining.fetch_sub(n, Ordering::SeqCst).max(0);
-
-            let limit = std::cmp::min(r, n) as usize;
-            b.slice(0, limit)
-        })
-        .try_take_while(|b| {
-            // Short circuit the stream if we run out. `try_take_while` has a
-            // slightly odd signature.
-            let take = b.num_rows() > 0;
-            futures::future::ready(Ok(take))
-        });
+    let batches = limit_rows(batches, row_limit);
 
     // After all batches are consumed, tell the flight server to shut down.
     //
@@ -83,7 +57,10 @@ async fn fetch(
     auth_token: String,
     serialized_criteria: String,
     traceparent: Option<&str>,
-) -> FlightResult<(Schema, impl Stream<Item = FlightResult<RecordBatch>> + use<>)> {
+) -> FlightResult<(
+    Schema,
+    impl Stream<Item = FlightResult<RecordBatch>> + use<>,
+)> {
     let mut client = FlightClient::new(channel.clone());
     client.add_header("authorization", &format!("Bearer {auth_token}"))?;
     if let Some(tp) = traceparent {
@@ -138,6 +115,30 @@ async fn fetch_batches(
     Ok(stream)
 }
 
+/// Truncates a stream of record batches to at most `row_limit` rows total.
+pub fn limit_rows<E>(
+    stream: impl Stream<Item = Result<RecordBatch, E>>,
+    row_limit: Option<u64>,
+) -> impl Stream<Item = Result<RecordBatch, E>> {
+    let remaining = row_limit.unwrap_or(u64::MAX);
+    stream::try_unfold(
+        (Pin::from(Box::new(stream)), remaining),
+        |(mut stream, remaining)| async move {
+            if remaining == 0 {
+                return Ok(None);
+            }
+
+            let Some(batch) = stream.try_next().await? else {
+                return Ok(None);
+            };
+
+            let limit = remaining.min(batch.num_rows() as u64);
+            let batch = batch.slice(0, limit as usize);
+            Ok(Some((batch, (stream, remaining - limit))))
+        },
+    )
+}
+
 async fn shutdown(channel: Channel, auth_token: String) -> FlightResult<()> {
     let mut client = FlightClient::new(channel);
     client.add_header("authorization", &format!("Bearer {auth_token}"))?;
@@ -147,4 +148,28 @@ async fn shutdown(channel: Channel, auth_token: String) -> FlightResult<()> {
         .await?;
     while stream.next().await.is_some() {}
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use arrow::datatypes::{DataType, Field};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_enforce_row_limit() -> anyhow::Result<()> {
+        let make_batch = |values: &[i32]| {
+            let array = arrow::array::Int32Array::from(values.to_vec());
+            let schema = Arc::new(Schema::new(vec![Field::new("x", DataType::Int32, false)]));
+            RecordBatch::try_new(schema, vec![Arc::new(array)]).unwrap()
+        };
+
+        let input = stream::iter(vec![make_batch(&[1, 2, 3]), make_batch(&[4, 5, 6])]).map(FlightResult::Ok);
+        let batches: Vec<RecordBatch> = limit_rows(input, Some(4)).try_collect().await?;
+
+        let row_counts: Vec<_> = batches.iter().map(|b| b.num_rows()).collect();
+        assert_eq!(row_counts, vec![3, 1]);
+        Ok(())
+    }
 }

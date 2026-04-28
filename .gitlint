@@ -22,7 +22,7 @@ regex=^[Ww]ip(.*)
 
 [contrib-title-conventional-commits]
 types = fix,feat,chore,docs,style,refactor,perf,test,revert,build
-scopes = pysdk,cli
+scopes = pysdk,cli,longbow
 
 [ignore-by-author-name]
 regex=(dependabot|github-actions)
