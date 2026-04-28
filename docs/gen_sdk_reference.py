@@ -424,6 +424,12 @@ def _member_sort_key(m: griffe.Object) -> tuple[int, str]:
     return (0 if m.name == 'Client' else 1, m.name)
 
 
+def _is_decorator_function(fn: griffe.Function) -> bool:
+    if fn.docstring is None:
+        return False
+    return fn.docstring.value.lstrip().startswith('Decorator')
+
+
 def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) -> list[str]:
     names = []
     for mod in _walk_module_tree(module):
@@ -441,21 +447,38 @@ def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) 
             if mod.docstring:
                 ParsedDocstring(mod.docstring, linker).write(f)
 
-            for member in sorted(mod.members.values(), key=_member_sort_key): # ty:ignore
+            classes: list[griffe.Class] = []
+            functions: list[griffe.Function] = []
+            decorators: list[griffe.Function] = []
+
+            for member in sorted(mod.members.values(), key=_member_sort_key):  # ty:ignore
                 if not member.is_public:
                     continue
 
                 match member.kind:
                     case griffe.Kind.CLASS:
-                        with wrap(f, 'PyModuleMember', member.name):
-                            process_class(f, toc, member, linker, page_slug=name)
+                        classes.append(member)
                     case griffe.Kind.FUNCTION:
-                        with wrap(f, 'PyModuleMember', member.name):
-                            process_function(f, toc, 2, member, linker, slug=function_slug(name, member.name))
+                        if _is_decorator_function(member):
+                            decorators.append(member)
+                        else:
+                            functions.append(member)
                     case griffe.Kind.MODULE:
                         pass  # handled by _walk_module_tree
                     case _:
                         print(f'WARNING: skipping {member.path}: {member.kind}')
+
+            for member in classes:
+                with wrap(f, 'PyModuleMember', member.name):
+                    process_class(f, toc, member, linker, page_slug=name)
+
+            for member in functions:
+                with wrap(f, 'PyModuleMember', member.name):
+                    process_function(f, toc, 2, member, linker, slug=function_slug(name, member.name))
+
+            for member in decorators:
+                with wrap(f, 'PyModuleMember', member.name):
+                    process_function(f, toc, 2, member, linker, slug=function_slug(name, member.name))
 
             toc_json = json.dumps(json.dumps(toc))
             f.write(f'export const toc = JSON.parse({toc_json});\n')
