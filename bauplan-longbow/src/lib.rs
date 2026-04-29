@@ -163,7 +163,7 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use anyhow::Context as _;
+    use anyhow::{Context as _, bail};
     use arrow::{
         array::{Int32Array, StringArray},
         datatypes::{DataType, Field, Schema},
@@ -240,6 +240,121 @@ mod tests {
         }
 
         server_task.await??;
+        Ok(())
+    }
+
+    #[cfg(all(feature = "server", feature = "client"))]
+    #[test_log::test(tokio::test)]
+    async fn attached_task() -> anyhow::Result<()> {
+        use iroh::EndpointAddr;
+        use tokio::io::AsyncReadExt;
+
+        let secret_key = iroh::SecretKey::generate(&mut rand::rng());
+        let public_key = secret_key.public();
+
+        let server_task = tokio::spawn(async move {
+            let (_endpoint, conn) = accept_connection(BauplanPreset::default(), secret_key).await?;
+
+            let (mut stdout_send, mut stderr_send) = {
+                let (tok_a, send_a) = accept_stream(&conn).await?;
+                let (tok_b, send_b) = accept_stream(&conn).await?;
+                match (tok_a, tok_b) {
+                    (StreamToken::UserCodeStdout, StreamToken::UserCodeStderr) => (send_a, send_b),
+                    (StreamToken::UserCodeStderr, StreamToken::UserCodeStdout) => (send_b, send_a),
+                    (a, b) => bail!("expected stdout and stderr streams, got {a:?} + {b:?}"),
+                }
+            };
+
+            stdout_send.write_all(b"hello from stdout").await?;
+            stdout_send.finish()?;
+            stdout_send.stopped().await?;
+
+            stderr_send.write_all(b"hello from stderr").await?;
+            stderr_send.finish()?;
+            stderr_send.stopped().await?;
+
+            Ok::<_, anyhow::Error>(())
+        });
+
+        let preset = BauplanPreset::default();
+        let server_addr = preset.add_relay_urls(EndpointAddr::new(public_key));
+
+        let mut task = attach_task(preset, server_addr)
+            .await
+            .context("attach_task failed")?;
+
+        let mut stdout = String::new();
+        task.stdout.read_to_string(&mut stdout).await?;
+        assert_eq!(stdout, "hello from stdout");
+
+        let mut stderr = String::new();
+        task.stderr.read_to_string(&mut stderr).await?;
+        assert_eq!(stderr, "hello from stderr");
+
+        server_task.await??;
+        Ok(())
+    }
+
+    #[cfg(all(feature = "server", feature = "client"))]
+    #[test_log::test(tokio::test)]
+    async fn attached_task_early_drop() -> anyhow::Result<()> {
+        use iroh::EndpointAddr;
+
+        let secret_key = iroh::SecretKey::generate(&mut rand::rng());
+        let public_key = secret_key.public();
+
+        let server_task = tokio::spawn(async move {
+            let (_endpoint, conn) =
+                accept_connection(BauplanPreset::default(), secret_key).await?;
+
+            let (mut stdout_send, mut stderr_send) = {
+                let (tok_a, send_a) = accept_stream(&conn).await?;
+                let (tok_b, send_b) = accept_stream(&conn).await?;
+                match (tok_a, tok_b) {
+                    (StreamToken::UserCodeStdout, StreamToken::UserCodeStderr) => (send_a, send_b),
+                    (StreamToken::UserCodeStderr, StreamToken::UserCodeStdout) => (send_b, send_a),
+                    (a, b) => bail!("expected stdout and stderr streams, got {a:?} + {b:?}"),
+                }
+            };
+
+            // Write a lot of data so the peer can't have received it all
+            // before dropping.
+            let chunk = b"x".repeat(1024 * 1024);
+            for _ in 0..64 {
+                if let Err(_) = stdout_send.write_all(&chunk).await {
+                    break;
+                }
+            }
+            let _ = stdout_send.finish();
+
+            for _ in 0..64 {
+                if let Err(_) = stderr_send.write_all(&chunk).await {
+                    break;
+                }
+            }
+            let _ = stderr_send.finish();
+
+            Ok::<_, anyhow::Error>(())
+        });
+
+        let preset = BauplanPreset::default();
+        let server_addr = preset.add_relay_urls(EndpointAddr::new(public_key));
+
+        let task = attach_task(preset, server_addr)
+            .await
+            .context("attach_task failed")?;
+
+        // Drop without reading anything.
+        drop(task);
+
+        // The server should not hang; writes should fail or complete.
+        tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            server_task,
+        )
+        .await
+        .context("server task did not finish within 120s")??;
+
         Ok(())
     }
 }

@@ -17,7 +17,7 @@ use crate::{Error, StreamToken};
 
 /// Binds an endpoint and waits for the first connection, then returns it. This
 /// will run forever and has no inherent timeout.
-async fn accept_connection(
+pub async fn accept_connection(
     preset: impl Preset,
     secret_key: SecretKey,
 ) -> Result<(Endpoint, Connection<IncomingZeroRtt>), Error> {
@@ -44,7 +44,7 @@ async fn accept_connection(
 
 /// Accept the next bidirectional stream on a connection, reading the
 /// one-byte [`StreamToken`] the client sends to identify the stream type.
-async fn accept_stream<C: ConnectionState>(
+pub async fn accept_stream<C: ConnectionState>(
     conn: &Connection<C>,
 ) -> Result<(StreamToken, SendStream), Error> {
     let (send, mut recv) = conn.accept_bi().await?;
@@ -127,7 +127,10 @@ impl ArrowIPCServer {
         let _ = self.send.finish();
         self.send.stopped().await.map_err(|_| Error::StreamClosed)?;
 
-        self.endpoint.close().await;
+        // We don't call _endpoint.close() here because we know we're done; we
+        // sent all the data and the client ack'd it all. We can just "unsafely"
+        // tear down the connection and the client will do the same.
+
         Ok(())
     }
 }

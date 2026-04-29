@@ -2,7 +2,7 @@ use arrow::{array::RecordBatch, buffer::Buffer, datatypes::SchemaRef, ipc::reade
 use futures::stream::{self, Stream};
 use iroh::{
     Endpoint, EndpointAddr,
-    endpoint::{ConnectError, Connection, RecvStream, presets::Preset},
+    endpoint::{ConnectError, Connection, ConnectionState, RecvStream, presets::Preset},
 };
 use n0_error::StdResultExt;
 use tracing::debug;
@@ -10,7 +10,6 @@ use tracing::debug;
 use crate::{ALPN, Error, StreamToken};
 
 struct ArrowStreamState {
-    conn: Connection,
     recv: RecvStream,
     decoder: StreamDecoder,
     remaining: Buffer,
@@ -18,27 +17,20 @@ struct ArrowStreamState {
     _endpoint: Endpoint,
 }
 
-impl Drop for ArrowStreamState {
-    fn drop(&mut self) {
-        // Iroh says to use Endpoint::close, which waits for the
-        // CONNECTION_CLOSE to reach the server. But we don't care, because
-        // we're the only ones receiving data, and the extra latency is stupid.
-        self.conn.close(0_u8.into(), b"done");
-    }
+/// An attached user code task. Dropping closes the connection.
+#[derive(Debug)]
+pub struct AttachedTask {
+    /// Stdout from the task.
+    pub stdout: RecvStream,
+    /// Stderr from the task.
+    pub stderr: RecvStream,
+    _endpoint: Endpoint,
 }
 
-/// Connect, sending the desired stream token with the initial handshake
-/// data to shave latency in some scenarios.
+/// Connect to an endpoint with the intention to stream user code stdout/stderr.
 ///
-/// If this optimization was successful, the opened stream is returned along
-/// with the connection. Otherwise, it should be opened manually.
-async fn connect(
-    preset: impl Preset,
-    server: EndpointAddr,
-    initial_token: StreamToken,
-) -> Result<(Connection, Endpoint, Option<RecvStream>), Error> {
-    // TODO: we should maybe disable ipv6 proactively, since our servers don't
-    // support it and it can cause extra startup latency. :(
+/// Returns a stream for stdout and stderr, respectively.
+pub async fn attach_task(preset: impl Preset, server: EndpointAddr) -> Result<AttachedTask, Error> {
     let endpoint = Endpoint::builder(preset).bind().await?;
 
     let connecting = endpoint
@@ -50,33 +42,48 @@ async fn connect(
     // sessions and therefore 0rtt will never work. We could fix this by
     // providing our own (filesystem-based) cache, but iroh doesn't expose that
     // as an option (yet).
-    let (conn, recv) = match connecting.into_0rtt() {
+    let conn = match connecting.into_0rtt() {
         Ok(outgoing) => {
-            let (mut send, recv) = outgoing.open_bi().await?;
-            send.write_all(initial_token.as_bytes()).await.anyerr()?;
-            send.finish().map_err(|_| Error::StreamClosed)?;
+            let stdout_fut = open_stream(&outgoing, StreamToken::UserCodeStdout);
+            let stderr_fut = open_stream(&outgoing, StreamToken::UserCodeStderr);
+            let (stdout_recv, stderr_recv) =
+                futures::future::try_join(stdout_fut, stderr_fut).await?;
 
             match outgoing
                 .handshake_completed()
                 .await
                 .map_err(ConnectError::from)?
             {
-                iroh::endpoint::ZeroRttStatus::Accepted(conn) => (conn, Some(recv)),
+                iroh::endpoint::ZeroRttStatus::Accepted(_conn) => {
+                    return Ok(AttachedTask {
+                        stdout: stdout_recv,
+                        stderr: stderr_recv,
+                        _endpoint: endpoint,
+                    });
+                }
                 iroh::endpoint::ZeroRttStatus::Rejected(conn) => {
-                    // The stream doesn't exist from the perspective of
+                    // The streams don't exist from the perspective of
                     // the server.
                     debug!("0rtt rejected");
-                    (conn, None)
+                    conn
                 }
             }
         }
         Err(conn) => {
             debug!("0rtt not possible");
-            (conn.await.map_err(ConnectError::from)?, None)
+            conn.await.map_err(ConnectError::from)?
         }
     };
 
-    Ok((conn, endpoint, recv))
+    let stdout_fut = open_stream(&conn, StreamToken::UserCodeStdout);
+    let stderr_fut = open_stream(&conn, StreamToken::UserCodeStderr);
+    let (stdout_recv, stderr_recv) = futures::future::try_join(stdout_fut, stderr_fut).await?;
+
+    Ok(AttachedTask {
+        stdout: stdout_recv,
+        stderr: stderr_recv,
+        _endpoint: endpoint,
+    })
 }
 
 /// Connect to an endpoint with the intention to download query results.
@@ -92,16 +99,42 @@ pub async fn fetch_query_results(
     ),
     Error,
 > {
-    let (conn, endpoint, recv) = connect(preset, server, StreamToken::QueryResults).await?;
+    let endpoint = Endpoint::builder(preset).bind().await?;
+
+    let connecting = endpoint
+        .connect_with_opts(server, ALPN, Default::default())
+        .await
+        .map_err(ConnectError::from)?;
+
+    // TODO: since the client is always ephemeral, we have no way to cache
+    // sessions and therefore 0rtt will never work. We could fix this by
+    // providing our own (filesystem-based) cache, but iroh doesn't expose that
+    // as an option (yet).
+    let (conn, recv) = match connecting.into_0rtt() {
+        Ok(outgoing) => {
+            let recv = open_stream(&outgoing, StreamToken::QueryResults).await?;
+
+            match outgoing
+                .handshake_completed()
+                .await
+                .map_err(ConnectError::from)?
+            {
+                iroh::endpoint::ZeroRttStatus::Accepted(conn) => (conn, Some(recv)),
+                iroh::endpoint::ZeroRttStatus::Rejected(conn) => {
+                    debug!("0rtt rejected");
+                    (conn, None)
+                }
+            }
+        }
+        Err(conn) => {
+            debug!("0rtt not possible");
+            (conn.await.map_err(ConnectError::from)?, None)
+        }
+    };
 
     let mut recv = match recv {
         Some(r) => r,
-        None => {
-            let (mut send, recv) = conn.open_bi().await?;
-            send.write_all(StreamToken::QueryResults.as_bytes()).await?;
-            send.finish().map_err(|_| Error::StreamClosed)?;
-            recv
-        }
+        None => open_stream(&conn, StreamToken::QueryResults).await?,
     };
 
     // Read the schema first.
@@ -114,8 +147,9 @@ pub async fn fetch_query_results(
             Some(chunk) => {
                 remaining = Buffer::from(chunk.bytes);
                 if let Some(batch) = decoder.decode(&mut remaining)? {
+                    let schema = batch.schema();
                     first_batch = Some(batch);
-                    break decoder.schema().unwrap();
+                    break schema;
                 }
 
                 if let Some(schema) = decoder.schema() {
@@ -130,7 +164,6 @@ pub async fn fetch_query_results(
     };
 
     let state = ArrowStreamState {
-        conn,
         recv,
         decoder,
         remaining,
@@ -161,4 +194,14 @@ pub async fn fetch_query_results(
     }));
 
     Ok((schema, stream))
+}
+
+async fn open_stream(
+    conn: &Connection<impl ConnectionState>,
+    token: StreamToken,
+) -> Result<RecvStream, Error> {
+    let (mut send, recv) = conn.open_bi().await?;
+    send.write_all(token.as_bytes()).await.anyerr()?;
+    send.finish().map_err(|_| Error::StreamClosed)?;
+    Ok(recv)
 }
