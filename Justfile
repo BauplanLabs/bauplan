@@ -25,3 +25,14 @@ lint:
 test: lint
     cargo test --features _integration-tests -- --test-threads=4
     uv run pytest -v
+
+# Build an ARM Linux wheel and unpack it into dist/site-packages/ for mounting
+# into a Docker container. Usage:
+#   just wheel
+#   docker run -v $(pwd)/dist/site-packages/bauplan:/usr/local/lib/python3.13/site-packages/bauplan ...
+wheel:
+    rm -rf dist
+    BPLN_ENABLE_TYPE_CONTRACT=1 mise x -- maturin build --release --target aarch64-unknown-linux-gnu --zig -i python3.13 --out dist
+    mkdir -p dist/site-packages
+    unzip -o dist/bauplan-*.whl -d dist/site-packages
+    rm -rf dist/site-packages/bauplan-*.data
