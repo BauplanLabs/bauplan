@@ -198,11 +198,7 @@ impl ApiRequest for GetTable<'_> {
     type Response = Table;
 
     fn path(&self) -> PathArgs {
-        urlformat!(
-            "/catalog/v0/refs/{}/tables/{}",
-            self.at_ref,
-            self.name,
-        )
+        urlformat!("/catalog/v0/refs/{}/tables/{}", self.at_ref, self.name,)
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -288,11 +284,7 @@ impl ApiRequest for DeleteTable<'_> {
     }
 
     fn path(&self) -> PathArgs {
-        urlformat!(
-            "/catalog/v0/branches/{}/tables/{}",
-            self.branch,
-            self.name,
-        )
+        urlformat!("/catalog/v0/branches/{}/tables/{}", self.branch, self.name,)
     }
 
     fn query(&self) -> Option<impl Serialize> {

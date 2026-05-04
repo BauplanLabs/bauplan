@@ -42,11 +42,7 @@ impl ApiRequest for GetNamespace<'_> {
     type Response = Namespace;
 
     fn path(&self) -> PathArgs {
-        urlformat!(
-            "/catalog/v0/refs/{}/namespaces/{}",
-            self.at_ref,
-            self.name,
-        )
+        urlformat!("/catalog/v0/refs/{}/namespaces/{}", self.at_ref, self.name,)
     }
 }
 

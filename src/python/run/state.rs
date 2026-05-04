@@ -71,7 +71,12 @@ impl fmt::Debug for RunExecutionContext {
 /// The state of a completed (or failed) run, including logs, timing, and
 /// per-task lifecycle events.
 #[derive(Debug, Clone)]
-#[pyclass(name = "RunState", module = "bauplan.state", skip_from_py_object, get_all)]
+#[pyclass(
+    name = "RunState",
+    module = "bauplan.state",
+    skip_from_py_object,
+    get_all
+)]
 pub(crate) struct RunState {
     /// The job ID assigned by the server.
     pub job_id: Option<String>,

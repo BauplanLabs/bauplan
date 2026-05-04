@@ -162,7 +162,13 @@ impl Client {
         *,
         if_not_exists: "bool" = false,
     ) -> "Tag")]
-    fn create_tag(&self, py: Python<'_>, tag: TagArg, from_ref: RefArg, if_not_exists: bool) -> PyResult<Tag> {
+    fn create_tag(
+        &self,
+        py: Python<'_>,
+        tag: TagArg,
+        from_ref: RefArg,
+        if_not_exists: bool,
+    ) -> PyResult<Tag> {
         let req = CreateTag {
             name: &tag.0,
             from_ref: &from_ref.0,
