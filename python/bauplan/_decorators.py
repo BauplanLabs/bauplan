@@ -7,7 +7,26 @@ Python environments, with examples of how to use them.
 """
 
 import functools
-from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Union,
+)
+
+from bauplan._internal import __bpln_feature_typecontracts__
+
+if __bpln_feature_typecontracts__:
+    # Experimental: support for model task proxies
+    from bauplan._contracts import ModelTask
+else:
+    # A sentinel to satisfy type checker
+    ModelTask = None
+
 
 ModelMaterializationStrategy = Literal[
     "NONE", "REPLACE", "APPEND", "OVERWRITE_PARTITIONS"
@@ -68,6 +87,15 @@ def model(
         def wrapper(*args, **kwargs) -> Any:
             return f(*args, **kwargs)
 
+        # If type contracts are enabled, return a ModelTask instance
+        if __bpln_feature_typecontracts__ and ModelTask:
+            return ModelTask(
+                task_name=f.__name__,
+                task_fn=wrapper,
+                result_schema=f.__annotations__.get("return"),
+            )
+
+        # Otherwise, return the wrapper directly
         return wrapper
 
     return decorator
