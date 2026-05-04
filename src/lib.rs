@@ -95,7 +95,7 @@ pub mod grpc;
 pub mod project;
 
 pub use api::*;
-pub use config::Profile;
+pub use config::{Profile, type_contracts_enabled};
 pub use refs::*;
 
 #[cfg(feature = "python")]
