@@ -27,8 +27,40 @@ pub fn bauplan() -> assert_cmd::Command {
     cmd
 }
 
-pub fn username() -> String {
-    std::env::var("BPLN_USERNAME").unwrap_or_else(|_| "bauplan-e2e-check".to_string())
+#[cfg(feature = "_interactive")]
+fn profile_username() -> String {
+    use std::time::Duration;
+
+    let profile = bauplan::Profile::from_default_env()
+        .expect("Failed to load profile. Did you set BAUPLAN_PROFILE?");
+    let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+    rt.block_on(async {
+        let mut client = bauplan::grpc::Client::new_lazy(&profile, Duration::from_secs(30))
+            .expect("Failed to create gRPC client");
+        let resp = client
+            .get_bauplan_info(bauplan::grpc::generated::GetBauplanInfoRequest::default())
+            .await
+            .expect("Failed to get bauplan info");
+        resp.into_inner()
+            .user_info
+            .expect("No user info in response")
+            .username
+    })
+}
+
+pub fn username() -> &'static str {
+    use std::sync::OnceLock;
+    static USERNAME: OnceLock<String> = OnceLock::new();
+    USERNAME.get_or_init(|| {
+        #[cfg(feature = "_interactive")]
+        {
+            profile_username()
+        }
+        #[cfg(not(feature = "_interactive"))]
+        {
+            std::env::var("BPLN_USERNAME").unwrap_or_else(|_| "bauplan-e2e-check".to_string())
+        }
+    })
 }
 
 pub fn test_branch(suffix: &str) -> TestBranch {

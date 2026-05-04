@@ -478,7 +478,7 @@ mod test {
 
     #[test]
     fn create_branch_invalid_ref() -> anyhow::Result<()> {
-        let branch_name = format!("colinmarc.{}", test_name("test_invalid_ref"));
+        let branch_name = format!("{}.{}", test_username(), test_name("test_invalid_ref"));
         let req = CreateBranch {
             name: &branch_name,
             from_ref: "not a valid ref!!!",

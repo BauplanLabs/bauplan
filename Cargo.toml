@@ -56,6 +56,7 @@ path = "src/gen_cli_docs.rs"
 default = []
 python = ["dep:arrow-csv", "dep:parquet", "dep:pyo3", "dep:pyo3-arrow", "dep:pyo3-log", "dep:log", "pyo3/chrono", "pyo3/uuid"]
 _integration-tests = []
+_interactive = []
 _check-parse = []
 
 [dependencies]
