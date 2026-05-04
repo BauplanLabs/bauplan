@@ -308,6 +308,13 @@ fn typed_parameters_feature_flag() {
 
 #[test]
 fn parameters_project() {
+    if std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
+        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
+        .unwrap_or(false)
+    {
+        println!("Test disabled!");
+        return; // old Parameter syntax is disabled when type contracts are enabled
+    }
     bauplan()
         .args([
             "run",
@@ -339,6 +346,12 @@ fn parameters_project() {
 
 #[test]
 fn parameters_project_default_values() {
+    if std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
+        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
+        .unwrap_or(false)
+    {
+        return; // old Parameter syntax is disabled when type contracts are enabled
+    }
     bauplan()
         .args([
             "run",
