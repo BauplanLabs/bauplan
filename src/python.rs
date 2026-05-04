@@ -291,6 +291,12 @@ mod _internal {
             .ok();
 
         m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+        m.add(
+            "__bpln_feature_typecontracts__",
+            std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
+                .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
+                .unwrap_or(false),
+        )?;
 
         let sys = m.py().import("sys")?;
         let modules = sys.getattr("modules")?;
