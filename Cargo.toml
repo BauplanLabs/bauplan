@@ -107,13 +107,10 @@ tonic-prost = "0.14"
 tracing = { workspace = true, features = ["log"] }
 tracing-indicatif = "0.3"
 tracing-subscriber = { version = "0.3", features = ["chrono", "env-filter"] }
-ureq = "3"
+ureq = { version = "3", features = ["platform-verifier"] }
 url.workspace = true
 uuid = { version = "1", features = ["serde", "v4"] }
 zip = { version = "4", default-features = false, features = ["deflate"] }
-
-[target.'cfg(target_os = "macos")'.dependencies]
-ureq = { version = "3", features = ["platform-verifier"] }
 
 [build-dependencies]
 anyhow = "1"
