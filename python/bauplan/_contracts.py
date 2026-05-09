@@ -8,17 +8,25 @@ the artifact store. In contrast, Parameter registry supports value-based syntax 
 `Parameter.param_name` to represent the value of the bauplan project parameter "param_name".
 """
 
+from __future__ import annotations
+
+import sys
 import functools
-from typing import Any, Callable, LiteralString, Optional, TypeVar, Generic
+from typing import Any, Callable, Optional, TypeVar, Generic
+
+if sys.version_info >= (3, 11):
+    from typing import LiteralString
+else:
+    from typing_extensions import LiteralString
 
 from bauplan._internal import __bpln_feature_typecontracts__
 
 
 if __bpln_feature_typecontracts__:
-
     # Experimental: "registry" structures for Generic types
 
-    EntryNameType = TypeVar(name='EntryNameType', bound=LiteralString)
+    EntryNameType = TypeVar(name="EntryNameType", bound=LiteralString)
+
     class GenericTypeEntry(Generic[EntryNameType]):
         """
         A base generic type for entries in a Type Registry. This supports syntax like
@@ -33,33 +41,35 @@ if __bpln_feature_typecontracts__:
 
         ...
 
-
     class TypeRegistryMeta(type):
         """
         A metaclass for a registry to support subscript syntax like `Registry['entry']` for use in type
         annotations.
         """
 
-        def __init__(cls, name, bases, namespace):
+        def __init__(
+            cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any]
+        ):
             super().__init__(name, bases, namespace)
 
             cls._type_entries: dict[str, Any] = {}
 
-        def __getitem__(cls, schema: type | str) -> SchemaEntry:
-            schema_typename = ''
+        def __getitem__(cls, schema: type | str) -> Optional[SchemaEntry]:
+            schema_typename = ""
             if isinstance(schema, str):
                 schema_typename = schema
             elif isinstance(schema, type):
                 schema_typename = str(schema)
 
             if not schema_typename:
-                raise TypeError(f'`{cls.__name__}` annotation must be a schema type or name')
+                raise TypeError(
+                    f"`{cls.__name__}` annotation must be a schema type or name"
+                )
 
             return cls._type_entries.get(schema_typename)
 
         def register(cls, name: str):
             cls._type_entries[name] = f'SchemaEntry["{name}"]'
-
 
     class ValRegistryMeta(type):
         """
@@ -67,7 +77,9 @@ if __bpln_feature_typecontracts__:
         attribute syntax like `Registry.entry`.
         """
 
-        def __init__(cls, name, bases, namespace):
+        def __init__(
+            cls, name: str, bases: tuple[type, ...], namespace: dict[str, Any]
+        ):
             super().__init__(name, bases, namespace)
 
             cls._val_entries: dict[str, Any] = {}
@@ -81,7 +93,6 @@ if __bpln_feature_typecontracts__:
 
         def register(cls, name: str, entry_val: Optional[Any] = None):
             cls._val_entries[name] = entry_val
-
 
     # Experimental: return types for model tasks
     class Artifact(metaclass=TypeRegistryMeta):
@@ -100,24 +111,23 @@ if __bpln_feature_typecontracts__:
 
         ...
 
-
     # Experimental: base types for defining table schemas
     class TableSchemaMeta(type):
-
-        def __new__(metacls, name: str, bases: tuple[type, ...], namespace: dict[str, Any]):
+        def __new__(
+            metacls, name: str, bases: tuple[type, ...], namespace: dict[str, Any]
+        ):
             new_schema_cls = super().__new__(metacls, name, bases, namespace)
 
             return new_schema_cls
 
-
-        def __init__(self, name: str, bases: tuple[type, ...], namespace: dict[str, Any]):
+        def __init__(
+            self, name: str, bases: tuple[type, ...], namespace: dict[str, Any]
+        ):
             super().__init__(name, bases, namespace)
 
     class TableSchema(metaclass=TableSchemaMeta):
-
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
-
 
     # Experimental: proxy types for model tasks
     class ModelTask:
@@ -148,6 +158,7 @@ if __bpln_feature_typecontracts__:
 
 else:
     import warnings
+
     warnings.warn(
         'bauplan._contracts: type contract feature '
         'is not enabled, classes are unavailable',

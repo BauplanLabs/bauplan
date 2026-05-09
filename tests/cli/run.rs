@@ -290,8 +290,8 @@ fn typed_parameters_idempotent() {
 
 #[test]
 fn typed_parameters_feature_flag() {
-    // Without monkey-patching, the old Parameter('name') syntax is blocked when
-    // BPLN_ENABLE_TYPE_CONTRACT is set at compile time, and allowed otherwise.
+    // The old Parameter('name') syntax works in both modes. When type contracts
+    // are enabled, a deprecation warning is emitted but the run still succeeds.
     let assertion = bauplan()
         .args([
             "run",
@@ -303,27 +303,11 @@ fn typed_parameters_feature_flag() {
         ])
         .assert();
 
-    if std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false)
-    {
-        assertion
-            .failure()
-            .stderr(contains("TypeContract feature disables"));
-    } else {
-        assertion.success().stderr(contains("golden_ratio=1.666"));
-    }
+    assertion.success().stderr(contains("golden_ratio=1.666"));
 }
 
 #[test]
 fn parameters_project() {
-    if std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false)
-    {
-        println!("Test disabled!");
-        return; // old Parameter syntax is disabled when type contracts are enabled
-    }
     bauplan()
         .args([
             "run",
@@ -355,12 +339,6 @@ fn parameters_project() {
 
 #[test]
 fn parameters_project_default_values() {
-    if std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false)
-    {
-        return; // old Parameter syntax is disabled when type contracts are enabled
-    }
     bauplan()
         .args([
             "run",

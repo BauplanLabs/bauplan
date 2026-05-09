@@ -1,7 +1,9 @@
 # Force the type-contracts feature on regardless of the compile-time flag,
 # so that this fixture can be used as an idempotent test.
-import bauplan._parameters
-bauplan._parameters.__bpln_feature_typecontracts__ = True
+# Must be set before bauplan._internal is imported.
+import os
+
+os.environ['BPLN_ENABLE_TYPE_CONTRACT'] = 'True'
 
 import bauplan
 import pyarrow as pa
@@ -24,7 +26,7 @@ def typed_params_model(
         ],
         filter='PULocationID = $location_id',
     ),
-    golden_ratio = Parameter.golden_ratio,  # noqa: B008, ANN001
+    golden_ratio=Parameter.golden_ratio,  # noqa: B008, ANN001
     use_random_forest=Parameter.use_random_forest,  # noqa: B008, ANN001
     start_datetime=Parameter.start_datetime,  # noqa: B008, ANN001
     end_datetime=Parameter.end_datetime,  # noqa: B008, ANN001

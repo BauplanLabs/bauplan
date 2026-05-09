@@ -8,21 +8,25 @@ if __bpln_feature_typecontracts__:
     from bauplan._contracts import ValRegistryMeta
 
 
-module_logger = logging.getLogger('bauplan')
+module_logger = logging.getLogger("bauplan")
 
 
 if __bpln_feature_typecontracts__:
-    class ParameterBaseType(metaclass=ValRegistryMeta): # type: ignore[reportRedeclaration]
+
+    class ParameterBaseType(metaclass=ValRegistryMeta):  # type: ignore[reportRedeclaration]
         """A base type for Parameter if type contracts are enabled."""
+
         ...
 
 else:
-    class ParameterBaseType():
+
+    class ParameterBaseType:
         """A base type for Parameter if type contracts are disabled."""
+
         ...
 
 
-class Parameter(ParameterBaseType): # type: ignore[reportGeneralTypeIssues]
+class Parameter(ParameterBaseType):  # type: ignore[reportGeneralTypeIssues]
     """
     Represents a parameter that can be used to "template" values
     passed to a model during a run or query with, e.g.,
@@ -66,7 +70,9 @@ class Parameter(ParameterBaseType): # type: ignore[reportGeneralTypeIssues]
 
     def __init__(self, param_name: str) -> None:
         if __bpln_feature_typecontracts__:
-            module_logger.warning(f'Using deprecated syntax: `Parameter("{param_name}")`')
+            module_logger.warning(
+                f'Using deprecated syntax: `Parameter("{param_name}")`'
+            )
 
         Parameter._requested.add(param_name)
 

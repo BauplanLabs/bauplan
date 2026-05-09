@@ -7,6 +7,7 @@ Python environments, with examples of how to use them.
 """
 
 import functools
+import types
 from typing import (
     Any,
     Callable,
@@ -82,7 +83,7 @@ def model(
         overwrite_filter: the overwrite filter expression.
     """
 
-    def decorator(f: Callable) -> Callable:
+    def decorator(f: types.FunctionType) -> Callable:
         @functools.wraps(f)
         def wrapper(*args, **kwargs) -> Any:
             return f(*args, **kwargs)
