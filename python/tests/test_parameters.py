@@ -8,15 +8,15 @@ from bauplan._parameters import Parameter
 
 @pytest.mark.skipif(
     not __bpln_feature_typecontracts__,
-    reason='requires BPLN_ENABLE_TYPE_CONTRACT',
+    reason="requires BPLN_ENABLE_TYPE_CONTRACT",
 )
 class TestTypedParameterValueEntry:
     def test_unregistered_defaults_to_none(self) -> None:
         assert Parameter.interest_rate is None
 
     def test_registered_defaults_to_entry_value(self) -> None:
-        Parameter.register('golden_ratio', 1.618)
-        Parameter.register('max_iterations', 100)
+        Parameter.register("golden_ratio", 1.618)
+        Parameter.register("max_iterations", 100)
 
         def my_model(
             golden_ratio: Any = Parameter.golden_ratio,
@@ -27,7 +27,7 @@ class TestTypedParameterValueEntry:
         assert my_model() == (1.618, 100)
 
     def test_kwarg_overrides_default(self) -> None:
-        Parameter.register('interest_rate', 5.5)
+        Parameter.register("interest_rate", 5.5)
 
         def my_model(
             interest_rate: Any = Parameter.interest_rate,

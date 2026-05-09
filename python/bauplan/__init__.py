@@ -59,3 +59,14 @@ __all__ = [
     "resources",
     "synthetic_model",
 ]
+
+if __bpln_feature_typecontracts__:
+    from bauplan._contracts import Artifact, Catalog, ModelTask
+
+    __all__.extend(
+        [
+            "Artifact",
+            "Catalog",
+            "ModelTask",
+        ]
+    )

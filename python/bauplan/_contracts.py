@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 import functools
+import pyarrow
 from typing import Any, Callable, Optional, TypeVar, Generic
 
 if sys.version_info >= (3, 11):
@@ -30,8 +31,8 @@ if __bpln_feature_typecontracts__:
     class GenericTypeEntry(Generic[EntryNameType]):
         """
         A base generic type for entries in a Type Registry. This supports syntax like
-        `Registry['entry_name']` to specify that an object's type corresponds to the entry,
-        'entry_name', in the registry 'Registry'.
+        `Registry["entry_name"]` to specify that an object"s type corresponds to the entry,
+        "entry_name", in the registry "Registry".
         """
 
         ...
@@ -43,7 +44,7 @@ if __bpln_feature_typecontracts__:
 
     class TypeRegistryMeta(type):
         """
-        A metaclass for a registry to support subscript syntax like `Registry['entry']` for use in type
+        A metaclass for a registry to support subscript syntax like `Registry["entry"]` for use in type
         annotations.
         """
 
@@ -69,11 +70,11 @@ if __bpln_feature_typecontracts__:
             return cls._type_entries.get(schema_typename)
 
         def register(cls, name: str):
-            cls._type_entries[name] = f'SchemaEntry["{name}"]'
+            cls._type_entries[name] = f"SchemaEntry['{name}']"
 
     class ValRegistryMeta(type):
         """
-        A metaclass for a registry to support subscript syntax like `Registry['entry']` and
+        A metaclass for a registry to support subscript syntax like `Registry["entry"]` and
         attribute syntax like `Registry.entry`.
         """
 
@@ -95,17 +96,17 @@ if __bpln_feature_typecontracts__:
             cls._val_entries[name] = entry_val
 
     # Experimental: return types for model tasks
-    class Artifact(metaclass=TypeRegistryMeta):
+    class Artifact(pyarrow.Table, metaclass=TypeRegistryMeta):
         """
-        A registry for artifact schemas. Supports subscript syntax `Artifact['name']`
+        A registry for artifact schemas. Supports subscript syntax `Artifact["name"]`
         to reference a schema entry by name.
         """
 
         ...
 
-    class Catalog(metaclass=TypeRegistryMeta):
+    class Catalog(pyarrow.Table, metaclass=TypeRegistryMeta):
         """
-        A registry for catalog schemas. Supports subscript syntax `Catalog['name']`
+        A registry for catalog schemas. Supports subscript syntax `Catalog["name"]`
         to reference a schema entry by name.
         """
 
@@ -160,7 +161,7 @@ else:
     import warnings
 
     warnings.warn(
-        'bauplan._contracts: type contract feature '
-        'is not enabled, classes are unavailable',
+        "bauplan._contracts: type contract feature "
+        "is not enabled, classes are unavailable",
         stacklevel=2,
     )
