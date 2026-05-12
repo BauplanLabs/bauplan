@@ -27,8 +27,20 @@ pub fn bauplan() -> assert_cmd::Command {
     cmd
 }
 
-pub fn username() -> String {
-    std::env::var("BPLN_USERNAME").unwrap_or_else(|_| "bauplan-e2e-check".to_string())
+pub fn username() -> &'static str {
+    static USERNAME: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    USERNAME.get_or_init(|| {
+        let profile = bauplan::Profile::from_default_env()
+            .expect("Failed to load test profile. Did you forget to set BAUPLAN_PROFILE?");
+
+        let rt = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
+        rt.block_on(async {
+            let mut client =
+                bauplan::grpc::Client::new_lazy(&profile, std::time::Duration::from_secs(30))
+                    .expect("Failed to create gRPC client");
+            client.username().await.expect("Failed to get username")
+        })
+    })
 }
 
 pub fn test_branch(suffix: &str) -> TestBranch {
