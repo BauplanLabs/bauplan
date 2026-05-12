@@ -81,6 +81,20 @@ impl Client {
         }
     }
 
+    /// Returns the username associated with the current API key.
+    pub async fn username(&mut self) -> Result<String, tonic::Status> {
+        let resp = self
+            .get_bauplan_info(GetBauplanInfoRequest::default())
+            .await?
+            .into_inner();
+
+        let Some(user_info) = resp.user_info else {
+            return Err(tonic::Status::not_found("no user info in response"))
+        };
+
+        Ok(user_info.username)
+    }
+
     /// Fetches the organization-wide default public key, along with the key name
     /// (usually the ARN).
     pub async fn org_default_public_key(
