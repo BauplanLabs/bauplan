@@ -285,11 +285,3 @@ fn read_profile(p: &Path, name: &str) -> Result<ConfigProfile, Error> {
 fn make_ua(product: Option<&str>) -> String {
     format!("{}/{}", product.unwrap_or("default"), env!("BPLN_VERSION"))
 }
-
-/// Returns `true` if the `BPLN_ENABLE_TYPE_CONTRACT` environment variable is
-/// set to a truthy value (`"true"` case-insensitive, or `"1"`).
-pub fn type_contracts_enabled() -> bool {
-    env::var("BPLN_ENABLE_TYPE_CONTRACT")
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false)
-}

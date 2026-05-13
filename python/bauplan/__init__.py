@@ -1,7 +1,4 @@
-from bauplan._internal import (
-    __version__,
-    __bpln_feature_typecontracts__,
-)
+from bauplan._internal import __version__
 
 # Re-export everything from the extension module.
 from bauplan._internal import (
@@ -59,14 +56,3 @@ __all__ = [
     "resources",
     "synthetic_model",
 ]
-
-if __bpln_feature_typecontracts__:
-    from bauplan._contracts import Artifact, Catalog, ModelTask
-
-    __all__.extend(
-        [
-            "Artifact",
-            "Catalog",
-            "ModelTask",
-        ]
-    )

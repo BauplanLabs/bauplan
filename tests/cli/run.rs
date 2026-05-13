@@ -259,55 +259,6 @@ fn multiparent() {
 //         .stdout(contains("s3write parallel_child_1"));
 // }
 
-// This test will fail until the server is able to install an SDK with the new feature flag.
-#[test]
-#[ignore]
-fn typed_parameters_idempotent() {
-    // The fixture monkey-patches __bpln_feature_typecontracts__ to True, so this
-    // test exercises the typed-parameter code path regardless of the compile-time flag.
-    bauplan()
-        .args([
-            "run",
-            "--cache",
-            "off",
-            "--dry-run",
-            "-p",
-            "tests/fixtures/typed-parameters",
-            "--param",
-            "location_id=123",
-            "--param",
-            "golden_ratio=4.2",
-            "--param",
-            "use_random_forest=false",
-            "--param",
-            "start_datetime=2023-01-01T00:00:00+00:00",
-            "--param",
-            "end_datetime=2023-01-02T00:00:00+00:00",
-        ])
-        .assert()
-        .success()
-        .stderr(contains("yayparams.num_rows=629154"))
-        .stderr(contains("yayparams.num_columns=3"));
-}
-
-#[test]
-fn typed_parameters_feature_flag() {
-    // The old Parameter('name') syntax works in both modes. When type contracts
-    // are enabled, a deprecation warning is emitted but the run still succeeds.
-    let assertion = bauplan()
-        .args([
-            "run",
-            "--cache",
-            "off",
-            "--dry-run",
-            "-p",
-            "tests/fixtures/parameters",
-        ])
-        .assert();
-
-    assertion.success().stderr(contains("golden_ratio=1.666"));
-}
-
 #[test]
 fn parameters_project() {
     bauplan()

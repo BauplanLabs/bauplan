@@ -143,15 +143,7 @@ pub(crate) fn job_request_common(
     priority: Option<Priority>,
 ) -> commanderpb::JobRequestCommon {
     let hostname = gethostname::gethostname().to_string_lossy().into_owned();
-    let mut args: std::collections::HashMap<String, String> =
-        args.into_iter().map(KeyValue::into_strings).collect();
-
-    if std::env::var("BPLN_ENABLE_TYPE_CONTRACT")
-        .map(|v| v.eq_ignore_ascii_case("true") || v == "1")
-        .unwrap_or(false)
-    {
-        args.insert("enable_type_contracts".to_owned(), "true".to_owned());
-    }
+    let args = args.into_iter().map(KeyValue::into_strings).collect();
 
     commanderpb::JobRequestCommon {
         module_version: env!("CARGO_PKG_VERSION").to_owned(),
