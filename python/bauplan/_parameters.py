@@ -1,32 +1,7 @@
-import logging
-
 from typing import ClassVar
 
-from bauplan._internal import __bpln_feature_typecontracts__
 
-if __bpln_feature_typecontracts__:
-    from bauplan._contracts import ValRegistryMeta
-
-
-module_logger = logging.getLogger("bauplan")
-
-
-if __bpln_feature_typecontracts__:
-
-    class ParameterBaseType(metaclass=ValRegistryMeta):
-        """A base type for Parameter if type contracts are enabled."""
-
-        ...
-
-else:
-
-    class ParameterBaseType:
-        """A base type for Parameter if type contracts are disabled."""
-
-        ...
-
-
-class Parameter(ParameterBaseType):  # type: ignore[reportGeneralTypeIssues]
+class Parameter:
     """
     Represents a parameter that can be used to "template" values
     passed to a model during a run or query with, e.g.,
@@ -69,11 +44,6 @@ class Parameter(ParameterBaseType):  # type: ignore[reportGeneralTypeIssues]
     _requested: ClassVar[set] = set()
 
     def __init__(self, param_name: str) -> None:
-        if __bpln_feature_typecontracts__:
-            module_logger.warning(
-                f'Using deprecated syntax: `Parameter("{param_name}")`'
-            )
-
         Parameter._requested.add(param_name)
 
     def __float__(self) -> float:
