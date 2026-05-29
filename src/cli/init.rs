@@ -53,6 +53,7 @@ pub(crate) fn handle(args: InitArgs) -> anyhow::Result<()> {
             description: None,
         },
         parameters: Default::default(),
+        include_paths: Vec::new(),
         path: Default::default(), // unused
     };
 
