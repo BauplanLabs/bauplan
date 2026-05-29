@@ -490,3 +490,82 @@ fn with_transaction() {
         .success()
         .stderr(contains("num_rows= 430488"));
 }
+
+#[test]
+fn sql_nested() {
+    bauplan()
+        .args([
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/sql_nested",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
+fn sql_prohibited_upward() {
+    bauplan()
+        .args([
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/sql_prohibited_upward/pipeline",
+        ])
+        .assert()
+        .failure()
+        .stderr(contains("path not in base directory"));
+}
+
+#[test]
+fn sql_prohibited_pattern() {
+    bauplan()
+        .args([
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/sql_prohibited_pattern",
+        ])
+        .assert()
+        .failure()
+        .stderr(contains("glob pattern not allowed"));
+}
+
+#[test]
+fn sql_prohibited_extension() {
+    bauplan()
+        .args([
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/sql_prohibited_extension",
+        ])
+        .assert()
+        .failure()
+        .stderr(contains("glob pattern not allowed"));
+}
+
+#[test]
+fn sql_upward_inside() {
+    // The patterns climb out of base but resolve back inside it, so they are valid
+    bauplan()
+        .args([
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/sql_upward_inside",
+        ])
+        .assert()
+        .success();
+}

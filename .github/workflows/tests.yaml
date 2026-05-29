@@ -33,3 +33,18 @@ jobs:
         env:
           BAUPLAN_API_ENDPOINT: https://api.use1.aqa.bauplanlabs.com
           BAUPLAN_API_KEY: ${{ secrets.BAUPLAN_API_KEY }}
+
+  # Unit tests only: no backend access, but they cover the platform-sensitive
+  # code (path handling, globs, zip entry names) that an ubuntu runner can't.
+  test-windows:
+    name: Unit Tests (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+
+      - uses: ./.github/actions/setup-caches
+
+      - run: mise x -- cargo test --lib

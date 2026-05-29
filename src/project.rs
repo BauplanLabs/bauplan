@@ -1,15 +1,21 @@
 //! Helpers for managing bauplan projects.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use base64::Engine;
 use rsa::sha2::Sha256;
 use rsa::{Oaep, RsaPublicKey};
 use serde::{Deserialize, Serialize};
+use std::ffi::OsStr;
 use thiserror::Error;
 use uuid::Uuid;
+
+use globset::{Glob, GlobSetBuilder};
+use ignore::Match;
+use ignore::gitignore::Gitignore;
+use walkdir::WalkDir;
 
 /// Errors that can occur when working with project files.
 #[derive(Debug, Error)]
@@ -27,6 +33,22 @@ pub enum ProjectError {
     Zip(#[from] zip::result::ZipError),
     #[error("encryption failed")]
     Encryption(#[from] rsa::Error),
+    #[error("invalid glob pattern")]
+    Glob(#[from] globset::Error),
+    #[error("non-UTF8 glob pattern: {0}")]
+    NonUtf8Pattern(PathBuf),
+    #[error("failed to traverse directory")]
+    Walk(#[from] walkdir::Error),
+    #[error("glob pattern not allowed: {0}")]
+    GlobPatternNotAllowed(String),
+    #[error("path not in base directory: {0}")]
+    PathNotInBase(PathBuf),
+    #[error("extension not allowed: {0}")]
+    ExtensionNotAllowed(PathBuf),
+    #[error("{0} is excluded by gitignore pattern {1:?} from {2}")]
+    GitIgnoredFile(PathBuf, String, PathBuf),
+    #[error("failed to extract relative path")]
+    Prefix(#[from] std::path::StripPrefixError),
     #[error("invalid value {0:?} of type {1}")]
     InvalidParameterValue(String, ParameterType),
 }
@@ -256,6 +278,9 @@ pub struct ProjectFile {
     /// Parameters for models.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parameters: BTreeMap<String, ParameterDefault>,
+    /// Additional paths to include as glob expressions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_paths: Option<Vec<String>>,
 
     /// The location of the project file on disk.
     #[serde(skip)]
@@ -302,27 +327,40 @@ impl ProjectFile {
             )
         })?;
 
+        let mut files: HashSet<PathBuf> = HashSet::new();
+
+        // Top level first, always included.
+        for entry in std::fs::read_dir(project_dir)? {
+            let path = entry?.path();
+            if let Some(name) = path.file_name().and_then(|n| n.to_str()) && include_in_snapshot(name) {
+                    files.insert(path);
+            }
+        }
+
+        // Additional files, if specified.
+        if let Some(additional_paths) = &self.include_paths {
+            let additional = resolve_includes(project_dir, additional_paths)?;
+            files.extend(additional);
+        }
+    
+
         let mut buf = Vec::new();
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
         let options = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated);
 
         let mut contents = Vec::new();
-        for entry in std::fs::read_dir(project_dir)? {
-            let path = entry?.path();
-            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-                continue;
-            };
-
-            if !include_in_snapshot(name) {
-                continue;
-            }
+        for path in files {
+            // The zip spec mandates forward slashes in entry names, and serializing
+            // the Path would produce backslashes on Windows; start_file_from_path
+            // does the conversion
+            let name = path.strip_prefix(project_dir)?;
 
             contents.clear();
             let mut file = std::fs::File::open(&path)?;
             file.read_to_end(&mut contents)?;
 
-            zip.start_file(name, options)?;
+            zip.start_file_from_path(name, options)?;
             zip.write_all(&contents)?;
         }
 
@@ -337,4 +375,321 @@ fn include_in_snapshot(name: &str) -> bool {
         || name == "requirements.txt"
         || name == "bauplan_project.yml"
         || name == "bauplan_project.yaml"
+}
+
+fn include_paths_filter(file: &Path) -> bool {
+    file.extension()
+        .and_then(OsStr::to_str)
+        .is_some_and(|ext| matches!(ext, "sql")) // Future: extend with "sql" | "py".
+}
+
+/// Include additional files in snapshot, based on user-provided glob patterns.
+fn resolve_includes(base: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, ProjectError> {
+    let base_canonical = base.canonicalize()?;
+
+    let mut builder = GlobSetBuilder::new();
+    for p in patterns {
+        // Users should be explicitly including file extensions, not globbing for all files.
+        if !p.to_lowercase().ends_with(".sql") {
+            return Err(ProjectError::GlobPatternNotAllowed(p.to_string()));
+        }
+
+        // Resolve the pattern lexically against base. Patterns may climb upward
+        // as long as they resolve back inside base, e.g. ../<base dirname>/views/*.sql.
+        // Components are walked manually instead of using join: on Windows the
+        // canonicalized base is \\?\-prefixed and join would resolve `..` itself,
+        // popping wildcards before the guard below can see them.
+        let pattern = Path::new(p);
+        let mut resolved = if pattern.is_absolute() {
+            return Err(ProjectError::GlobPatternNotAllowed(format!("{} is an absolute path", p.to_string())));
+        } else {
+            base_canonical.clone()
+        };
+        for component in pattern.components() {
+            match component {
+                Component::CurDir => {}
+                // Handle ".." by checking if there's a valid parent.
+                Component::ParentDir => match resolved.file_name() {
+                    // Nothing left to pop: the pattern climbed past the filesystem root
+                    None => return Err(ProjectError::PathNotInBase(PathBuf::from(p))),
+                    Some(name) => {
+                        // Popping a wildcard (e.g. views/**/../*.sql) would change the
+                        // glob's meaning, only literal components can be climbed over
+                        if name.to_string_lossy().contains(['*', '?', '[', '{']) {
+                            return Err(ProjectError::GlobPatternNotAllowed(p.to_string()));
+                        }
+                        resolved.pop();
+                    }
+                },
+                other => resolved.push(other),
+            }
+        }
+
+        // A pattern resolving outside base would silently never match the walk's
+        // base-relative paths, so it fails here instead.
+        let relative = resolved
+            .strip_prefix(&base_canonical)
+            .map_err(|_| ProjectError::PathNotInBase(PathBuf::from(p)))?;
+
+        // Rebuild the glob base-relative, joining with explicit `/`: serializing the
+        // whole Path would produce backslashes on Windows, which glob syntax treats
+        // as escapes.
+        let mut glob = String::new();
+        for component in relative.components() {
+            let part = component
+                .as_os_str()
+                .to_str()
+                .ok_or_else(|| ProjectError::NonUtf8Pattern(PathBuf::from(p)))?;
+            if !glob.is_empty() {
+                glob.push('/');
+            }
+            glob.push_str(part);
+        }
+
+        builder.add(Glob::new(&glob)?);
+    }
+
+    let set = builder.build()?;
+
+    let mut paths = HashSet::new();
+    let mut walked_gitignores = Vec::new();
+
+    for entry in WalkDir::new(&base_canonical) {
+        let entry_canonical = entry?.path().canonicalize()?;
+
+        // Canonicalizing can land outside base when the entry is a symlink elsewhere.
+        if !entry_canonical.starts_with(&base_canonical) {
+            return Err(ProjectError::PathNotInBase(entry_canonical));
+        }
+
+        if !entry_canonical.is_file() {
+            continue;
+        }
+
+        // Collect walked .gitgnores for further processing.
+        if entry_canonical.file_name() == Some(OsStr::new(".gitignore")) {
+            walked_gitignores.push(entry_canonical);
+            continue;
+        }
+
+        let relative = entry_canonical.strip_prefix(&base_canonical)?;
+        if set.is_match(relative) {
+            if !include_paths_filter(&entry_canonical) {
+                return Err(ProjectError::ExtensionNotAllowed(entry_canonical));
+            }
+            paths.insert(entry_canonical);
+        }
+    }
+
+    ensure_not_gitignored(&base_canonical, &paths, walked_gitignores)?;
+
+    Ok(paths.into_iter().collect())
+}
+
+/// Fail loudly if any resolved file is excluded by a .gitignore, since it would be
+/// silently missing for anyone else checking out the project. Outside a git repo
+/// there is nothing to respect and the check is skipped.
+fn ensure_not_gitignored(
+    base: &Path,
+    files: &HashSet<PathBuf>,
+    mut gitignore_files: Vec<PathBuf>,
+) -> Result<(), ProjectError> {
+    // The project dir usually sits somewhere below the repo root. exists() covers
+    // both the .git directory and the .git file of linked worktrees.
+    let Some(repo_root) = base.ancestors().find(|dir| dir.join(".git").exists()) else {
+        return Ok(());
+    };
+
+    // The walk already collected the .gitignore files inside base (if any); add the ones
+    // between base and the repo root, past which git reads none.
+    for dir in base.ancestors() {
+        if dir != base {
+            let candidate = dir.join(".gitignore");
+            if candidate.is_file() {
+                gitignore_files.push(candidate);
+            }
+        }
+        if dir == repo_root {
+            break;
+        }
+    }
+
+    // Deepest .gitignore first, mirroring git's precedence between files.
+    gitignore_files.sort_by_key(|path| std::cmp::Reverse(path.components().count()));
+
+    // Gitignore::new anchors each matcher at the .gitignore's own directory; partial
+    // parse errors still leave a valid matcher, so they are dropped
+    let matchers: Vec<Gitignore> = gitignore_files
+        .iter()
+        .map(|path| Gitignore::new(path).0)
+        .collect();
+
+    for file in files {
+        for matcher in &matchers {
+            // matched_path_or_any_parents panics on paths outside the matcher root
+            if !file.starts_with(matcher.path()) {
+                continue;
+            }
+
+            match matcher.matched_path_or_any_parents(file, false) {
+                Match::None => {}
+                // An explicit !pattern re-includes the file, deeper files win
+                Match::Whitelist(_) => break,
+                Match::Ignore(glob) => {
+                    return Err(ProjectError::GitIgnoredFile(
+                        file.clone(),
+                        glob.original().to_string(),
+                        glob.from().map(Path::to_path_buf).unwrap_or_default(),
+                    ));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use assert_matches::assert_matches;
+
+    use super::*;
+
+    #[test]
+    fn resolve_includes_accepts_upward_pattern_inside_base() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+
+        // Climbs out of base but resolves back inside it
+        let resolved = resolve_includes(&proj, &["../proj/views/*.sql".into()]).unwrap();
+        assert_eq!(resolved.len(), 1);
+        assert!(resolved[0].ends_with("views/age.sql"));
+    }
+
+    #[test]
+    fn resolve_includes_rejects_pattern_escaping_base() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(&proj).unwrap();
+        std::fs::write(tmp.path().join("age.sql"), "SELECT 1").unwrap();
+
+        let err = resolve_includes(&proj, &["../*.sql".into()]).unwrap_err();
+        assert_matches!(err, ProjectError::PathNotInBase(_));
+    }
+
+    #[test]
+    fn resolve_includes_rejects_parent_dir_after_wildcard() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(&proj).unwrap();
+
+        let err = resolve_includes(&proj, &["views/**/../*.sql".into()]).unwrap_err();
+        assert_matches!(err, ProjectError::GlobPatternNotAllowed(_));
+    }
+
+    #[test]
+    fn resolve_includes_fails_loud_on_gitignored_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Repo root marker: discovery only checks that .git exists
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+        // The .gitignore lives above base, like a repo-root one would
+        std::fs::write(tmp.path().join(".gitignore"), "*.sql\n").unwrap();
+
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+
+        let err = resolve_includes(&proj, &["views/*.sql".into()]).unwrap_err();
+        assert_matches!(err, ProjectError::GitIgnoredFile(..));
+    }
+
+    #[test]
+    fn resolve_includes_respects_gitignore_whitelist() {
+        let tmp = tempfile::tempdir().unwrap();
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+        std::fs::write(tmp.path().join(".gitignore"), "*.sql\n").unwrap();
+
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+        // The deeper .gitignore re-includes the file, taking precedence over the root one
+        std::fs::write(proj.join("views").join(".gitignore"), "!age.sql\n").unwrap();
+
+        let resolved = resolve_includes(&proj, &["views/*.sql".into()]).unwrap();
+        assert_eq!(resolved.len(), 1);
+    }
+
+    #[test]
+    fn resolve_includes_skips_gitignore_check_outside_git_repo() {
+        let tmp = tempfile::tempdir().unwrap();
+        // A .gitignore with no .git upward is not a repo, so it is not enforced
+        std::fs::write(tmp.path().join(".gitignore"), "*.sql\n").unwrap();
+
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+
+        let resolved = resolve_includes(&proj, &["views/*.sql".into()]).unwrap();
+        assert_eq!(resolved.len(), 1);
+    }
+
+    #[test]
+    fn code_snapshot_zip_entries_use_forward_slashes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+        std::fs::write(proj.join("models.py"), "import bauplan").unwrap();
+        std::fs::write(
+            proj.join("bauplan_project.yml"),
+            "project:\n  id: 97e33cab-6805-4565-9df3-8ffa5e914574\n  name: zip_separators\ninclude_paths:\n  - views/*.sql\n",
+        )
+        .unwrap();
+
+        let project = ProjectFile::load(proj.join("bauplan_project.yml")).unwrap();
+        let snapshot = project.create_code_snapshot().unwrap();
+
+        let mut archive = zip::ZipArchive::new(std::io::Cursor::new(snapshot)).unwrap();
+        let names: Vec<String> = (0..archive.len())
+            .map(|i| archive.by_index(i).unwrap().name().to_owned())
+            .collect();
+
+        // The zip spec mandates `/` in entry names; a backslash entry written on
+        // Windows would extract on unix as a single file literally named views\age.sql
+        assert!(names.iter().all(|n| !n.contains('\\')), "{names:?}");
+
+        // by_name is an exact match, so this fails if the separator is wrong
+        let mut entry = archive.by_name("views/age.sql").unwrap();
+        let mut content = String::new();
+        entry.read_to_string(&mut content).unwrap();
+        assert_eq!(content, "SELECT 1");
+    }
+
+    #[test]
+    fn include_paths_filter_matches_only_sql_case_insensitive() {
+        // (path, expected)
+        let cases = [
+            ("views/model.sql", true),
+            ("model.sql", true),
+            ("model.SQL", true),
+            ("views/model.SQL", true),
+            ("views/model.Sql", true),
+            ("model.Sql", true),
+            // py is not included yet
+            ("script.py", false),
+            ("script.PY", false),
+            ("notes.txt", false),
+            ("Justfile", false),
+        ];
+
+        for (name, expected) in cases {
+            assert_eq!(
+                include_paths_filter(Path::new(name)),
+                expected,
+                "wrong classification for extension of {name}"
+            );
+        }
+    }
 }

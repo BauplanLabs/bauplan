@@ -1,0 +1,6 @@
+project:
+  id: 97e33cab-6805-4565-9df3-8ffa5e914574
+  name: sql_upward_inside
+include_paths:
+  - ../sql_upward_inside/views/*.sql
+  - ../sql_upward_inside/views/**/*.sql
