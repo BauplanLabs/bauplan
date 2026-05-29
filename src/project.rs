@@ -1,8 +1,8 @@
 //! Helpers for managing bauplan projects.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use base64::Engine;
 use rsa::sha2::Sha256;
@@ -10,6 +10,9 @@ use rsa::{Oaep, RsaPublicKey};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
+
+use globset::{Glob, GlobSetBuilder};
+use ignore::WalkBuilder;
 
 /// Errors that can occur when working with project files.
 #[derive(Debug, Error)]
@@ -27,6 +30,16 @@ pub enum ProjectError {
     Zip(#[from] zip::result::ZipError),
     #[error("encryption failed")]
     Encryption(#[from] rsa::Error),
+    #[error("invalid glob pattern")]
+    Glob(#[from] globset::Error),
+    #[error("failed to resolve include paths")]
+    Ignore(#[from] ignore::Error),
+    #[error("glob pattern not allowed: {0}")]
+    GlobPatternNotAllowed(String),
+    #[error("symlink not allowed: {0} points to {1}")]
+    Symlink(PathBuf, PathBuf),
+    #[error("failed to extract relative path")]
+    Prefix(#[from] std::path::StripPrefixError),
     #[error("invalid value {0:?} of type {1}")]
     InvalidParameterValue(String, ParameterType),
 }
@@ -256,6 +269,12 @@ pub struct ProjectFile {
     /// Parameters for models.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub parameters: BTreeMap<String, ParameterDefault>,
+    // /// Additional paths to include as glob expressions.
+    // #[serde(default, skip_serializing_if = "Option::is_none")]
+    // pub include_paths: Option<Vec<String>>,
+    /// Additional paths to include as glob expressions.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub include_paths: Vec<String>,
 
     /// The location of the project file on disk.
     #[serde(skip)]
@@ -302,27 +321,33 @@ impl ProjectFile {
             )
         })?;
 
+        // Additional, user-provided patterns.
+        let additional_patterns = self
+            .include_paths
+            .iter()
+            .map(|p| resolve_pattern(p))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let files: HashSet<PathBuf> =
+            resolve_includes(project_dir, &additional_patterns)?.collect();
+
         let mut buf = Vec::new();
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
         let options = zip::write::SimpleFileOptions::default()
             .compression_method(zip::CompressionMethod::Deflated);
 
         let mut contents = Vec::new();
-        for entry in std::fs::read_dir(project_dir)? {
-            let path = entry?.path();
-            let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
-                continue;
-            };
-
-            if !include_in_snapshot(name) {
-                continue;
-            }
+        for path in files {
+            // The zip spec mandates forward slashes in entry names, and serializing
+            // the Path would produce backslashes on Windows; start_file_from_path
+            // does the conversion.
+            let name = path.strip_prefix(project_dir)?;
 
             contents.clear();
             let mut file = std::fs::File::open(&path)?;
             file.read_to_end(&mut contents)?;
 
-            zip.start_file(name, options)?;
+            zip.start_file_from_path(name, options)?;
             zip.write_all(&contents)?;
         }
 
@@ -331,10 +356,132 @@ impl ProjectFile {
     }
 }
 
-fn include_in_snapshot(name: &str) -> bool {
-    name.ends_with(".py")
-        || name.ends_with(".sql")
-        || name == "requirements.txt"
-        || name == "bauplan_project.yml"
-        || name == "bauplan_project.yaml"
+/// Given a glob pattern, ensure the pattern is "admissible".
+fn resolve_pattern(p: &str) -> Result<String, ProjectError> {
+    // Users should be explicitly including file extensions, not globbing for all files.
+    if !p.ends_with(".sql") {
+        return Err(ProjectError::GlobPatternNotAllowed(p.to_string()));
+    }
+
+    // Absolute patterns are not allowed, only relative.
+    let pattern = Path::new(p);
+    if pattern.is_absolute() {
+        return Err(ProjectError::GlobPatternNotAllowed(format!(
+            "{} is an absolute path",
+            p
+        )));
+    }
+
+    // Patterns with ".." are not allowed.
+    if pattern
+        .components()
+        .any(|c| matches!(c, Component::ParentDir))
+    {
+        return Err(ProjectError::GlobPatternNotAllowed(p.to_string()));
+    }
+
+    // Strip leading ./ and use forward slashes for glob syntax.
+    Ok(p.strip_prefix("./").unwrap_or(p).replace('\\', "/"))
+}
+
+/// Include files in snapshot, based on provided glob patterns.
+/// Ignoring takes precedence over inclusion: any ignored file will not be included
+/// regardless of inclusion patterns.
+fn resolve_includes<S: AsRef<str>>(
+    base: &Path,
+    patterns: &[S],
+) -> Result<impl Iterator<Item = PathBuf>, ProjectError> {
+    let base_canonical = base.canonicalize()?;
+
+    // Build a glob set, matching all the required patterns.
+    let mut glob_builder = GlobSetBuilder::new();
+
+    // Top level patterns, always included.
+    let base_patterns = [
+        "*.py",
+        "*.sql",
+        "requirements.txt",
+        "bauplan_project.yml",
+        "bauplan_project.yaml",
+    ];
+
+    for p in patterns {
+        glob_builder.add(Glob::new(p.as_ref())?);
+    }
+
+    for p in base_patterns {
+        glob_builder.add(Glob::new(p).unwrap());
+    }
+
+    let set = glob_builder.build()?;
+
+    let mut paths = BTreeSet::new();
+
+    for entry in WalkBuilder::new(&base_canonical).build() {
+        let entry = entry?.into_path();
+        let canonical = entry.canonicalize()?;
+
+        if !canonical.is_file() {
+            continue;
+        }
+
+        let rel_entry = canonical
+            .strip_prefix(&base_canonical)
+            .map_err(|_| ProjectError::Symlink(entry, canonical.clone()))?
+            .to_path_buf();
+
+        // For globset to work, we need relative paths.
+        if !set.is_match(&rel_entry) {
+            continue;
+        }
+
+        // For zipping to work, we need absolute paths.
+        paths.insert(canonical);
+    }
+
+    Ok(paths.into_iter())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_pattern_rejects_upward_pattern() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+
+        let result = resolve_pattern("../proj/views/*.sql");
+        assert!(matches!(
+            result,
+            Err(ProjectError::GlobPatternNotAllowed(..))
+        ));
+    }
+
+    fn symlink_file(src: &Path, dst: &Path) {
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(src, dst).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(src, dst).unwrap();
+    }
+
+    #[test]
+    fn resolve_includes_rejects_symlink_escaping_base() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+
+        std::fs::write(tmp.path().join("secret.sql"), "SELECT secret").unwrap();
+
+        symlink_file(
+            &tmp.path().join("secret.sql"),
+            &proj.join("views").join("leak.sql"),
+        );
+
+        let patterns = &[resolve_pattern("views/*.sql").unwrap()];
+        let result = resolve_includes(&proj, patterns);
+        assert!(matches!(result, Err(ProjectError::Symlink(..))));
+    }
 }
