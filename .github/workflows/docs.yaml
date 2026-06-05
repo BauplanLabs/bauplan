@@ -74,6 +74,7 @@ jobs:
         working-directory: ./docs
         env:
           DOCS_URL: ${{ vars.DOCS_URL }}
+          GTAG_ID: ${{ vars.GTAG_ID }}
         run: just build /tmp/build
 
       # Run typechecking after building, so that it also checks the generated mdx files.
