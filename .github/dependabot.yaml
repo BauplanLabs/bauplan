@@ -22,3 +22,19 @@ updates:
       prefix: "chore(pysdk)"
     cooldown:
       default-days: 7
+  - package-ecosystem: uv
+    directories:
+      - /examples/**/*
+    schedule:
+      interval: daily
+      time: "09:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(examples)"
+    cooldown:
+      default-days: 7
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
