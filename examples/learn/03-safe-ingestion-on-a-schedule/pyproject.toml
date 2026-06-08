@@ -6,5 +6,5 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "bauplan>=0.1.9",
-    "prefect>=3.6.20",
+    "prefect>=3.6.28.dev2",
 ]
