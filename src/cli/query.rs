@@ -15,7 +15,7 @@ use arrow::{
 use arrow_flight::error::{FlightError, Result as FlightResult};
 use bauplan::flight::{fetch_flight_results, limit_rows};
 use bauplan::grpc::{self, generated as commanderpb};
-use bauplan_longbow::BauplanPreset;
+use bauplan_longbow::{BauplanPreset, iroh};
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, StreamExt, TryStreamExt, future::Either};
 use tabwriter::TabWriter;
@@ -152,51 +152,39 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
 
     progress.set_message("Fetching results...");
 
-    let tp = cli.traceparent();
-    let longbow_key = if resp.longbow_public_key.is_empty() {
-        None
+    let (longbow_endpoint, schema, batches) = if !resp.longbow_public_key.is_empty() {
+        let (endpoint, schema, batches) =
+            fetch_results_longbow(resp.longbow_public_key.as_slice(), timeout).await?;
+        (Some(endpoint), schema, Either::Left(batches))
     } else {
-        Some(resp.longbow_public_key)
+        let tp = cli.traceparent();
+        let (schema, batches) = fetch_results(flight_event, timeout, row_limit, tp).await?;
+
+        (None, schema, Either::Right(batches))
     };
 
-    let (schema, batches) =
-        fetch_results(longbow_key, flight_event, timeout, row_limit, tp).await?;
-
+    let batches = limit_rows(batches, row_limit);
     futures::pin_mut!(batches);
 
     progress.finish_with_done();
     match cli.global.output {
-        Output::Tty => print_tty(schema, batches, !no_trunc).await,
-        Output::Json => print_json(batches, &job_id).await,
+        Output::Tty => print_tty(schema, batches, !no_trunc).await?,
+        Output::Json => print_json(batches, &job_id).await?,
     }
+
+    if let Some(endpoint) = longbow_endpoint {
+        endpoint.close().await;
+    }
+
+    Ok(())
 }
 
 async fn fetch_results(
-    longbow_public_key: Option<Vec<u8>>,
     flight_event: Option<commanderpb::FlightServerStartEvent>,
     timeout: time::Duration,
     row_limit: Option<u64>,
     traceparent: String,
 ) -> anyhow::Result<(Schema, impl Stream<Item = FlightResult<RecordBatch>>)> {
-    if let Some(public_key_bytes) = longbow_public_key {
-        let public_key = bauplan_longbow::iroh::PublicKey::try_from(public_key_bytes.as_slice())
-            .context("invalid longbow public key")?;
-        let preset = BauplanPreset::default();
-        let addr = bauplan_longbow::iroh::EndpointAddr::new(public_key);
-        let addr = preset.add_relay_urls(addr);
-
-        let (schema, stream) =
-            tokio::time::timeout(timeout, bauplan_longbow::fetch_query_results(preset, addr))
-                .await
-                .context("failed to fetch query results")??;
-
-        let schema: Schema = schema.as_ref().clone();
-        let stream = stream
-            .map(|r| r.map_err(|e| FlightError::Arrow(ArrowError::ExternalError(Box::new(e)))));
-        let stream = limit_rows(stream, row_limit);
-        return Ok((schema, Either::Left(stream)));
-    }
-
     let Some(commanderpb::FlightServerStartEvent {
         endpoint,
         magic_token,
@@ -226,7 +214,36 @@ async fn fetch_results(
     .await
     .context("Failed to fetch query results")?;
 
-    Ok((schema, Either::Right(batches)))
+    Ok((schema, batches))
+}
+
+async fn fetch_results_longbow(
+    public_key: &[u8],
+    timeout: time::Duration,
+) -> anyhow::Result<(
+    iroh::Endpoint,
+    Schema,
+    impl Stream<Item = FlightResult<RecordBatch>>,
+)> {
+    let public_key = bauplan_longbow::iroh::PublicKey::try_from(public_key)
+        .context("invalid longbow public key")?;
+    let preset = BauplanPreset::default();
+    let addr = bauplan_longbow::iroh::EndpointAddr::new(public_key);
+    let addr = preset.add_relay_urls(addr);
+
+    let endpoint = iroh::Endpoint::bind(preset.clone()).await?;
+    let (schema, stream) = tokio::time::timeout(
+        timeout,
+        bauplan_longbow::fetch_query_results(&endpoint, addr),
+    )
+    .await
+    .context("failed to fetch query results")??;
+
+    let schema: Schema = schema.as_ref().clone();
+    let stream =
+        stream.map(|r| r.map_err(|e| FlightError::Arrow(ArrowError::ExternalError(Box::new(e)))));
+
+    Ok((endpoint, schema, stream))
 }
 
 async fn print_tty(

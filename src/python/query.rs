@@ -14,7 +14,7 @@ use polyglot_sql::{Expression, Parser, builder, expressions::TableRef};
 use pyo3::{IntoPyObjectExt, exceptions::PyValueError, prelude::*};
 use tracing::{debug, error, info};
 
-use bauplan_longbow::BauplanPreset;
+use bauplan_longbow::{BauplanPreset, iroh};
 
 use crate::{
     flight,
@@ -114,15 +114,23 @@ impl Client {
         }
 
         if !longbow_public_key.is_empty() {
-            let public_key =
-                bauplan_longbow::iroh::PublicKey::try_from(longbow_public_key.as_slice())
-                    .map_err(|_| query_err("invalid longbow public key"))?;
+            let public_key = iroh::PublicKey::try_from(longbow_public_key.as_slice())
+                .map_err(|_| query_err("invalid longbow public key"))?;
             let preset = BauplanPreset::default();
-            let addr = bauplan_longbow::iroh::EndpointAddr::new(public_key);
+            let addr = iroh::EndpointAddr::new(public_key);
             let addr = preset.add_relay_urls(addr);
 
-            let (schema, stream) = tokio::time::timeout(timeout, async {
-                bauplan_longbow::fetch_query_results(preset, addr)
+            let endpoint = self
+                .longbow_endpoint
+                .get_or_try_init(|| async {
+                    iroh::Endpoint::bind(BauplanPreset::default())
+                        .await
+                        .map_err(|_| query_err("failed to bind longbow endpoint"))
+                })
+                .await?;
+
+            let (schema, batches) = tokio::time::timeout(timeout, async {
+                bauplan_longbow::fetch_query_results(endpoint, addr)
                     .await
                     .map_err(query_err)
             })
@@ -130,8 +138,8 @@ impl Client {
             .map_err(|_| query_err("timed out fetching query results"))??;
 
             let schema: Schema = schema.as_ref().clone();
-            let stream = flight::limit_rows(stream, max_rows);
-            return Ok((schema, Either::Left(stream.map_err(query_err))));
+            let batches = flight::limit_rows(batches.map_err(query_err), max_rows);
+            return Ok((schema, Either::Left(batches)));
         }
 
         let Some(commanderpb::FlightServerStartEvent {
@@ -160,7 +168,8 @@ impl Client {
                 .await
                 .map_err(|_| query_err("failed to fetch query results"))?;
 
-        Ok((schema, Either::Right(batches.map_err(query_err))))
+        let batches = flight::limit_rows(batches.map_err(query_err), max_rows);
+        Ok((schema, Either::Right(batches)))
     }
 
     #[allow(clippy::too_many_arguments)]

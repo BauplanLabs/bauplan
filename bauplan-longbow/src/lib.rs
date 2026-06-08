@@ -114,6 +114,7 @@ impl iroh::endpoint::presets::Preset for BauplanPreset {
             .clear_address_lookup()
             .alpns(vec![ALPN.to_owned()])
             .relay_mode(RelayMode::Custom(self.relay_map()))
+            .crypto_provider(std::sync::Arc::new(rustls::crypto::ring::default_provider()))
     }
 }
 
@@ -202,7 +203,7 @@ mod tests {
     async fn query_results() -> anyhow::Result<()> {
         use iroh::EndpointAddr;
 
-        let secret_key = iroh::SecretKey::generate(&mut rand::rng());
+        let secret_key = iroh::SecretKey::generate();
         let public_key = secret_key.public();
 
         let batches = test_batches();
@@ -210,22 +211,28 @@ mod tests {
         let server_task = tokio::spawn({
             let batches = batches.clone();
             async move {
-                let mut server =
-                    ArrowIPCServer::accept(BauplanPreset::default(), secret_key, schema).await?;
+                let endpoint = iroh::Endpoint::builder(BauplanPreset::default())
+                    .secret_key(secret_key)
+                    .bind()
+                    .await?;
+
+                let mut server = ArrowIPCServer::accept(&endpoint, schema).await?;
 
                 for batch in batches {
                     server.send_record_batch(&batch).await?;
                 }
 
                 server.finish().await?;
+                endpoint.close().await;
                 Ok::<_, anyhow::Error>(())
             }
         });
 
         let preset = BauplanPreset::default();
         let server_addr = preset.add_relay_urls(EndpointAddr::new(public_key));
+        let endpoint = iroh::Endpoint::bind(preset).await?;
 
-        let (_schema, mut stream) = fetch_query_results(preset, server_addr)
+        let (_schema, mut stream) = fetch_query_results(&endpoint, server_addr)
             .await
             .context("fetch_query_results failed")?;
 
@@ -233,6 +240,8 @@ mod tests {
         while let Some(batch) = stream.next().await {
             received.push(batch.context("batch")?);
         }
+
+        endpoint.close().await;
 
         assert_eq!(received.len(), batches.len());
         for (got, expected) in received.iter().zip(&batches) {

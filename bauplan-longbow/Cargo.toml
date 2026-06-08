@@ -18,8 +18,9 @@ arrow = "58"
 arrow-ipc = { version = "58", features = ["zstd"] }
 bytes = "1"
 futures.workspace = true
-iroh = "0.97"
+iroh = "1.0.0-rc.1"
 n0-error = "0.1"
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -27,7 +28,6 @@ url.workspace = true
 
 [dev-dependencies]
 anyhow.workspace = true
-rand = "0.9"
 test-log = { version = "0.2", features = ["trace"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

@@ -1,6 +1,6 @@
 //! Support for fetching query results via Arrow Flight.
 
-use std::{pin::Pin, time};
+use std::time;
 
 use arrow::{array::RecordBatch, datatypes::Schema};
 use arrow_flight::{
@@ -34,8 +34,6 @@ pub async fn fetch_flight_results(
     let criteria = json!({"max_rows": row_limit}).to_string();
     let (schema, batches) =
         fetch(channel.clone(), auth_token.clone(), criteria, traceparent).await?;
-
-    let batches = limit_rows(batches, row_limit);
 
     // After all batches are consumed, tell the flight server to shut down.
     //
