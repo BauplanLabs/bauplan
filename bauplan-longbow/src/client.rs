@@ -2,7 +2,7 @@ use arrow::{array::RecordBatch, buffer::Buffer, datatypes::SchemaRef, ipc::reade
 use futures::stream::{self, Stream};
 use iroh::{
     Endpoint, EndpointAddr,
-    endpoint::{ConnectError, Connection, RecvStream, presets::Preset},
+    endpoint::{ConnectError, Connection, RecvStream},
 };
 use n0_error::StdResultExt;
 use tracing::debug;
@@ -10,19 +10,16 @@ use tracing::debug;
 use crate::{ALPN, Error, StreamToken};
 
 struct ArrowStreamState {
-    conn: Connection,
     recv: RecvStream,
     decoder: StreamDecoder,
     remaining: Buffer,
     batch: Option<RecordBatch>,
-    _endpoint: Endpoint,
+
+    conn: Connection,
 }
 
 impl Drop for ArrowStreamState {
     fn drop(&mut self) {
-        // Iroh says to use Endpoint::close, which waits for the
-        // CONNECTION_CLOSE to reach the server. But we don't care, because
-        // we're the only ones receiving data, and the extra latency is stupid.
         self.conn.close(0_u8.into(), b"done");
     }
 }
@@ -33,14 +30,12 @@ impl Drop for ArrowStreamState {
 /// If this optimization was successful, the opened stream is returned along
 /// with the connection. Otherwise, it should be opened manually.
 async fn connect(
-    preset: impl Preset,
+    endpoint: &Endpoint,
     server: EndpointAddr,
     initial_token: StreamToken,
-) -> Result<(Connection, Endpoint, Option<RecvStream>), Error> {
+) -> Result<(Connection, Option<RecvStream>), Error> {
     // TODO: we should maybe disable ipv6 proactively, since our servers don't
     // support it and it can cause extra startup latency. :(
-    let endpoint = Endpoint::builder(preset).bind().await?;
-
     let connecting = endpoint
         .connect_with_opts(server, ALPN, Default::default())
         .await
@@ -76,23 +71,23 @@ async fn connect(
         }
     };
 
-    Ok((conn, endpoint, recv))
+    Ok((conn, recv))
 }
 
 /// Connect to an endpoint with the intention to download query results.
 ///
 /// Returns the stream schema and a stream of record batches.
 pub async fn fetch_query_results(
-    preset: impl Preset,
+    endpoint: &Endpoint,
     server: EndpointAddr,
 ) -> Result<
     (
         SchemaRef,
-        impl Stream<Item = Result<RecordBatch, Error>> + Unpin,
+        impl Stream<Item = Result<RecordBatch, Error>> + Unpin + use<>,
     ),
     Error,
 > {
-    let (conn, endpoint, recv) = connect(preset, server, StreamToken::QueryResults).await?;
+    let (conn, recv) = connect(endpoint, server, StreamToken::QueryResults).await?;
 
     let mut recv = match recv {
         Some(r) => r,
@@ -112,7 +107,7 @@ pub async fn fetch_query_results(
     let schema = loop {
         match recv.read_chunk(usize::MAX).await? {
             Some(chunk) => {
-                remaining = Buffer::from(chunk.bytes);
+                remaining = Buffer::from(chunk);
                 if let Some(batch) = decoder.decode(&mut remaining)? {
                     first_batch = Some(batch);
                     break decoder.schema().unwrap();
@@ -130,12 +125,12 @@ pub async fn fetch_query_results(
     };
 
     let state = ArrowStreamState {
-        conn,
         recv,
         decoder,
         remaining,
         batch: first_batch,
-        _endpoint: endpoint,
+
+        conn,
     };
 
     let stream = Box::pin(stream::try_unfold(state, |mut state| async move {
@@ -150,7 +145,7 @@ pub async fn fetch_query_results(
 
             match state.recv.read_chunk(usize::MAX).await? {
                 Some(chunk) => {
-                    state.remaining = Buffer::from(chunk.bytes);
+                    state.remaining = Buffer::from(chunk);
                     if let Some(batch) = state.decoder.decode(&mut state.remaining)? {
                         return Ok(Some((batch, state)));
                     }

@@ -8,8 +8,8 @@ use arrow::{
 };
 use bytes::{BufMut, BytesMut};
 use iroh::{
-    Endpoint, SecretKey,
-    endpoint::{Connection, ConnectionState, IncomingZeroRtt, SendStream, presets::Preset},
+    Endpoint,
+    endpoint::{Connection, ConnectionState, IncomingZeroRtt, SendStream},
 };
 use tracing::{debug, error};
 
@@ -17,15 +17,7 @@ use crate::{Error, StreamToken};
 
 /// Binds an endpoint and waits for the first connection, then returns it. This
 /// will run forever and has no inherent timeout.
-async fn accept_connection(
-    preset: impl Preset,
-    secret_key: SecretKey,
-) -> Result<(Endpoint, Connection<IncomingZeroRtt>), Error> {
-    let endpoint = Endpoint::builder(preset)
-        .secret_key(secret_key)
-        .bind()
-        .await?;
-
+pub async fn accept_connection(endpoint: &Endpoint) -> Result<Connection<IncomingZeroRtt>, Error> {
     loop {
         let Some(incoming) = endpoint.accept().await else {
             // The endpoint was dropped.
@@ -33,7 +25,7 @@ async fn accept_connection(
         };
 
         match incoming.accept() {
-            Ok(acc) => return Ok((endpoint, acc.into_0rtt())),
+            Ok(acc) => return Ok(acc.into_0rtt()),
             Err(err) => {
                 error!(?err, "handshake failed, listening again");
                 continue;
@@ -44,7 +36,7 @@ async fn accept_connection(
 
 /// Accept the next bidirectional stream on a connection, reading the
 /// one-byte [`StreamToken`] the client sends to identify the stream type.
-async fn accept_stream<C: ConnectionState>(
+pub async fn accept_stream<C: ConnectionState>(
     conn: &Connection<C>,
 ) -> Result<(StreamToken, SendStream), Error> {
     let (send, mut recv) = conn.accept_bi().await?;
@@ -63,27 +55,20 @@ async fn accept_stream<C: ConnectionState>(
 
 /// A server capable of pushing arrow record batches to a single client.
 pub struct ArrowIPCServer {
-    endpoint: Endpoint,
     send: SendStream,
     writer: StreamWriter<bytes::buf::Writer<BytesMut>>,
 }
 
 impl std::fmt::Debug for ArrowIPCServer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ArrowIPCServer")
-            .field("endpoint", &self.endpoint)
-            .finish()
+        f.debug_struct("ArrowIPCServer").finish()
     }
 }
 
 impl ArrowIPCServer {
     /// Sets up a server and waits for the client. This has no internal timeout.
-    pub async fn accept(
-        preset: impl Preset,
-        secret_key: SecretKey,
-        schema: SchemaRef,
-    ) -> Result<Self, Error> {
-        let (endpoint, conn) = accept_connection(preset, secret_key).await?;
+    pub async fn accept(endpoint: &Endpoint, schema: SchemaRef) -> Result<Self, Error> {
+        let conn = accept_connection(endpoint).await?;
         let (token, send) = accept_stream(&conn).await?;
         if token != StreamToken::QueryResults {
             return Err(Error::InvalidStreamToken);
@@ -96,11 +81,7 @@ impl ArrowIPCServer {
         let buf = BytesMut::new().writer();
         let writer = StreamWriter::try_new_with_options(buf, &schema, write_options)?;
 
-        Ok(Self {
-            endpoint,
-            send,
-            writer,
-        })
+        Ok(Self { send, writer })
     }
 
     /// Sends a record batch over the wire.
@@ -126,8 +107,6 @@ impl ArrowIPCServer {
         // Signal that no more data will be sent.
         let _ = self.send.finish();
         self.send.stopped().await.map_err(|_| Error::StreamClosed)?;
-
-        self.endpoint.close().await;
         Ok(())
     }
 }

@@ -159,6 +159,12 @@ pub(crate) struct Client {
     pub(crate) agent: ureq::Agent,
     pub(crate) grpc: grpc::Client,
     pub(crate) client_timeout: time::Duration,
+    /// NB: we don't ever call `endpoint.close()`, because there's no good time
+    /// to do that. It's probably fine; in normal use all connections will have
+    /// finished out long before we drop the client. If any are still open when
+    /// we drop, then the server will have to wait for the idle timeout, but
+    /// that's not that tragic.
+    pub(crate) longbow_endpoint: tokio::sync::OnceCell<bauplan_longbow::iroh::Endpoint>,
 }
 
 #[pymethods]
@@ -224,6 +230,7 @@ impl Client {
             agent,
             grpc,
             client_timeout,
+            longbow_endpoint: tokio::sync::OnceCell::new(),
         })
     }
 }
