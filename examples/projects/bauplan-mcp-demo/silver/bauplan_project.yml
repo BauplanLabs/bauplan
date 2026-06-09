@@ -1,0 +1,6 @@
+project:
+  id: 6bb0f9a4-9ed5-491d-92e4-8500148ace48
+  name: silver-layer
+
+defaults:
+  namespace: silver

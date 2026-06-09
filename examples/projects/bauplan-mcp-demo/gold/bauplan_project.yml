@@ -1,0 +1,6 @@
+project:
+  id: bf78818a-499d-41c4-80b7-1433f0621ef3
+  name: gold-layer
+
+defaults:
+  namespace: gold
