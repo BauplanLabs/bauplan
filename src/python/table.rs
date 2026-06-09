@@ -16,7 +16,6 @@ use crate::{
         namespace::NamespaceArg,
         paginate::PyPaginator,
         refs::{BranchArg, RefArg},
-        run::monitor_job,
     },
     table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
@@ -183,7 +182,7 @@ impl Client {
                 return Err(job_err("response missing job ID"));
             };
 
-            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             if let Some(err_msg) = error.clone() {
@@ -346,18 +345,19 @@ impl Client {
                 files_to_be_imported: Vec::new(),
             };
 
-            let res = monitor_job(&mut client, &job_id, timeout, |event| {
-                if let RunnerEvent::TableCreatePlanDoneEvent(ev) = event {
-                    if !ev.error_message.is_empty() {
-                        state.error = Some(ev.error_message);
-                    }
+            let res = self
+                .monitor_job(&job_id, timeout, |event| {
+                    if let RunnerEvent::TableCreatePlanDoneEvent(ev) = event {
+                        if !ev.error_message.is_empty() {
+                            state.error = Some(ev.error_message);
+                        }
 
-                    state.plan = Some(ev.plan_as_yaml);
-                    state.can_auto_apply = ev.can_auto_apply;
-                    state.files_to_be_imported = ev.files_to_be_imported;
-                }
-            })
-            .await?;
+                        state.plan = Some(ev.plan_as_yaml);
+                        state.can_auto_apply = ev.can_auto_apply;
+                        state.files_to_be_imported = ev.files_to_be_imported;
+                    }
+                })
+                .await?;
 
             let (job_status, error) = job_status_strings(res);
             state.job_status = Some(job_status);
@@ -471,7 +471,7 @@ impl Client {
                 .map(|c| c.job_id.clone())
                 .ok_or_else(|| job_err("response missing job ID"))?;
 
-            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             if let Some(msg) = error.clone() {
@@ -607,7 +607,7 @@ impl Client {
                 });
             }
 
-            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             Ok(TableDataImportState {
@@ -725,7 +725,7 @@ impl Client {
                 });
             }
 
-            let res = monitor_job(&mut client, &job_id, timeout, |_| {}).await?;
+            let res = self.monitor_job(&job_id, timeout, |_| {}).await?;
             let (job_status, error) = job_status_strings(res);
 
             Ok(ExternalTableCreateState {

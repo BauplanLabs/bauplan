@@ -35,104 +35,106 @@ pub(crate) fn job_status_strings(result: Result<(), grpc::JobError>) -> (String,
     }
 }
 
-pub(crate) async fn monitor_job(
-    grpc: &mut grpc::Client,
-    job_id: &str,
-    timeout: time::Duration,
-    mut on_event: impl FnMut(RunnerEvent),
-) -> PyResult<Result<(), grpc::JobError>> {
-    info!(job_id, "running job");
-
-    let mut req = tonic::Request::new(grpc::generated::SubscribeLogsRequest {
-        job_id: job_id.to_owned(),
-    });
-    req.set_timeout(timeout);
-
-    let mut stream_client = grpc.clone();
-    let stream = stream_client.monitor_job(req);
-    futures::pin_mut!(stream);
-
-    loop {
-        let event = match stream.try_next().await {
-            Ok(Some(ev)) => ev,
-            Ok(None) => {
-                return Ok(Err(grpc::JobError::Failed(
-                    Default::default(),
-                    "stream ended without completion".to_owned(),
-                )));
-            }
-            Err(e)
-                if e.code() == tonic::Code::Cancelled
-                    || e.code() == tonic::Code::DeadlineExceeded =>
-            {
-                error!(job_id, "timeout reached, cancelling job");
-                let cancel_req = commanderpb::CancelJobRequest {
-                    job_id: Some(commanderpb::JobId {
-                        id: job_id.to_owned(),
-                        ..Default::default()
-                    }),
-                };
-
-                if let Err(e) = grpc.cancel(cancel_req).await {
-                    return Err(job_err(format!("failed to cancel job: {e}")));
-                }
-                return Err(job_err("client timed out"));
-            }
-            Err(e) => return Err(job_err(e)),
-        };
-
-        trace!(job_id, ?event, "received runner event");
-
-        if let RunnerEvent::JobCompletion(ev) = event {
-            return Ok(grpc::interpret_outcome(ev.outcome).map(|_| ()));
-        }
-
-        on_event(event);
-    }
-}
-
-pub(crate) async fn monitor_run(
-    grpc: &mut grpc::Client,
-    timeout: time::Duration,
-    state: &mut RunState,
-) -> PyResult<()> {
-    let job_id = state.job_id.clone().unwrap_or_default();
-
-    let status = monitor_job(grpc, &job_id, timeout, |event| match event {
-        RunnerEvent::TaskStart(ev) => {
-            if let Some(ts) = ev.timestamp
-                && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
-            {
-                state.tasks_started.insert(ev.task_id, dt);
-            }
-        }
-        RunnerEvent::TaskCompletion(ev) => {
-            if let Some(ts) = ev.timestamp
-                && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
-            {
-                state.tasks_stopped.insert(ev.task_id, dt);
-            }
-        }
-        RunnerEvent::RuntimeUserLog(ev)
-            if ev.r#type() == commanderpb::runtime_log_event::LogType::User =>
-        {
-            if let Ok(log) = JobLogEvent::try_from(ev) {
-                state.user_logs.push(log);
-            }
-        }
-        _ => (),
-    })
-    .await?;
-
-    state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap());
-    let (job_status, error) = job_status_strings(status);
-    state.job_status = Some(job_status);
-    state.error = error;
-
-    Ok(())
-}
-
 impl Client {
+    pub(crate) async fn monitor_job(
+        &self,
+        job_id: &str,
+        timeout: time::Duration,
+        mut on_event: impl FnMut(RunnerEvent),
+    ) -> PyResult<Result<(), grpc::JobError>> {
+        let mut grpc = self.grpc.clone();
+        info!(job_id, "running job");
+
+        let mut req = tonic::Request::new(grpc::generated::SubscribeLogsRequest {
+            job_id: job_id.to_owned(),
+        });
+        req.set_timeout(timeout);
+
+        let mut stream_client = grpc.clone();
+        let stream = stream_client.monitor_job(req);
+        futures::pin_mut!(stream);
+
+        loop {
+            let event = match stream.try_next().await {
+                Ok(Some(ev)) => ev,
+                Ok(None) => {
+                    return Ok(Err(grpc::JobError::Failed(
+                        Default::default(),
+                        "stream ended without completion".to_owned(),
+                    )));
+                }
+                Err(e)
+                    if e.code() == tonic::Code::Cancelled
+                        || e.code() == tonic::Code::DeadlineExceeded =>
+                {
+                    error!(job_id, "timeout reached, cancelling job");
+                    let cancel_req = commanderpb::CancelJobRequest {
+                        job_id: Some(commanderpb::JobId {
+                            id: job_id.to_owned(),
+                            ..Default::default()
+                        }),
+                    };
+
+                    if let Err(e) = grpc.cancel(cancel_req).await {
+                        return Err(job_err(format!("failed to cancel job: {e}")));
+                    }
+                    return Err(job_err("client timed out"));
+                }
+                Err(e) => return Err(job_err(e)),
+            };
+
+            trace!(job_id, ?event, "received runner event");
+
+            if let RunnerEvent::JobCompletion(ev) = event {
+                return Ok(grpc::interpret_outcome(ev.outcome).map(|_| ()));
+            }
+
+            on_event(event);
+        }
+    }
+
+    pub(crate) async fn monitor_run(
+        &self,
+        timeout: time::Duration,
+        state: &mut RunState,
+    ) -> PyResult<()> {
+        let job_id = state.job_id.clone().unwrap_or_default();
+
+        let status = self
+            .monitor_job(&job_id, timeout, |event| match event {
+                RunnerEvent::TaskStart(ev) => {
+                    if let Some(ts) = ev.timestamp
+                        && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
+                    {
+                        state.tasks_started.insert(ev.task_id, dt);
+                    }
+                }
+                RunnerEvent::TaskCompletion(ev) => {
+                    if let Some(ts) = ev.timestamp
+                        && let Some(dt) = Utc.timestamp_opt(ts.seconds, ts.nanos as u32).single()
+                    {
+                        state.tasks_stopped.insert(ev.task_id, dt);
+                    }
+                }
+                RunnerEvent::RuntimeUserLog(ev)
+                    if ev.r#type() == commanderpb::runtime_log_event::LogType::User =>
+                {
+                    if let Ok(log) = JobLogEvent::try_from(ev) {
+                        state.user_logs.push(log);
+                    }
+                }
+                _ => (),
+            })
+            .await?;
+
+        state.ended_at_ns = Some(Utc::now().timestamp_nanos_opt().unwrap());
+        let (job_status, error) = job_status_strings(status);
+        state.job_status = Some(job_status);
+        state.error = error;
+
+        Ok(())
+    }
+
     pub(crate) fn job_timeout(&self, client_timeout: Option<u64>) -> time::Duration {
         if let Some(v) = client_timeout
             && v > 0
@@ -352,7 +354,7 @@ impl Client {
 
             // Run the job until we get a completion. A job error is not an
             // Err here.
-            match monitor_run(&mut client, timeout, &mut state).await {
+            match self.monitor_run(timeout, &mut state).await {
                 Ok(()) => Ok(state),
                 Err(e) => Err(e),
             }
