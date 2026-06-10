@@ -9,6 +9,7 @@ use std::fmt::Write as _;
 mod cli {
     mod auth;
     mod branch;
+    mod config;
     mod import;
     mod init;
     mod job;
