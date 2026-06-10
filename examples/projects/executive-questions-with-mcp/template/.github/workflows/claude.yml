@@ -1,0 +1,186 @@
+name: Claude Code
+
+# Triggered when a GitHub issue is opened. The chat assistant files a Linear issue
+# in one shot (see docs/linear.md); Linear syncs it into a GitHub issue, and that
+# creation event kicks off this workflow.
+on:
+  issues:
+    types: [opened, reopened]
+
+# Restrict default token permissions; each job grants only what it needs.
+permissions: {}
+
+# One run per issue at a time; cancel any in-progress run for the same issue.
+concurrency:
+  group: issue-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude:
+    name: Implement pipeline from issue
+    # This repo only receives issues from the Linear sync, so every issue
+    # with a body is a pipeline request.
+    if: github.event.issue.body != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # create branches and push commits
+      pull-requests: write  # open the pull request
+      issues: write         # post a comment with the run report
+      id-token: write       # required by the claude-code-action
+      actions: read         # required for Claude to read CI results on PRs
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Derive the working branch from the issue number. It is unique and known at
+      # creation time, so we do not depend on any field inside the issue body.
+      - name: Derive branch from issue number
+        id: issue-branch
+        env:
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          BRANCH="bauplan/issue-${ISSUE_NUMBER}"
+          echo "Working branch: $BRANCH"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+ 
+      # We create and check out the working branch ourselves, so Claude genuinely
+      # works "on the current branch".
+      - name: Create working branch
+        env:
+          BRANCH: ${{ steps.issue-branch.outputs.branch }}
+        run: git switch -c "$BRANCH"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v8.0.0
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Run Claude Code
+        id: claude
+        uses: anthropics/claude-code-action@0f97b95b6536c26e5f6bd90faec370d41695beca # v1
+        env:
+          BAUPLAN_API_KEY: ${{ secrets.BAUPLAN_API_KEY }} # zizmor: ignore[secrets-outside-env]
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }} # zizmor: ignore[secrets-outside-env]
+          allowed_bots: "linear[bot]"
+          branch_prefix: ${{ steps.issue-branch.outputs.branch }}
+          branch_name_template: "{{prefix}}"
+          plugin_marketplaces: "https://github.com/BauplanLabs/bauplan-skills.git"
+          plugins: "bauplan@bauplan-skills"
+          display_report: true
+          show_full_output: false
+          prompt: |
+            A new data pipeline has been requested through the GitHub issue below.
+            Implement it on the current branch.
+ 
+            First read the repository conventions: CLAUDE.md, docs/linear.md,
+            docs/lakehouse.md, docs/semantics.md. Then reimplement the request as a
+            proper medallion pipeline following those rules: silver and gold models
+            written in Python with Polars (never pandas), the gold model with
+            materialization_strategy='REPLACE', expectations added, validated with
+            `uv run bauplan run --dry-run --strict on`. Never run on main; use a Bauplan
+            data branch prefixed with your username.
+ 
+            Do not commit; the workflow commits and pushes your changes for you.
+ 
+            When you are done, return the structured output with these fields,
+            which are used to build the pull request description:
+            - summary: what you implemented (pipeline name, what it does, tables in and out)
+            - status: COMPLETED, PARTIAL, or FAILED
+            - changes: files created or modified, one entry per file
+            - problems: errors or blockers, or "None"
+            - tradeoffs: design tradeoffs, or "None"
+            - verification: what you verified and how
+ 
+            --- ISSUE #${{ github.event.issue.number }}: ${{ github.event.issue.title }} ---
+ 
+            ${{ github.event.issue.body }}
+          claude_args: |
+            --allowedTools "Bash(uv *),Bash(bauplan *),WebFetch,Read,Write,Edit,Grep,Glob"
+            --model claude-sonnet-4-6
+            --json-schema '{"type":"object","properties":{"summary":{"type":"string"},"status":{"type":"string","enum":["COMPLETED","PARTIAL","FAILED"]},"changes":{"type":"array","items":{"type":"string"}},"problems":{"type":"string"},"tradeoffs":{"type":"string"},"verification":{"type":"string"}},"required":["summary","status","changes","problems","tradeoffs","verification"]}'
+
+      - name: Build PR body from structured output
+        env:
+          STRUCTURED: ${{ steps.claude.outputs.structured_output }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          if [ -z "$STRUCTURED" ]; then
+            echo "No structured output produced." >&2
+            echo "Automated PR — see issue #${ISSUE_NUMBER} and the workflow run for details." > /tmp/pr_body.md
+          else
+            {
+              echo "## Summary"
+              printf '%s' "$STRUCTURED" | jq -r '.summary'
+              echo
+              echo "## Status"
+              printf '%s' "$STRUCTURED" | jq -r '.status'
+              echo
+              echo "## Changes"
+              printf '%s' "$STRUCTURED" | jq -r '.changes[]'
+              echo
+              echo "## Problems"
+              printf '%s' "$STRUCTURED" | jq -r '.problems'
+              echo
+              echo "## Tradeoffs"
+              printf '%s' "$STRUCTURED" | jq -r '.tradeoffs'
+              echo
+              echo "## Verification"
+              printf '%s' "$STRUCTURED" | jq -r '.verification'
+            } > /tmp/pr_body.md
+          fi
+
+      - name: Commit and push changes
+        id: push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.issue-branch.outputs.branch }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "No changes produced; skipping push and PR." >&2
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement pipeline from issue #${ISSUE_NUMBER}: ${ISSUE_TITLE}"
+          git push --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "HEAD:refs/heads/${BRANCH}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+   
+      - name: Open pull request
+        if: steps.push.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.issue-branch.outputs.branch }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          # Build PR body: link the originating issue, then append the report
+          PR_BODY="Closes #$ISSUE_NUMBER
+  
+          $(cat /tmp/pr_body.md)"
+  
+          # Idempotent for reopened issues: update the existing PR instead of
+          # masking a failed create.
+          EXISTING=$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')
+          if [ "$EXISTING" = "0" ]; then
+            gh pr create \
+              --head "$BRANCH" \
+              --base main \
+              --title "$ISSUE_TITLE" \
+              --body "$PR_BODY"
+          else
+            gh pr edit "$BRANCH" --body "$PR_BODY"
+          fi
+   
