@@ -1,36 +1,12 @@
-[workspace]
-git_only = true
-publish = false
-pr_name = "chore: release v{{version}}"
-
-[[package]]
-name = "bauplan"
-release = true
-changelog_update = true
-changelog_path = "./CHANGELOG.md"
-git_tag_enable = true
-git_release_enable = true
-git_tag_name = "v{{ version }}"
-git_release_name = "v{{ version }}"
-
-[[package]]
-name = "bauplan-longbow"
-release = false
-changelog_update = false
-git_tag_enable = false
-git_release_enable = false
-# This seems to be the only way to get `release-plz release-pr` to ignore
-# bauplan-longbow (it should be ignored because of release = false).
-# This works because it thinks it's the initial release of bauplan-longbow each
-# time.
-# https://github.com/release-plz/release-plz/issues/2595
-git_tag_name = "_nonexistent"
-
 [changelog]
 trim = true
 header = ""
 body = """
+{% if version %}\
 ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+## [unreleased]
+{% endif %}\
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim | upper_first }}
 {% for commit in commits %}
@@ -38,6 +14,12 @@ body = """
 {%- endfor %}
 {% endfor %}
 """
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+tag_pattern = "v[0-9].*"
+include_paths = ["src/**", "python/**", "Cargo.toml"]
 commit_parsers = [
   { message = '^\w+\(longbow\)', skip = true },
   { message = "^feat", group = "<!-- 0 -->New Features" },
@@ -51,3 +33,7 @@ commit_parsers = [
   { message = "^build", skip = true },
   { message = "^revert", skip = true },
 ]
+
+[bump]
+features_always_bump_minor = false
+breaking_always_bump_major = false
