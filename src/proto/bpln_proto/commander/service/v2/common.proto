@@ -75,6 +75,7 @@ message JobInfo {
   string runner = 9;
   JobStateType status = 10;
   JobKind kind_type = 11;
+  optional string error_message = 13;
 }
 
 // LEGACY: DO NOT ADD NEW FIELDS HERE. REFACTOR NEEDED

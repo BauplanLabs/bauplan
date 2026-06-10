@@ -394,6 +394,9 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
             writeln!(&mut tw, "Kind:\t{}", job.kind)?;
             writeln!(&mut tw, "User:\t{}", job.user)?;
             writeln!(&mut tw, "Runner:\t{}", job.runner)?;
+            if let Some(error_message) = &job.error_message {
+                writeln!(&mut tw, "Error:\t{}", error_message)?;
+            }
             writeln!(
                 &mut tw,
                 "Created:\t{}",
