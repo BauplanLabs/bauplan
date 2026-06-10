@@ -1,0 +1,9 @@
+[project]
+name = "executive-questions-with-mcp"
+version = "0.1.0"
+description = "This project shows how to let executives interact with Bauplan via MCP server"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bauplan~=0.1.12",
+]
