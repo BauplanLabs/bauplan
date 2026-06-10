@@ -475,6 +475,7 @@ impl Client {
 
         let job_ids = filter_by_ids.unwrap_or_default().0;
         let filter_users = filter_by_users.unwrap_or_default().0;
+        let all_users = all_users || !filter_users.is_empty();
         let filter_kinds: Vec<i32> = filter_by_kinds.unwrap_or_default().into();
         let filter_statuses: Vec<i32> = filter_by_statuses.unwrap_or_default().into();
 

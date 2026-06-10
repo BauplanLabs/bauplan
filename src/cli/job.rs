@@ -251,9 +251,10 @@ async fn handle_ls(cli: &Cli, args: JobLsArgs) -> anyhow::Result<()> {
         .transpose()?
         .map(to_proto_timestamp);
 
+    let all_users = args.all_users || !args.user.is_empty();
     let base_request = commanderpb::GetJobsRequest {
         job_ids: args.id,
-        all_users: args.all_users,
+        all_users,
         filter_users: args.user,
         filter_kinds,
         filter_statuses,
