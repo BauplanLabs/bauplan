@@ -1,5 +1,7 @@
 [tools]
 buf = "1"
+"cargo:cargo-edit" = "latest"
+git-cliff = "2"
 bun = "1.2.18"
 just = "latest"
 node = "lts"
