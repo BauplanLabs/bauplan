@@ -1,4 +1,10 @@
 
+## [0.1.13] - 2026-06-10
+
+### New Features
+
+- [pysdk] Expose job error messages (a61f6c27f5955161cbb4ce20fa283d2cee30971b)
+
 ## [0.1.12] - 2026-06-08
 
 ### New Features
