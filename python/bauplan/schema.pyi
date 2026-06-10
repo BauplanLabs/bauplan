@@ -146,6 +146,11 @@ class Job:
         When the job was created.
         """
     @property
+    def error_message(self, /) -> str | None:
+        """
+        Error message for failed jobs, when available.
+        """
+    @property
     def finished_at(self, /) -> datetime | None:
         """
         When the job finished (successfully or not).
@@ -195,6 +200,8 @@ class JobContext:
     def dag_edges(self, /) -> list[DAGEdge]: ...
     @property
     def dag_nodes(self, /) -> list[DAGNode]: ...
+    @property
+    def error_message(self, /) -> str | None: ...
     @property
     def id(self, /) -> str: ...
     @property

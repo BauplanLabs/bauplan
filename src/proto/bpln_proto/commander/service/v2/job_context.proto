@@ -63,6 +63,9 @@ message JobContext {
 
   // Logs for Job
   repeated RunnerEvent job_events = 7;
+
+  // Error message for failed jobs, when available.
+  optional string error_message = 11;
 }
 
 message JobError {

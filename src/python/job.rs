@@ -314,6 +314,7 @@ pub(crate) struct JobContext {
     pub dag_nodes: Vec<DAGNode>,
     pub dag_edges: Vec<DAGEdge>,
     pub snapshot_dict: HashMap<String, String>,
+    pub error_message: Option<String>,
 }
 
 impl TryFrom<commanderpb::JobContext> for JobContext {
@@ -356,6 +357,7 @@ impl TryFrom<commanderpb::JobContext> for JobContext {
             dag_nodes,
             dag_edges,
             snapshot_dict,
+            error_message: ctx.error_message,
         })
     }
 }

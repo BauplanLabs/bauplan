@@ -205,6 +205,8 @@ pub struct Job {
     pub finished_at: Option<DateTime<Utc>>,
     /// The runner instance assigned to execute this job.
     pub runner: String,
+    /// Error message for failed jobs, when available.
+    pub error_message: Option<String>,
 }
 
 #[cfg(feature = "python")]
@@ -234,6 +236,7 @@ impl From<commanderpb::JobInfo> for Job {
             started_at: info.started_at.and_then(pb_to_chrono),
             finished_at: info.finished_at.and_then(pb_to_chrono),
             runner: info.runner,
+            error_message: info.error_message,
         }
     }
 }
