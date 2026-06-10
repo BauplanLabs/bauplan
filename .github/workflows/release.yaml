@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  push:
+    branches: [main, colin/ditch-release-plz]
+
+permissions: {}
+
+jobs:
+  # If the version in Cargo.toml doesn't match the latest git tag, create a
+  # new GitHub release.
+  release:
+    name: Release
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    if: ${{ github.repository_owner == 'BauplanLabs' }}
+    concurrency:
+      group: release-${{ github.ref }}
+      cancel-in-progress: false
+    outputs:
+      release_created: ${{ steps.check.outputs.release_created }}
+      tag: ${{ steps.check.outputs.tag }}
+    permissions:
+      contents: write # Create tags and GitHub releases
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          cache: false
+      - name: Check for unreleased version
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          current=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="bauplan") | .version')
+          tag="v${current}"
+          resp=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${tag}" 2>/dev/null) || true
+          status=$(echo "$resp" | jq -r '.status // "ok"')
+
+          if [ "$status" = "ok" ]; then
+            echo "release_created=false" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+            echo "Version ${current} already released."
+          elif [ "$status" = "404" ]; then
+            echo "release_created=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+            echo "New version ${current} found, creating release."
+          else
+            echo "::error::Failed to check release ${tag}: ${resp}"
+            exit 1
+          fi
+      - name: Create GitHub release
+        if: steps.check.outputs.release_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.check.outputs.tag }}
+        run: |
+          notes=$(git-cliff --latest)
+
+          # Find the merge commit of the release PR.
+          release_sha=$(gh pr list --state merged --head "release/${TAG}" \
+            --json mergeCommit --jq '.[0].mergeCommit.oid')
+
+          if [ -z "$release_sha" ]; then
+            echo "::error::Could not find merged release PR for ${TAG}"
+            exit 1
+          fi
+
+          # Note: gh release create creates both the tag and the release
+          # atomically.
+          gh release create "$TAG" --target "$release_sha" --notes "$notes"
+
+  # Build wheels and a tarball with the CLI, and publish them to PyPI and the
+  # GitHub release respectively.
+  publish:
+    name: Publish release artifacts
+    needs: release
+    if: ${{ needs.release.outputs.release_created == 'true' }}
+    permissions:
+      contents: write # Upload tarballs to GitHub release
+      id-token: write # Trusted publishing to PyPI
+    uses: ./.github/workflows/publish.yaml
+    with:
+      tag: ${{ needs.release.outputs.tag }}
+
+  # Deploy docs for the new version.
+  docs:
+    name: Deploy docs
+    needs: release
+    if: ${{ needs.release.outputs.release_created == 'true' }}
+    permissions:
+      id-token: write # AWS OIDC authentication
+      contents: write # Deploy docs
+      pull-requests: write # Update PR with deploy status
+    uses: ./.github/workflows/docs.yaml
+    with:
+      environment: prod
+
+  # Create or update a PR that bumps the version and changelog for the next
+  # release, based on conventional commits since the last tag.
+  release-pr:
+    name: Release PR
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    if: ${{ github.repository_owner == 'BauplanLabs' }}
+    permissions:
+      contents: write # Push release branch
+      pull-requests: write # Create/update release PR
+    concurrency:
+      group: release-pr-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # zizmor is worried about cache poisoning in a workflow that publishes
+      # release artifacts, but this step is completely separate (and caching is
+      # disabled for the job that actually does build the release).
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1 # zizmor: ignore[cache-poisoning]
+      - name: Compute version bump
+        id: bump
+        run: |
+          bump=$(git-cliff --bumped-version)
+          current=v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="bauplan") | .version')
+          echo "current_version=${current}" >> "$GITHUB_OUTPUT"
+          echo "bumped_version=${bump}" >> "$GITHUB_OUTPUT"
+          echo "Current: v${current}, bump: ${bump}"
+      - name: Prepare release
+        id: prepare
+        if: steps.bump.outputs.current_version != steps.bump.outputs.bumped_version
+        env:
+          VERSION: ${{ steps.bump.outputs.bumped_version }}
+        run: |
+          # Bump workspace version in Cargo.toml.
+          cargo set-version -p bauplan "${VERSION#v}"
+
+          # Generate the changelog.
+          git-cliff --bump --unreleased --prepend CHANGELOG.md
+
+          # Save the unreleased notes for the PR body.
+          git-cliff --bump --unreleased > /tmp/release-notes.md
+      - name: Create or update release PR
+        if: steps.bump.outputs.current_version != steps.bump.outputs.bumped_version
+        # zizmor wants us to just use `gh pr create`, but the action does a lot
+        # more fiddly stuff: commit signing, cleaning up the branches, etc.
+        uses: peter-evans/create-pull-request@aa523f9db61947bd5e06efd77870ef065eae32cc # v8.1.1 # zizmor: ignore[superfluous-actions]
+        with:
+          branch: release/${{ steps.bump.outputs.bumped_version }}
+          title: "chore: release ${{ steps.bump.outputs.bumped_version }}"
+          body-path: /tmp/release-notes.md
+          commit-message: "chore: release ${{ steps.bump.outputs.bumped_version }}"
+          add-paths: |
+            Cargo.toml
+            Cargo.lock
+            CHANGELOG.md
+          delete-branch: true
+          sign-commits: true
