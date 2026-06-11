@@ -73,12 +73,22 @@ pub(crate) fn handle(args: InitArgs) -> anyhow::Result<()> {
     //
     // [project]
     // name = "my_project"
-    // requires-python = ">=3.12"
+    // version = "0.1.0"
+    // requires-python = "~=3.12"
     // dependencies = ["bauplan=~x.x.x"]
+    //
+    // [dependency-groups]
+    // dev = [
+    //     "ruff>=0.15",
+    //     "ty>=0.0.48",
+    //     "polars>=1"
+    // ]
     let bauplan_version = concat!("bauplan~=", env!("CARGO_PKG_VERSION")).into();
 
+    let mut pyproject = toml::Table::default();
     let mut project = toml::Table::default();
     project.insert("name".into(), toml::Value::String(project_name.clone()));
+    project.insert("version".into(), toml::Value::String("0.1.0".into()));
     project.insert(
         "requires-python".into(),
         toml::Value::String("~=3.12".into()),
@@ -88,8 +98,21 @@ pub(crate) fn handle(args: InitArgs) -> anyhow::Result<()> {
         toml::Value::Array(vec![toml::Value::String(bauplan_version)]),
     );
 
-    let mut pyproject = toml::Table::default();
+    let mut dependency_groups = toml::Table::default();
+    dependency_groups.insert(
+        "dev".into(),
+        toml::Value::Array(vec![
+            toml::Value::String("ruff>=0.15".into()),
+            toml::Value::String("ty>=0.0.48".into()),
+            toml::Value::String("polars>=1".into()),
+        ]),
+    );
+
     pyproject.insert("project".into(), toml::Value::Table(project));
+    pyproject.insert(
+        "dependency-groups".into(),
+        toml::Value::Table(dependency_groups),
+    );
 
     let pyproject_toml =
         toml::to_string_pretty(&pyproject).context("failed to serialize pyproject.toml")?;
