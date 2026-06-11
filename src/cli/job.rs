@@ -370,6 +370,7 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
     let mut request = cli.traced(commanderpb::GetJobsRequest {
         job_ids: vec![args.job_id.clone()],
         all_users: true,
+        max_records: 2,
         ..Default::default()
     });
     request.set_timeout(timeout);
@@ -379,7 +380,11 @@ async fn handle_get(cli: &Cli, args: JobGetArgs) -> anyhow::Result<()> {
         .await
         .map_err(format_grpc_status)?
         .into_inner();
-    let Some(job) = response.jobs.into_iter().next().map(Job::from) else {
+    let jobs = response.jobs;
+    if jobs.len() > 1 {
+        bail!("multiple jobs match prefix, please be more specific");
+    }
+    let Some(job) = jobs.into_iter().next().map(Job::from) else {
         bail!("job not found: {}", args.job_id);
     };
 

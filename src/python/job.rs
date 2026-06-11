@@ -403,6 +403,7 @@ impl Client {
         let mut req = Request::new(commanderpb::GetJobsRequest {
             job_ids: vec![job_id.to_string()],
             all_users: true,
+            max_records: 2,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
@@ -413,6 +414,11 @@ impl Client {
         let jobs = response.into_inner().jobs;
         if jobs.is_empty() {
             return Err(BauplanError::new_err(format!("job not found: {}", job_id)));
+        }
+        if jobs.len() > 1 {
+            return Err(BauplanError::new_err(
+                "multiple jobs match prefix, please be more specific",
+            ));
         }
 
         Ok(jobs.into_iter().next().unwrap().into())
