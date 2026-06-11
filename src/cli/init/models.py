@@ -20,9 +20,9 @@ def survival_rate_by_age(
     | 19       | 0.3           |
     | 20       | 0.4           |
     """
-    import polars as pl # noqa
+    import polars as pl
 
-    df = pl.from_arrow(passengers)
+    df = pl.DataFrame(passengers)
     return (
         df.group_by(pl.col("Age").floor())
         .agg(pl.col("Survived").mean().alias("survival_rate"))

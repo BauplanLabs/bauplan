@@ -13,15 +13,28 @@ fn init_generates_valid_dag() -> Result<()> {
         .assert()
         .success();
 
-    let models = dir.path().join("models.py");
-
-    let output = Command::new("uvx")
-        .args(["--isolated", "ruff", "check", "--isolated"])
-        .arg(&models)
+    let output = Command::new("uv")
+        .arg("--directory")
+        .arg(dir.path())
+        .args(["run", "ruff", "check"])
         .output()?;
     if !output.status.success() {
         bail!(
             "ruff check failed:\n{}",
+            [&output.stdout[..], &output.stderr[..]]
+                .concat()
+                .to_str_lossy()
+        );
+    }
+
+    let output = Command::new("uv")
+        .arg("--directory")
+        .arg(dir.path())
+        .args(["run", "ty", "check"])
+        .output()?;
+    if !output.status.success() {
+        bail!(
+            "ty check failed:\n{}",
             [&output.stdout[..], &output.stderr[..]]
                 .concat()
                 .to_str_lossy()
