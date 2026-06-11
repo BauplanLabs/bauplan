@@ -1,0 +1,60 @@
+---
+title: "R2 - Cloudflare object storage"
+sidebar_label: "R2 (Cloudflare Object Storage)"
+---
+
+:::caution Preview feature
+
+This is a preview feature. Please contact Bauplan to enable it.
+
+:::
+
+Connect your Cloudflare R2 bucket to Bauplan and work directly with data stored in your Cloudflare account. This lets you run pipelines with the safety and correctness guarantees of Bauplan, without moving data out of your current landing zone.
+
+Thanks to R2 pricing, you can avoid egress bandwidth fees when working with data stored in Cloudflare R2.
+
+## When to use this integration
+
+Use this integration when you want to run Bauplan pipelines on data in object storage, but your landing zone is on Cloudflare R2 rather than Amazon S3.
+
+## Prerequisites
+
+- A Cloudflare account with an R2 bucket.
+- A Bauplan account with R2 access enabled.
+- Existing Parquet files stored in R2.
+
+## Importing and querying data
+
+Once the Bauplan setup for your Cloudflare organization is complete, you can import existing Parquet files as an external table in the Bauplan catalog, without copying the data.
+
+For more information, see the [`bauplan table create-external`](/reference/cli#bauplan-table-create-external) command.
+
+```sh
+bauplan table create-external mytable --search-pattern "r2://..."
+```
+
+The table is now available through the standard query command:
+
+```sh
+bauplan query "SELECT * FROM mytable LIMIT 5"
+```
+
+## Running a pipeline
+
+Materializing new tables from existing sources works as usual through a Bauplan DAG.
+
+First, create, and check out a branch:
+
+```sh
+bauplan checkout -b user.my_branch
+```
+
+Then run the pipeline:
+
+```sh
+bauplan run
+```
+
+## Want to learn more?
+
+For more information or to request access to a preview environment, please contact us.
