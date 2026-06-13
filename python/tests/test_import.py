@@ -102,14 +102,14 @@ def test_create_external_table_from_parquet(client: bauplan.Client, temp_branch:
     assert result["row_count"].to_pylist()[0] == 134344870
 
     # Importing into a read-only external table should fail.
-    import_state = client.import_data(
-        table="ext_parquet_table",
-        search_uri=search_patterns[0],
-        branch=temp_branch,
-    )
+    with pytest.raises(bauplan.exceptions.BauplanJobError) as exc_info:
+        client.import_data(
+            table="ext_parquet_table",
+            search_uri=search_patterns[0],
+            branch=temp_branch,
+        )
 
-    assert import_state.error is not None
-    assert "Cannot import files to read-only table" in import_state.error
+    assert "Cannot import files to read-only table" in str(exc_info.value)
 
 
 def test_create_external_table_from_metadata(client: bauplan.Client, temp_branch: str):
