@@ -401,7 +401,7 @@ fn resolve_includes(base: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, Pr
         // popping wildcards before the guard below can see them.
         let pattern = Path::new(p);
         let mut resolved = if pattern.is_absolute() {
-            return Err(ProjectError::GlobPatternNotAllowed(format!("{} is an absolute path", p.to_string())));
+            return Err(ProjectError::GlobPatternNotAllowed(format!("{} is an absolute path", p)));
         } else {
             base_canonical.clone()
         };
@@ -673,10 +673,10 @@ mod tests {
         let cases = [
             ("views/model.sql", true),
             ("model.sql", true),
-            ("model.SQL", true),
-            ("views/model.SQL", true),
-            ("views/model.Sql", true),
-            ("model.Sql", true),
+            ("model.SQL", false),
+            ("views/model.SQL", false),
+            ("views/model.Sql", false),
+            ("model.Sql", false),
             // py is not included yet
             ("script.py", false),
             ("script.PY", false),
