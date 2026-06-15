@@ -125,7 +125,7 @@ jobs:
           echo "bumped_version=${bump}" >> "$GITHUB_OUTPUT"
           echo "Current: ${current}, bump: ${bump}"
       - name: Install cargo-edit
-        run: cargo install cargo-edit@0.13 --locked
+        run: cargo install cargo-edit --locked --version "^0.13"
       - name: Prepare release
         id: prepare
         if: steps.bump.outputs.current_version != steps.bump.outputs.bumped_version
