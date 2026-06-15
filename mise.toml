@@ -1,6 +1,5 @@
 [tools]
 buf = "1"
-"cargo:cargo-edit" = "0.13"
 git-cliff = "2"
 bun = "1.2.18"
 just = "latest"
