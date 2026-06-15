@@ -1,4 +1,16 @@
 
+## [0.1.13] - 2026-06-15
+
+### New Features
+
+- [pysdk] Expose job error messages (a61f6c27f5955161cbb4ce20fa283d2cee30971b)
+
+### Bugfixes
+
+- Respect explicit job user filters (74f52b24df062c5981fdfe97ff73b90b1fef7bdc)
+- [cli] Accept api_endpoint in config set (15c4e42b8363dbadca23d3af093704b4881dad12)
+- [cli] Add `version` to generated pyproject in init (ecd8ee0f3dfde8d1da6b711c53f4b095c5a1f05a)
+
 ## [0.1.12] - 2026-06-08
 
 ### New Features
