@@ -115,6 +115,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+      - uses: ./.github/actions/setup-caches
       - name: Compute version bump
         id: bump
         run: |
@@ -123,6 +124,8 @@ jobs:
           echo "current_version=${current}" >> "$GITHUB_OUTPUT"
           echo "bumped_version=${bump}" >> "$GITHUB_OUTPUT"
           echo "Current: ${current}, bump: ${bump}"
+      - name: Install cargo-edit
+        run: cargo install cargo-edit@0.13 --locked
       - name: Prepare release
         id: prepare
         if: steps.bump.outputs.current_version != steps.bump.outputs.bumped_version
