@@ -66,6 +66,9 @@ message JobContext {
 
   // Error message for failed jobs, when available.
   optional string error_message = 11;
+
+  // SQL query for SQL (query run) jobs, when available.
+  optional string sql_query = 12;
 }
 
 message JobError {
