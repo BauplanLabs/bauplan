@@ -45,8 +45,10 @@ pub enum ProjectError {
     PathNotInBase(PathBuf),
     #[error("extension not allowed: {0}")]
     ExtensionNotAllowed(PathBuf),
-    #[error("{0} is excluded by gitignore pattern {1:?} from {2}")]
-    GitIgnoredFile(PathBuf, String, PathBuf),
+    #[error("some files match your include globs but are excluded by gitignore: {0}")]
+    GitIgnoredFiles(String),
+    #[error("symlink not allowed: {0} points to {1}")]
+    Symlink(PathBuf, PathBuf),
     #[error("failed to extract relative path")]
     Prefix(#[from] std::path::StripPrefixError),
     #[error("invalid value {0:?} of type {1}")]
@@ -332,8 +334,10 @@ impl ProjectFile {
         // Top level first, always included.
         for entry in std::fs::read_dir(project_dir)? {
             let path = entry?.path();
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) && include_in_snapshot(name) {
-                    files.insert(path);
+            if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                && include_in_snapshot(name)
+            {
+                files.insert(path);
             }
         }
 
@@ -342,7 +346,6 @@ impl ProjectFile {
             let additional = resolve_includes(project_dir, additional_paths)?;
             files.extend(additional);
         }
-    
 
         let mut buf = Vec::new();
         let mut zip = zip::ZipWriter::new(std::io::Cursor::new(&mut buf));
@@ -383,8 +386,7 @@ fn include_paths_filter(file: &Path) -> bool {
         .is_some_and(|ext| matches!(ext, "sql")) // Future: extend with "sql" | "py".
 }
 
-fn resolve_pattern(base_canonical: &Path, p: &String) -> Result<String, ProjectError>{
-
+fn resolve_pattern(base_canonical: &Path, p: &String) -> Result<String, ProjectError> {
     // Users should be explicitly including file extensions, not globbing for all files.
     // Also, we do not enforce constraints on lower/upper case here.
     if !p.to_lowercase().ends_with(".sql") {
@@ -399,7 +401,10 @@ fn resolve_pattern(base_canonical: &Path, p: &String) -> Result<String, ProjectE
     let pattern = Path::new(p);
 
     let mut resolved = if pattern.is_absolute() {
-        return Err(ProjectError::GlobPatternNotAllowed(format!("{} is an absolute path", p)));
+        return Err(ProjectError::GlobPatternNotAllowed(format!(
+            "{} is an absolute path",
+            p
+        )));
     } else {
         base_canonical.to_path_buf()
     };
@@ -446,38 +451,56 @@ fn resolve_pattern(base_canonical: &Path, p: &String) -> Result<String, ProjectE
     }
 
     Ok(glob)
-
 }
 
 /// Include additional files in snapshot, based on user-provided glob patterns.
 fn resolve_includes(base: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, ProjectError> {
     let base_canonical = base.canonicalize()?;
 
-    // We will only look for additional files in the overrides.
+    // We use two walkers to catch cases where an ignored file is also included.
+    // When using ovverides, included files take precedence over ignore instructions.
+    // By diffing the results of walker with and without overrides we retrieve
+    // the ignored/included files.
     let mut ob = OverrideBuilder::new(&base_canonical);
+
     for p in patterns {
         let resolved_pattern = resolve_pattern(&base_canonical, p)?;
-        ob.add(&resolved_pattern).map_err(|_| ProjectError::GlobPatternNotAllowed(p.to_string()))?;
+        ob.add(&resolved_pattern)
+            .map_err(|_| ProjectError::GlobPatternNotAllowed(p.to_string()))?;
     }
     let overrides = ob.build()?;
 
-    // Build the walker with gitignores
-    let walker = WalkBuilder::new(&base_canonical)
+    let override_set: HashSet<PathBuf> = WalkBuilder::new(&base_canonical)
         .overrides(overrides)
-        .build();
+        .build()
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_file())
+        .map(|e| e.into_path())
+        .collect();
+    let plain_set: HashSet<PathBuf> = WalkBuilder::new(&base_canonical)
+        .build()
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_file())
+        .map(|e| e.into_path())
+        .collect();
+
+    let gitignored: Vec<&PathBuf> = override_set.difference(&plain_set).collect();
+    if !gitignored.is_empty() {
+        let error_msg = gitignored
+            .iter()
+            .map(|p| format!("  {}", p.display()))
+            .collect::<Vec<_>>()
+            .join("\n");
+        return Err(ProjectError::GitIgnoredFiles(error_msg));
+    }
 
     let mut paths = HashSet::new();
 
-    for entry in walker {
-        let entry_canonical = entry?.path().canonicalize()?;
-
+    for entry in override_set {
+        let entry_canonical = entry.canonicalize()?;
         // Canonicalizing can land outside base when the entry is a symlink elsewhere.
         if !entry_canonical.starts_with(&base_canonical) {
-            return Err(ProjectError::PathNotInBase(entry_canonical));
-        }
-
-        if !entry_canonical.is_file() {
-            continue;
+            return Err(ProjectError::Symlink(entry, entry_canonical));
         }
 
         if !include_paths_filter(&entry_canonical) {
@@ -485,7 +508,6 @@ fn resolve_includes(base: &Path, patterns: &[String]) -> Result<Vec<PathBuf>, Pr
         }
 
         paths.insert(entry_canonical);
-
     }
 
     Ok(paths.into_iter().collect())
@@ -531,21 +553,21 @@ mod tests {
         assert_matches!(err, ProjectError::GlobPatternNotAllowed(_));
     }
 
-    // #[test]
-    // fn resolve_includes_fails_loud_on_gitignored_file() {
-    //     let tmp = tempfile::tempdir().unwrap();
-    //     // Repo root marker: discovery only checks that .git exists
-    //     std::fs::create_dir(tmp.path().join(".git")).unwrap();
-    //     // The .gitignore lives above base, like a repo-root one would
-    //     std::fs::write(tmp.path().join(".gitignore"), "*.sql\n").unwrap();
+    #[test]
+    fn resolve_includes_fails_loud_on_gitignored_file() {
+        let tmp = tempfile::tempdir().unwrap();
+        // Repo root marker: discovery only checks that .git exists
+        std::fs::create_dir(tmp.path().join(".git")).unwrap();
+        // The .gitignore lives above base, like a repo-root one would
+        std::fs::write(tmp.path().join(".gitignore"), "*.sql\n").unwrap();
 
-    //     let proj = tmp.path().join("proj");
-    //     std::fs::create_dir_all(proj.join("views")).unwrap();
-    //     std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
 
-    //     let err = resolve_includes(&proj, &["views/*.sql".into()]).unwrap_err();
-    //     assert_matches!(err, ProjectError::GitIgnoredFile(..));
-    // }
+        let err = resolve_includes(&proj, &["views/*.sql".into()]).unwrap_err();
+        assert_matches!(err, ProjectError::GitIgnoredFiles(..));
+    }
 
     #[test]
     fn resolve_includes_respects_gitignore_whitelist() {
@@ -607,6 +629,30 @@ mod tests {
         let mut content = String::new();
         entry.read_to_string(&mut content).unwrap();
         assert_eq!(content, "SELECT 1");
+    }
+
+    fn symlink_file(src: &Path, dst: &Path) {
+        #[cfg(unix)]
+        std::os::unix::fs::symlink(src, dst).unwrap();
+        #[cfg(windows)]
+        std::os::windows::fs::symlink_file(src, dst).unwrap();
+    }
+
+    #[test]
+    fn resolve_includes_rejects_symlink_escaping_base() {
+        let tmp = tempfile::tempdir().unwrap();
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views")).unwrap();
+
+        std::fs::write(tmp.path().join("secret.sql"), "SELECT secret").unwrap();
+
+        symlink_file(
+            &tmp.path().join("secret.sql"),
+            &proj.join("views").join("leak.sql"),
+        );
+
+        let err = resolve_includes(&proj, &["views/*.sql".into()]).unwrap_err();
+        assert_matches!(err, ProjectError::Symlink(..));
     }
 
     #[test]
