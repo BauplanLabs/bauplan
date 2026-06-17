@@ -119,7 +119,7 @@ jobs:
       - name: Compute version bump
         id: bump
         run: |
-          bump=$(git-cliff --bumped-version)
+          bump=$(git-cliff --bumped-version --unreleased)
           current=v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="bauplan") | .version')
           echo "current_version=${current}" >> "$GITHUB_OUTPUT"
           echo "bumped_version=${bump}" >> "$GITHUB_OUTPUT"
