@@ -109,9 +109,11 @@ impl BauplanPreset {
 
 impl iroh::endpoint::presets::Preset for BauplanPreset {
     fn apply(self, builder: iroh::endpoint::Builder) -> iroh::endpoint::Builder {
-        // We don't use address lookup; instead we just try all relays.
         builder
+            // We don't use address lookup; instead we just try all relays.
             .clear_address_lookup()
+            // https://github.com/n0-computer/iroh/issues/4349
+            .portmapper_config(iroh::endpoint::PortmapperConfig::Disabled)
             .alpns(vec![ALPN.to_owned()])
             .relay_mode(RelayMode::Custom(self.relay_map()))
             .crypto_provider(std::sync::Arc::new(rustls::crypto::ring::default_provider()))
