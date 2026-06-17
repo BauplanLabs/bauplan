@@ -212,28 +212,3 @@ def extras(
         return wrapper
 
     return decorator
-
-
-def pyspark(
-    version: Optional[str] = None,
-    conf: Optional[Dict[str, str]] = None,
-    **kwargs: Any,
-) -> Callable:
-    """
-    Decorator that makes a pyspark session available to a
-    Bauplan function (a model or an expectation).
-    Add a spark=None parameter to the function model args
-
-    Parameters:
-        version: the version string of pyspark
-        conf: A dict containing the pyspark config
-    """
-
-    def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
-
-    return decorator

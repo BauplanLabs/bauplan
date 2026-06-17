@@ -407,22 +407,6 @@ fn prophet() {
 }
 
 #[test]
-fn pyspark() {
-    bauplan()
-        .args([
-            "run",
-            "--dry-run",
-            "--cache",
-            "off",
-            "-p",
-            "tests/fixtures/pyspark",
-        ])
-        .assert()
-        .success()
-        .stderr(contains("I'm in the spark model now!"));
-}
-
-#[test]
 fn python_3_10() {
     bauplan()
         .args([
