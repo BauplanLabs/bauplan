@@ -75,7 +75,7 @@ def _pdf_to_markdown(bucket, pdf_path):
 
 # We need boto3 to get the PDFs from S3
 # and markitdown to convert the PDFs to text.
-@bauplan.python("3.10", pip={"boto3": "1.35.86", "markitdown": "0.0.1a3"})
+@bauplan.python("3.11", pip={"boto3": "1.35.86", "markitdown": "0.0.1a3"})
 @bauplan.model(internet_access=True)
 def sec_10_q_markdown(data=bauplan.Model("my_pdf_metadata")):
     """

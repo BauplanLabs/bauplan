@@ -407,22 +407,6 @@ fn prophet() {
 }
 
 #[test]
-fn python_3_10() {
-    bauplan()
-        .args([
-            "run",
-            "--dry-run",
-            "--cache",
-            "off",
-            "-p",
-            "tests/fixtures/python_3_10",
-        ])
-        .assert()
-        .success()
-        .stderr(contains("Running on python 3.10."));
-}
-
-#[test]
 fn python_3_12() {
     bauplan()
         .args([
@@ -436,6 +420,22 @@ fn python_3_12() {
         .assert()
         .success()
         .stderr(contains("Running on python 3.12."));
+}
+
+#[test]
+fn python_3_13() {
+    bauplan()
+        .args([
+            "run",
+            "--dry-run",
+            "--cache",
+            "off",
+            "-p",
+            "tests/fixtures/python_3_13",
+        ])
+        .assert()
+        .success()
+        .stderr(contains("Running on python 3.13."));
 }
 
 #[test]
