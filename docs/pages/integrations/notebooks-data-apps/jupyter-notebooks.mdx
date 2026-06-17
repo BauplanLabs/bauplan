@@ -11,7 +11,7 @@ Bauplan exposes a Python SDK that lets you interact with your lakehouse in code:
 
 ## **Prerequisites**
 
-- Python 3.10 or above.
+- Python 3.11 or above.
 - A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
 - JupyterLab or Jupyter Notebook, Bauplan, Pandas, Matplotlib, and `ipywidgets` installed.
 - Access to a Bauplan table you can query (such as `taxi_fhvhv`).
@@ -150,7 +150,7 @@ def on_run_clicked(_):
 
     # 7) Create a bar chart with matplotlib
     labels = df["dt"].dt.strftime("%Y-%m-%d")
-    values = df["rides"].values
+    values = df["rides"].tolist()
 
     with plot_out:
         plt.figure(figsize=(max(6, len(df) * 0.25), 4))

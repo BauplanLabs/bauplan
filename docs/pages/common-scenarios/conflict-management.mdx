@@ -137,7 +137,7 @@ run_state = client.run(
     strict="on",
 )
 
-if run_state.job_status.lower() != "success":
+if (run_state.job_status or "").lower() != "success":
     print(f"Run blocked by the expectation. Reason: {run_state.error}.")
 ```
 
