@@ -97,7 +97,7 @@ def step_1(data=bauplan.Model('input_table')):
     ...
 
 @bauplan.model()
-@bauplan.python('3.10', pip={'pandas': '1.5.3'})
+@bauplan.python('3.11', pip={'pandas': '1.5.3'})
 def step_2(data=bauplan.Model('step_1')):
     import pandas
     ...

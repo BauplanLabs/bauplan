@@ -1,0 +1,7 @@
+project:
+  id: 7b2e4f91-a3d8-4c6b-9e1a-82f5d6c09b47
+  name: bauplan_python_3_13
+
+defaults:
+  python:
+    version: "3.13"

@@ -90,7 +90,7 @@ def expectation(
     from bauplan.standard_expectations import expect_column_no_nulls
 
     @bauplan.expectation()
-    @bauplan.python('3.10')
+    @bauplan.python('3.11')
     def test_joined_dataset(
         data=bauplan.Model(
             'join_dataset',
