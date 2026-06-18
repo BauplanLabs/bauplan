@@ -334,9 +334,9 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
 
     eprintln!("Created branch \"{branch_name}\"");
     anstream::eprintln!(
-        "{GREEN}TIP:{GREEN:#} To create and switch to a branch in one command, run:",
+        "{GREEN}TIP:{GREEN:#} To switch to the new branch, run:",
     );
-    eprintln!("\tbauplan checkout -b {branch_name:?}");
+    eprintln!("\tbauplan checkout {branch_name:?}");
     Ok(())
 }
 
