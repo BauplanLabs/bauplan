@@ -44,6 +44,24 @@ def normalize_data(
 
 
 @bauplan.model(
+    columns=['ds', 'y'],
+    materialization_strategy='NONE',
+)
+@bauplan.python('3.11', pip={'pandas': '2.2.2'})
+def training_dataset(
+    data=bauplan.Model(
+        'normalize_data',
+        columns=['ds'],
+    ),
+):
+    import pandas as pd
+    df = data.to_pandas()
+    result = df.groupby('ds').size().reset_index(name='y')
+    result = result.sort_values('ds').reset_index(drop=True)
+    return result
+
+
+@bauplan.model(
     columns=[
         'ds',
         'yhat',
