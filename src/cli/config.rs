@@ -151,5 +151,12 @@ fn print_profile(out: &mut impl Write, profile: &bauplan::Profile) -> anyhow::Re
     writeln!(out, "{GREEN}API Key{GREEN:#}\t*********")?;
     writeln!(out, "{GREEN}Active Branch{GREEN:#}\t{active_branch}",)?;
 
+    if !profile.args.is_empty() {
+        writeln!(out, "{GREEN}Args{GREEN:#}")?;
+        for (k, v) in &profile.args {
+            writeln!(out, "  {k}\t{v}")?;
+        }
+    }
+
     Ok(())
 }

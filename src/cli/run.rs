@@ -140,16 +140,19 @@ pub(crate) fn handle(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
 }
 
 pub(crate) fn job_request_common(
+    cli: &Cli,
     args: Vec<KeyValue>,
     priority: Option<Priority>,
 ) -> commanderpb::JobRequestCommon {
     let hostname = gethostname::gethostname().to_string_lossy().into_owned();
-    let args = args.into_iter().map(KeyValue::into_strings).collect();
+
+    let mut merged_args = cli.profile.args.clone();
+    merged_args.extend(args.into_iter().map(|kv| kv.into_strings()));
 
     commanderpb::JobRequestCommon {
         module_version: env!("CARGO_PKG_VERSION").to_owned(),
         hostname,
-        args,
+        args: merged_args,
         debug: 0,
         priority: priority.map(|p| p.0 as _),
     }
@@ -298,7 +301,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         .context("failed to resolve parameters")?;
     let zip_file = project.create_code_snapshot()?;
 
-    let job_request_common = job_request_common(arg, priority);
+    let job_request_common = job_request_common(cli, arg, priority);
 
     let dry_run = if dry_run {
         commanderpb::JobRequestOptionalBool::True as _

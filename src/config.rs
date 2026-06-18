@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     env,
     fs::File,
     io,
@@ -43,6 +43,10 @@ pub struct Profile {
     /// Intended for internal use.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_branch: Option<String>,
+    /// Default args to include in every job request. CLI/SDK args override
+    /// these on a per-key basis.
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    pub args: HashMap<String, String>,
     /// The user-agent used on requests. Intended for internal use.
     #[serde(skip)]
     pub user_agent: String,
@@ -59,6 +63,7 @@ impl std::fmt::Debug for Profile {
             .field("api_endpoint", &self.api_endpoint)
             .field("api_key", &"********")
             .field("active_branch", &self.active_branch)
+            .field("args", &self.args)
             .field("user_agent", &self.user_agent)
             .finish()
     }
@@ -70,6 +75,8 @@ struct ConfigProfile {
     pub(crate) active_branch: Option<String>,
     pub(crate) api_endpoint: Option<String>,
     pub(crate) api_key: Option<String>,
+    #[serde(default)]
+    pub(crate) args: HashMap<String, String>,
 }
 
 #[derive(Debug, Default, Clone, Deserialize)]
@@ -149,6 +156,7 @@ impl Profile {
         Ok(Self {
             name: name.to_owned(),
             active_branch: profile.active_branch,
+            args: profile.args,
             api_endpoint,
             api_key,
             user_agent: make_ua(None),
@@ -230,6 +238,7 @@ impl Profile {
             active_branch,
             api_endpoint,
             api_key,
+            args,
         } = raw;
 
         let api_endpoint = api_endpoint
@@ -239,6 +248,7 @@ impl Profile {
         Ok(Self {
             name,
             active_branch,
+            args,
             api_endpoint,
             api_key,
             user_agent: make_ua(None),
