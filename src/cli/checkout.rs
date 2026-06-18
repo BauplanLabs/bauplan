@@ -19,7 +19,7 @@ use crate::cli::{Cli, color::CliExamples, yaml};
 pub(crate) struct CheckoutArgs {
     /// Branch name
     pub branch_name: String,
-    /// Create the branch first (equivalent to "branch create --if-not-exists")
+    /// Create the branch before switching (fails if it already exists)
     #[arg(short = 'b')]
     pub create: bool,
     /// Ref from which to create when using -b. If not specified,
