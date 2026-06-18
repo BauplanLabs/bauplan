@@ -1,5 +1,18 @@
 import bauplan
 
+
+@bauplan.model(
+    columns=['col_3'],
+    materialization_strategy='NONE',
+)
+@bauplan.python('3.11')
+def model_3(
+    model_2=bauplan.Model('model_2', columns=['col_2']),
+):
+    import pyarrow as pa
+    return pa.Table.from_pydict({'col_3': model_2['col_2']})
+
+
 @bauplan.model(
     columns=['col_2'],
     materialization_strategy='NONE',
@@ -40,7 +53,7 @@ def model_4(
     assert val_2_0 == 'val_0'
     assert val_2_1 == 'val_1'
 
-    # the same cause we select col_2 AS col_3 in the SQL model, model_3
+    # model_3 renames col_2 to col_3, so values should match
     assert val_3_0 == 'val_0'
     assert val_3_1 == 'val_1'
 
