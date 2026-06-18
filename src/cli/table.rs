@@ -583,7 +583,7 @@ async fn handle_create_plan(cli: &Cli, args: TableCreatePlanArgs) -> anyhow::Res
     let branch = branch.or_else(|| cli.profile.active_branch.clone());
 
     let req = commanderpb::TableCreatePlanRequest {
-        job_request_common: Some(job_request_common(arg, None)),
+        job_request_common: Some(job_request_common(cli, arg, None)),
         branch_name: branch,
         table_name: name,
         namespace,
@@ -637,7 +637,7 @@ async fn handle_apply_plan(cli: &Cli, args: TableCreatePlanApplyArgs) -> anyhow:
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
     let req = commanderpb::TableCreatePlanApplyRequest {
-        job_request_common: Some(job_request_common(arg, priority)),
+        job_request_common: Some(job_request_common(cli, arg, priority)),
         plan_yaml,
     };
 
@@ -668,7 +668,7 @@ async fn handle_create_table(cli: &Cli, args: TableCreateArgs) -> anyhow::Result
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
 
     let branch = branch.or_else(|| cli.profile.active_branch.clone());
-    let common = job_request_common(arg, priority);
+    let common = job_request_common(cli, arg, priority);
 
     // Step 1: create the plan.
     let plan_req = commanderpb::TableCreatePlanRequest {
@@ -739,7 +739,7 @@ async fn handle_import_data(cli: &Cli, args: TableImportArgs) -> anyhow::Result<
     let branch = branch.or_else(|| cli.profile.active_branch.clone());
 
     let req = commanderpb::TableDataImportRequest {
-        job_request_common: Some(job_request_common(arg, priority)),
+        job_request_common: Some(job_request_common(cli, arg, priority)),
         branch_name: branch,
         table_name: name,
         namespace,
@@ -819,7 +819,7 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
     let branch = branch.or_else(|| cli.profile.active_branch.clone());
 
     let req = commanderpb::ExternalTableCreateRequest {
-        job_request_common: Some(job_request_common(arg, priority)),
+        job_request_common: Some(job_request_common(cli, arg, priority)),
         branch_name: branch,
         table_name,
         namespace,

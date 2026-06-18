@@ -102,7 +102,7 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
         None
     };
 
-    let job_request_common = job_request_common(arg, priority);
+    let job_request_common = job_request_common(cli, arg, priority);
 
     let progress = cli.new_spinner().with_message("Planning query...");
     progress.enable_steady_tick(time::Duration::from_millis(100));

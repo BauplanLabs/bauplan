@@ -157,10 +157,14 @@ impl Client {
         }
 
         let hostname = gethostname().to_string_lossy().into_owned();
+
+        let mut merged_args = self.profile.args.clone();
+        merged_args.extend(args);
+
         Ok(commanderpb::JobRequestCommon {
             module_version: env!("CARGO_PKG_VERSION").to_owned(),
             hostname,
-            args,
+            args: merged_args,
             debug: 0,
             priority: priority.map(|p| p as _),
         })
