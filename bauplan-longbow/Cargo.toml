@@ -18,7 +18,7 @@ arrow = "58"
 arrow-ipc = { version = "58", features = ["zstd"] }
 bytes = "1"
 futures.workspace = true
-iroh = "1.0.0-rc.1"
+iroh = "1"
 n0-error = "0.1"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 thiserror.workspace = true
