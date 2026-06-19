@@ -1,4 +1,17 @@
 
+## [0.1.14] - 2026-06-19
+
+### New Features
+
+- [pysdk] Expose sql_query on job context (52dbaa1421bae9a846b80c7eef0dea9debde4721)
+- Drop support for pyspark (27b9fc4651bb364373bb3b70765159eea77e7494)
+- Support feature flags in the config file (0551708421c1657788d5c9da7fbb70fc607494df)
+- Add include_paths for SQL models below the root (5b5a37f2fce82e2efb4ee32c2df4bc19e4bc3222)
+
+### Bugfixes
+
+- [cli] Align checkout -b tip and help with real behavior (30e936a8dd80533d9f81d4c5580f0c53076610a8)
+
 ## [0.1.13] - 2026-06-15
 
 ### New Features
