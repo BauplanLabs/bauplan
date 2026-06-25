@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use globset::{Glob, GlobSetBuilder};
+use globset::{GlobBuilder, GlobSetBuilder};
 use ignore::WalkBuilder;
 
 /// Errors that can occur when working with project files.
@@ -406,18 +406,28 @@ fn resolve_includes<S: AsRef<str>>(
     ];
 
     for p in patterns {
-        glob_builder.add(Glob::new(p.as_ref())?);
+        glob_builder.add(
+            GlobBuilder::new(p.as_ref())
+                .literal_separator(true)
+                .build()?,
+        );
     }
 
     for p in base_patterns {
-        glob_builder.add(Glob::new(p).unwrap());
+        glob_builder.add(GlobBuilder::new(p).literal_separator(true).build().unwrap());
     }
 
     let set = glob_builder.build()?;
 
     let mut paths = BTreeSet::new();
 
-    for entry in WalkBuilder::new(&base_canonical).build() {
+    // If no patterns are provided, restrict to project directory alone.
+    let max_depth = if patterns.is_empty() { Some(1) } else { None };
+
+    for entry in WalkBuilder::new(&base_canonical)
+        .max_depth(max_depth)
+        .build()
+    {
         let entry = entry?.into_path();
         let canonical = entry.canonicalize()?;
 
@@ -447,17 +457,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn resolve_pattern_rejects_upward_pattern() {
-        let tmp = tempfile::tempdir().unwrap();
+    fn resolve_pattern_rejects_upward_pattern() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
         let proj = tmp.path().join("proj");
-        std::fs::create_dir_all(proj.join("views")).unwrap();
-        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1").unwrap();
+        std::fs::create_dir_all(proj.join("views"))?;
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1")?;
 
         let result = resolve_pattern("../proj/views/*.sql");
         assert!(matches!(
             result,
             Err(ProjectError::GlobPatternNotAllowed(..))
         ));
+        Ok(())
     }
 
     fn symlink_file(src: &Path, dst: &Path) {
@@ -468,20 +479,113 @@ mod tests {
     }
 
     #[test]
-    fn resolve_includes_rejects_symlink_escaping_base() {
-        let tmp = tempfile::tempdir().unwrap();
+    fn resolve_includes_rejects_symlink_escaping_base() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
         let proj = tmp.path().join("proj");
-        std::fs::create_dir_all(proj.join("views")).unwrap();
+        std::fs::create_dir_all(proj.join("views"))?;
 
-        std::fs::write(tmp.path().join("secret.sql"), "SELECT secret").unwrap();
+        std::fs::write(tmp.path().join("secret.sql"), "SELECT secret")?;
 
         symlink_file(
             &tmp.path().join("secret.sql"),
             &proj.join("views").join("leak.sql"),
         );
 
-        let patterns = &[resolve_pattern("views/*.sql").unwrap()];
+        let patterns = &[resolve_pattern("views/*.sql")?];
         let result = resolve_includes(&proj, patterns);
         assert!(matches!(result, Err(ProjectError::Symlink(..))));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_pattern_rejects_non_sql_extension() {
+        // Patterns must explicitly target .sql; a bare glob or a non-sql extension is rejected.
+        assert!(matches!(
+            resolve_pattern("views/*"),
+            Err(ProjectError::GlobPatternNotAllowed(..))
+        ));
+        assert!(matches!(
+            resolve_pattern("views/*.py"),
+            Err(ProjectError::GlobPatternNotAllowed(..))
+        ));
+    }
+
+    #[test]
+    fn resolve_includes_includes_top_level_sql() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(&proj)?;
+        std::fs::write(proj.join("age.sql"), "SELECT 1")?;
+
+        // Top-level *.sql is an always-on base pattern, no user pattern needed
+        let patterns: &[String] = &[];
+        let files: Vec<PathBuf> = resolve_includes(&proj, patterns)?.collect();
+        assert!(files.iter().any(|p| p.ends_with("age.sql")));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_includes_first_level_pattern_includes_sql() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views"))?;
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1")?;
+
+        let patterns = &[resolve_pattern("views/*.sql")?];
+        let files: Vec<PathBuf> = resolve_includes(&proj, patterns)?.collect();
+        assert!(files.iter().any(|p| p.ends_with("views/age.sql")));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_includes_recursive_pattern_includes_nested_sql() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views").join("nested"))?;
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1")?;
+        std::fs::write(
+            proj.join("views").join("nested").join("age.sql"),
+            "SELECT 1",
+        )?;
+
+        let patterns = &[
+            resolve_pattern("views/*.sql")?,
+            resolve_pattern("views/**/*.sql")?,
+        ];
+        let files: Vec<PathBuf> = resolve_includes(&proj, patterns)?.collect();
+        assert!(files.iter().any(|p| p.ends_with("views/age.sql")));
+        assert!(files.iter().any(|p| p.ends_with("views/nested/age.sql")));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_includes_first_level_pattern_excludes_nested_sql() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views").join("nested"))?;
+        std::fs::write(
+            proj.join("views").join("nested").join("age.sql"),
+            "SELECT 1",
+        )?;
+
+        // views/*.sql is not recursive, so the nested file is not picked up
+        let patterns = &[resolve_pattern("views/*.sql")?];
+        let files: Vec<PathBuf> = resolve_includes(&proj, patterns)?.collect();
+        assert!(!files.iter().any(|p| p.ends_with("views/nested/age.sql")));
+        Ok(())
+    }
+
+    #[test]
+    fn resolve_includes_without_pattern_excludes_nested_sql() -> anyhow::Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let proj = tmp.path().join("proj");
+        std::fs::create_dir_all(proj.join("views"))?;
+        std::fs::write(proj.join("views").join("age.sql"), "SELECT 1")?;
+
+        // Base patterns only match top-level *.sql, so a nested sql with no include pattern is excluded
+        let patterns: &[String] = &[];
+        let files: Vec<PathBuf> = resolve_includes(&proj, patterns)?.collect();
+        assert!(!files.iter().any(|p| p.ends_with("views/age.sql")));
+        Ok(())
     }
 }

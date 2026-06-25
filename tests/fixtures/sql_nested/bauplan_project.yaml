@@ -1,6 +1,0 @@
-project:
-  id: 97e33cab-6805-4565-9df3-8ffa5e914574
-  name: sql_nested
-include_paths:
-  - views/*.sql
-  - views/**/*.sql
