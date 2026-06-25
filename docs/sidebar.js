@@ -16,10 +16,7 @@ export default {
             type: "doc",
             id: "tutorial/quick-start",
           },
-          items: [
-            "tutorial/data-branches",
-            "tutorial/import",
-          ],
+          items: ["tutorial/data-branches", "tutorial/import"],
         },
       ],
     },
@@ -68,10 +65,7 @@ export default {
       type: "category",
       label: "Agents",
       collapsed: true,
-      items: [
-        "agents/overview",
-        "agents/setup",
-      ],
+      items: ["agents/overview", "agents/setup"],
     },
     {
       type: "category",
@@ -88,8 +82,9 @@ export default {
         "common-scenarios/detached-runs",
         "common-scenarios/parameterized-runs",
         "common-scenarios/conflict-management",
+        "common-scenarios/sql-files",
         "common-scenarios/sdk-or-cli",
-      ],  
+      ],
     },
     {
       type: "category",
@@ -145,7 +140,7 @@ export default {
             "integrations/warehouses-lakehouses/big-query-inbound",
             "integrations/warehouses-lakehouses/big-query-outbound",
             "integrations/warehouses-lakehouses/gcs",
-            "integrations/warehouses-lakehouses/r2-cloudflare-object-storage"
+            "integrations/warehouses-lakehouses/r2-cloudflare-object-storage",
           ],
         },
         {
