@@ -1,0 +1,118 @@
+---
+title: "SQL Files"
+---
+
+Bauplan supports SQL both as part of a [Python function](https://docs.bauplanlabs.com/concepts/models#using-sql) and as standalone `.sql` files. The latter is particularly convenient for users coming from the dbt world.
+
+<Note>
+The described functionality is fully supported from version `0.1.15`. Upgrade your Bauplan installation with `uv add --upgrade bauplan` or `uv tool install --upgrade bauplan`, depending on your original installation method.
+</Note>
+
+## Resolving models
+
+When declaring a model as an input to a DAG node, Bauplan resolves it from one of three sources: the lake, another node in the DAG, or an included `.sql` file.
+
+### Case 1: from the lake
+
+The simplest case. When declaring the following, Bauplan looks for `input_table` as a table in the Bauplan lakehouse.
+
+```python
+@bauplan.model()
+@bauplan.python("3.13")
+def my_model(
+    data=bauplan.Model("input_table")
+):
+    pass
+```
+
+### Case 2: from another node
+
+When a pipeline consists of multiple connected nodes, Bauplan resolves inter-node dependencies automatically. In the example below, the output of `my_first_model` feeds directly into `my_second_model`.
+
+```python
+@bauplan.model()
+@bauplan.python("3.13")
+def my_first_model(
+    data=bauplan.Model("input_table")
+):
+    pass
+
+@bauplan.model()
+@bauplan.python("3.13")
+def my_second_model(
+    data=bauplan.Model("my_first_model")
+):
+    pass
+```
+
+### Case 3: from a SQL file
+
+Bauplan can also resolve a model from an included `.sql` file. Consider a project with the following structure:
+
+```
+my_pipeline/
+├── bauplan_project.yaml
+├── models.py
+├── my_file.sql
+├── pyproject.toml
+└── views/
+    └── my_view.sql
+```
+
+By default, Bauplan discovers `.sql` files placed directly in the project root; in this case, `my_file.sql`. Files in subdirectories (such as `views/`), however, are not auto-discovered. To include them, add an `include_paths` field to `bauplan_project.yaml` with a list of glob patterns:
+
+```yaml
+project:
+  id: 3a1b5af7-ad28-477c-a255-028558ec07c6
+  name: my_pipeline
+include_paths:
+  - views/*.sql
+```
+
+The following rules apply to `include_paths`:
+
+1. Only `.sql` files can be included and this must be made explicit. For instance, `views/*.sql` is acceptable but `views/*` is not. 
+2. Paths must be relative to the project root; absolute paths are rejected.
+3. Upward traversal (for instance, `../common/*.sql`) is not allowed.
+4. git-ignored files are excluded even if they match a pattern.
+5. Symlinks pointing outside the project directory are rejected.
+
+Patterns that violate these rules cause an explicit failure at planning time.
+
+<Note>
+Naming conflicts are resolved strictly. If a model is defined both in the lake and in a Python or SQL file, Bauplan fails early with `Graph contains a cycle or graph changed during iteration`. If both a Python and a SQL file define a model with the same name, Bauplan fails at parse time with an error similar to `Duplicate definition of 'my_model' in ./models.py:34 and ./my_model.sql`.
+</Note>
+
+## How to use SQL files
+
+By default, Bauplan derives the model name from the filename. Given a file called `my_titanic_view.sql`:
+
+```sql
+SELECT
+    Age,
+    Survived
+FROM bauplan.titanic
+```
+
+Bauplan interprets it as a model called `my_titanic_view`. This behavior can be overridden with a header comment:
+
+```sql
+-- bauplan: name=my_custom_name
+SELECT
+    Age,
+    Survived
+FROM bauplan.titanic
+```
+
+Multiple overrides can be stacked:
+
+```sql
+-- bauplan: name=my_custom_name
+-- bauplan: materialization_strategy=REPLACE
+SELECT
+    Age,
+    Survived
+FROM bauplan.titanic
+```
+
+All available options are documented in the [Python SDK reference](https://docs.bauplanlabs.com/reference/bauplan#bauplan-model-function).
