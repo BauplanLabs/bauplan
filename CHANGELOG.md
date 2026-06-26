@@ -1,4 +1,10 @@
 
+## [0.1.15] - 2026-06-26
+
+### Bugfixes
+
+- [cli] Amend glob pattern construction (665e33c47cdda381843c6e45a5a5eab7da74a81f)
+
 ## [0.1.14] - 2026-06-19
 
 ### New Features
