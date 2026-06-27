@@ -112,29 +112,6 @@ def expectation(
     return decorator
 
 
-def synthetic_model(
-    name: str,
-    columns: List[str],
-    **kwargs: Any,
-) -> Callable:
-    """
-    Decorator that defines a Bauplan Synthetic Model.
-
-    Parameters:
-        name: The name of the model. Defaults to the function name.
-        columns: The columns of the synthetic model (e.g. ``['id', 'name', 'email']``).
-    """
-
-    def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
 def python(
     version: Optional[str] = None,
     pip: Optional[Dict[str, str]] = None,
