@@ -32,7 +32,6 @@ from bauplan._decorators import (
     model,
     python,
     resources,
-    synthetic_model,
 )
 from bauplan._parameters import Parameter
 
@@ -62,5 +61,4 @@ __all__ = [
     "model",
     "python",
     "resources",
-    "synthetic_model",
 ]
