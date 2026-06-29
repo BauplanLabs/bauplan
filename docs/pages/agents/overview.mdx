@@ -3,64 +3,39 @@ title: "Overview"
 sidebar_label: "Overview"
 ---
 
-There are **three complementary ways** to use AI agents with Bauplan. They are not mutually exclusive and can be combined depending on the workflow.
+import DocCardList from '@theme/DocCardList';
+import { Server, Workflow, FileText } from 'lucide-react';
 
-To get started, follow the [skills setup](/agents/setup) guide.
+Bauplan is driven entirely by code, which makes it a natural fit for AI agents. The whole lakehouse is programmable through a [CLI](/reference/cli) and a [Python SDK](/reference/bauplan): there is no UI step an agent has to click through.
 
-## 1. MCP server
+[Git-for-data branching](/concepts/git-for-data/) is what makes it safe to hand that control to an agent. The agent works on an isolated data branch, validates its changes with [expectations](/concepts/expectations) and the Write-Audit-Publish pattern, and merges into the `main` branch only when the checks pass. Nothing reaches production data until it has been reviewed, and every change is a commit you can inspect or revert.
 
-The Bauplan MCP Server is a [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro) integration that gives AI assistants direct access to your Bauplan data lakehouse. Instead of guessing at API syntax or table structures, the assistant gets real-time context, improving code quality and reducing hallucinations in generated SQL and Python.
+There are three complementary ways to use agents with Bauplan. They are not mutually exclusive: an assistant can use the MCP server for live access, run Skills for structured workflows, and read the documentation as context, all in the same session.
 
-Through the MCP server, an assistant can:
+<DocCardList items={[
+  {
+    type: 'link',
+    href: '/agents/skills',
+    label: 'Agent Skills',
+    icon: <Workflow />,
+    description: 'Reusable recipes for the main workflows, including pipelines, ingestion, exploration, and debugging.'
+  },
+  {
+    type: 'link',
+    href: '/agents/mcp',
+    label: 'MCP server',
+    icon: <Server />,
+    description: 'Give an assistant live access to your lakehouse through tool calls.'
+  },
+  {
+    type: 'link',
+    href: '/agents/context',
+    label: 'Context for agents',
+    icon: <FileText />,
+    description: 'Feed AGENTS.md, llms.txt, and the Markdown docs to any LLM or IDE assistant.'
+  }
+]} />
 
-- Inspect schemas and tables
-- Run queries
-- Manage data branches and commits
-- Run Bauplan projects and pipelines
-- Track and inspect jobs
+## Learn more
 
-The MCP server works with any MCP-capable assistant that needs live access to lakehouse state, from non-technical apps like Claude Desktop or the ChatGPT app to coding agents like Claude Code and Codex.
-
-You can run the server yourself, or connect to Bauplan's **hosted MCP endpoint** and authenticate with your Bauplan API key.
-
-For the endpoint URL, setup instructions, configuration examples, and usage videos, visit the repository.
-
-See: [https://github.com/BauplanLabs/bauplan-mcp-server](https://github.com/BauplanLabs/bauplan-mcp-server)
-
-## 2. Repository-based usage (CLAUDE.md + CLI / SDK)
-
-Bauplan can also be used with LLMs **without** running an MCP server.
-
-In this mode, the assistant operates purely through repository context:
-
-- A `CLAUDE.md` file at the project root that explains how to work with Bauplan
-- Reference documentation for the Bauplan CLI and Python SDK
-- Standard command-line execution and code generation
-
-The assistant reads documentation, writes Python or SQL, and invokes Bauplan through the CLI or SDK directly. Functionally, this covers the same core operations as the MCP server, but without requiring a long-running service.
-
-This approach is well suited to IDE-based assistants like Claude Code or Cursor and is often the simplest starting point.
-
-See: [https://github.com/BauplanLabs/bauplan-skills/blob/main/CLAUDE.md](https://github.com/BauplanLabs/bauplan-skills/blob/main/CLAUDE.md)
-
-## 3. Agent Skills for structured workflows
-
-Agent Skills are reusable, declarative workflow templates designed to guide LLMs through multi-step data engineering tasks. Skills are distributed as a [Claude Code plugin](https://code.claude.com/docs/en/plugins) that installs and updates automatically; see the [skills setup guide](/agents/setup#install-bauplan-skills).
-
-Skills encode best practices and sequencing for tasks that are otherwise easy to get wrong, including:
-
-- Creating new data pipelines
-- Ingesting data safely using Write-Audit-Publish
-- Exploring large or complex datasets
-- Investigating failed runs and performing root-cause analysis
-
-Each skill defines the intent, constraints, and expected steps of a workflow, while still operating on the same underlying Bauplan primitives (branches, runs, validation, publish). Skills can be used together with the MCP server or with repository-based usage.
-
-See: [https://github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills)
-
-## Feeding documentation to LLMs
-
-Bauplan's documentation is available in LLM-friendly formats:
-
-- **[llms.txt](/llms.txt)** - a single-page summary of Bauplan following the [llms.txt convention](https://llmstxt.org/), designed to fit in a single context window.
-- **Markdown versions of every page** - append `.md` to any documentation URL to get a plain Markdown version (for example, `https://docs.bauplanlabs.com/agents/overview` → `https://docs.bauplanlabs.com/agents/overview.md`). This is useful for feeding specific pages into an LLM as context.
+The [Bauplan blog](https://www.bauplanlabs.com/blog) covers running AI and agents safely on your data, alongside technical deep-dives on the platform. The team also publishes peer-reviewed research on the data systems behind Bauplan and their application to AI and agentic workflows. Find our latest results on [Google Scholar](https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=bauplan+lakehouse&btnG=).

@@ -1,0 +1,29 @@
+---
+title: "MCP"
+sidebar_label: "MCP"
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+The Bauplan MCP Server is a [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro) integration that gives AI assistants direct access to your Bauplan lakehouse. It works with any MCP-capable assistant, from chat apps like Claude Desktop and the ChatGPT app to coding agents like Claude Code, Cursor, and Codex.
+
+## What an assistant can do
+
+Through the MCP server, an assistant can:
+
+- Inspect tables and schemas, and run queries;
+- Manage branches, commits, namespaces, and tags;
+- Create, import, and revert tables;
+- Run Bauplan projects and pipelines;
+- Track, inspect, and cancel jobs.
+
+## Connect
+
+To connect to the Bauplan MCP server, point your assistant at Bauplan's hosted MCP endpoint `https://mcp.use1.aprod.bauplanlabs.com/mcp` and authenticate with your Bauplan API key.
+
+## Resources
+
+The code behind the Bauplan MCP server is public and available at [https://github.com/BauplanLabs/bauplan-mcp-server](https://github.com/BauplanLabs/bauplan-mcp-server).
+
+Using an MCP server is a good way to let non-technical stakeholders interact with the data without intermediaries. We have addressed such a scenario in a [dedicated blog post](https://www.bauplanlabs.com/post/how-data-teams-use-bauplan-and-claude-to-answer-stakeholder-requests-without-losing-governance) where we show how one can integrate the Bauplan MCP server with Linear and Claude Code to query data and file requests to the data team.
