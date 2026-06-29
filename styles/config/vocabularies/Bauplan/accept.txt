@@ -81,6 +81,7 @@ Spotify
 SQL
 SSM
 Streamlit
+subagents
 subcommands
 Tagliabue
 Temporal

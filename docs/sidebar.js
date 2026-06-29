@@ -65,7 +65,7 @@ export default {
       type: "category",
       label: "Agents",
       collapsed: true,
-      items: ["agents/overview", "agents/setup"],
+      items: ["agents/overview", "agents/skills", "agents/mcp", "agents/context"],
     },
     {
       type: "category",
