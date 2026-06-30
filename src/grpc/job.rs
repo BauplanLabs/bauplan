@@ -306,11 +306,12 @@ enum Stdio {
 /// encounters a TaskStartEvent with a nonempty `longbow_public_key`, it spawns
 /// a task to to push log lines into the event stream in parallel.
 pub(super) struct JobEventStream {
-    inner: tonic::Streaming<SubscribeLogsResponse>,
+    inner: Option<tonic::Streaming<SubscribeLogsResponse>>,
     longbow_output_rx: tokio::sync::mpsc::UnboundedReceiver<((String, Stdio), String)>,
     longbow_output_tx: tokio::sync::mpsc::UnboundedSender<((String, Stdio), String)>,
     endpoint: Arc<tokio::sync::OnceCell<iroh::Endpoint>>,
     task_metadata: BTreeMap<String, TaskMetadata>,
+    task_connections: tokio::task::JoinSet<()>,
 }
 
 impl JobEventStream {
@@ -320,11 +321,12 @@ impl JobEventStream {
     ) -> Self {
         let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
         Self {
-            inner,
+            inner: Some(inner),
             longbow_output_rx: rx,
             longbow_output_tx: tx,
             endpoint,
             task_metadata: BTreeMap::new(),
+            task_connections: tokio::task::JoinSet::new(),
         }
     }
 }
@@ -349,7 +351,7 @@ impl JobEventStream {
         let tx = self.longbow_output_tx.clone();
         let endpoint = self.endpoint.clone();
 
-        tokio::spawn(async move {
+        self.task_connections.spawn(async move {
             let preset = BauplanPreset::default();
             let addr = preset.add_relay_urls(iroh::EndpointAddr::new(public_key));
 
@@ -408,9 +410,40 @@ impl futures::Stream for JobEventStream {
         let this = self.get_mut();
 
         loop {
-            if let Poll::Ready(v) = Pin::new(&mut this.inner).poll_next(cx) {
+            // Clear the JoinSet.
+            if !this.task_connections.is_empty()
+                && let Poll::Ready(Some(v)) = this.task_connections.poll_join_next(cx)
+            {
+                if let Err(e) = v {
+                    error!(err = %e, "failed to read task output");
+                }
+
+                continue;
+            }
+
+            // The order here is intentional, to make sure we drain the output
+            // before exiting.
+            if let Poll::Ready(v) = this.longbow_output_rx.poll_recv(cx) {
+                let Some(((task_id, stdio), line)) = v else {
+                    continue;
+                };
+
+                let metadata = this.task_metadata.get(&task_id);
+                let ev = synthetic_line_event(metadata, stdio, line);
+                return Poll::Ready(Some(Ok(ev)));
+            } else if let Some(inner) = this.inner.as_mut()
+                && let Poll::Ready(v) = Pin::new(inner).poll_next(cx)
+            {
                 let Some(resp) = v else {
-                    return Poll::Ready(None);
+                    // The stream has ended. If there are still longbow
+                    // connection tasks, wait for those. Otherwise, we could
+                    // exit before printing all the output for those tasks.
+                    this.inner.take();
+                    if this.task_connections.is_empty() {
+                        return Poll::Ready(None);
+                    } else {
+                        return Poll::Pending;
+                    }
                 };
 
                 let resp = resp?;
@@ -428,14 +461,10 @@ impl futures::Stream for JobEventStream {
                 }
 
                 return Poll::Ready(Some(Ok(event)));
-            } else if let Poll::Ready(v) = this.longbow_output_rx.poll_recv(cx) {
-                let Some(((task_id, stdio), line)) = v else {
-                    continue;
-                };
+            }
 
-                let metadata = this.task_metadata.get(&task_id);
-                let ev = synthetic_line_event(metadata, stdio, line);
-                return Poll::Ready(Some(Ok(ev)));
+            if this.inner.is_none() && this.task_connections.is_empty() {
+                return Poll::Ready(None);
             }
 
             return Poll::Pending;

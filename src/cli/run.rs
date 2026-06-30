@@ -222,6 +222,7 @@ pub(crate) async fn monitor_job_progress(
     let stream = client.monitor_job(monitor_req, Arc::clone(&endpoint));
     futures::pin_mut!(stream);
 
+    let mut outcome = None;
     loop {
         let res = tokio::select! {
             v = stream.try_next() => v,
@@ -234,7 +235,7 @@ pub(crate) async fn monitor_job_progress(
 
         let event = match res {
             Ok(Some(v)) => v,
-            Ok(None) => bail!("no JobCompletion event found"),
+            Ok(None) => break,
             Err(ref e)
                 if e.code() == tonic::Code::Cancelled
                     || e.code() == tonic::Code::DeadlineExceeded =>
@@ -262,15 +263,17 @@ pub(crate) async fn monitor_job_progress(
                 handler(event);
             }
             RunnerEvent::JobCompletion(ev) => {
-                if let Some(ep) = endpoint.get() {
-                    ep.close().await;
-                }
-
-                return Ok(grpc::interpret_outcome(ev.outcome)?);
+                outcome = ev.outcome;
             }
             _ => handler(event),
         }
     }
+
+    if let Some(ep) = endpoint.get() {
+        ep.close().await;
+    }
+
+    Ok(grpc::interpret_outcome(outcome)?)
 }
 
 async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
