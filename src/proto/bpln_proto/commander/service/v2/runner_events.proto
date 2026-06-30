@@ -112,7 +112,13 @@ message TaskCompleteEvent {
 
 message TaskSuccess {
   string message = 1;
-  repeated RuntimeTablePreview runtime_table_preview = 2;
+
+  oneof preview {
+    // Sent by the legacy runner.
+    RuntimeTablePreview runtime_table_preview = 2;
+    // Sent by the new runtimes.
+    bytes arrow_table_preview = 3;
+  }
 }
 
 message RuntimeTablePreview {

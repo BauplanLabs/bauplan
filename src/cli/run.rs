@@ -1,9 +1,19 @@
 use std::{
-    cell::RefCell, collections::BTreeMap, fmt::Display, io::Write as _, path::PathBuf, sync::Arc,
+    cell::RefCell,
+    collections::BTreeMap,
+    fmt::Display,
+    io::{Cursor, Write as _},
+    path::PathBuf,
+    sync::Arc,
     time,
 };
 
 use anyhow::{Context as _, bail};
+use arrow::{
+    compute::concat_batches,
+    ipc::reader::StreamReader,
+    util::display::{ArrayFormatter, FormatOptions},
+};
 use bauplan::{
     grpc::{
         self,
@@ -413,7 +423,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                     &spinners,
                     &mut summary,
                     ev.task_id.clone(),
-                    ev.task_name,
+                    ev.task_name.clone(),
                     metadata,
                 );
 
@@ -434,11 +444,19 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                 // Print a preview(s), if relevant.
                 if show_previews
                     && let Outcome::Success(success) = &outcome
-                    && !success.runtime_table_preview.is_empty()
+                    && let Some(preview) = &success.preview
                 {
-                    for preview in &success.runtime_table_preview {
-                        cli.multiprogress
-                            .suspend(|| print_preview(preview).unwrap());
+                    let res = cli.multiprogress.suspend(|| match preview {
+                        commanderpb::task_success::Preview::RuntimeTablePreview(p) => {
+                            print_preview_legacy(p)
+                        }
+                        commanderpb::task_success::Preview::ArrowTablePreview(v) => {
+                            print_preview(&ev.task_name, v)
+                        }
+                    });
+
+                    if let Err(err) = res {
+                        error!(%err, "failed to print preview");
                     }
                 }
 
@@ -607,7 +625,44 @@ fn print_user_log(
     }
 }
 
-fn print_preview(preview: &commanderpb::RuntimeTablePreview) -> anyhow::Result<()> {
+fn print_preview(name: &str, v: &[u8]) -> anyhow::Result<()> {
+    // The preview is an arrow IPC stream.
+    let reader = StreamReader::try_new(Cursor::new(v), None)?;
+    let schema = reader.schema();
+    let batch = concat_batches(&schema, reader.collect::<Result<Vec<_>, _>>()?.iter())?;
+
+    let mut tw = TabWriter::new(anstream::stderr()).ansi(true);
+
+    anstream::println!("{DIM}=>{DIM:#} {BLUE}{BOLD}PREVIEW{BOLD:#} {name}{BLUE:#}");
+
+    write!(tw, "{DIM}=>{DIM:#} ")?;
+    for field in schema.fields() {
+        write!(tw, "{DIM}{}{DIM:#}\t", field.name().to_uppercase())?;
+    }
+    writeln!(tw)?;
+
+    let columns = batch.columns();
+    let options = FormatOptions::default().with_null("(null)");
+    let formatters: Vec<_> = columns
+        .iter()
+        .map(|col| ArrayFormatter::try_new(col.as_ref(), &options))
+        .collect::<Result<_, _>>()?;
+
+    for row in 0..batch.num_rows() {
+        write!(tw, "{DIM}=>{DIM:#} ")?;
+        for formatter in &formatters {
+            let value = formatter.value(row);
+            write!(tw, "{value}\t")?;
+        }
+
+        writeln!(tw)?;
+    }
+
+    tw.flush()?;
+    Ok(())
+}
+
+fn print_preview_legacy(preview: &commanderpb::RuntimeTablePreview) -> anyhow::Result<()> {
     if preview.columns.is_empty() {
         return Ok(());
     }
