@@ -384,45 +384,35 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
                     return;
                 };
 
-                if metadata.level() != commanderpb::task_metadata::TaskLevel::Dag {
-                    return;
-                }
-
-                let task_id = ev.task_id;
-                let mut spinners = spinners.borrow_mut();
-                let task_spinner = spinners
-                    .entry(task_id.clone())
-                    .or_insert_with(|| cli.new_spinner());
-                task_spinner.enable_steady_tick(time::Duration::from_millis(100));
-
-                // Indent the task name to present a hierarchy.
-                // TODO: maybe we can replicate the DAG hierarchy here a bit?
-                let name = if metadata.task_type == "USER_CODE_EXPECTATION" {
-                    let name = metadata.function_name.unwrap_or(ev.task_name);
-                    task_spinner.set_message(format!("{CYAN}  {name} [expectation]{CYAN:#}"));
-                    name
-                } else {
-                    let name = metadata.model_name.unwrap_or(ev.task_name);
-                    task_spinner.set_message(format!("{BLUE}  {name}{BLUE:#}"));
-                    name
-                };
-
-                summary.tasks.push(TaskSummary {
-                    task_id,
-                    description: metadata.human_readable_task_type,
-                    name,
-                    file_name: metadata.file_name,
-                    line_number: metadata.line_number.map(|x| x as _),
-                    started: Utc::now(),
-                    ended: Utc::now(),
-                    outcome: SummaryOutcome::Success,
-                });
+                add_task(
+                    cli,
+                    &spinners,
+                    &mut summary,
+                    ev.task_id,
+                    ev.task_name,
+                    metadata,
+                );
             }
             RunnerEvent::TaskCompletion(ev) => {
                 use commanderpb::task_complete_event::Outcome;
                 let Some(outcome) = ev.outcome else {
                     return;
                 };
+
+                let Some(metadata) = ev.task_metadata else {
+                    return;
+                };
+
+                // Register the task, just in case we didn't get a TaskStarted
+                // event for it (this happens for skipped tasks, for example).
+                add_task(
+                    cli,
+                    &spinners,
+                    &mut summary,
+                    ev.task_id.clone(),
+                    ev.task_name,
+                    metadata,
+                );
 
                 // Finish the task spinner.
                 if let Some(task_spinner) = spinners.borrow().get(ev.task_id.as_str()) {
@@ -527,6 +517,51 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
     }
 
     res
+}
+
+fn add_task(
+    cli: &Cli,
+    spinners: &RefCell<BTreeMap<String, ProgressBar>>,
+    summary: &mut Summary,
+    task_id: String,
+    task_name: String,
+    metadata: commanderpb::TaskMetadata,
+) {
+    if metadata.level() != commanderpb::task_metadata::TaskLevel::Dag {
+        return;
+    }
+
+    let mut spinners = spinners.borrow_mut();
+    if spinners.contains_key(&task_id) {
+        return;
+    }
+
+    let task_spinner = spinners
+        .entry(task_id.clone())
+        .or_insert_with(|| cli.new_spinner());
+    task_spinner.enable_steady_tick(time::Duration::from_millis(100));
+
+    // Indent the task name to present a hierarchy.
+    let name = if metadata.task_type == "USER_CODE_EXPECTATION" {
+        let name = metadata.function_name.unwrap_or(task_name);
+        task_spinner.set_message(format!("{CYAN}  {name} [expectation]{CYAN:#}"));
+        name
+    } else {
+        let name = metadata.model_name.unwrap_or(task_name);
+        task_spinner.set_message(format!("{BLUE}  {name}{BLUE:#}"));
+        name
+    };
+
+    summary.tasks.push(TaskSummary {
+        task_id,
+        description: metadata.human_readable_task_type,
+        name,
+        file_name: metadata.file_name,
+        line_number: metadata.line_number.map(|x| x as _),
+        started: Utc::now(),
+        ended: Utc::now(),
+        outcome: SummaryOutcome::Success,
+    });
 }
 
 fn print_dag(job_id: &str, dag_ascii: String) -> anyhow::Result<()> {
