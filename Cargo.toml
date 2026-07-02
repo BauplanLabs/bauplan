@@ -115,6 +115,11 @@ globset = "0.4.18"
 ignore = "0.4.26"
 tokio-util = { version = "0.7.18", features = ["codec"] }
 
+# Windows delivers root certificates on demand via CryptoAPI, which
+# rustls-native-certs never invokes, so we also bundle the Mozilla roots there.
+[target.'cfg(windows)'.dependencies]
+tonic = { version = "0.14", features = ["tls-webpki-roots"] }
+
 [build-dependencies]
 anyhow = "1"
 tonic-prost-build = "0.14"

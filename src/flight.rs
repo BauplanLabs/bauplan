@@ -25,7 +25,7 @@ pub async fn fetch_flight_results(
     impl Stream<Item = FlightResult<RecordBatch>> + use<>,
 )> {
     let channel = Channel::builder(endpoint)
-        .tls_config(ClientTlsConfig::new().with_native_roots())
+        .tls_config(ClientTlsConfig::new().with_enabled_roots())
         .unwrap()
         .timeout(client_timeout)
         .connect_lazy();

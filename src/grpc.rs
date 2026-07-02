@@ -46,7 +46,7 @@ impl Client {
     ) -> Result<Self, tonic::transport::Error> {
         let api_endpoint = profile.api_endpoint.clone();
         let channel = Channel::builder(api_endpoint)
-            .tls_config(ClientTlsConfig::new().with_native_roots())?
+            .tls_config(ClientTlsConfig::new().with_enabled_roots())?
             .timeout(timeout)
             .user_agent(&profile.user_agent)?
             .connect_lazy();
