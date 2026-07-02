@@ -117,6 +117,14 @@ impl iroh::endpoint::presets::Preset for BauplanPreset {
             .alpns(vec![ALPN.to_owned()])
             .relay_mode(RelayMode::Custom(self.relay_map()))
             .crypto_provider(std::sync::Arc::new(rustls::crypto::ring::default_provider()))
+            // Drop idle connections after 5s instead of iroh's 30s default, and
+            // keep-alive more often than iroh's 5s default so a quiet one stays up.
+            .transport_config(
+                iroh::endpoint::QuicTransportConfig::builder()
+                    .max_idle_timeout(Some(std::time::Duration::from_secs(5).try_into().unwrap()))
+                    .keep_alive_interval(std::time::Duration::from_secs(1))
+                    .build(),
+            )
     }
 }
 
