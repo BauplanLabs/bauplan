@@ -35,6 +35,17 @@ use crate::{
 };
 use generated::v2_commander_service_client::V2CommanderServiceClient;
 
+/// TLS config for tonic channels. On Windows, this trusts the bundled Mozilla
+/// roots besides the OS trust store: Windows installs many roots (including
+/// Amazon's) on demand via CryptoAPI, which rustls-native-certs never invokes,
+/// so a fresh machine may not have the CA for our endpoints in its store yet.
+pub(crate) fn tls_config() -> ClientTlsConfig {
+    let config = ClientTlsConfig::new().with_native_roots();
+    #[cfg(target_os = "windows")]
+    let config = config.with_webpki_roots();
+    config
+}
+
 /// A client for the deprecated gRPC API.
 pub type Client = V2CommanderServiceClient<InterceptedService<Channel, AuthInterceptor>>;
 
@@ -46,7 +57,7 @@ impl Client {
     ) -> Result<Self, tonic::transport::Error> {
         let api_endpoint = profile.api_endpoint.clone();
         let channel = Channel::builder(api_endpoint)
-            .tls_config(ClientTlsConfig::new().with_native_roots())?
+            .tls_config(tls_config())?
             .timeout(timeout)
             .user_agent(&profile.user_agent)?
             .connect_lazy();

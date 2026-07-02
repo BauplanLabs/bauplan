@@ -10,7 +10,9 @@ use arrow_flight::{
 use futures::{Stream, StreamExt as _, TryStreamExt as _, stream};
 use http::Uri;
 use serde_json::json;
-use tonic::transport::{Channel, ClientTlsConfig};
+use tonic::transport::Channel;
+
+use crate::grpc::tls_config;
 
 /// Connects to a given flight server and streams all the batches from all the
 /// endpoints. This is bauplan-specific and not generically useful.
@@ -25,7 +27,7 @@ pub async fn fetch_flight_results(
     impl Stream<Item = FlightResult<RecordBatch>> + use<>,
 )> {
     let channel = Channel::builder(endpoint)
-        .tls_config(ClientTlsConfig::new().with_native_roots())
+        .tls_config(tls_config())
         .unwrap()
         .timeout(client_timeout)
         .connect_lazy();
