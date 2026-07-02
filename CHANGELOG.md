@@ -1,4 +1,11 @@
 
+## [0.1.16] - 2026-07-02
+
+### Bugfixes
+
+- [cli] Handle tasks with a TaskCompletion but no TaskStarted (82d1a773ddfcca8f1fe827e0e1e57d0398b134e6)
+- [cli] Trust the bundled mozilla roots so tls works on fresh windows (e1ac17d0a7585fd87d133bd6300382bce91c0f50)
+
 ## [0.1.15] - 2026-06-26
 
 ### Bugfixes
