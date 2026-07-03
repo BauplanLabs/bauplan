@@ -81,11 +81,11 @@ jobs:
       - name: Typecheck doc snippets
         run: cargo test --test snippets -- docs_website
 
-      # By default, we have a strict robots.txt, so that the dev/qa sites
-      # (which are public) don't get scraped. In prod, we need to delete
-      # that file.
+      # By default we ship a strict robots.txt (Disallow: /) so the public
+      # dev/qa sites don't get indexed. In prod we swap in a permissive
+      # robots.txt that allows crawling and points crawlers at the sitemap.
       - if: inputs.environment == 'prod'
-        run: rm /tmp/build/robots.txt
+        run: cp docs/prod-robots.txt /tmp/build/robots.txt
 
       - name: aws s3 sync
         run: aws s3 sync /tmp/build s3://${DOCS_S3_BUCKET} --delete
