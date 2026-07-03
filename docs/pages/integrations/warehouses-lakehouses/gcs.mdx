@@ -1,5 +1,6 @@
 ---
 title: GCS (Google Cloud Storage)
+description: "Sync a Google Cloud Storage bucket to Bauplan with AWS DataSync and run Iceberg pipelines on GCS-landed data without leaving your landing zone."
 ---
 
 Connect your GCS bucket to Bauplan by creating an automated sync with the S3 bucket linked to your Bauplan lakehouse. This lets you run pipelines with all the safety and correctness guarantees of Bauplan, without moving from your current landing zone or relying on laborious manual processes.
@@ -30,7 +31,11 @@ After the accounts are set up, create two locations in DataSync: one correspondi
 Now create a task. In the Enhanced mode, there are a few options to choose from.
 
 <Note>
-By design, you cannot copy object tags (GCS APIs do not support them) and cannot select sub-60-minute latency. For the copying logic, we recommend performing incremental changes only and keeping deleted files as an additional failsafe: since OLAP patterns rely on immutable files, these configurations should guarantee a robust syncing process.
+  By design, you cannot copy object tags (GCS APIs do not support them) and
+  cannot select sub-60-minute latency. For the copying logic, we recommend
+  performing incremental changes only and keeping deleted files as an additional
+  failsafe: since OLAP patterns rely on immutable files, these configurations
+  should guarantee a robust syncing process.
 </Note>
 
 Once you start the task, DataSync will automatically perform the copying and syncing for you, and Bauplan will be able to load and transform the data in the now-synced bucket.

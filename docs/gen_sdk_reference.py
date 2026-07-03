@@ -32,6 +32,17 @@ import griffe
 
 SKIP_MODULES = ['bauplan.extras']
 
+# SEO meta descriptions, keyed by module path. Emitted into each generated
+# reference page's front matter. Must be double-quoted in YAML: they contain
+# colons (none contain double quotes, so plain double-quoting is safe).
+SDK_PAGE_DESCRIPTIONS = {
+    'bauplan': 'Reference for the Bauplan Python SDK Client: query tables, run pipelines, import data, and manage branches, commits, tags, and jobs over Apache Iceberg lakehouses.',
+    'bauplan.exceptions': 'Reference for bauplan.exceptions: the Python SDK error hierarchy covering HTTP, merge conflict, not-found, forbidden, and table-plan errors raised by Bauplan.',
+    'bauplan.schema': 'Reference for bauplan.schema types: Branch, Ref, Commit, Tag, Namespace, Table, Job, and DAG classes returned by the Bauplan Python SDK over Iceberg catalogs.',
+    'bauplan.standard_expectations': 'Reference for bauplan.standard_expectations: built-in data quality checks for null, uniqueness, accepted values, mean, and concatenation in Bauplan pipelines.',
+    'bauplan.state': 'Reference for bauplan.state types: RunState, RunExecutionContext, and table-create and import state objects returned by Bauplan Python SDK run and import jobs.',
+}
+
 # Single pass over three mutually exclusive patterns:
 #   bauplan.module.Name  — full_ref=bauplan.module.Name, name=Name (dotted)
 #   Client.method        — full_ref=Client.method,       name=method
@@ -433,6 +444,9 @@ def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) 
         with open(output_dir / f'{name}.mdx', 'w') as f:
             f.write('---\n')
             f.write(f'title: "{mod.path}"\n')
+            description = SDK_PAGE_DESCRIPTIONS.get(mod.path)
+            if description:
+                f.write(f'description: "{description}"\n')
             f.write('---\n\n')
 
             # Build a table of contents.

@@ -1,5 +1,6 @@
 ---
 title: "Tables"
+description: "Manage Apache Iceberg tables in Bauplan with ACID transactions, schema evolution, time travel, and declarative hidden partitioning over your object storage."
 ---
 
 ## Overview
@@ -11,11 +12,11 @@ and usability of a data warehouse.
 
 Iceberg tables support:
 
--   **ACID transactions** over object storage
--   **Schema evolution** without downtime
--   **Efficient querying** via column pruning, partition filtering, and
-    file skipping
--   **Time travel** with snapshot-based versioning
+- **ACID transactions** over object storage
+- **Schema evolution** without downtime
+- **Efficient querying** via column pruning, partition filtering, and
+  file skipping
+- **Time travel** with snapshot-based versioning
 
 In Bauplan, tables are first-class citizens - you create them, read from
 them, write to them, and revert them via simple code and commands. Every
@@ -31,13 +32,12 @@ while abstracting away the complexity of partition management.
 
 Supported partition types:
 
--   **Time-based**: `year(col)`, `day(col)`, `hour(col)`
--   **Bucket**: partition by any column (for example, by client ID)
+- **Time-based**: `year(col)`, `day(col)`, `hour(col)`
+- **Bucket**: partition by any column (for example, by client ID)
 
 <Note>
-While partitioning can increase write times to object storage, it
-significantly improves read performance when filtering by partitioned
-columns.
+  While partitioning can increase write times to object storage, it
+  significantly improves read performance when filtering by partitioned columns.
 </Note>
 
 ### Partitioning during import

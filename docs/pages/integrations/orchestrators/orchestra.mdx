@@ -1,4 +1,7 @@
-# Orchestra
+---
+title: "Orchestra"
+description: "Connect Bauplan to Orchestra and run pipelines, data quality tests, and custom SDK scripts from the GUI - no servers or local DAG code to manage."
+---
 
 ## Overview
 
@@ -25,24 +28,23 @@ In the Orchestra dashboard:
 
 1. In the left bar choose “connect a data platform”, then choose Bauplan from the list:
 
-    ![Screenshot 2025-10-15 at 10.01.11 AM.png](../../../static/img/orchestrators/orchestra/d36418f8-74ac-4ea9-8c95-b09da4737024.png)
+   ![Screenshot 2025-10-15 at 10.01.11 AM.png](../../../static/img/orchestrators/orchestra/d36418f8-74ac-4ea9-8c95-b09da4737024.png)
 
 2. Then input your Bauplan API key and follow the instructions to connect your repository with your Bauplan code.
 
-    ![Screenshot 2025-10-08 at 1.43.20 PM.png](../../../static/img/orchestrators/orchestra/229f427a-16ba-4009-ab6b-44d53b9df106.png)
+   ![Screenshot 2025-10-08 at 1.43.20 PM.png](../../../static/img/orchestrators/orchestra/229f427a-16ba-4009-ab6b-44d53b9df106.png)
 
-    When completed, your integration with Bauplan should appear under **Integrations → Connected** in the Orchestra sidebar.
+   When completed, your integration with Bauplan should appear under **Integrations → Connected** in the Orchestra sidebar.
 
-    ![Screenshot 2025-10-15 at 10.04.43 AM.png](../../../static/img/orchestrators/orchestra/Screenshot_2025-10-15_at_10.04.43_AM.png)
+   ![Screenshot 2025-10-15 at 10.04.43 AM.png](../../../static/img/orchestrators/orchestra/Screenshot_2025-10-15_at_10.04.43_AM.png)
 
 3. (Optional) Add a `Secret JSON` section if you want Orchestra to securely pass environment variables to the runtime, such as:
 
-    ```json
-    {
-      "BAUPLAN_API_KEY": "your-api-key"
-    }
-    ```
-
+   ```json
+   {
+     "BAUPLAN_API_KEY": "your-api-key"
+   }
+   ```
 
 ## Step 3 - run Bauplan operations from Orchestra
 
@@ -54,26 +56,24 @@ Orchestra provides two built-in operations that run directly on Bauplan and can 
 
 1. **Bauplan Execute Pipeline**
 
-    Run a Bauplan pipeline (or model) defined in your project and monitor its status inside Orchestra. → See [docs.getorchestra.io/docs/integrations/bauplan/bauplan_execute_pipeline](https://docs.getorchestra.io/docs/integrations/bauplan/bauplan_execute_pipeline)
+   Run a Bauplan pipeline (or model) defined in your project and monitor its status inside Orchestra. → See [docs.getorchestra.io/docs/integrations/bauplan/bauplan_execute_pipeline](https://docs.getorchestra.io/docs/integrations/bauplan/bauplan_execute_pipeline)
 
 2. **Bauplan Data Quality Test**
 
-    Trigger Bauplan expectations or validation suites as part of your orchestration flow. → See [docs.getorchestra.io/docs/integrations/bauplan/bauplan_data_quality_test](https://docs.getorchestra.io/docs/integrations/bauplan/bauplan_data_quality_test)
-
+   Trigger Bauplan expectations or validation suites as part of your orchestration flow. → See [docs.getorchestra.io/docs/integrations/bauplan/bauplan_data_quality_test](https://docs.getorchestra.io/docs/integrations/bauplan/bauplan_data_quality_test)
 
 Both tasks are configured visually in Orchestra.
 
 1. Open the Orchestra UI and create a new pipeline.
 2. Add a Bauplan task.
 
-    ![Screenshot 2025-10-15 at 10.19.09 AM.png](../../../static/img/orchestrators/orchestra/4813cc60-4ac4-49c6-8b35-5f9ad3ba6a1a.png)
+   ![Screenshot 2025-10-15 at 10.19.09 AM.png](../../../static/img/orchestrators/orchestra/4813cc60-4ac4-49c6-8b35-5f9ad3ba6a1a.png)
 
 3. Assign the **Bauplan connection** you created earlier.
 4. Optionally configure **parameters**, **schedules**, or **alerts** through Orchestra’s GUI.
 5. Save and trigger the pipeline. Upon successful completion you should see this.
 
-    ![Screenshot 2025-10-15 at 11.41.42 AM.png](../../../static/img/orchestrators/orchestra/74a04bc3-61d9-4021-9027-d487cd76c415.png)
-
+   ![Screenshot 2025-10-15 at 11.41.42 AM.png](../../../static/img/orchestrators/orchestra/74a04bc3-61d9-4021-9027-d487cd76c415.png)
 
 ### 3.2 Custom Python tasks using the Bauplan SDK
 
@@ -81,10 +81,9 @@ For all other Bauplan operations (for example, `query()`, `create_branch()`, `cr
 
 - Integration reference:
 
-    [Python Integration](https://docs.getorchestra.io/docs/integrations/python/)
+  [Python Integration](https://docs.getorchestra.io/docs/integrations/python/)
 
-    [Python Execute Script Task](https://docs.getorchestra.io/docs/integrations/python/python_execute_script)
-
+  [Python Execute Script Task](https://docs.getorchestra.io/docs/integrations/python/python_execute_script)
 
 Each task executes a Python file from your repository within Orchestra's managed runtime.
 

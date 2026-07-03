@@ -1,5 +1,6 @@
 ---
 title: "Data branches"
+description: "Use Bauplan data branches as zero-copy, version-controlled sandboxes to import, test, and merge data changes safely without ever corrupting production data."
 ---
 
 Data branches are isolated development environments that let you safely
@@ -9,10 +10,10 @@ modern software development workflows to your data lake.
 
 Traditional data systems make safe development hard:
 
--   Risk of corrupting production data
--   Lack of isolation between developers
--   Difficult rollbacks
--   Inefficient iteration and testing
+- Risk of corrupting production data
+- Lack of isolation between developers
+- Difficult rollbacks
+- Inefficient iteration and testing
 
 Data branches solve these problems by enabling version-controlled,
 zero-copy, namespace-aware data sandboxes.
@@ -22,29 +23,30 @@ zero-copy, namespace-aware data sandboxes.
 Branches introduce Git-like workflows to data management, enabling
 robust development practices throughout the data application lifecycle:
 
--   **Safe parallel development** without conflicts
--   **Zero-copy sandboxes** for experiments and CI
--   **Simplified rollbacks and debugging** using immutable Refs
--   **Auditability and traceability** by design
+- **Safe parallel development** without conflicts
+- **Zero-copy sandboxes** for experiments and CI
+- **Simplified rollbacks and debugging** using immutable Refs
+- **Auditability and traceability** by design
 
 ## Key features
 
--   **Zero-Copy Branching**: Creating a branch is instantaneous and
-    cost-efficient. No data duplication; only metadata changes.
--   **Username-Based Namespaces**: Each user gets a private branch space
-    (`username.branch_name`) with write access to their branches and
-    read access to others.
--   **Main Branch Protection**: `main` is protected by default. Changes
-    flow in via merges, keeping production safe.
+- **Zero-Copy Branching**: Creating a branch is instantaneous and
+  cost-efficient. No data duplication; only metadata changes.
+- **Username-Based Namespaces**: Each user gets a private branch space
+  (`username.branch_name`) with write access to their branches and
+  read access to others.
+- **Main Branch Protection**: `main` is protected by default. Changes
+  flow in via merges, keeping production safe.
 
 ## Using data branches and refs
-| **Branch**                                   | **Ref**                                        |
-|----------------------------------------------|------------------------------------------------|
-| Mutable                                      | Immutable                                      |
-| Points to the *latest* commit                | Points to a specific commit                    |
-| Used for development workflow                | Used for reproducibility / audit trail         |
-| You move it (via new runs, imports, etc.)    | It never changes                               |
-| Example: `ciro.feature_xyz`                  | Example: `ciro.feature@xyz-run-202505...`      |
+
+| **Branch**                                | **Ref**                                   |
+| ----------------------------------------- | ----------------------------------------- |
+| Mutable                                   | Immutable                                 |
+| Points to the _latest_ commit             | Points to a specific commit               |
+| Used for development workflow             | Used for reproducibility / audit trail    |
+| You move it (via new runs, imports, etc.) | It never changes                          |
+| Example: `ciro.feature_xyz`               | Example: `ciro.feature@xyz-run-202505...` |
 
 Each time you change the state of the lake, for instance when you run a
 pipeline, Bauplan creates a new Commit. If the run succeeds, Bauplan
@@ -52,8 +54,8 @@ updates the branch to point to the new Ref. If it fails, the branch
 remains unchanged. This is what makes pipelines **transactional by default**.
 
 <Tip>
-Think of a branch as your active sandbox and a Ref as a pointer to a
-timestamped, frozen snapshot created by any write operation on the lake.
+  Think of a branch as your active sandbox and a Ref as a pointer to a
+  timestamped, frozen snapshot created by any write operation on the lake.
 </Tip>
 
 ## Basic data branch operations
@@ -82,14 +84,14 @@ bauplan branch rm ciro.feature_xyz
 A **tag** is an immutable, user-defined label that points to a specific
 commit hash.
 
--   Used to "freeze" a specific state of the lake (for example,
-    `v1.0-passed-qa`)
--   Always points to a commit, never moves on its own.
--   Useful for bookmarking releases, debugging points, or restoring
-    known-good states.
--   Can be updated manually by reassigning it to a new commit hash.
+- Used to "freeze" a specific state of the lake (for example,
+  `v1.0-passed-qa`)
+- Always points to a commit, never moves on its own.
+- Useful for bookmarking releases, debugging points, or restoring
+  known-good states.
+- Can be updated manually by reassigning it to a new commit hash.
 
 Tags are also compatible with relative syntax:
 
--   `v1.0^1` → commit before the tagged one
--   `v1.0*2025-05-19T06:11:33Z` → last commit before the timestamp
+- `v1.0^1` → commit before the tagged one
+- `v1.0*2025-05-19T06:11:33Z` → last commit before the timestamp

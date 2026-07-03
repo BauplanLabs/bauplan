@@ -1,56 +1,66 @@
 ---
 title: "Integrations"
+description: "Connect Bauplan to the tools you already use - orchestrators, notebooks, data apps, warehouses, BI tools, and ELT - across your Iceberg data lakehouse."
 ---
 
-import DocCardList from '@theme/DocCardList';
-import { Workflow, NotebookPen, Database, BarChart3, ArrowLeftRight, Wrench } from 'lucide-react';
+import DocCardList from "@theme/DocCardList";
+import {
+  Workflow,
+  NotebookPen,
+  Database,
+  BarChart3,
+  ArrowLeftRight,
+  Wrench,
+} from "lucide-react";
 
 Bauplan integrates with the tools you already use - orchestrators, notebooks, warehouses, BI tools, and more.
 
 <div className="integrations-grid">
-<DocCardList items={[
-  {
-    type: 'link',
-    href: '/integrations/orchestrators/',
-    label: 'Orchestrators',
-    icon: <Workflow />,
-    description: 'Airflow, Prefect, Dagster, Temporal, DBOS'
-  },
-  {
-    type: 'link',
-    href: '/integrations/notebooks-data-apps/',
-    label: 'Notebooks and data apps',
-    icon: <NotebookPen />,
-    description: 'Jupyter, Marimo, Streamlit'
-  },
-  {
-    type: 'link',
-    href: '/integrations/warehouses-lakehouses/',
-    label: 'Warehouses and Lakehouses',
-    icon: <Database />,
-    description: 'Snowflake, BigQuery'
-  },
-  {
-    type: 'link',
-    href: '/integrations/bi-tools-postgres/',
-    label: 'BI tools and Postgres client',
-    icon: <BarChart3 />,
-    description: 'Metabase, Superset, any Postgres client'
-  },
-  {
-    type: 'link',
-    href: '/integrations/data-int-and-etl/',
-    label: 'Data Integration and ELT',
-    icon: <ArrowLeftRight />,
-    description: 'Fivetran, Airbyte, and other ELT tools'
-  },
-  {
-    type: 'link',
-    href: '/integrations/dbt/',
-    label: 'DBT',
-    icon: <Wrench />,
-    description: 'Coming soon',
-    comingSoon: true
-  }
-]} />
+  <DocCardList
+    items={[
+      {
+        type: "link",
+        href: "/integrations/orchestrators/",
+        label: "Orchestrators",
+        icon: <Workflow />,
+        description: "Airflow, Prefect, Dagster, Temporal, DBOS",
+      },
+      {
+        type: "link",
+        href: "/integrations/notebooks-data-apps/",
+        label: "Notebooks and data apps",
+        icon: <NotebookPen />,
+        description: "Jupyter, Marimo, Streamlit",
+      },
+      {
+        type: "link",
+        href: "/integrations/warehouses-lakehouses/",
+        label: "Warehouses and Lakehouses",
+        icon: <Database />,
+        description: "Snowflake, BigQuery",
+      },
+      {
+        type: "link",
+        href: "/integrations/bi-tools-postgres/",
+        label: "BI tools and Postgres client",
+        icon: <BarChart3 />,
+        description: "Metabase, Superset, any Postgres client",
+      },
+      {
+        type: "link",
+        href: "/integrations/data-int-and-etl/",
+        label: "Data Integration and ELT",
+        icon: <ArrowLeftRight />,
+        description: "Fivetran, Airbyte, and other ELT tools",
+      },
+      {
+        type: "link",
+        href: "/integrations/dbt/",
+        label: "DBT",
+        icon: <Wrench />,
+        description: "Coming soon",
+        comingSoon: true,
+      },
+    ]}
+  />
 </div>

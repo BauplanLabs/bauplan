@@ -1,5 +1,6 @@
 ---
 title: "Metabase"
+description: "Connect Metabase to Bauplan via the PostgreSQL proxy. Configure the connection, browse Iceberg tables, and build dashboards over your lakehouse data."
 ---
 
 Metabase is a BI tool available in both open source and enterprise versions; you can run it locally (via `Docker`), self-host it, or use one of the available Metabase Cloud versions.
@@ -21,13 +22,17 @@ docker run -p 3000:3000 metabase metabase/metabase
 This will download the latest version of the container on your machine and launch a local server.
 
 <Note>
-Compared to the official guide, we removed `-d`, so you can terminate server execution with a simple `ctrl+c` in the terminal window. Additionally, we haven't configured any volume: all configurations will be lost when you terminate the Docker container. The official guide provides more details on how to properly configure the service and persist data to disk or to a remote Database server.
+  Compared to the official guide, we removed `-d`, so you can terminate server
+  execution with a simple `ctrl+c` in the terminal window. Additionally, we
+  haven't configured any volume: all configurations will be lost when you
+  terminate the Docker container. The official guide provides more details on
+  how to properly configure the service and persist data to disk or to a remote
+  Database server.
 </Note>
 
 Once service initialization is complete, you can access the Metabase server from your browser at `http://127.0.0.1:3000`.
 
 ![Screenshot 2025-09-23 at 10.15.15.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.15.15.png)
-
 
 Complete the initial wizard by creating the (local) user associated with your temporary Metabase instance. Depending on the version in use, the welcome wizard may ask you to configure the connection directly.
 
@@ -44,9 +49,9 @@ Click on `PostgreSQL` and fill in the following fields
 - **Username**: your username
 - **Password**: your API Key
 - **Use a secure connection (SSL)**: enable
-    - SSL Mode: `require`
+  - SSL Mode: `require`
 - Expand `Show advanced options`:
-    - **Additional JDBC connection string options**: `preferQueryMode=simple`
+  - **Additional JDBC connection string options**: `preferQueryMode=simple`
 - Click on `Connect database` to test the integration
 
 ![Screenshot 2025-09-23 at 10.22.34.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.22.34.png)

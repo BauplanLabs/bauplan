@@ -1,5 +1,6 @@
 ---
 title: "Data Branches"
+description: "Work with Bauplan data branches. Import an S3 dataset into an isolated branch, diff it against main, and merge your results back into the data catalog."
 ---
 
 In the [Quick Start](/tutorial/quick-start#create-a-branch) you created a branch and ran a pipeline on it. This guide goes deeper into branches - importing external data and merging results back to `main`.
@@ -11,6 +12,7 @@ bauplan checkout -b <YOUR_USERNAME>.hello_bauplan
 ```
 
 You can see your current branch marked with a star by running:
+
 ```sh
 bauplan branch ls   # list your branches (active branch is marked with a star)
 ```
@@ -87,11 +89,9 @@ Congratulations, you just merged a data branch into the main data
 catalog!
 
 <Tip>
--   Data branches are user-specific; always prefix branch names with
-    your username.
--   For a complete command reference, please consult our [reference
-    documentation](/reference/bauplan).
--   The bauplan data catalog supports additional operations like
-    namespace management, removing tables, and deleting branches. See
-    [CLI Reference](/reference/cli.mdx) for more details.
+  - Data branches are user-specific; always prefix branch names with your
+  username. - For a complete command reference, please consult our [reference
+  documentation](/reference/bauplan). - The bauplan data catalog supports
+  additional operations like namespace management, removing tables, and deleting
+  branches. See [CLI Reference](/reference/cli.mdx) for more details.
 </Tip>

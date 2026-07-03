@@ -1,5 +1,6 @@
 ---
 title: "Create table schema conflicts"
+description: "Fix schema conflicts when creating Bauplan tables from S3 files. Generate a table plan, cast conflicting column types in YAML or Python, then apply and import data."
 ---
 
 When you're passing in a dataset via `--search-uri` option in [`table create`](/reference/cli#bauplan-table-create) command, Bauplan scans your files to infer the table
@@ -17,8 +18,9 @@ apply it which is what the rest of this page walks through.
 <Note>
   The dataset example you pass using `--search-uri` is not inserted into the
   table. It's only used to infer the schema and create an empty table. You can
-  import the data later via [`table import`](/reference/cli#bauplan-table-import), using
-  the same `--search-uri` or a different one with the same schema.
+  import the data later via [`table
+  import`](/reference/cli#bauplan-table-import), using the same `--search-uri`
+  or a different one with the same schema.
 </Note>
 
 When a conflict occurs, you might see an error like:
