@@ -1,5 +1,6 @@
 ---
 title: "Installation"
+description: "Install the Bauplan CLI and Python SDK with uv, then generate and configure your API key via the CLI or config.yml to start building data pipelines."
 ---
 
 ## Install the Bauplan CLI and SDK
@@ -36,7 +37,7 @@ you do not have an API key yet, you can [request
 one](https://app.bauplanlabs.com/sign-up) for free.
 
 <Warning>
-Your API key is shown only once. Save it immediately in a secure location.
+  Your API key is shown only once. Save it immediately in a secure location.
 </Warning>
 
 ## Configure your API key
@@ -62,10 +63,10 @@ edit this file directly to set up one or more named profiles:
 
 ```yaml
 profiles:
-    default:
-        api_key: <your_api_key>
-    another-profile:
-        api_key: <another_api_key>
+  default:
+    api_key: <your_api_key>
+  another-profile:
+    api_key: <another_api_key>
 ```
 
 Each profile can have its own API key. The
@@ -74,5 +75,6 @@ Each profile can have its own API key. The
 If you are using the Python SDK, see [notes on Client authentication](/reference/bauplan#notes-on-authentication).
 
 <Danger>
-Never share your API key publicly. Store it securely using environment variables or secrets management tools in your deployment workflows.
+  Never share your API key publicly. Store it securely using environment
+  variables or secrets management tools in your deployment workflows.
 </Danger>

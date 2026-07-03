@@ -1,4 +1,7 @@
-# Estuary via EMR
+---
+title: "Estuary"
+description: "Stream and CDC data from any Estuary source into Bauplan Iceberg tables. Estuary runs Spark on EMR Serverless to merge updates in near real-time."
+---
 
 Stream data from any Estuary source into Bauplan Iceberg tables using the [Apache Iceberg materialization connector](https://docs.estuary.dev/reference/Connectors/materialization-connectors/apache-iceberg/). Estuary orchestrates Spark jobs on AWS EMR Serverless to merge updates into Bauplan-managed tables in near real-time, including full CDC (Change Data Capture) support for relational databases.
 
@@ -84,69 +87,60 @@ Create (or designate) an S3 bucket in the same region as the EMR application. Es
 
 EMR Serverless assumes this role at job runtime, referenced below as `<execution-role>`.
 
-*Permissions policy:*
+_Permissions policy:_
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "S3ListBucket",
-            "Effect": "Allow",
-            "Action": "s3:ListBucket",
-            "Resource": "arn:aws:s3:::<your-bucket>"
-        },
-        {
-            "Sid": "S3ReadAll",
-            "Effect": "Allow",
-            "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::<your-bucket>/*"
-        },
-        {
-            "Sid": "S3WriteIceberg",
-            "Effect": "Allow",
-            "Action": [
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": "arn:aws:s3:::<your-bucket>/iceberg/*"
-        },
-        {
-            "Sid": "S3WriteStaging",
-            "Effect": "Allow",
-            "Action": [
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": "arn:aws:s3:::<your-bucket>/estuary-staging/*"
-        },
-        {
-            "Sid": "SSMReadCatalogCredentials",
-            "Effect": "Allow",
-            "Action": [
-                "ssm:GetParameter",
-                "ssm:GetParameters"
-            ],
-            "Resource": "arn:aws:ssm:<region>:<account-id>:parameter<ssm-prefix>*"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "S3ListBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<your-bucket>"
+    },
+    {
+      "Sid": "S3ReadAll",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::<your-bucket>/*"
+    },
+    {
+      "Sid": "S3WriteIceberg",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::<your-bucket>/iceberg/*"
+    },
+    {
+      "Sid": "S3WriteStaging",
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::<your-bucket>/estuary-staging/*"
+    },
+    {
+      "Sid": "SSMReadCatalogCredentials",
+      "Effect": "Allow",
+      "Action": ["ssm:GetParameter", "ssm:GetParameters"],
+      "Resource": "arn:aws:ssm:<region>:<account-id>:parameter<ssm-prefix>*"
+    }
+  ]
 }
 ```
 
-*Trust policy:*
+_Trust policy:_
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "emr-serverless.amazonaws.com"
-            },
-            "Action": "sts:AssumeRole"
-        }
-    ]
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "emr-serverless.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
 }
 ```
 
@@ -158,78 +152,70 @@ Attach the following policy:
 
 ```json
 {
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Sid": "EMRServerlessManageJobs",
-            "Effect": "Allow",
-            "Action": [
-                "emr-serverless:ListApplications",
-                "emr-serverless:StartJobRun",
-                "emr-serverless:GetJobRun",
-                "emr-serverless:ListJobRuns",
-                "emr-serverless:CancelJobRun",
-                "emr-serverless:GetApplication",
-                "emr-serverless:StartApplication"
-            ],
-            "Resource": [
-                "arn:aws:emr-serverless:<region>:<account-id>:/applications/<emr-application-id>",
-                "arn:aws:emr-serverless:<region>:<account-id>:/applications/<emr-application-id>/jobruns/*"
-            ]
-        },
-        {
-            "Sid": "IAMPassExecutionRole",
-            "Effect": "Allow",
-            "Action": "iam:PassRole",
-            "Resource": "arn:aws:iam::<account-id>:role/<execution-role>",
-            "Condition": {
-                "StringEquals": {
-                    "iam:PassedToService": "emr-serverless.amazonaws.com"
-                }
-            }
-        },
-        {
-            "Sid": "S3ListBucket",
-            "Effect": "Allow",
-            "Action": "s3:ListBucket",
-            "Resource": "arn:aws:s3:::<your-bucket>"
-        },
-        {
-            "Sid": "S3ReadWriteStaging",
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": "arn:aws:s3:::<your-bucket>/estuary-staging/*"
-        },
-        {
-            "Sid": "S3ReadWriteIceberg",
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject"
-            ],
-            "Resource": "arn:aws:s3:::<your-bucket>/iceberg/*"
-        },
-        {
-            "Sid": "SSMManageCatalogCredentials",
-            "Effect": "Allow",
-            "Action": [
-                "ssm:PutParameter",
-                "ssm:GetParameter",
-                "ssm:GetParameters",
-                "ssm:DeleteParameter"
-            ],
-            "Resource": "arn:aws:ssm:<region>:<account-id>:parameter<ssm-prefix>*"
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "EMRServerlessManageJobs",
+      "Effect": "Allow",
+      "Action": [
+        "emr-serverless:ListApplications",
+        "emr-serverless:StartJobRun",
+        "emr-serverless:GetJobRun",
+        "emr-serverless:ListJobRuns",
+        "emr-serverless:CancelJobRun",
+        "emr-serverless:GetApplication",
+        "emr-serverless:StartApplication"
+      ],
+      "Resource": [
+        "arn:aws:emr-serverless:<region>:<account-id>:/applications/<emr-application-id>",
+        "arn:aws:emr-serverless:<region>:<account-id>:/applications/<emr-application-id>/jobruns/*"
+      ]
+    },
+    {
+      "Sid": "IAMPassExecutionRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<account-id>:role/<execution-role>",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "emr-serverless.amazonaws.com"
         }
-    ]
+      }
+    },
+    {
+      "Sid": "S3ListBucket",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<your-bucket>"
+    },
+    {
+      "Sid": "S3ReadWriteStaging",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::<your-bucket>/estuary-staging/*"
+    },
+    {
+      "Sid": "S3ReadWriteIceberg",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::<your-bucket>/iceberg/*"
+    },
+    {
+      "Sid": "SSMManageCatalogCredentials",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters",
+        "ssm:DeleteParameter"
+      ],
+      "Resource": "arn:aws:ssm:<region>:<account-id>:parameter<ssm-prefix>*"
+    }
+  ]
 }
 ```
 
-Generate an **Access Key ID (**`<aws-access-key-id>`) and **Secret Access Key**(`<aws-secret-access-key>`)  for this user, you will need them in Step 5.
+Generate an **Access Key ID (**`<aws-access-key-id>`) and **Secret Access Key**(`<aws-secret-access-key>`) for this user, you will need them in Step 5.
 
 ---
 
@@ -249,26 +235,26 @@ In Estuary, create a new **Apache Iceberg** materialization and configure it as 
 
 ### Endpoint (Bauplan catalog)
 
-| Field | Value |
-| --- | --- |
-| **URL** | `https://api.use1.aprod.bauplanlabs.com/iceberg` - to target a specific branch: `https://api.use1.aprod.bauplanlabs.com/iceberg/<branch_name>` |
-| **Warehouse** | `default` |
-| **Namespace** | Your target namespace in Bauplan |
-| **Base Location** | `s3://<your-bauplan-bucket>/iceberg` |
-| **Catalog Authentication** | OAuth 2.0 Client Credentials |
-| **OAuth 2.0 Server URI** | `v1/oauth/tokens` |
-| **Catalog Credential** | `<client_id>:<client_secret>` (from Step 1) |
-| **Scope** | *(leave empty)* |
+| Field                      | Value                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **URL**                    | `https://api.use1.aprod.bauplanlabs.com/iceberg` - to target a specific branch: `https://api.use1.aprod.bauplanlabs.com/iceberg/<branch_name>` |
+| **Warehouse**              | `default`                                                                                                                                      |
+| **Namespace**              | Your target namespace in Bauplan                                                                                                               |
+| **Base Location**          | `s3://<your-bauplan-bucket>/iceberg`                                                                                                           |
+| **Catalog Authentication** | OAuth 2.0 Client Credentials                                                                                                                   |
+| **OAuth 2.0 Server URI**   | `v1/oauth/tokens`                                                                                                                              |
+| **Catalog Credential**     | `<client_id>:<client_secret>` (from Step 1)                                                                                                    |
+| **Scope**                  | _(leave empty)_                                                                                                                                |
 
 ### Compute (EMR Serverless)
 
-| Field | Value |
-| --- | --- |
-| **Region** | AWS region of your EMR application |
-| **Application ID** | `<emr-application-id>` |
-| **Execution Role ARN** | `arn:aws:iam::<account-id>:role/<execution-role>` |
-| **Bucket** | `<your-bauplan-bucket>` |
-| **EMR Authentication** | `AWSAccessKey` - `<aws-access-key-id>` / `<aws-secret-access-key>` |
+| Field                      | Value                                                                  |
+| -------------------------- | ---------------------------------------------------------------------- |
+| **Region**                 | AWS region of your EMR application                                     |
+| **Application ID**         | `<emr-application-id>`                                                 |
+| **Execution Role ARN**     | `arn:aws:iam::<account-id>:role/<execution-role>`                      |
+| **Bucket**                 | `<your-bauplan-bucket>`                                                |
+| **EMR Authentication**     | `AWSAccessKey` - `<aws-access-key-id>` / `<aws-secret-access-key>`     |
 | **Systems Manager Prefix** | `<ssm-prefix>` (must start and end with `/`, for example, `/estuary/`) |
 
 Add your collections as **bindings**, mapping each Estuary collection to its target Iceberg table name. Set the namespace to match your target Bauplan namespace if you want to avoid the default. Save and publish the connector.

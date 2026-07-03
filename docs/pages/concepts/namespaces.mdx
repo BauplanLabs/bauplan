@@ -1,5 +1,6 @@
 ---
 title: "Namespaces"
+description: "Organize Bauplan tables with namespaces, logical containers like database schemas. Namespaces are branch-specific, inherited on branch creation, and merged back."
 ---
 
 A **namespace** in Bauplan is a logical container that groups related
@@ -11,18 +12,18 @@ override this per table, per project, or per run.
 
 Namespaces are useful for:
 
--   Organizing tables by team, project, or domain (for example, `ml.features`,
-    `analytics.events`)
--   Preventing name collisions across teams
--   Isolating environments (for example, dev/test/prod)
+- Organizing tables by team, project, or domain (for example, `ml.features`,
+  `analytics.events`)
+- Preventing name collisions across teams
+- Isolating environments (for example, dev/test/prod)
 
 ## Behavior
 
--   Namespaces are branch-specific. The same namespace name can exist in
-    multiple branches, but they are independent of each other.
--   Creating a new branch inherits all namespaces from the parent branch.
--   Any newly created namespaces stay on the branch where they were created and are not visible in other branches.
--   When you merge a branch, Bauplan also merges any namespaces that you created or modified on it.
+- Namespaces are branch-specific. The same namespace name can exist in
+  multiple branches, but they are independent of each other.
+- Creating a new branch inherits all namespaces from the parent branch.
+- Any newly created namespaces stay on the branch where they were created and are not visible in other branches.
+- When you merge a branch, Bauplan also merges any namespaces that you created or modified on it.
 
 ## Using namespaces
 

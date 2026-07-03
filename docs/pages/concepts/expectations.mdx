@@ -1,5 +1,6 @@
 ---
 title: "Expectations"
+description: "Validate data with Bauplan expectations - inline quality checks that gate Write-Audit-Publish, block invalid data before it reaches production."
 ---
 
 Expectations are statistical and quality checks that validate the structure and values of your data. They ensure data meets defined standards before it flows through your system or reaches production.
@@ -17,23 +18,28 @@ Expectations are typically attached to a node or materialization step and serve 
 ### How this differs from other common patterns
 
 Post-hoc validation frameworks, like [dbt tests](https://docs.getdbt.com/docs/build/data-tests)
- or [Great Expectations](https://greatexpectations.io/), commonly execute validation as separate queries after a table or view is built. Issues are detected only after the object exists, which means invalid data may already be visible to downstream consumers, and jobs used to build the object must be rerun.
+or [Great Expectations](https://greatexpectations.io/), commonly execute validation as separate queries after a table or view is built. Issues are detected only after the object exists, which means invalid data may already be visible to downstream consumers, and jobs used to build the object must be rerun.
 
 Observability and monitoring platforms, like [Monte Carlo](https://www.montecarlodata.com/), run on schedules independent of pipeline execution. They typically profile tables, track distributions, and alert on anomalies or drift. They are not focused on preventing invalid data from being written and do not integrate with pipeline control flow.
 
 ## Why use expectations?
 
 ### Early detection
+
 Expectations catch data quality issues before they propagate through your pipeline, preventing downstream failures and incorrect results.
 
 ### Data contracts
+
 Well-documented expectations serve as implicit data contracts between teams, systems, and data providers. They codify assumptions about data structure, ranges, completeness, and relationships.
 
 ### Domain knowledge capture
+
 Expectations encode domain-specific rules and business logic directly in your data infrastructure. For example, "transaction amounts must be positive" or "user IDs must be unique."
 
 ### Validation at critical points
+
 Key use cases include:
+
 - **External data validation**: Validate data from vendors, partner teams, or APIs by writing to an isolated branch, running expectations, then publishing only if all checks pass
 - **Model output validation**: Ensure transformations produce expected results
 - **Pre-deployment checks**: Validate data before promoting pipelines to production
@@ -69,11 +75,12 @@ Bauplan provides a built-in library covering common validation scenarios:
 - **Uniqueness**: `expect_column_values_to_be_unique`
 - **Existence**: `expect_column_to_exist`
 - **Statistical properties**: `expect_column_mean_greater_than`, `expect_column_mean_greater_or_equal_than`, `expect_column_mean_smaller_than`,
-`expect_column_mean_smaller_or_equal_than`
+  `expect_column_mean_smaller_or_equal_than`
 
 You can also write custom expectations or integrate other libraries like [Great Expectations](https://github.com/great-expectations/great_expectations).
 
 ## Nullness checks
+
 ```python
 #! import pyarrow
 #! table = pyarrow.table({'user_id': [1], 'deprecated_field': [None], 'middle_name': [None]})
@@ -147,6 +154,7 @@ expect_column_equal_concatenation(
 ```
 
 ## Uniqueness checks
+
 ```python
 #! import pyarrow
 #! table = pyarrow.table({'transaction_id': [1, 2], 'customer_id': [1, 1]})

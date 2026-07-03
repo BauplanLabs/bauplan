@@ -1,7 +1,9 @@
 ---
 title: "marimo"
+description: "Build a reactive marimo notebook on Bauplan with the Python SDK - query a lakehouse branch, add date filters, and chart results, then serve it as a web app."
 hide_title: true
 ---
+
 # **marimo Integration**
 
 [marimo](https://marimo.io/) is a reactive Python notebook and app framework for building interactive tools from pure Python. You can edit as a notebook and serve the same file as a read-only web app with marimo run.
@@ -16,7 +18,9 @@ Bauplan exposes a Python SDK that lets you interact with your lakehouse in code:
 - Access to a Bauplan table you can query (such as `taxi_fhvhv`).
 
 <Note>
-To isolate your data environment, run it on a branch (not on main). Branch names must be prefixed with your Bauplan username, for example `alice.exploration_app`.
+  To isolate your data environment, run it on a branch (not on main). Branch
+  names must be prefixed with your Bauplan username, for example
+  `alice.exploration_app`.
 </Note>
 
 [Learn more about branches](/concepts/git-for-data/data-branches)
@@ -30,7 +34,9 @@ This example reads from the `taxi_fhvhv` table in the Bauplan Sandbox (data for 
 - Visualizes the resulting table with marimo’s UI elements and a Matplotlib bar chart, embedded in the app. Use `mo.ui.date_range` for inputs and `mo.ui.table` for interactive tabular display; render Matplotlib with `mo.mpl.interactive`.
 
 <Note>
-The Sandbox dataset is shared and meant for examples. In a private environment, you can replace the table name (and catalog/namespace if needed) while keeping the same pattern: *Client → branch → query → visualize*.
+  The Sandbox dataset is shared and meant for examples. In a private
+  environment, you can replace the table name (and catalog/namespace if needed)
+  while keeping the same pattern: *Client → branch → query → visualize*.
 </Note>
 
 ```python title="marimo_app.py"

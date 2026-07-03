@@ -1,5 +1,6 @@
 ---
 title: "Projects"
+description: "Structure Bauplan projects with models, expectations, and bauplan_project.yml. Organize pipelines, configure dependencies and secrets, and add apps and orchestrators."
 ---
 
 A Bauplan project encapsulates your data workflows, including models,
@@ -33,26 +34,26 @@ my_bauplan_project/
 
 ### Explanation
 
--   `pipelines/`: Contains individual pipelines, each in its own
-    subdirectory with dedicated code and configuration.
-    -   `models.py`: Core transformation logic.
-    -   `expectations.py`: Data quality checks.
-    -   `utils.py`, `constants.py`: Optional helpers used by the
-        pipeline.
-    -   `bauplan_project.yml`: Defines parameters, dependencies, and
-        secrets.
--   `data/raw/`: Optional folder for raw data references or
-    pipeline-specific data helpers.
--   `README.md`: Documentation for the overall project.
+- `pipelines/`: Contains individual pipelines, each in its own
+  subdirectory with dedicated code and configuration.
+  - `models.py`: Core transformation logic.
+  - `expectations.py`: Data quality checks.
+  - `utils.py`, `constants.py`: Optional helpers used by the
+    pipeline.
+  - `bauplan_project.yml`: Defines parameters, dependencies, and
+    secrets.
+- `data/raw/`: Optional folder for raw data references or
+  pipeline-specific data helpers.
+- `README.md`: Documentation for the overall project.
 
 ### Best practices
 
--   **Modular Pipelines:** Keep each pipeline self-contained within its
-    directory to facilitate independent development and testing.
--   **Documentation:** Maintain clear documentation in `README.md` files
-    for each pipeline and the overall project.
--   **Testing:** Implement tests for your models and pipelines to ensure
-    correctness and facilitate refactoring.
+- **Modular Pipelines:** Keep each pipeline self-contained within its
+  directory to facilitate independent development and testing.
+- **Documentation:** Maintain clear documentation in `README.md` files
+  for each pipeline and the overall project.
+- **Testing:** Implement tests for your models and pipelines to ensure
+  correctness and facilitate refactoring.
 
 ## The `bauplan_project.yml` configuration file
 
@@ -95,10 +96,10 @@ parameters:
 
 Some pipelines benefit from interactive or external components:
 
--   **[Apps](/integrations/notebooks-data-apps/)** (for example, [Streamlit](/integrations/notebooks-data-apps/streamlit)) built on top of model outputs.
--   **[Notebooks](/integrations/notebooks-data-apps/)** used for exploration, debugging, and analysis.
--   **[Orchestrators](/integrations/orchestrators/)** (for example, [Airflow](/integrations/orchestrators/airflow), [Prefect](/integrations/orchestrators/prefect)) used to schedule and
-    monitor the pipelines in production.
+- **[Apps](/integrations/notebooks-data-apps/)** (for example, [Streamlit](/integrations/notebooks-data-apps/streamlit)) built on top of model outputs.
+- **[Notebooks](/integrations/notebooks-data-apps/)** used for exploration, debugging, and analysis.
+- **[Orchestrators](/integrations/orchestrators/)** (for example, [Airflow](/integrations/orchestrators/airflow), [Prefect](/integrations/orchestrators/prefect)) used to schedule and
+  monitor the pipelines in production.
 
 ### Notebooks & apps
 
@@ -130,23 +131,24 @@ my_bauplan_project/
 Notebooks using the Bauplan Python SDK are excellent for quick
 inspection and lightweight exploration on your local machine. However:
 
--   **You pay the memory cost locally.** `client.query()` loads any
-    returned data into the memory of your notebook or Python process. This is great for small-to-medium datasets, but
-    risky for multi-GB results.
--   **Performance is significantly slower than remote execution.** Even
-    with efficient streaming (for example, [Arrow Flight](https://arrow.apache.org/docs/format/Flight.html)), SDK-based retrieval
-    is slower and more resource-intensive than letting the computation
-    run near the data.
+- **You pay the memory cost locally.** `client.query()` loads any
+  returned data into the memory of your notebook or Python process. This is great for small-to-medium datasets, but
+  risky for multi-GB results.
+- **Performance is significantly slower than remote execution.** Even
+  with efficient streaming (for example, [Arrow Flight](https://arrow.apache.org/docs/format/Flight.html)), SDK-based retrieval
+  is slower and more resource-intensive than letting the computation
+  run near the data.
 
 #### Best practices
 
--   Use the Notebooks for **exploratory workflows**, lightweight
-    queries, and output inspection.
--   Keep notebook results small and filtered - use `LIMIT` or `WHERE`
-    clauses.
+- Use the Notebooks for **exploratory workflows**, lightweight
+  queries, and output inspection.
+- Keep notebook results small and filtered - use `LIMIT` or `WHERE`
+  clauses.
 
 <Note>
-You can learn more about notebooks and apps integrations in the [Integrations section](/integrations/notebooks-data-apps/).
+  You can learn more about notebooks and apps integrations in the [Integrations
+  section](/integrations/notebooks-data-apps/).
 </Note>
 
 ### Orchestrators
@@ -156,25 +158,26 @@ external orchestrator (for example, [Airflow](/integrations/orchestrators/airflo
 
 #### Requirements for a good orchestrator
 
--   **Flexible inputs**: Support for scheduled, manual, or event-driven
-    triggers.
--   **Flexible task control**: Ability to run subsets of pipelines
-    (for example, a specific model and its children).
--   **Backfills**: Easily reprocess historical data.
--   **Logging UI**: Centralized access to job logs and statuses.
--   **Retries**: Robust error handling and retries.
+- **Flexible inputs**: Support for scheduled, manual, or event-driven
+  triggers.
+- **Flexible task control**: Ability to run subsets of pipelines
+  (for example, a specific model and its children).
+- **Backfills**: Easily reprocess historical data.
+- **Logging UI**: Centralized access to job logs and statuses.
+- **Retries**: Robust error handling and retries.
 
 #### Best practices
 
--   Keep orchestration lightweight: external orchestrators manage **when
-    and how your data pipelines** run - not to replicate their logic.
-    Invoke Bauplan with the correct ref and parameters and let Bauplan
-    handle execution and data versioning.
--   Store orchestrator config and code (for example, Airflow DAGs) alongside
-    the relevant pipeline.
--   Use tags or branch naming conventions to trigger runs in dev vs.
-    prod.
+- Keep orchestration lightweight: external orchestrators manage **when
+  and how your data pipelines** run - not to replicate their logic.
+  Invoke Bauplan with the correct ref and parameters and let Bauplan
+  handle execution and data versioning.
+- Store orchestrator config and code (for example, Airflow DAGs) alongside
+  the relevant pipeline.
+- Use tags or branch naming conventions to trigger runs in dev vs.
+  prod.
 
 <Note>
-You can learn more about orchestrator integrations in the [Integrations section](/integrations/orchestrators/).
+  You can learn more about orchestrator integrations in the [Integrations
+  section](/integrations/orchestrators/).
 </Note>

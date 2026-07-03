@@ -1,5 +1,6 @@
 ---
 title: "Jupyter Notebooks"
+description: "Query a Bauplan lakehouse from a Jupyter notebook with the Python SDK - run SQL on an isolated branch and visualize results with Pandas and Matplotlib."
 hide_title: true
 ---
 
@@ -17,7 +18,9 @@ Bauplan exposes a Python SDK that lets you interact with your lakehouse in code:
 - Access to a Bauplan table you can query (such as `taxi_fhvhv`).
 
 <Note>
-To isolate your data environment, run it on a branch (not on main). Branch names must be prefixed with your Bauplan username, for example `alice.exploration_app`.
+  To isolate your data environment, run it on a branch (not on main). Branch
+  names must be prefixed with your Bauplan username, for example
+  `alice.exploration_app`.
 </Note>
 
 [Learn more about branches](/concepts/git-for-data/data-branches)
@@ -31,9 +34,10 @@ This example reads from the `taxi_fhvhv` table in the Bauplan Sandbox (data for 
 - Visualizes the resulting table as a Pandas dataframe and a Matplotlib bar chart embedded in the notebook.
 
 <Note>
-The Sandbox dataset is shared and meant for examples. In a private environment, you can replace the table name (and catalog/namespace if needed) while keeping the same pattern: *Client → branch → query → visualize*.
+  The Sandbox dataset is shared and meant for examples. In a private
+  environment, you can replace the table name (and catalog/namespace if needed)
+  while keeping the same pattern: *Client → branch → query → visualize*.
 </Note>
-
 
 ```python
 # Jupyter notebook cells

@@ -1,5 +1,6 @@
 ---
 title: "Pipelines"
+description: "Build Bauplan pipelines as DAGs by chaining models through their inputs and outputs. Bauplan infers execution order automatically from your model declarations."
 ---
 
 In Bauplan, pipelines are implicitly defined by chaining models together
@@ -84,21 +85,21 @@ my_project/
         └── bauplan_project.yml
 ```
 
--   Group models that form a logical pipeline into a single file:
-    `models.py`.
--   Place that file inside a folder named after the pipeline
-    (`sales_reporting`, `churn_prediction`, etc.).
--   Each pipeline folder contains its own `bauplan_project.yml` file,
-    which defines environment settings and dependencies for that
-    pipeline only.
--   Separate function bodies into external modules and call them within
-    the Bauplan models. This keeps business logic code neatly separated
-    from the DAG and environment declaration, making code refactoring
-    easier and future-proof.
+- Group models that form a logical pipeline into a single file:
+  `models.py`.
+- Place that file inside a folder named after the pipeline
+  (`sales_reporting`, `churn_prediction`, etc.).
+- Each pipeline folder contains its own `bauplan_project.yml` file,
+  which defines environment settings and dependencies for that
+  pipeline only.
+- Separate function bodies into external modules and call them within
+  the Bauplan models. This keeps business logic code neatly separated
+  from the DAG and environment declaration, making code refactoring
+  easier and future-proof.
 
 This layout:
 
--   Makes each pipeline self-contained and easy to run with
-    `bauplan run` from inside the folder.
--   Keeps models modular and promotes reuse.
--   Helps enforce consistent dependency tracking and ref resolution.
+- Makes each pipeline self-contained and easy to run with
+  `bauplan run` from inside the folder.
+- Keeps models modular and promotes reuse.
+- Helps enforce consistent dependency tracking and ref resolution.

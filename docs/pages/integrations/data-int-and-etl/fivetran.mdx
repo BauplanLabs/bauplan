@@ -1,5 +1,6 @@
 ---
 title: Fivetran
+description: "Register Fivetran Managed Data Lake Iceberg tables in Bauplan as external tables. Branch, validate, and query Fivetran data on S3 without copying it."
 ---
 
 Fivetran is a managed ELT platform that moves data from hundreds of sources into your data lake with automated schemas, scheduling, and monitoring. With the Managed Data Lake destination, it writes Apache Iceberg tables directly to your S3 bucket. In this guide, you will register those Fivetran-created Iceberg tables in Bauplan as external tables so you can branch, validate, and query them without copying data.
@@ -29,7 +30,7 @@ Fivetran is a managed ELT platform that moves data from hundreds of sources into
 
 1. In Fivetran, create a **Managed Data Lake** destination (S3).
 
-    See Fivetran documentation for setup details.
+   See Fivetran documentation for setup details.
 
 2. Use the **same S3 bucket** that your Bauplan environment can access in read and write.
 3. Set the **prefix** to `/iceberg/` so paths look like:
@@ -146,28 +147,20 @@ The Job Executor role (`<AWS_JOB_EXECUTOR_ROLE_ARN>`) is created during your one
     {
       "Sid": "ListBucketForFivetranIceberg",
       "Effect": "Allow",
-      "Action": [
-        "s3:ListBucket",
-        "s3:GetBucketLocation"
-      ],
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
       "Resource": "arn:aws:s3:::<S3_BUCKET_NAME>",
       "Condition": {
         "StringLike": {
-          "s3:prefix": [
-            "iceberg/*"
-          ]
+          "s3:prefix": ["iceberg/*"]
         }
       }
     },
     {
       "Sid": "ReadObjectsFromFivetranIceberg",
       "Effect": "Allow",
-      "Action": [
-        "s3:GetObject"
-      ],
+      "Action": ["s3:GetObject"],
       "Resource": "arn:aws:s3:::<S3_BUCKET_NAME>/iceberg/*"
     }
   ]
 }
-
 ```

@@ -1,5 +1,6 @@
 ---
 title: "CLI Reference"
+description: "Complete reference for the Bauplan command-line interface: run pipelines, query and import tables, manage branches, parameters, jobs, and global CLI options."
 hide_table_of_contents: false
 ---
 

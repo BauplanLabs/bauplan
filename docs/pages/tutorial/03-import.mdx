@@ -1,9 +1,10 @@
 ---
 title: "Import"
+description: "Import Parquet and CSV files from S3 into Bauplan as Iceberg tables. Create a table, load data, review with branch diff, and resolve schema conflicts."
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
 This guide explains how to import data into bauplan's data catalog as Iceberg tables.
 
@@ -23,7 +24,9 @@ When using the bauplan sandbox (beta environment), additional requirements apply
 - S3 bucket must have `ListObject` permission enabled
 
 <Note>
-These additional requirements exist because the sandbox runs in an isolated EC2 instance that can only access public data. In a production environment, the EC2 instance would be privately linked to your bucket through IAM.
+  These additional requirements exist because the sandbox runs in an isolated
+  EC2 instance that can only access public data. In a production environment,
+  the EC2 instance would be privately linked to your bucket through IAM.
 </Note>
 
 ## Import process overview
@@ -46,7 +49,7 @@ You can also import data through the Bauplan UI: navigate to **Import Data** in 
 
 <CollapsibleTip summary="You can use an AI Agent to safely import your data!">
 
-After completing the [agent setup](/agents/skills), ask your AI assistant to import data using the [safe-ingestion skill](https://github.com/BauplanLabs/bauplan-skills/tree/main/plugins/bauplan/skills/bauplan-safe-ingestion/SKILL.md). Simply say *"Import the Parquet files from s3://my-bucket/data/ into a table called my_table"* and the agent will handle branch creation, table creation, data import, validation, and merging automatically using a Write-Audit-Publish pattern.
+After completing the [agent setup](/agents/skills), ask your AI assistant to import data using the [safe-ingestion skill](https://github.com/BauplanLabs/bauplan-skills/tree/main/plugins/bauplan/skills/bauplan-safe-ingestion/SKILL.md). Simply say _"Import the Parquet files from s3://my-bucket/data/ into a table called my_table"_ and the agent will handle branch creation, table creation, data import, validation, and merging automatically using a Write-Audit-Publish pattern.
 
 </CollapsibleTip>
 
@@ -119,7 +122,9 @@ if state.error:
 </Tabs>
 
 <Tip>
-**Scheduled imports:** You can import data on a schedule. See our [scheduled ingestion example](https://github.com/BauplanLabs/bauplan/tree/main/examples/learn/03-safe-ingestion-on-a-schedule).
+  **Scheduled imports:** You can import data on a schedule. See our [scheduled
+  ingestion
+  example](https://github.com/BauplanLabs/bauplan/tree/main/examples/learn/03-safe-ingestion-on-a-schedule).
 </Tip>
 
 ### Review changes with branch diff
@@ -139,7 +144,8 @@ This will show:
 - Tables deleted or renamed in your branch
 
 <Note>
-`branch diff` always compares **your active branch** to the branch you pass as an argument.
+  `branch diff` always compares **your active branch** to the branch you pass as
+  an argument.
 </Note>
 
 ## Handling schema conflicts
@@ -167,6 +173,9 @@ bauplan table create-plan-apply --plan table_creation_plan.yml
 ```
 
 <Note>
-- For more details see [table create-plan](/reference/cli#bauplan-table-create-plan) and [table create-plan-apply](/reference/cli#bauplan-table-create-plan-apply).
-- For a complete import reference - including error handling and advanced import options, please consult the [reference documentation](/reference/bauplan).
+  - For more details see [table
+  create-plan](/reference/cli#bauplan-table-create-plan) and [table
+  create-plan-apply](/reference/cli#bauplan-table-create-plan-apply). - For a
+  complete import reference - including error handling and advanced import
+  options, please consult the [reference documentation](/reference/bauplan).
 </Note>

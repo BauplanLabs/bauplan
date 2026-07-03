@@ -1,5 +1,6 @@
 ---
 title: "Models"
+description: "Build Bauplan models - declarative Python or SQL functions that transform tables. Pin per-model dependencies, materialize Iceberg outputs, and embed DuckDB SQL."
 ---
 
 In Bauplan, **models** are the core unit of data manipulation. They are
@@ -88,7 +89,6 @@ compatibility. In fact, you can run a pipeline where different models
 use different versions of the same packages and different versions of
 the Python interpreter.
 
-
 ```python
 @bauplan.model()
 @bauplan.python('3.11', pip={'pandas': '2.2.0'})
@@ -109,12 +109,12 @@ To write the output of a model as a table into the data catalog, use the
 `materialization_strategy` parameter in the `@bauplan.model()`
 decorator. <br/> The parameter accepts four values: `REPLACE`, `APPEND`, `NONE` (default), and `OVERWRITE_PARTITIONS`.
 
-| **Strategy** | **Description** | **Example** |
-|--------------|-----------------|-------------|
-| <CodeString>"NONE"</CodeString> | Streams model output in memory as an Arrow table without persisting to object storage. | Running will not write a table. |
-| <CodeString>"REPLACE"</CodeString> | Fully overwrites the table on each run. | Running a pipeline twice on a model that writes 1,000 rows will result in a final table with 1,000 rows, as each run replaces the previous table. |
-| <CodeString>"APPEND"</CodeString> | Appends new rows to an existing table. | Running a pipeline twice with a model that writes 1,000 rows results in a final table with 2,000 rows, as each run adds data to the existing table. |
-| <CodeString>"OVERWRITE_PARTITIONS"</CodeString><br/><AdvancedBadge /> | Deletes rows matching `overwrite_filter`, then appends the new rows. | See [details below](#overwrite-partitions). |
+| **Strategy**                                                          | **Description**                                                                        | **Example**                                                                                                                                         |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <CodeString>"NONE"</CodeString>                                       | Streams model output in memory as an Arrow table without persisting to object storage. | Running will not write a table.                                                                                                                     |
+| <CodeString>"REPLACE"</CodeString>                                    | Fully overwrites the table on each run.                                                | Running a pipeline twice on a model that writes 1,000 rows will result in a final table with 1,000 rows, as each run replaces the previous table.   |
+| <CodeString>"APPEND"</CodeString>                                     | Appends new rows to an existing table.                                                 | Running a pipeline twice with a model that writes 1,000 rows results in a final table with 2,000 rows, as each run adds data to the existing table. |
+| <CodeString>"OVERWRITE_PARTITIONS"</CodeString><br/><AdvancedBadge /> | Deletes rows matching `overwrite_filter`, then appends the new rows.                   | See [details below](#overwrite-partitions).                                                                                                         |
 
 Regardless of the `materialization_strategy` parameter, running models
 with the dry run flag - `bauplan run --dry-run` - will force the
@@ -138,6 +138,7 @@ def my_model(input=bauplan.Model('upstream')):
 ```
 
 Requirements:
+
 - `partitioned_by` must be set on the model decorator.
 - Every column referenced in `overwrite_filter` must be a declared partition column.
 - The filter supports `=`, `!=`, `<`, `>`, `<=`, `>=`, `AND`, `OR`, `IN`, and `NOT IN`
@@ -178,31 +179,33 @@ def my_model(
 ## Best practices
 
 1. **Input Declaration**
-  - Specify required columns explicitly.
-  - Use filter pushdown whenever feasible for efficiency.
+
+- Specify required columns explicitly.
+- Use filter pushdown whenever feasible for efficiency.
 
 2. **Output docstrings**
-  - Specify the shape of the output table of a model in its docstrings.
 
-    ```python
-    @bauplan.model()
-    @bauplan.python("3.11")
-    def my_model(
-        data=bauplan.Model(
-            "input_table",
-            columns=["col_1", "col_2", "col_3"],
-            filter="timestamp >= '2022-12-15T00:00:00-05:00'",
-        )
-    ):
-        """
-        This model will aggregate and count the data by Col_1.
-        The output table will look like this:
-        | Col_1 | Count  |
-        |-------|--------|
-        | A     | 100    |
-        """
-        ...
-    ```
+- Specify the shape of the output table of a model in its docstrings.
+
+  ```python
+  @bauplan.model()
+  @bauplan.python("3.11")
+  def my_model(
+      data=bauplan.Model(
+          "input_table",
+          columns=["col_1", "col_2", "col_3"],
+          filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+      )
+  ):
+      """
+      This model will aggregate and count the data by Col_1.
+      The output table will look like this:
+      | Col_1 | Count  |
+      |-------|--------|
+      | A     | 100    |
+      """
+      ...
+  ```
 
 3. **Model environment Management**
    - Include only minimal dependencies.

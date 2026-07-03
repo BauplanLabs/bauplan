@@ -1,41 +1,47 @@
 ---
-description: Bauplan's Git for Data brings version control capabilities to your data lake with branches, transactional pipelines, and time travel features.
+description: "Bring version control to your data lake with Bauplan Git for Data - branches, transactional pipelines, commits, refs, tags, and time travel over Iceberg tables."
 sidebar_class_name: hidden
 title: Git for Data
 canonicalUrl: /concepts/git-for-data
 slug: /concepts/git-for-data
 ---
 
-import DocCardList from '@theme/DocCardList';
-import { ShieldCheck, GitCommitHorizontal, Tag, GitBranch } from 'lucide-react';
+import DocCardList from "@theme/DocCardList";
+import { ShieldCheck, GitCommitHorizontal, Tag, GitBranch } from "lucide-react";
 
-<DocCardList items={[
-  {
-    type: 'link',
-    href: '/concepts/git-for-data/transactional-pipelines',
-    label: 'Transactional pipelines',
-    icon: <ShieldCheck />,
-    description: 'Every pipeline run is a database transaction - atomic, isolated, and safe to retry'
-  },
-  {
-    type: 'link',
-    href: '/concepts/git-for-data/commits-refs',
-    label: 'Commits and refs',
-    icon: <GitCommitHorizontal />,
-    description: 'How Bauplan versions code, data, and execution environments'
-  },
-  {
-    type: 'link',
-    href: '/concepts/git-for-data/tags',
-    label: 'Tags',
-    icon: <Tag />,
-    description: 'Mutable human-readable names that point to a specific commit'
-  },
-  {
-    type: 'link',
-    href: '/concepts/git-for-data/data-branches',
-    label: 'Data branches',
-    icon: <GitBranch />,
-    description: 'Isolated environments to safely import, test, and merge data changes'
-  },
-]} />
+<DocCardList
+  items={[
+    {
+      type: "link",
+      href: "/concepts/git-for-data/transactional-pipelines",
+      label: "Transactional pipelines",
+      icon: <ShieldCheck />,
+      description:
+        "Every pipeline run is a database transaction - atomic, isolated, and safe to retry",
+    },
+    {
+      type: "link",
+      href: "/concepts/git-for-data/commits-refs",
+      label: "Commits and refs",
+      icon: <GitCommitHorizontal />,
+      description:
+        "How Bauplan versions code, data, and execution environments",
+    },
+    {
+      type: "link",
+      href: "/concepts/git-for-data/tags",
+      label: "Tags",
+      icon: <Tag />,
+      description:
+        "Mutable human-readable names that point to a specific commit",
+    },
+    {
+      type: "link",
+      href: "/concepts/git-for-data/data-branches",
+      label: "Data branches",
+      icon: <GitBranch />,
+      description:
+        "Isolated environments to safely import, test, and merge data changes",
+    },
+  ]}
+/>

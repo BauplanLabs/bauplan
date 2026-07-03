@@ -1,14 +1,15 @@
 ---
 title: "Tags"
+description: "Use Bauplan tags as human-readable names pointing to a commit. Mark production releases, validated datasets, and CI deploy points, then query or revert by tag."
 ---
 
 Tags in Bauplan are mutable **human-readable names** that point to a
 specific commit. They\'re ideal for marking important states like:
 
--   Production releases
--   Validated datasets
--   Compliance checkpoints
--   CI/CD deploy points
+- Production releases
+- Validated datasets
+- Compliance checkpoints
+- CI/CD deploy points
 
 Unlike branches, which move with each commit.
 
@@ -28,13 +29,13 @@ results, running benchmarks, or reverting to a known-good state.
 
 ## Tagging best practices
 
--   Use tags to mark milestones (\"ready-for-review\",
-    \"v1.0-passed-QA\")
--   Pair with branch merges for clean promotion flows
--   Use tag-based querying or reverts in CI pipelines
+- Use tags to mark milestones (\"ready-for-review\",
+  \"v1.0-passed-QA\")
+- Pair with branch merges for clean promotion flows
+- Use tag-based querying or reverts in CI pipelines
 
 Together, **commits, Refs, and tags** give you:
 
--   A detailed and immutable record of every change (commits)
--   A way to reference those changes in operations (Refs)
--   A human-friendly way to mark and share important states (tags)
+- A detailed and immutable record of every change (commits)
+- A way to reference those changes in operations (Refs)
+- A human-friendly way to mark and share important states (tags)

@@ -1,5 +1,6 @@
 ---
 title: BigQuery (Inbound)
+description: "Query Bauplan-managed Iceberg tables from BigQuery. Register them as external tables over S3 via a cross-cloud connection, with no data copy."
 ---
 
 Connect BigQuery to Bauplan by creating external Iceberg tables in BigQuery that point to your Bauplan tables and S3 storage. This lets you query Bauplan-managed data from BigQuery without copying it.
@@ -7,7 +8,13 @@ Connect BigQuery to Bauplan by creating external Iceberg tables in BigQuery that
 BigQuery uses a cross-cloud connection to read objects in your S3 bucket, and the Iceberg table format to discover table metadata.
 
 <Note>
-In BigQuery, this pattern relies on a BigQuery [connection](https://docs.cloud.google.com/bigquery/docs/connections-api-intro) that allows BigQuery to read the contents of an S3 bucket, and a `CREATE EXTERNAL TABLE` statement that creates a table in BigQuery by pointing to the current Iceberg metadata file. See [BigQuery Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection) for the initial setup (AWS permissions and so on).
+  In BigQuery, this pattern relies on a BigQuery
+  [connection](https://docs.cloud.google.com/bigquery/docs/connections-api-intro)
+  that allows BigQuery to read the contents of an S3 bucket, and a `CREATE
+  EXTERNAL TABLE` statement that creates a table in BigQuery by pointing to the
+  current Iceberg metadata file. See [BigQuery
+  Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection)
+  for the initial setup (AWS permissions and so on).
 </Note>
 
 ## When to use this integration
@@ -75,5 +82,10 @@ print("  BigQuery table registered.")
 ```
 
 <Note>
-When a table is managed by an external catalog, BigQuery typically treats it as read-only (in fact, the IAM role you created above should have no write privileges on the S3 bucket). Writes remain managed by the external engine and catalog, i.e. Bauplan. As Iceberg catalog federation and cross-engine compatibility evolve quickly, reach out if you have further questions about this setup.
+  When a table is managed by an external catalog, BigQuery typically treats it
+  as read-only (in fact, the IAM role you created above should have no write
+  privileges on the S3 bucket). Writes remain managed by the external engine and
+  catalog, i.e. Bauplan. As Iceberg catalog federation and cross-engine
+  compatibility evolve quickly, reach out if you have further questions about
+  this setup.
 </Note>
