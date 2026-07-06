@@ -2,14 +2,56 @@ import { themes as prismThemes } from "prism-react-renderer";
 import remarkHiddenLines from "./src/plugins/remark-hidden-lines.js";
 import redirects from "./redirects.js";
 
+const siteUrl = process.env.DOCS_URL || "https://docs.bauplanlabs.com";
+
 export default {
   clientModules: [
     require.resolve("./src/clientModules/scrollToAnchor.js"),
     require.resolve("./src/clientModules/tabTocSync.js"),
   ],
   title: "Bauplan Documentation",
-  url: process.env.DOCS_URL || "https://docs.bauplanlabs.com",
+  tagline:
+    "Version, build, and ship data pipelines like code, on a serverless Apache Iceberg lakehouse.",
+  url: siteUrl,
   baseUrl: "/",
+  // Site-wide structured data. Per-page TechArticle is added in
+  // src/theme/DocItem/Layout; BreadcrumbList is emitted by the theme already.
+  headTags: [
+    {
+      tagName: "script",
+      attributes: { type: "application/ld+json" },
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "Bauplan",
+        url: "https://www.bauplanlabs.com",
+        logo: `${siteUrl}/img/bauplan_nav_logo.png`,
+        sameAs: [
+          "https://github.com/BauplanLabs",
+          "https://www.linkedin.com/company/bauplanlabs/",
+          "https://www.youtube.com/@bauplan_labs",
+        ],
+      }),
+    },
+    {
+      tagName: "script",
+      attributes: { type: "application/ld+json" },
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Bauplan Documentation",
+        url: siteUrl,
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl}/search?q={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      }),
+    },
+  ],
   presets: [
     [
       "@docusaurus/preset-classic",
@@ -31,6 +73,14 @@ export default {
           customCss: ["./src/css/global.css"],
         },
         blog: false,
+        sitemap: {
+          lastmod: "date", // emit <lastmod> so crawlers re-fetch changed pages
+          changefreq: "weekly",
+          priority: 0.5,
+          // Exclude the /search results page.
+          ignorePatterns: ["/search"],
+          filename: "sitemap.xml",
+        },
       },
     ],
   ],
@@ -65,6 +115,18 @@ export default {
     ],
   },
   themeConfig: {
+    // SEO: add `image: "img/social-card.png"` here once a 1200x630 social card
+    // exists — it drives og:image + twitter:image. twitter:card (summary_large_image)
+    // is emitted by the theme automatically.
+    metadata: [
+      {
+        name: "keywords",
+        content:
+          "data lakehouse, git for data, apache iceberg, data pipelines, python, sql, serverless data platform, data version control",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:site_name", content: "Bauplan Documentation" },
+    ],
     navbar: {
       logo: {
         src: "img/bauplan_nav_logo.png",
