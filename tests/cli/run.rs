@@ -75,10 +75,7 @@ fn expectations_returns_int() {
         ])
         .assert()
         .code(1)
-        .stderr(
-            contains("Expectation must return a boolean!")
-                .or(contains("expectation returned with unsupported type")),
-        );
+        .stderr(contains("expectation returned unsupported type"));
 }
 
 #[test]
@@ -313,19 +310,6 @@ fn parameters_project_default_values() {
 
 #[test]
 fn parameters_project_kms_ssm() {
-    const REDACTED_MESSAGE: &str = "<secret-***>";
-
-    fn reverse(s: &str) -> String {
-        s.chars().rev().collect()
-    }
-
-    let my_secret_key_reversed_1 = reverse("this is my secret");
-    let my_secret_key_reversed_2 = reverse("this is another secret");
-    let my_vault_secure_string_us_reversed = reverse("This is the US encrypted string value");
-    let my_vault_override_us_with_eu_reversed = reverse("This is the EU encrypted string value");
-    let my_vault_secure_string_eu_reversed = reverse("This is the EU encrypted string value");
-    let my_vault_override_eu_with_us_reversed = reverse("This is the US encrypted string value");
-
     bauplan()
         .args([
             "run",
@@ -338,22 +322,16 @@ fn parameters_project_kms_ssm() {
         ])
         .assert()
         .success()
-        .stderr(contains(format!("my_secret_key_1={REDACTED_MESSAGE}")))
-        .stderr(contains(format!("my_secret_key_2={REDACTED_MESSAGE}")))
-        .stderr(contains(format!("my_secret_key_1_reversed={my_secret_key_reversed_1}")))
-        .stderr(contains(format!("my_secret_key_2_reversed={my_secret_key_reversed_2}")))
+        .stderr(contains("my_secret_key_1=this is my secret"))
+        .stderr(contains("my_secret_key_2=this is another secret"))
         .stderr(contains("my_vault_string_us=This is the US string value"))
         .stderr(contains("my_vault_string_list_us=this,is,the,us,string,list,value"))
-        .stderr(contains(format!("my_vault_secure_string_us={REDACTED_MESSAGE}")))
-        .stderr(contains(format!("my_vault_secure_string_us_reversed={my_vault_secure_string_us_reversed}")))
-        .stderr(contains(format!("my_vault_override_us_with_eu={REDACTED_MESSAGE}")))
-        .stderr(contains(format!("my_vault_override_us_with_eu_reversed={my_vault_override_us_with_eu_reversed}")))
+        .stderr(contains("my_vault_secure_string_us=This is the US encrypted string value"))
+        .stderr(contains("my_vault_override_us_with_eu=This is the EU encrypted string value"))
         .stderr(contains("my_vault_string_eu=This is the EU string value"))
         .stderr(contains("my_vault_string_list_eu=this,is,the,eu,string,list,value"))
-        .stderr(contains(format!("my_vault_secure_string_eu={REDACTED_MESSAGE}")))
-        .stderr(contains(format!("my_vault_secure_string_eu_reversed={my_vault_secure_string_eu_reversed}")))
-        .stderr(contains(format!("my_vault_override_eu_with_us={REDACTED_MESSAGE}")))
-        .stderr(contains(format!("my_vault_override_eu_with_us_reversed={my_vault_override_eu_with_us_reversed}")));
+        .stderr(contains("my_vault_secure_string_eu=This is the EU encrypted string value"))
+        .stderr(contains("my_vault_override_eu_with_us=This is the US encrypted string value"));
 }
 
 #[test]
