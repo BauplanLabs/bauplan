@@ -179,7 +179,7 @@ import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
 
-## Passing parameters (optional)
+## Optional: Passing parameters
 
 Parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters, limits, or toggling options.
 
@@ -261,7 +261,7 @@ from temporalio.client import Client
 from temporalio.worker import Worker
 from concurrent.futures import ThreadPoolExecutor
 
-# Import activity via passthrough so the workflow sandbox doesn’t re-import bauplan
+# Import activity via passthrough so the workflow sandbox doesn't re-import bauplan
 with workflow.unsafe.imports_passed_through():
     from activities import run_with_parameters_activity
 

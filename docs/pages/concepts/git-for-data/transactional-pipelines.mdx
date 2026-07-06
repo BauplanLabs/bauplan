@@ -3,26 +3,26 @@ title: "Transactional pipelines"
 description: "Run transactional data pipelines in Bauplan where every run is atomic. Outputs commit on success via temporary execution branches, leaving your data clean on failure."
 ---
 
-In Bauplan, every pipeline run is treated like a **database
-transaction**. That means:
+In Bauplan, every pipeline run behaves like a **database transaction**.
+That means:
 
-- **If the run succeeds, all outputs are committed**.
+- **If the run succeeds, Bauplan commits all outputs**.
 - **If the run fails,** the data on your current branch **remains
   untouched.**
 
 This behavior applies automatically - whether you're developing locally
 or running production jobs on a schedule.
 
-Transactionality is enforced via **temporary execution branches**:
+Bauplan enforces transactionality with **temporary execution branches**:
 
 - When you trigger a run, the platform forks your current branch to
-  create an isolated branch: intermediate outputs are materialized in
+  create an isolated branch: Bauplan materializes intermediate outputs in
   this temporary branch.
-- If the run succeeds, the outputs are merged into your working
+- If the run succeeds, Bauplan merges the outputs into your working
   branch, making it point to the latest commit - your branch now
   reflects the results of that pipeline run.
 - If the run fails, your working branch remains unchanged.
-  Intermediate artifacts are preserved for inspection.
+  Bauplan preserves intermediate artifacts for inspection.
 
 This guarantees that **every change to your lakehouse is atomic,
 isolated, and versioned**.

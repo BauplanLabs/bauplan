@@ -100,7 +100,7 @@ if __name__ == "__main__":
     )
 ```
 
-This uses DBOS’s Python API: define steps and workflows as plain Python functions with decorators, and run them in-process. If a workflow raises an exception, DBOS marks it as `ERROR`; if the process crashes, DBOS resumes from the last completed step.
+This uses DBOS's Python API: define steps and workflows as plain Python functions with decorators, and run them in-process. If a workflow raises an exception, DBOS marks it as `ERROR`; if the process crashes, DBOS resumes from the last completed step.
 
 ## How to run it locally
 
@@ -137,7 +137,7 @@ import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
 
-## Passing parameters (optional)
+## Optional: Passing parameters
 
 When running Bauplan with an orchestrator, parameters are the key to making your flows reusable and dynamic.
 

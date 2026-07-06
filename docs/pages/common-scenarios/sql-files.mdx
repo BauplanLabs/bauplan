@@ -74,9 +74,9 @@ include_paths:
 
 The following rules apply to `include_paths`:
 
-1. Only `.sql` files can be included and this must be made explicit. For instance, `views/*.sql` is acceptable but `views/*` is not.
+1. `include_paths` accepts only explicit `.sql` glob patterns. For instance, `views/*.sql` is acceptable but `views/*` is not.
 2. Paths must be relative to the project root; absolute paths are rejected.
-3. Upward traversal (for instance, `../common/*.sql`) is not allowed.
+3. Upward traversal such as `../common/*.sql` is not allowed.
 4. git-ignored files are excluded even if they match a pattern.
 5. Symlinks pointing outside the project directory are rejected.
 

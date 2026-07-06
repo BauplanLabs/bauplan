@@ -28,9 +28,11 @@ within isolated, tenant-specific environments.
 - **Serverless Runtime:** Spins up ephemeral containers for each
   function invocation, optimized for fast startup and minimal
   overhead.
+{/* vale Google.Parens = NO */}
 - **Data Movement:** Shares data between functions through zero-copy
   Arrow tables (within hosts) or over high-performance Arrow Flight
   (across hosts).
+{/* vale Google.Parens = YES */}
 - **Scheduling and Caching:** Dynamically schedules functions to
   maximize resource usage and caches results to accelerate repeated
   data accesses.
@@ -40,7 +42,7 @@ within isolated, tenant-specific environments.
 Bauplan interacts directly with your existing object storage, ensuring
 you retain full control of your data.
 
-- **Open Formats:** Uses open standards (Parquet) to store data in
+- **Open Formats:** Uses open standards such as Parquet to store data in
   your own S3 or compatible buckets.
 - **Iceberg Tables and Branching:** Organizes data into Iceberg tables
   with Git-like branches, enabling safe experimentation and reliable

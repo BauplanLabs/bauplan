@@ -23,16 +23,22 @@ bucket with their own cloud credentials.
 
 Bauplan ensures that whichever route you take, your tables remain in open formats on your own storage, accessible to the rest of your stack.
 
+{/* vale Google.Parens = NO */}
 ### Option 1: External catalogs (recommended)
+{/* vale Google.Parens = YES */}
 
 Most modern engines now support the **Iceberg REST catalog**. This lets them attach directly to Bauplan and see all namespaces and tables, with no manual refresh required.
 
 - **Bauplan catalog endpoint:** `https://api.use1.aprod.bauplanlabs.com/iceberg`
-- **Auth:** `Bearer <token>` (we recommend a read-only Bauplan user)
+- **Auth:** `Bearer <token>` with a read-only Bauplan user
+{/* vale Google.Parens = NO */}
 - **Storage:** Your object store (usually Amazon S3). Engines authenticate with their own IAM/service accounts.
+{/* vale Google.Parens = YES */}
 - **Engines supported:** Snowflake Open Catalog, Databricks Unity Catalog, BigQuery, Trino, Athena, Spark, DuckDB, and others with native Iceberg connectors.
 
+{/* vale Google.Parens = NO */}
 ### Option 2: External tables (per-table)
+{/* vale Google.Parens = YES */}
 
 If your engine does not yet support the REST catalog, you can still integrate by registering each table directly from its metadata location.
 
