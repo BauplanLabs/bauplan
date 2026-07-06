@@ -3,15 +3,15 @@ title: "Commits and refs"
 description: "Learn how Bauplan versions code, data, and execution environments through commits and immutable refs for point-in-time queries, reproducible runs, and rollback."
 ---
 
-In Bauplan, **everything is versioned**: code, data, and execution
+Bauplan versions **everything**: code, data, and execution
 environments.
 
-- **Code** is versioned by you using Git or similar tools, and is also
-  immutably captured by Bauplan at execution time.
-- **Data** is versioned through the catalog: all writes, replacements,
-  and deletions are tracked via evolving table snapshots, where each
+- **Code** lives in Git or similar tools, and Bauplan also captures it
+  immutably at execution time.
+- **Data** changes through the catalog: evolving table snapshots track
+  all writes, replacements, and deletions, where each
   data change creates a new commit.
-- **Execution environments** are expressed in code and versioned as
+- **Execution environments** use code-based definitions and versioning as
   well - Python versions, packages, parameters, and run metadata.
 
 ## What is a commit?
@@ -26,8 +26,8 @@ fundamental units of change tracking in your data. Each commit contains:
 
 - A unique `commit_hash` that identifies the operation.
 - A `parent_hash`, which references the previous state of the lake.
-- In the case of a merge operation, a second parent hash
-  (`parent_hash[1]`) that represents the branch being merged.
+- In the case of a merge operation, a second parent hash,
+  `parent_hash[1]`, that represents the merged branch.
 - Additional metadata such as `job-id` if created by a pipeline run,
   and `project-id`, `user-id`, `task-id`, etc.
 
@@ -76,7 +76,7 @@ let you perform **point-in-time operations** like:
   commit on the branch.
 - `main@abc123` points to the commit `abc123` on the branch `main`.
 - `@abc123` is a detached ref pointing directly to commit `abc123`
-  (without going through a branch or tag).
+  without going through a branch or tag.
 
 Refs are read-only: only **branches** can be used for write operations,
 because branches are mutable while refs point to commits which are not.

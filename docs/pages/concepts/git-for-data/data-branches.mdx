@@ -3,7 +3,7 @@ title: "Data branches"
 description: "Use Bauplan data branches as zero-copy, version-controlled sandboxes to import, test, and merge data changes safely without ever corrupting production data."
 ---
 
-Data branches are isolated development environments that let you safely
+Data branches give you isolated development environments where you can safely
 import data, delete tables, create namespaces, run and test pipelines
 without affecting production. Inspired by Git, branches in Bauplan bring
 modern software development workflows to your data lake.
@@ -32,21 +32,21 @@ robust development practices throughout the data application lifecycle:
 
 - **Zero-Copy Branching**: Creating a branch is instantaneous and
   cost-efficient. No data duplication; only metadata changes.
-- **Username-Based Namespaces**: Each user gets a private branch space
-  (`username.branch_name`) with write access to their branches and
+- **Username-Based Namespaces**: Each user gets a private branch space like
+  `username.branch_name`, with write access to their branches and
   read access to others.
-- **Main Branch Protection**: `main` is protected by default. Changes
+- **Main Branch Protection**: Bauplan protects `main` by default. Changes
   flow in via merges, keeping production safe.
 
 ## Using data branches and refs
 
-| **Branch**                                | **Ref**                                   |
-| ----------------------------------------- | ----------------------------------------- |
-| Mutable                                   | Immutable                                 |
-| Points to the _latest_ commit             | Points to a specific commit               |
-| Used for development workflow             | Used for reproducibility / audit trail    |
-| You move it (via new runs, imports, etc.) | It never changes                          |
-| Example: `ciro.feature_xyz`               | Example: `ciro.feature@xyz-run-202505...` |
+| **Branch**                    | **Ref**                                   |
+| ----------------------------- | ----------------------------------------- |
+| Mutable                       | Immutable                                 |
+| Points to the _latest_ commit | Points to a specific commit               |
+| Used for development workflow | Used for reproducibility / audit trail    |
+| Advances after writes         | It never changes                          |
+| Example: `ciro.feature_xyz`   | Example: `ciro.feature@xyz-run-202505...` |
 
 Each time you change the state of the lake, for instance when you run a
 pipeline, Bauplan creates a new Commit. If the run succeeds, Bauplan
@@ -84,12 +84,12 @@ bauplan branch rm ciro.feature_xyz
 A **tag** is an immutable, user-defined label that points to a specific
 commit hash.
 
-- Used to "freeze" a specific state of the lake (for example,
-  `v1.0-passed-qa`)
-- Always points to a commit, never moves on its own.
+- Marks a specific state of the lake, such as
+  `v1.0-passed-qa`
+- Always points to a commit, and never moves on its own.
 - Useful for bookmarking releases, debugging points, or restoring
   known-good states.
-- Can be updated manually by reassigning it to a new commit hash.
+- You can update it manually by reassigning it to a new commit hash.
 
 Tags are also compatible with relative syntax:
 

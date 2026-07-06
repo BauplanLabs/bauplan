@@ -215,7 +215,9 @@ Attach the following policy:
 }
 ```
 
-Generate an **Access Key ID (**`<aws-access-key-id>`) and **Secret Access Key**(`<aws-secret-access-key>`) for this user, you will need them in Step 5.
+{/* vale Google.Parens = NO */}
+Generate an **Access Key ID** (`<aws-access-key-id>`) and a **Secret Access Key** (`<aws-secret-access-key>`) for this user. You will need them in Step 5.
+{/* vale Google.Parens = YES */}
 
 ---
 
@@ -243,8 +245,10 @@ In Estuary, create a new **Apache Iceberg** materialization and configure it as 
 | **Base Location**          | `s3://<your-bauplan-bucket>/iceberg`                                                                                                           |
 | **Catalog Authentication** | OAuth 2.0 Client Credentials                                                                                                                   |
 | **OAuth 2.0 Server URI**   | `v1/oauth/tokens`                                                                                                                              |
+{/* vale Google.Parens = NO */}
 | **Catalog Credential**     | `<client_id>:<client_secret>` (from Step 1)                                                                                                    |
 | **Scope**                  | _(leave empty)_                                                                                                                                |
+{/* vale Google.Parens = YES */}
 
 ### Compute (EMR Serverless)
 

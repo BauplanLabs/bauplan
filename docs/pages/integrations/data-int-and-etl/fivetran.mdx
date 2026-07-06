@@ -14,7 +14,7 @@ Fivetran is a managed ELT platform that moves data from hundreds of sources into
 
 - Fivetran writes Iceberg tables to your S3 bucket (recommended prefix: `/iceberg/`).
 - Table metadata is discoverable via the Iceberg REST catalog that Fivetran exposes (Polaris).
-- Bauplan registers those tables by pointing at each table’s `metadata.json` and exposes them as external tables on any branch you choose.
+- Bauplan registers those tables by pointing at each table's `metadata.json` and exposes them as external tables on any branch you choose.
 
 ```
 [Fivetran Connectors] → [Managed Data Lake → Iceberg on S3]
@@ -43,7 +43,7 @@ Fivetran will create one Iceberg table per connector schema and manage data and 
 
 ## Step 2 - Fetch the Iceberg table metadata location
 
-Bauplan needs the absolute path to the table’s current `metadata.json`. Retrieve it via PyIceberg against Polaris.
+Bauplan needs the absolute path to the table's current `metadata.json`. Retrieve it via PyIceberg against Polaris.
 
 ```python title="get_polaris_metadata.py"
 from pyiceberg.catalog import rest

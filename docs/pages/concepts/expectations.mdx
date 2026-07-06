@@ -19,7 +19,7 @@ Expectations are typically attached to a node or materialization step and serve 
 ### How this differs from other common patterns
 
 Post-hoc validation frameworks, like [dbt tests](https://docs.getdbt.com/docs/build/data-tests)
-or [Great Expectations](https://greatexpectations.io/), commonly execute validation as separate queries after a table or view is built. Issues are detected only after the object exists, which means invalid data may already be visible to downstream consumers, and jobs used to build the object must be rerun.
+or [Great Expectations](https://greatexpectations.io/), commonly execute validation as separate queries after a job builds a table or view. They detect issues only after the object exists, which means invalid data may already be visible to downstream consumers, and jobs used to build the object must be rerun.
 
 Observability and monitoring platforms, like [Monte Carlo](https://www.montecarlodata.com/), run on schedules independent of pipeline execution. They typically profile tables, track distributions, and alert on anomalies or drift. They are not focused on preventing invalid data from being written and do not integrate with pipeline control flow.
 

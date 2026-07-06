@@ -116,7 +116,7 @@ export default {
   },
   themeConfig: {
     // SEO: add `image: "img/social-card.png"` here once a 1200x630 social card
-    // exists — it drives og:image + twitter:image. twitter:card (summary_large_image)
+    // exists - it drives og:image + twitter:image. twitter:card (summary_large_image)
     // is emitted by the theme automatically.
     metadata: [
       {
