@@ -4,13 +4,11 @@ description: "Run Bauplan pipelines from a DBOS workflow with durable, exactly-o
 hide_title: false
 ---
 
-# DBOS
-
 DBOS is a distributed operating system for workflows: it gives you durable, exactly-once execution of Python functions, with built-in scheduling, retries, and observability. You write plain Python functions, annotate them with `@DBOS.workflow()` and `@DBOS.step()`, and DBOS takes care of orchestration, crash recovery, and state management under the hood.
 
 Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. DBOS is just Python too: workflows are annotated Python functions and steps are where you perform I/O. Integrating the two is straightforward: import the Bauplan SDK inside DBOS steps and call Bauplan methods as you would in a standalone script. DBOS handles orchestration, durability, retries, and scheduling, while Bauplan executes the data work. The result is a clean split; DBOS runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: Run a Bauplan pipeline from an DBOS DAG
+## Quickstart: Run a Bauplan pipeline from a DBOS DAG
 
 **Goal:** call a [Bauplan project](/concepts/projects) from a DBOS workflow in the smallest possible way: authenticate, run, check status, and fail the workflow if the Bauplan job fails.
 

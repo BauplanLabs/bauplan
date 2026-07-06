@@ -3,13 +3,11 @@ title: "Prefect"
 description: "Run Bauplan pipelines from a Prefect flow using the Python SDK - authenticate, create branches, pass parameters, and run a job from a Prefect flow."
 ---
 
-# Prefect
-
 [Prefect](https://www.prefect.io/) is a modern workflow orchestrator built entirely in Python. Instead of managing YAML or DSLs, you define flows and tasks as plain Python functions, and Prefect takes care of scheduling, retries, logging, and observability. This makes it easy to embed external libraries and SDKs directly into your workflows.
 
 Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Integrating the two is straightforward: you import the Bauplan SDK inside your Prefect tasks and call Bauplan methods as you would in a standalone script. Prefect handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Prefect runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: Run a Bauplan pipeline from a Prefect flow
+## Quickstart: Run a Bauplan pipeline from a Prefect flow
 
 **Goal:** call a [Bauplan project](/concepts/projects) from a Prefect flow in the smallest possible way: authenticate, run, check status, and fail the flow if the Bauplan job fails.
 
@@ -124,7 +122,7 @@ import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")  # overrides environment/profile
 ```
 
-# **Passing parameters (optional)**
+## Passing parameters (optional)
 
 When running Bauplan with an orchestrator, parameters are the key to making your flows reusable and dynamic.
 
