@@ -1,4 +1,12 @@
 
+## [0.2.0] - 2026-07-06
+
+### New Features
+
+- Drop support for Python 3.10 in pipelines (507879790e1bd58ab1fb283ee4ed206f2635211a)
+- [pysdk] Replace all_users=True with filter_by_current_user=False (35da1f2cd8749f8a9ff981105a54f29bd5e5b61b)
+- [cli] Replace on/off flags with simple boolean flags (17f72c14bad9bce367563324a8fe6542a30afe63)
+
 ## [0.2.0-rc.1] - 2026-07-06
 
 ### New Features
