@@ -3,13 +3,11 @@ title: "Airflow 3"
 description: "Run Bauplan pipelines from an Airflow 3 DAG using the TaskFlow API and Python SDK - authenticate, branch, pass parameters, and fail fast on errors."
 ---
 
-# Airflow 3
-
 [Airflow](https://airflow.apache.org/) is one of the most widely adopted orchestrators in data engineering. It provides a central way to define, schedule, and monitor workflows, making it the backbone for many production data platforms. With the modern TaskFlow API introduced in Airflow 3, pipelines can be written as plain Python functions, keeping code simple and maintainable.
 
 Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Airflow 3 is just Python: with the TaskFlow API, tasks are regular Python functions and DAGs are defined in code. Integrating the two is straightforward: import the Bauplan SDK inside Airflow tasks and call Bauplan methods as you would in a standalone script. Airflow handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Airflow runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: Run a Bauplan pipeline from an Airflow DAG
+## Quickstart: Run a Bauplan pipeline from an Airflow DAG
 
 **Goal:** call a [Bauplan project](/concepts/projects) from an Airflow DAG in the smallest possible way: authenticate, run, check status, and fail the DAG if the Bauplan job fails.
 
@@ -145,7 +143,7 @@ import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
 
-# Passing parameters (optional)
+## Passing parameters (optional)
 
 When running Bauplan with an orchestrator, parameters are the key to making your flows reusable and dynamic.
 

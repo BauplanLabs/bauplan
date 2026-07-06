@@ -32,15 +32,15 @@ This will download the latest version of the container on your machine and launc
 
 Once service initialization is complete, you can access the Metabase server from your browser at `http://127.0.0.1:3000`.
 
-![Screenshot 2025-09-23 at 10.15.15.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.15.15.png)
+![Metabase welcome screen for creating the first local user](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.15.15.png)
 
 Complete the initial wizard by creating the (local) user associated with your temporary Metabase instance. Depending on the version in use, the welcome wizard may ask you to configure the connection directly.
 
-![Screenshot 2025-09-23 at 10.17.08.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.17.08.png)
+![Metabase setup wizard asking which database to connect](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.17.08.png)
 
 Click on `PostgreSQL` and fill in the following fields
 
-![Screenshot 2025-09-23 at 10.17.25.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.17.25.png)
+![Metabase PostgreSQL connection form for configuring Bauplan access](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.17.25.png)
 
 - **Display name**: `BauplanLabs` (you can change this)
 - **Hostname**: the hostname of your Bauplan server
@@ -54,47 +54,47 @@ Click on `PostgreSQL` and fill in the following fields
   - **Additional JDBC connection string options**: `preferQueryMode=simple`
 - Click on `Connect database` to test the integration
 
-![Screenshot 2025-09-23 at 10.22.34.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.22.34.png)
+![Metabase advanced PostgreSQL settings with SSL and JDBC options](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.22.34.png)
 
 Once setup is complete, press `Finish` to access Metabase with your newly created user.
 
-![Screenshot 2025-09-23 at 10.23.10.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.23.10.png)
+![Metabase setup completion screen after connecting Bauplan](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.23.10.png)
 
 On first login, `Metabase` will begin synchronizing and indexing the list of tables and columns from your data lake; this operation may take a few minutes depending on the number of tables in your instance.
 
 Once synchronization is complete, you can view the list of tables by clicking from the side menu on `Data > Databases > BauplanLabs`.
 
-![Screenshot 2025-09-23 at 10.25.42.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.25.42.png)
+![Metabase data browser showing Bauplan tables after synchronization](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.25.42.png)
 
 Let's click a table (`Taxi Zones`) to view its content, confirming that the setup was successful.
 
-![Screenshot 2025-09-23 at 10.26.27.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.26.27.png)
+![Metabase table view showing rows from the Taxi Zones table](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.26.27.png)
 
 Now let's try building a simple dashboard with Metabase using the `Titanic` dataset; for simplicity, we'll skip configuring or defining custom `Models` and `Metrics` as they're out of scope for the integration.
 
 Click on `Add a chart` and then on `New Question` to create a new widget in guided mode; search for and select `Titanic` from the list of tables, and create a first model with some basic information by gender.
 
-![Screenshot 2025-09-23 at 10.27.35.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.27.35.png)
+![Metabase dashboard editor with the Add a chart menu open](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.27.35.png)
 
-![Screenshot 2025-09-23 at 10.54.41.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.54.41.png)
+![Metabase new question flow selecting the Titanic table](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.54.41.png)
 
-![Screenshot 2025-09-23 at 10.55.21.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.55.21.png)
+![Metabase query builder summarizing Titanic passengers by gender](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.55.21.png)
 
-![Screenshot 2025-09-23 at 10.57.48.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.57.48.png)
+![Metabase filter configuration for the Titanic question](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_10.57.48.png)
 
 Click on visualize to confirm the correctness of the filters just created, and press `Save` to add the new question to our dashboard.
 
-![Screenshot 2025-09-23 at 11.00.35.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.00.35.png)
+![Metabase visualization preview for the Titanic question](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.00.35.png)
 
 Our dashboard is ready, we can now save it and access it directly from the `Our analytics -> Titanic` section.
 
-![Screenshot 2025-09-23 at 11.00.43.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.00.43.png)
+![Metabase dashboard showing the saved Titanic chart](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.00.43.png)
 
 ## Advanced configurations
 
 The Bauplan connection configuration is available in the `Admin settings -> Databases` section accessible from the cog icon in the upper right of Metabase.
 
-![Screenshot 2025-09-23 at 11.02.57.png](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.02.57.png)
+![Metabase admin database settings for the Bauplan PostgreSQL connection](../../../static/img/integrations/metabase/Screenshot_2025-09-23_at_11.02.57.png)
 
 You can configure Metabase to periodically update the list of new tables or fields (`Edit connection details -> Periodically refingerprint tables`) or manually trigger a new synchronization `Sync database schema`.
 

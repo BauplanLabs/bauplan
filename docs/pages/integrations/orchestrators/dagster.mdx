@@ -3,13 +3,11 @@ title: "Dagster"
 description: "Run Bauplan pipelines from a Dagster job using the Python SDK - authenticate, create branches, pass parameters, and fail the run if the job fails."
 ---
 
-# Dagster
-
 [Dagster](https://dagster.io/) is a modern orchestrator designed specifically for data applications. Instead of just scheduling tasks, it treats pipelines as first-class objects, with strong typing, assets, and metadata built in. This makes it attractive for teams who want observability and reproducibility beyond traditional DAGs.
 
 Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Dagster, like Bauplan, is just Python: jobs and ops are regular functions decorated with Dagster’s APIs. Integrating the two is straightforward: import the Bauplan SDK inside your Dagster ops and call Bauplan methods as you would in a standalone script. Dagster handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Dagster runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
 
-# Quickstart: Run a Bauplan pipeline from a Dagster job
+## Quickstart: Run a Bauplan pipeline from a Dagster job
 
 **Goal:** call a [Bauplan project](/concepts/projects) from a Dagster job in the smallest possible way: authenticate, run, check status, and fail the job if the Bauplan run fails.
 
@@ -136,7 +134,7 @@ import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
 
-# Passing parameters (optional)
+## Passing parameters (optional)
 
 Parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters, limits, or toggling options. Learn how to [set up parameters in Bauplan](/reference/cli#bauplan-parameter-set).
 

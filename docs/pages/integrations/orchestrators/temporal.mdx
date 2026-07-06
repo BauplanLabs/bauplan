@@ -3,11 +3,9 @@ title: "Temporal"
 description: "Run Bauplan pipelines from a Temporal workflow - call the SDK inside Activities, create branches, pass parameters, and get durable retries and failure handling."
 ---
 
-# Temporal
-
 Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Temporal is just Python too: you write Workflows and Activities as regular Python functions using the Temporal Python SDK decorators. Integrating the two is straightforward: import the Bauplan SDK inside a Temporal **Activity** and call Bauplan methods as you would in a standalone script. Temporal handles orchestration, durability, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; **Temporal runs the workflow**, **Bauplan runs the pipelines, the queries, and the lakehouse infrastructure**.
 
-# Quickstart: Run a Bauplan pipeline from a Temporal workflow
+## Quickstart: Run a Bauplan pipeline from a Temporal workflow
 
 **Goal:** call a [Bauplan project](/concepts/projects) from a Temporal Workflow in the smallest possible way: authenticate, run, check status, and fail the Workflow if the Bauplan job fails.
 
@@ -129,7 +127,7 @@ def report_success_activity(result: dict) -> None:
 
 This uses Temporal's Python SDK to define Workflows and Activities as plain Python functions, runs a Worker, and starts the Workflow in-process for fast local debugging. The Activity timeout on `execute_activity` is required and ensures correct retry/failure semantics. The `imports_passed_through()` block prevents the workflow sandbox from importing `bauplan` (which would violate determinism).
 
-# How to run it locally
+## How to run it locally
 
 Install and start Temporal dev server in one terminal:
 
@@ -148,7 +146,7 @@ uv run --with temporalio --with bauplan workflow_and_worker.py
 
 This starts a Worker and immediately kicks off a `BauplanWorkflow` run with your arguments. Use an absolute project path. If you change code, restart this Python process and start a new workflow execution.
 
-# Small tips
+## Small tips
 
 Retries in dev. To avoid noisy auto-retries while iterating, set a no-retry policy in the workflow call:
 
@@ -181,7 +179,7 @@ import bauplan
 client = bauplan.Client(api_key="YOUR_KEY")
 ```
 
-# Passing parameters (optional)
+## Passing parameters (optional)
 
 Parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters, limits, or toggling options.
 
