@@ -3,6 +3,12 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      release-as:
+        description: "Override version (e.g. 0.2.0-rc.1)"
+        required: true
+        type: string
 
 permissions: {}
 
@@ -57,7 +63,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.check.outputs.tag }}
         run: |
-          notes=$(git-cliff --bump --unreleased)
+          notes=$(git-cliff --tag "${TAG}" --unreleased)
 
           # Find the merge commit of the release PR.
           release_sha=$(gh pr list --state merged --head "release/${TAG}" \
@@ -70,7 +76,12 @@ jobs:
 
           # Note: gh release create creates both the tag and the release
           # atomically.
-          gh release create "$TAG" --target "$release_sha" --notes "$notes"
+          prerelease=""
+          if [[ "$TAG" =~ -rc[.0-9]+$ ]]; then
+            prerelease="--prerelease"
+          fi
+
+          gh release create "$TAG" --target "$release_sha" --notes "$notes" $prerelease
 
   # Build wheels and a tarball with the CLI, and publish them to PyPI and the
   # GitHub release respectively.
@@ -118,8 +129,14 @@ jobs:
       - uses: ./.github/actions/setup-caches
       - name: Compute version bump
         id: bump
+        env:
+          RELEASE_AS: ${{ inputs.release-as }}
         run: |
-          bump=$(git-cliff --bumped-version --unreleased)
+          if [ -n "$RELEASE_AS" ]; then
+            bump="v${RELEASE_AS#v}"
+          else
+            bump=$(git-cliff --bumped-version --unreleased)
+          fi
           current=v$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="bauplan") | .version')
           echo "current_version=${current}" >> "$GITHUB_OUTPUT"
           echo "bumped_version=${bump}" >> "$GITHUB_OUTPUT"
@@ -137,10 +154,10 @@ jobs:
           cargo set-version -p bauplan "${VERSION#v}"
 
           # Generate the changelog.
-          git-cliff --bump --unreleased --prepend CHANGELOG.md
+          git-cliff --tag "${VERSION}" --unreleased --prepend CHANGELOG.md
 
           # Save the unreleased notes for the PR body.
-          git-cliff --bump --unreleased > /tmp/release-notes.md
+          git-cliff --tag "${VERSION}" --unreleased > /tmp/release-notes.md
       - name: Create or update release PR
         if: steps.bump.outputs.current_version != steps.bump.outputs.bumped_version
         # zizmor wants us to just use `gh pr create`, but the action does a lot
