@@ -154,6 +154,12 @@ pub enum Error {
     StreamClosed,
     #[error("An internal error occurred")]
     Internal(#[from] n0_error::AnyError),
+    #[error("HTTP/3 connection error")]
+    H3(#[from] h3::error::ConnectionError),
+    #[error("HTTP/3 stream error")]
+    H3Stream(#[from] h3::error::StreamError),
+    #[error("Unexpected status code: {0}")]
+    UnexpectedStatus(http::StatusCode),
 }
 
 #[cfg(feature = "server")]
@@ -171,96 +177,8 @@ pub use client::*;
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
     use anyhow::{Context as _, bail};
-    use arrow::{
-        array::{Int32Array, StringArray},
-        datatypes::{DataType, Field, Schema},
-        record_batch::RecordBatch,
-    };
-    use futures::StreamExt;
-
-    fn test_batches() -> Vec<RecordBatch> {
-        let schema = Arc::new(Schema::new(vec![
-            Field::new("id", DataType::Int32, false),
-            Field::new("name", DataType::Utf8, false),
-        ]));
-
-        vec![
-            RecordBatch::try_new(
-                schema.clone(),
-                vec![
-                    Arc::new(Int32Array::from(vec![1, 2, 3])),
-                    Arc::new(StringArray::from(vec!["alice", "bob", "carol"])),
-                ],
-            )
-            .unwrap(),
-            RecordBatch::try_new(
-                schema,
-                vec![
-                    Arc::new(Int32Array::from(vec![4, 5])),
-                    Arc::new(StringArray::from(vec!["dave", "eve"])),
-                ],
-            )
-            .unwrap(),
-        ]
-    }
-
-    #[cfg(all(feature = "server", feature = "client"))]
-    #[test_log::test(tokio::test)]
-    async fn query_results() -> anyhow::Result<()> {
-        use iroh::EndpointAddr;
-
-        let secret_key = iroh::SecretKey::generate();
-        let public_key = secret_key.public();
-
-        let batches = test_batches();
-        let schema = batches[0].schema();
-        let server_task = tokio::spawn({
-            let batches = batches.clone();
-            async move {
-                let endpoint = iroh::Endpoint::builder(BauplanPreset::default())
-                    .secret_key(secret_key)
-                    .bind()
-                    .await?;
-
-                let mut server = ArrowIPCServer::accept(&endpoint, schema).await?;
-
-                for batch in batches {
-                    server.send_record_batch(&batch).await?;
-                }
-
-                server.finish().await?;
-                endpoint.close().await;
-                Ok::<_, anyhow::Error>(())
-            }
-        });
-
-        let preset = BauplanPreset::default();
-        let server_addr = preset.add_relay_urls(EndpointAddr::new(public_key));
-        let endpoint = iroh::Endpoint::bind(preset).await?;
-
-        let (_schema, mut stream) = fetch_query_results(&endpoint, server_addr)
-            .await
-            .context("fetch_query_results failed")?;
-
-        let mut received = Vec::new();
-        while let Some(batch) = stream.next().await {
-            received.push(batch.context("batch")?);
-        }
-
-        endpoint.close().await;
-
-        assert_eq!(received.len(), batches.len());
-        for (got, expected) in received.iter().zip(&batches) {
-            assert_eq!(got, expected);
-        }
-
-        server_task.await??;
-        Ok(())
-    }
 
     #[cfg(all(feature = "server", feature = "client"))]
     #[test_log::test(tokio::test)]

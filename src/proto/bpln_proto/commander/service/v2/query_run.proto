@@ -14,6 +14,19 @@ message QueryRunRequest {
 }
 
 message QueryRunResponse {
+  // Everything needed to fetch the artifact.
+  message QueryResultArtifact {
+    // The artifact ID to request (GET /artifacts/{artifact_id}).
+    string artifact_id = 1;
+
+    // The runner's iroh public key, used to establish an h3 connection.
+    bytes server_public_key = 2;
+
+    // A signed JWT authorizing access to a specific artifact. Passed as a
+    // Bearer token in the Authorization header of the h3 request.
+    string auth_token = 3;
+  }
+
   JobResponseCommon job_response_common = 1;
 
   string sql_query = 2;
@@ -23,6 +36,8 @@ message QueryRunResponse {
 
   string cache = 5;
 
-  // The iroh public key for the longbow query-results server.
-  bytes longbow_public_key = 6;
+  reserved 6;
+
+  // Where and how to fetch the result artifact.
+  QueryResultArtifact result_artifact = 7;
 }
