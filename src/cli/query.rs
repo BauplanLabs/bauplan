@@ -13,8 +13,10 @@ use arrow::{
     util::display::{ArrayFormatter, FormatOptions},
 };
 use arrow_flight::error::{FlightError, Result as FlightResult};
-use bauplan::flight::{fetch_flight_results, limit_rows};
-use bauplan::grpc::{self, generated as commanderpb};
+use bauplan::{
+    flight::{fetch_flight_results, limit_rows},
+    grpc::{self, generated as commanderpb},
+};
 use bauplan_longbow::{BauplanPreset, iroh};
 use commanderpb::runner_event::Event as RunnerEvent;
 use futures::{Stream, StreamExt, TryStreamExt, future::Either};
@@ -152,9 +154,9 @@ pub(crate) async fn handle(cli: &Cli, args: QueryArgs) -> anyhow::Result<()> {
 
     progress.set_message("Fetching results...");
 
-    let (longbow_endpoint, schema, batches) = if !resp.longbow_public_key.is_empty() {
+    let (longbow_endpoint, schema, batches) = if let Some(artifact) = &resp.result_artifact {
         let (endpoint, schema, batches) =
-            fetch_results_longbow(resp.longbow_public_key.as_slice(), timeout).await?;
+            fetch_results_longbow(artifact, timeout, row_limit).await?;
         (Some(endpoint), schema, Either::Left(batches))
     } else {
         let tp = cli.traceparent();
@@ -218,15 +220,17 @@ async fn fetch_results(
 }
 
 async fn fetch_results_longbow(
-    public_key: &[u8],
+    artifact: &commanderpb::query_run_response::QueryResultArtifact,
     timeout: time::Duration,
+    row_limit: Option<u64>,
 ) -> anyhow::Result<(
     iroh::Endpoint,
     Schema,
     impl Stream<Item = FlightResult<RecordBatch>>,
 )> {
-    let public_key = bauplan_longbow::iroh::PublicKey::try_from(public_key)
-        .context("invalid longbow public key")?;
+    let public_key =
+        bauplan_longbow::iroh::PublicKey::try_from(artifact.server_public_key.as_slice())
+            .context("invalid longbow public key")?;
     let preset = BauplanPreset::default();
     let addr = bauplan_longbow::iroh::EndpointAddr::new(public_key);
     let addr = preset.add_relay_urls(addr);
@@ -234,7 +238,13 @@ async fn fetch_results_longbow(
     let endpoint = iroh::Endpoint::bind(preset.clone()).await?;
     let (schema, stream) = tokio::time::timeout(
         timeout,
-        bauplan_longbow::fetch_query_results(&endpoint, addr),
+        bauplan_longbow::fetch_query_results(
+            &endpoint,
+            addr,
+            &artifact.artifact_id,
+            &artifact.auth_token,
+            row_limit,
+        ),
     )
     .await
     .context("failed to fetch query results")??;

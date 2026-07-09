@@ -74,8 +74,6 @@ impl Client {
             return Err(query_err("response missing job ID"));
         };
 
-        let longbow_public_key = resp.longbow_public_key;
-
         info!(job_id, "successfully planned query");
 
         let mut req = tonic::Request::new(commanderpb::SubscribeLogsRequest {
@@ -113,8 +111,8 @@ impl Client {
             }
         }
 
-        if !longbow_public_key.is_empty() {
-            let public_key = iroh::PublicKey::try_from(longbow_public_key.as_slice())
+        if let Some(artifact) = resp.result_artifact {
+            let public_key = iroh::PublicKey::try_from(artifact.server_public_key.as_slice())
                 .map_err(|_| query_err("invalid longbow public key"))?;
             let preset = BauplanPreset::default();
             let addr = iroh::EndpointAddr::new(public_key);
@@ -130,9 +128,15 @@ impl Client {
                 .await?;
 
             let (schema, batches) = tokio::time::timeout(timeout, async {
-                bauplan_longbow::fetch_query_results(endpoint, addr)
-                    .await
-                    .map_err(query_err)
+                bauplan_longbow::fetch_query_results(
+                    endpoint,
+                    addr,
+                    &artifact.artifact_id,
+                    &artifact.auth_token,
+                    max_rows,
+                )
+                .await
+                .map_err(query_err)
             })
             .await
             .map_err(|_| query_err("timed out fetching query results"))??;
