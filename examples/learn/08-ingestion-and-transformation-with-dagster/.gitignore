@@ -1,0 +1,4 @@
+.dg/
+.tmp*
+*.parquet
+.env

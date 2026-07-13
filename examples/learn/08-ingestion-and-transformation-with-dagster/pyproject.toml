@@ -1,0 +1,19 @@
+[project]
+name = "08-ingestion-and-transformation-with-dagster"
+version = "0.1.0"
+description = "Ingestion and transformation with Bauplan and Dagster"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "bauplan~=0.1.16",
+    "dagster~=1.13.13",
+    "dagster-dg-cli~=1.13.13",
+    "dagster-webserver~=1.13.13",
+    "typer~=0.26.8",
+]
+
+[dependency-groups]
+dev = [
+    "faker~=40.28.1",
+    "polars~=1.42.1",
+]

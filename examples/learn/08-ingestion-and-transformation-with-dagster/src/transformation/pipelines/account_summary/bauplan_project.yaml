@@ -1,0 +1,12 @@
+project:
+  id: a8001d21-8efb-4a50-87c8-5bb79452a58d
+  name: account_summary
+parameters:
+  start_date:
+    type: str
+    default: "1970-01-01"
+    required: true
+  end_date:
+    type: str
+    default: "2999-12-31"
+    required: true
