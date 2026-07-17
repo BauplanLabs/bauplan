@@ -67,6 +67,13 @@ def import_data(
         branch=ingestion_branch,
         detach=True,
     )
-    wait_for_job(bpln_client, state.job_id, f"import of {table}")
+    wait_for_job(
+        bpln_client, state.job_id, f"import of {table} into {ingestion_branch}"
+    )
 
-    return {"branch": ingestion_branch, "namespace": namespace}
+    return {
+        "branch": ingestion_branch,
+        "namespace": namespace,
+        "uri": uri,
+        "job_id": state.job_id,
+    }

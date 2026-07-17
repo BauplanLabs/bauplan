@@ -1,3 +1,5 @@
+import os
+from collections.abc import Iterator
 from datetime import datetime
 from enum import Enum
 from functools import cached_property
@@ -8,9 +10,10 @@ from uuid import uuid4
 import bauplan
 import dagster as dg
 import typer
+from bauplan.exceptions import BauplanError
 
 from ingestion.import_data import import_data
-from utils import wait_for_job
+from utils import get_table_metadata
 
 app = typer.Typer()
 
@@ -18,6 +21,24 @@ app = typer.Typer()
 class SourceTable(str, Enum):
     transactions = "transactions"
     account_events = "account_events"
+
+
+# Lakehouse coordinates, overridable via the environment to point the example
+# at a different namespace or base branch
+NAMESPACE = os.environ.get("NAMESPACE", "workshop")
+BASE_BRANCH = os.environ.get("BASE_BRANCH", "workshop.main")
+
+AUDIT_DIR = Path(__file__).parent / "ingestion" / "pipelines" / "audit"
+TRANSFORM_DIR = (
+    Path(__file__).parent / "transformation" / "pipelines" / "account_summary"
+)
+
+# One Dagster partition per hive-style day prefix on S3; the sample data covers
+# 2026-06-15 through 2026-07-14, so end_date (exclusive) is the day after the
+# last populated prefix. Regenerating the data means moving these dates too
+daily_partitions = dg.DailyPartitionsDefinition(
+    start_date="2026-06-15", end_date="2026-07-15"
+)
 
 
 class BauplanResource(dg.ConfigurableResource):
@@ -41,137 +62,300 @@ class BauplanResource(dg.ConfigurableResource):
         return user.username
 
 
-@dg.op(
-    name="import_data",
-    config_schema={
-        "table": str,
-        "year": str,
-        "month": str,
-        "day": str,
-        "dt_partition_column": str,
-        "base_branch": str,
-        "namespace": str,
-    },
-)
-def run_import_data(
-    context: dg.OpExecutionContext, bauplan_client: BauplanResource
-) -> dict:
-    """DAG node responsible for importing new parquet files into
-    an ingestion branch. This branch is separate from the base branch as quality
-    of new data needs to be ascertained."""
-    cfg = context.op_config
-    result = import_data(
-        bpln_client=bauplan_client.client,
-        username=bauplan_client.username,
-        table=cfg["table"],
-        year=cfg["year"],
-        month=cfg["month"],
-        day=cfg["day"],
-        dt_partition_column=cfg["dt_partition_column"],
-        base_branch=cfg["base_branch"],
-        namespace=cfg["namespace"],
+def build_ingestion_asset(table: str, dt_partition_column: str) -> dg.AssetsDefinition:
+    """Build the daily-partitioned asset that ingests one source table through a
+    write-audit-publish cycle: import the partition on an ingestion branch, audit
+    it with the table's Bauplan expectations, and merge into the base branch only
+    on a clean audit. The audit outcome surfaces as the audit_expectations check."""
+
+    @dg.asset(
+        name=table,
+        partitions_def=daily_partitions,
+        kinds={"bauplan"},
+        check_specs=[
+            dg.AssetCheckSpec(
+                name="audit_expectations",
+                asset=table,
+                description=f"Bauplan expectations for {table}, audited on the ingestion branch before publishing",
+            )
+        ],
+        description=f"Daily partition of {table} imported from S3 with write-audit-publish",
     )
-    # Carry results over to next step
-    result["base_branch"] = cfg["base_branch"]
-    result["table"] = cfg["table"]
-    return result
+    def ingest(
+        context: dg.AssetExecutionContext, bauplan_client: BauplanResource
+    ) -> Iterator[dg.AssetCheckResult | dg.MaterializeResult]:
+        """Import one daily partition, audit it, publish it on success."""
+        client = bauplan_client.client
+        day = datetime.strptime(context.partition_key, "%Y-%m-%d")
+
+        # Write: import data in a dedicated branch
+        imported = import_data(
+            bpln_client=client,
+            username=bauplan_client.username,
+            table=table,
+            year=f"{day:%Y}",
+            month=f"{day:%m}",
+            day=f"{day:%d}",
+            dt_partition_column=dt_partition_column,
+            base_branch=BASE_BRANCH,
+            namespace=NAMESPACE,
+        )
+        branch = imported["branch"]
+
+        # Audit: a synchronous run so the returned state carries status and duration
+        state = client.run(
+            project_dir=str((AUDIT_DIR / table).resolve()),
+            ref=branch,
+            namespace=NAMESPACE,
+            cache="off",
+            strict="on",
+        )
+        passed = str(state.job_status).lower() == "success"
+        check_metadata = {
+            "bauplan_job_id": str(state.job_id),
+            "bauplan_branch": branch,
+            "duration_seconds": round(state.duration or 0.0, 2),
+            "error": str(state.error or ""),
+        }
+        yield dg.AssetCheckResult(
+            check_name="audit_expectations", passed=passed, metadata=check_metadata
+        )
+        if not passed:
+            raise dg.Failure(
+                description=f"Audit failed on branch {branch} (branch kept for debugging)",
+                metadata=check_metadata,
+            )
+
+        # Publish: merge only after a clean audit, then drop the ingestion branch
+        try:
+            client.merge_branch(source_ref=branch, into_branch=BASE_BRANCH)
+        except BauplanError as merge_error:
+            raise dg.Failure(
+                description=f"Merge of branch {branch} into {BASE_BRANCH} failed; branch kept for debugging",
+                metadata={"bauplan_branch": branch},
+            ) from merge_error
+
+        try:
+            client.delete_branch(branch=branch)
+        except BauplanError as delete_error:
+            context.log.warning(
+                f"Deletion of branch {branch} into {BASE_BRANCH} failed"
+            )
+
+        window = context.partition_time_window
+        yield dg.MaterializeResult(
+            metadata=get_table_metadata(
+                client=client,
+                table=table,
+                namespace=NAMESPACE,
+                ref=BASE_BRANCH,
+                partition_predicate=(
+                    f"{dt_partition_column} >= TIMESTAMP '{window.start:%Y-%m-%d} 00:00:00' "
+                    f"AND {dt_partition_column} < TIMESTAMP '{window.end:%Y-%m-%d} 00:00:00'"
+                ),
+                extra={
+                    "bauplan_branch": branch,
+                    "bauplan_import_job_id": str(imported["job_id"]),
+                    "dagster/uri": imported["uri"],
+                },
+            )
+        )
+
+    return ingest
 
 
-@dg.op(name="wap")
-def run_wap(imported: dict, bauplan_client: BauplanResource) -> dict:
-    """DAG node responsible for running a WRITE-AUDIT-PUBLISH step.
-    It runs expectations on imported data to ascertain that it meets
-    requirements. Early exit in case of corrupted data."""
+transactions = build_ingestion_asset("transactions", "txn_ts")
+account_events = build_ingestion_asset("account_events", "event_ts")
+
+
+@dg.asset(
+    name="account_activity_summary",
+    partitions_def=daily_partitions,
+    deps=[transactions, account_events],
+    kinds={"bauplan"},
+    description="Daily per-account summary of settled spend joined with event and login counts",
+)
+def account_activity_summary(
+    context: dg.AssetExecutionContext, bauplan_client: BauplanResource
+) -> dg.MaterializeResult:
+    """Run the account_summary pipeline for one daily partition on a dev branch
+    forked from the base branch, then publish the result by merging it back."""
     client = bauplan_client.client
-    project_dir = (
-        Path(__file__).parent / "ingestion" / "pipelines" / "wap" / imported["table"]
-    ).resolve()
+    window = context.partition_time_window
+    start_date = f"{window.start:%Y-%m-%d}"
+    end_date = f"{window.end:%Y-%m-%d}"
 
-    # Detach and poll
+    branch = f"{bauplan_client.username}.workshop-transform-{context.partition_key}-{str(uuid4())[:8]}"
+    client.create_branch(branch=branch, from_ref=BASE_BRANCH)
+
     state = client.run(
-        project_dir=str(project_dir),
-        ref=imported["branch"],
-        namespace=imported["namespace"],
+        project_dir=str(TRANSFORM_DIR.resolve()),
+        ref=branch,
+        namespace=NAMESPACE,
         cache="off",
         strict="on",
-        detach=True,
+        parameters={"start_date": start_date, "end_date": end_date},
     )
-    wait_for_job(client, state.job_id, f"WAP audit on {imported['branch']}")
+    if str(state.job_status).lower() != "success":
+        raise dg.Failure(
+            description=f"transform on {branch} failed; branch kept for debugging",
+            metadata={
+                "bauplan_branch": branch,
+                "bauplan_job_id": str(state.job_id),
+                "error": str(state.error or ""),
+            },
+        )
 
-    # Pass-through so merge depends on wap and runs only after a clean audit
-    return imported
+    try:
+        client.merge_branch(source_ref=branch, into_branch=BASE_BRANCH)
+        client.delete_branch(branch=branch)
+    except BauplanError as merge_error:
+        raise dg.Failure(
+            description=f"merge of {branch} into {BASE_BRANCH} failed; branch kept for debugging",
+            metadata={"bauplan_branch": branch},
+        ) from merge_error
 
-
-@dg.op(name="merge")
-def run_merge(audited: dict, bauplan_client: BauplanResource) -> None:
-    """DAG node responsible for merging a branch into the main branch,
-    thus making new data available to downstream consumers. Deletes the import
-    branch afterwards."""
-    bauplan_client.client.merge_branch(
-        source_ref=audited["branch"],
-        into_branch=audited["base_branch"],
+    return dg.MaterializeResult(
+        metadata=get_table_metadata(
+            client=client,
+            table="account_activity_summary",
+            namespace=NAMESPACE,
+            ref=BASE_BRANCH,
+            partition_predicate=(
+                f"date >= DATE '{start_date}' AND date < DATE '{end_date}'"
+            ),
+            extra={
+                "bauplan_branch": branch,
+                "bauplan_job_id": str(state.job_id),
+                "bauplan_run_duration_seconds": round(state.duration or 0.0, 2),
+            },
+        )
     )
 
-    bauplan_client.client.delete_branch(branch=audited["branch"])
 
-
-@dg.op(
-    name="transform",
-    config_schema={
-        "start_date": str,
-        "end_date": str,
-        "base_branch": str,
-        "namespace": str,
-    },
+@dg.asset_check(
+    asset=transactions,
+    description="Auditing pipeline for 'transactions' table. Replicates the one run at ingestion time.",
 )
-def run_transform(
-    context: dg.OpExecutionContext, bauplan_client: BauplanResource
-) -> dict:
-    """DAG node responsible for running the transformation pipeline on a dev
-    branch forked from the base branch, materializing the derived tables."""
-    cfg = context.op_config
-    client = bauplan_client.client
-
-    branch = f"{bauplan_client.username}.workshop-transform-{str(uuid4())[:8]}"
-    client.create_branch(branch=branch, from_ref=cfg["base_branch"])
-
-    project_dir = (
-        Path(__file__).parent / "transformation" / "pipelines" / "account_summary"
-    ).resolve()
-
-    # Detach and poll
-    state = client.run(
-        project_dir=str(project_dir),
-        ref=branch,
-        namespace=cfg["namespace"],
+def transactions_audit(bauplan_client: BauplanResource) -> dg.AssetCheckResult:
+    """Post-publish check: run expectations."""
+    state = bauplan_client.client.run(
+        project_dir=str((AUDIT_DIR / "transactions").resolve()),
+        ref=BASE_BRANCH,
+        namespace=NAMESPACE,
+        dry_run=True,
         cache="off",
-        detach=True,
-        parameters={"start_date": cfg["start_date"], "end_date": cfg["end_date"]},
+        strict="on",
     )
-    wait_for_job(client, state.job_id, f"transform on {branch}")
 
-    return {"branch": branch, "base_branch": cfg["base_branch"]}
+    successful = str(state.job_status).lower() == "success"
 
-
-@dg.job(name="ingestion")
-def ingestion():
-    """Dagster job to run the full ingestion pipeline."""
-    imported = run_import_data()
-    audited = run_wap(imported)
-    run_merge(audited)
+    return dg.AssetCheckResult(
+        passed=successful,
+        metadata={"error": str(state.error or ""), "ref": BASE_BRANCH},
+    )
 
 
-@dg.job(name="transformation")
-def transformation():
-    """Dagster job to run the transformation pipeline"""
-    transformed = run_transform()
-    run_merge(transformed)
+@dg.asset_check(
+    asset=transactions,
+    description="No duplicate txn_id may survive on the published branch",
+)
+def transactions_txn_id_unique(bauplan_client: BauplanResource) -> dg.AssetCheckResult:
+    """Post-publish check: count duplicate transaction ids on the base branch."""
+    duplicates = (
+        bauplan_client.client.query(
+            "SELECT COUNT(*) - COUNT(DISTINCT txn_id) AS n FROM transactions",
+            ref=BASE_BRANCH,
+            namespace=NAMESPACE,
+        )
+        .column("n")
+        .to_pylist()[0]
+    )
+    return dg.AssetCheckResult(
+        passed=duplicates == 0,
+        metadata={"duplicate_txn_ids": int(duplicates or 0), "ref": BASE_BRANCH},
+    )
 
+
+@dg.asset_check(
+    asset=account_events,
+    description="account_id must be fully populated on the published branch",
+)
+def account_events_account_id_no_nulls(
+    bauplan_client: BauplanResource,
+) -> dg.AssetCheckResult:
+    """Post-publish check: count events without an account id on the base branch."""
+    nulls = (
+        bauplan_client.client.query(
+            "SELECT COUNT(*) AS n FROM account_events WHERE account_id IS NULL",
+            ref=BASE_BRANCH,
+            namespace=NAMESPACE,
+        )
+        .column("n")
+        .to_pylist()[0]
+    )
+    return dg.AssetCheckResult(
+        passed=nulls == 0,
+        metadata={"null_account_ids": int(nulls or 0), "ref": BASE_BRANCH},
+    )
+
+
+@dg.asset_check(
+    asset=account_events,
+    description="Auditing pipeline for 'account_events' table. Replicates the one run at ingestion time.",
+)
+def account_events_audit(bauplan_client: BauplanResource) -> dg.AssetCheckResult:
+    """Post-publish check: run expectations."""
+    state = bauplan_client.client.run(
+        project_dir=str((AUDIT_DIR / "account_events").resolve()),
+        ref=BASE_BRANCH,
+        namespace=NAMESPACE,
+        dry_run=True,
+        cache="off",
+        strict="on",
+    )
+
+    successful = str(state.job_status).lower() == "success"
+
+    return dg.AssetCheckResult(
+        passed=successful,
+        metadata={"error": str(state.error or ""), "ref": BASE_BRANCH},
+    )
+
+
+ingestion = dg.define_asset_job(
+    name="ingestion",
+    selection=dg.AssetSelection.assets("transactions", "account_events"),
+)
+
+transformation = dg.define_asset_job(
+    name="transformation",
+    selection=dg.AssetSelection.assets("account_activity_summary"),
+)
+
+RESOURCES = {"bauplan_client": BauplanResource(api_key=dg.EnvVar("BAUPLAN_API_KEY"))}
 
 defs = dg.Definitions(
+    assets=[transactions, account_events, account_activity_summary],
+    asset_checks=[
+        transactions_txn_id_unique,
+        transactions_audit,
+        account_events_account_id_no_nulls,
+        account_events_audit,
+    ],
     jobs=[ingestion, transformation],
-    resources={"bauplan_client": BauplanResource(api_key=dg.EnvVar("BAUPLAN_API_KEY"))},
+    resources=RESOURCES,
 )
+
+ALL_DEFINITIONS = [
+    transactions,
+    account_events,
+    account_activity_summary,
+    transactions_txn_id_unique,
+    transactions_audit,
+    account_events_account_id_no_nulls,
+    account_events_audit,
+]
 
 
 @app.command("ingest")
@@ -181,35 +365,16 @@ def ingestion_command(
         datetime,
         typer.Argument(formats=["%Y-%m-%d"], help="Partition date, YYYY-MM-DD"),
     ],
-    dt_partition_column: Annotated[
-        str, typer.Argument(help="Datetime column to use for daily partition")
-    ],
-    namespace: Annotated[str, typer.Option(help="Target namespace")] = "workshop",
-    base_branch: Annotated[
-        str, typer.Option(help="Branch to fork from and merge into")
-    ] = "workshop.main",
 ) -> None:
-    """Launch the ingestion WAP job in-process for one table partition."""
-    run_config = {
-        "ops": {
-            "import_data": {
-                "config": {
-                    "table": table.value,
-                    "year": str(date.year),
-                    "month": f"{date.month:02d}",
-                    "day": f"{date.day:02d}",
-                    "dt_partition_column": dt_partition_column,
-                    "base_branch": base_branch,
-                    "namespace": namespace,
-                }
-            }
-        }
-    }
-    result = ingestion.execute_in_process(
-        run_config=run_config,
-        resources={
-            "bauplan_client": BauplanResource(api_key=dg.EnvVar("BAUPLAN_API_KEY"))
-        },
+    """Materialize one daily partition of a source table, running its WAP audit
+    and post-publish checks."""
+    result = dg.materialize(
+        assets=ALL_DEFINITIONS,
+        selection=dg.AssetSelection.assets(table.value)
+        | dg.AssetSelection.checks_for_assets(table.value),
+        partition_key=date.strftime("%Y-%m-%d"),
+        resources=RESOURCES,
+        raise_on_error=False,
     )
     if not result.success:
         raise typer.Exit(code=1)
@@ -217,40 +382,19 @@ def ingestion_command(
 
 @app.command("transform")
 def transformation_command(
-    start_date: Annotated[
+    date: Annotated[
         datetime,
-        typer.Argument(formats=["%Y-%m-%d"], help="Start date, YYYY-MM-DD"),
+        typer.Argument(formats=["%Y-%m-%d"], help="Partition date, YYYY-MM-DD"),
     ],
-    end_date: Annotated[
-        datetime,
-        typer.Argument(formats=["%Y-%m-%d"], help="End date, YYYY-MM-DD"),
-    ],
-    namespace: Annotated[
-        str, typer.Option(help="Namespace of the source tables")
-    ] = "workshop",
-    base_branch: Annotated[
-        str, typer.Option(help="Branch to fork from and merge into")
-    ] = "workshop.main",
 ) -> None:
-    """Run the transformation pipeline on a dev branch and merge it into the base branch."""
-
-    run_config = {
-        "ops": {
-            "transform": {
-                "config": {
-                    "start_date": str(start_date.date()),
-                    "end_date": str(end_date.date()),
-                    "base_branch": base_branch,
-                    "namespace": namespace,
-                }
-            }
-        }
-    }
-    result = transformation.execute_in_process(
-        run_config=run_config,
-        resources={
-            "bauplan_client": BauplanResource(api_key=dg.EnvVar("BAUPLAN_API_KEY"))
-        },
+    """Materialize one daily partition of the account activity summary; use
+    Dagster backfills to cover date ranges."""
+    result = dg.materialize(
+        assets=ALL_DEFINITIONS,
+        selection=dg.AssetSelection.assets("account_activity_summary"),
+        partition_key=date.strftime("%Y-%m-%d"),
+        resources=RESOURCES,
+        raise_on_error=False,
     )
     if not result.success:
         raise typer.Exit(code=1)
