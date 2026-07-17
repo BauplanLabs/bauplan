@@ -1,5 +1,3 @@
-from locale import currency
-
 import bauplan
 import pyarrow as pa
 
@@ -10,7 +8,7 @@ def settled_transactions(
     data: pa.Table = bauplan.Model(
         "transactions",
         columns=["account_id", "amount", "merchant_category", "status", "txn_ts"],
-        filter="txn_ts >= $start_date AND txn_ts <= $end_date",
+        filter="txn_ts >= $start_date AND txn_ts < $end_date",
     ),
 ):
     """Keep only settled transactions, the ones that actually moved money"""
@@ -52,7 +50,7 @@ def account_activity_summary(
     account_events: pa.Table = bauplan.Model(
         "account_events",
         columns=["account_id", "event_type", "event_ts"],
-        filter="event_ts >= $start_date AND event_ts <= $end_date",
+        filter="event_ts >= $start_date AND event_ts < $end_date",
     ),
 ):
     """Per-account view: settled spend joined with event and login counts on a daily basis"""

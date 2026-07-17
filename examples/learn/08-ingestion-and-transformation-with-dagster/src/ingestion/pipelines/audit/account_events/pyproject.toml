@@ -1,5 +1,5 @@
 [project]
-name = "wap_transaction"
+name = "audit_account_events"
 version = "0.1.0"
 requires-python = "~=3.13"
 dependencies = ["bauplan~=0.1.16"]

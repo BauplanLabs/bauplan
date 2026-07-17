@@ -5,6 +5,9 @@
 - [Goal](#goal)
 - [Set up](#set-up)
 - [Usage](#usage)
+- [Data quality checks in the Dagster UI](#data-quality-checks-in-the-dagster-ui)
+- [Materialization metadata](#materialization-metadata)
+- [When things fail](#when-things-fail)
 
 ## Goal
 
@@ -21,9 +24,11 @@ The core idea is that Dagster triggers the import of a single partition into Bau
 
 Once both tables are in the lakehouse, a transformation pipeline builds a _daily_ summary. It keeps only settled transactions, aggregates spend per account (total, count, and average amount), and joins the result with per-account event and login counts derived from `account_events`.
 
+On the Dagster side, everything is modeled with software-defined assets: the two source tables and the summary table appear in the asset lineage view, the Bauplan expectations surface as Dagster asset checks, and each materialization carries Bauplan metadata (row counts, column schema, branch and job identifiers) into the Dagster asset catalog.
+
 ## Set up
 
-Use `src/.env.example` as a reference for the fields required to run this example. You can generate a new Bauplan API key (if you don't already have one) from [https://app.bauplanlabs.com/api-keys](https://app.bauplanlabs.com/api-keys). A bucket and prefix have already been provided. When you launch the Dagster UI, these variables are loaded automatically from `src/.env`.
+Use `src/.env.example` as a reference for the fields required to run this example. You can generate a new Bauplan API key (if you don't already have one) from [https://app.bauplanlabs.com/api-keys](https://app.bauplanlabs.com/api-keys). A bucket and prefix have already been provided; `NAMESPACE` and `BASE_BRANCH` default to `workshop` and `workshop.main` and only need changing if you want to publish elsewhere. When you launch the Dagster UI, these variables are loaded automatically from `src/.env`.
 
 Ensure [`uv`](https://docs.astral.sh/uv/) is installed by following the [official documentation](https://docs.astral.sh/uv/getting-started/installation/), then install the dependencies:
 
@@ -33,75 +38,43 @@ uv sync
 
 ## Usage
 
-For a fast turnaround you can use the CLI to launch jobs without spinning up the Dagster UI:
+For a fast turnaround you can use the CLI to materialize partitions without spinning up the Dagster UI:
 
 ```sh
-set -a && source src/.env && set +a && uv run src/main.py --help
+set -a && source src/.env && set +a
+uv run src/main.py ingest transactions 2026-06-16
+uv run src/main.py ingest account_events 2026-06-16
+uv run src/main.py transform 2026-06-16
 ```
 
-The CLI exposes two commands, `ingest` and `transform`; pass `--help` to either to see the available parameters.
+`ingest` materializes one daily partition of one source table, including its checks; `transform` materializes one daily partition of the summary. Note that each CLI invocation runs on an ephemeral Dagster instance, so its run history will not appear in a later UI session.
 
-For the full experience, open the Dagster UI on your localhost. Run:
+For the full experience, open the Dagster UI on your localhost:
 
 ```sh
 cd src && uv run dg dev -m main
 ```
 
-Open `Jobs > ingestion > Launchpad` and set up a config such as
+Open the `Assets` page (or the lineage tab) to see the graph `transactions`, `account_events` into `account_activity_summary` with the daily partition bar under each asset. Select an asset, click `Materialize`, and pick a partition in the dialog. The `ingestion` and `transformation` jobs group the same assets if you prefer launching from the `Jobs` page.
 
-```yaml
-ops:
-  import_data:
-    config:
-      base_branch: 'workshop.main'
-      day: '16'
-      month: '06'
-      namespace: 'workshop'
-      table: 'account_events'
-      year: '2026'
-      dt_partition_column: 'event_ts'
-resources:
-  bauplan_client:
-    config:
-      api_key:
-        env: 'BAUPLAN_API_KEY'
-```
+To load a date range, use a backfill from the partition dialog. Keep the backfill concurrency at 1: parallel partition runs of the same table would race on the merge into the base branch.
 
-then run the job. Each ingestion run imports a single table, so you need two runs to have all the data a transformation needs. Pair the config above with
+## Data quality checks in the Dagster UI
 
-```yaml
-ops:
-  import_data:
-    config:
-      base_branch: 'workshop.main'
-      day: '16'
-      month: '06'
-      namespace: 'workshop'
-      table: 'transactions'
-      year: '2026'
-      dt_partition_column: 'txn_ts'
-resources:
-  bauplan_client:
-    config:
-      api_key:
-        env: 'BAUPLAN_API_KEY'
-```
+The example demonstrates the two ways of coupling Bauplan data quality with Dagster asset checks.
 
-to load all the data. Once both tables are loaded, open `Jobs > transformation > Launchpad` and set
+The `audit_expectations` check on each source table is the audit step of the WAP cycle. The asset body runs the table's expectations project on the ingestion branch and reports the outcome as an in-asset check result, so the audit that gates the merge is the same event you see in the `Checks` tab. Its metadata carries the Bauplan job id, the audit duration, and, on failure, the error and the name of the ingestion branch that was kept for debugging. The expectations themselves stay in the Bauplan project (`src/ingestion/pipelines/audit/<table>/expectations.py`).
 
-```yaml
-ops:
-  transform:
-    config:
-      base_branch: 'workshop.main'
-      namespace: 'workshop'
-      start_date: '2026-06-16'
-      end_date: '2026-06-18'
-resources:
-  bauplan_client:
-    config:
-      api_key:
-        env: 'BAUPLAN_API_KEY'
-```
+The post-publish checks (`transactions_txn_id_unique`, `transactions_audit`, `account_events_account_id_no_nulls`, `account_events_audit`) are standalone `@asset_check` definitions. They run automatically on the base branch after each materialization of their asset. This is the pattern to follow when you want additional checks defined and versioned on the orchestrator side. Notice that these checks can be manually re-run, whereas the expectations embedded in the ingestion job cannot. This is why we have included `transactions_audit` and `account_events_audit` which replicate the expectations verbatim. 
 
-then run the job. The `transformation` job forks a fresh branch from the base branch and runs the `account_summary` pipeline on it. The two upstream models, `settled_transactions` and `daily_account_spend`, are computed on the fly and never persisted; only the final model is materialized, as the `account_activity_summary` table, using a `OVERWRITE_PARTITIONS` strategy that overwrites any previous contents for a given partition. When the run succeeds, the branch is merged back into the base branch, so `account_activity_summary` is published to `workshop.main` next to the source tables.
+One evaluation per check is shown in the `Checks` tab, the latest one; the per-partition history remains available in the run logs of each materialization.
+
+## Materialization metadata
+
+Every successful materialization attaches Bauplan metadata to the Dagster event: total row count (`dagster/row_count`), rows in the materialized partition (`dagster/partition_row_count`), the column schema (`dagster/column_schema`), the imported files (`dagster/uri`, ingestion assets only), plus the Bauplan branch and job identifiers and, for the transform, the run duration.
+
+## When things fail
+
+If an audit fails, the run stops before the merge: the `audit_expectations` check turns red, the asset is not marked materialized, and the ingestion branch is left in place so you can inspect the rejected data. The branch name is in the check metadata and in the run failure; delete the branch once you are done debugging.
+
+If the import itself fails, the run errors before any audit, so the check shows no evaluation for that run; the failing branch name is part of the exception message. If the merge fails after a clean audit, the check stays green (the audit did pass) while the run fails, and the branch is again kept for inspection.
