@@ -1,16 +1,28 @@
 import bauplan
-import pyarrow as pa
+from bpln_sdk import (
+    Model,
+    Read,
+    Filter,
+)
+
+from .schemas import (
+    SettledTxSchema,
+    TxPushdownSchema,
+    DailySpendSchema,
+    AccPushdownSchema,
+    AccActivitySchema,
+)
 
 
 @bauplan.python("3.13", pip={"polars": "1.42.1"})
 @bauplan.model()
 def settled_transactions(
-    data: pa.Table = bauplan.Model(
-        "transactions",
-        columns=["account_id", "amount", "merchant_category", "status", "txn_ts"],
-        filter="txn_ts >= $start_date AND txn_ts < $end_date",
-    ),
-):
+    data: Annotated[
+      Model[TxPushdownSchema],
+      Read("transactions")
+        .Filter("txn_ts >= $start_date AND txn_ts < $end_date"),
+    ],
+) -> Model[SettledTxSchema]:
     """Keep only settled transactions, the ones that actually moved money"""
     import polars as pl
 
@@ -22,8 +34,8 @@ def settled_transactions(
 @bauplan.python("3.13", pip={"polars": "1.42.1"})
 @bauplan.model()
 def daily_account_spend(
-    data: pa.Table = bauplan.Model("settled_transactions"),
-):
+    data: Annotated[Model[SettledTxSchema], Read("settled_transactions")],
+) -> Model[DailySpendSchema]:
     """Aggregate settled spend per account: total, count and average amount"""
     import polars as pl
 
@@ -46,13 +58,16 @@ def daily_account_spend(
     overwrite_filter="date >= $start_date AND date < $end_date",
 )
 def account_activity_summary(
-    daily_account_spend: pa.Table = bauplan.Model("daily_account_spend"),
-    account_events: pa.Table = bauplan.Model(
-        "account_events",
-        columns=["account_id", "event_type", "event_ts"],
-        filter="event_ts >= $start_date AND event_ts < $end_date",
-    ),
-):
+    daily_account_spend: Annotated[
+        Model[DailySpendSchema],
+        Read("daily_account_spend"),
+    ]
+    account_events: Annotated[
+        Model[AccPushdownSchema],
+        Read("account_events")
+            .Filter("event_ts >= $start_date AND event_ts < $end_date"),
+    ],
+) -> Model[AccActivitySchema]:
     """Per-account view: settled spend joined with event and login counts on a daily basis"""
     import polars as pl
 
