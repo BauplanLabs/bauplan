@@ -31,7 +31,7 @@ pub(crate) fn roundtrip<T: ApiRequest>(req: T) -> Result<T::Response, ApiError> 
 
 /// Get the username for the test profile via the gRPC info endpoint.
 pub(crate) fn test_username() -> &'static str {
-    use crate::grpc::{self, generated::GetBauplanInfoRequest};
+    use crate::grpc;
 
     static USERNAME: OnceLock<String> = OnceLock::new();
     USERNAME.get_or_init(|| {
@@ -43,15 +43,7 @@ pub(crate) fn test_username() -> &'static str {
             let mut client = grpc::Client::new_lazy(profile, time::Duration::from_secs(30))
                 .expect("Failed to create gRPC client");
 
-            let resp = client
-                .get_bauplan_info(GetBauplanInfoRequest::default())
-                .await
-                .expect("Failed to get bauplan info");
-
-            resp.into_inner()
-                .user_info
-                .expect("No user info in response")
-                .username
+            client.username().await.expect("Failed to get username")
         })
     })
 }
