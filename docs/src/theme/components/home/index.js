@@ -1,4 +1,12 @@
-import { Layers, Terminal, Package } from "lucide-react";
+import {
+  Layers,
+  Terminal,
+  Package,
+  BookOpen,
+  GitBranch,
+  Workflow,
+  Blocks,
+} from "lucide-react";
 
 export const HomePage = () => {
   return (
@@ -52,6 +60,74 @@ export const HomePage = () => {
           <div className="text-[var(--docsearch-text-color)]">
             <div className="font-semibold">API Reference</div>
             <div className="text-sm ">Complete API docs</div>
+          </div>
+        </a>
+      </div>
+
+      <h2 className="text-2xl font-bold mb-6">Go Deeper</h2>
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <a
+          href="/concepts/projects"
+          className="group flex items-center p-4 rounded-lg
+                bg-[var(--ifm-card-background-color)]
+                transition-all duration-300 ease-in-out hover:-translate-y-2
+                shadow-md
+                border border-transparent
+                hover:border-[var(--ifm-link-hover-color)] hover:text-[var(--ifm-link-hover-color)]
+                no-underline"
+        >
+          <BookOpen className="h-5 w-5 mr-3" />
+          <div className="text-[var(--docsearch-text-color)]">
+            <div className="font-semibold">Core Concepts</div>
+            <div className="text-sm ">Models, tables, pipelines</div>
+          </div>
+        </a>
+        <a
+          href="/concepts/git-for-data"
+          className="group flex items-center p-4 rounded-lg
+                bg-[var(--ifm-card-background-color)]
+                transition-all duration-300 ease-in-out hover:-translate-y-2
+                shadow-md
+                border border-transparent
+                hover:border-[var(--ifm-link-hover-color)] hover:text-[var(--ifm-link-hover-color)]
+                no-underline"
+        >
+          <GitBranch className="h-5 w-5 mr-3" />
+          <div className="text-[var(--docsearch-text-color)]">
+            <div className="font-semibold">Git for Data</div>
+            <div className="text-sm ">Branch, commit, roll back</div>
+          </div>
+        </a>
+        <a
+          href="/common-scenarios/"
+          className="group flex items-center p-4 rounded-lg
+                bg-[var(--ifm-card-background-color)]
+                transition-all duration-300 ease-in-out hover:-translate-y-2
+                shadow-md
+                border border-transparent
+                hover:border-[var(--ifm-link-hover-color)] hover:text-[var(--ifm-link-hover-color)]
+                no-underline"
+        >
+          <Workflow className="h-5 w-5 mr-3" />
+          <div className="text-[var(--docsearch-text-color)]">
+            <div className="font-semibold">Common Workflows</div>
+            <div className="text-sm ">Real-world patterns</div>
+          </div>
+        </a>
+        <a
+          href="/integrations/"
+          className="group flex items-center p-4 rounded-lg
+                bg-[var(--ifm-card-background-color)]
+                transition-all duration-300 ease-in-out hover:-translate-y-2
+                shadow-md
+                border border-transparent
+                hover:border-[var(--ifm-link-hover-color)] hover:text-[var(--ifm-link-hover-color)]
+                no-underline"
+        >
+          <Blocks className="h-5 w-5 mr-3" />
+          <div className="text-[var(--docsearch-text-color)]">
+            <div className="font-semibold">Integrations</div>
+            <div className="text-sm ">Connect your stack</div>
           </div>
         </a>
       </div>
