@@ -71,14 +71,14 @@ def test_critical_field_completeness(
 
 Bauplan provides a built-in library covering common validation scenarios:
 
-- **Nullness checks**: `expect_column_no_nulls`, `expect_column_all_nulls`
-- **Value constraints**: `expect_column_values_to_be_between`, `expect_column_mean_to_be_between`
-- **Uniqueness**: `expect_column_values_to_be_unique`
-- **Existence**: `expect_column_to_exist`
+- **Nullness checks**: `expect_column_no_nulls`, `expect_column_all_null`, `expect_column_some_null`
+- **Accepted values**: `expect_column_accepted_values`
+- **Uniqueness**: `expect_column_all_unique`, `expect_column_not_unique`
 - **Statistical properties**: `expect_column_mean_greater_than`, `expect_column_mean_greater_or_equal_than`, `expect_column_mean_smaller_than`,
   `expect_column_mean_smaller_or_equal_than`
+- **Derived columns**: `expect_column_equal_concatenation`
 
-You can also write custom expectations or integrate other libraries like [Great Expectations](https://github.com/great-expectations/great_expectations).
+You can also write custom expectations. See [Custom expectations](#custom-expectations) below.
 
 ## Nullness checks
 
@@ -171,6 +171,39 @@ expect_column_all_unique(table, 'transaction_id')
 expect_column_not_unique(table, 'customer_id')
 ```
 
+## Custom expectations
+
+The standard library covers common checks, but you can also create your own expectations. Say you want to check the freshness of your data:
+
+```python
+import datetime
+import pyarrow as pa
+import pyarrow.compute as pc
+
+def check_data_recency(table: pa.Table, column: str, hours: int) -> bool:
+    """Check that the newest timestamp in the column is within the last N hours."""
+    latest = pc.max(table.column(column)).as_py()
+    if latest is None:
+        return False
+    cutoff = datetime.datetime.now(datetime.UTC) - datetime.timedelta(hours=hours)
+    return latest >= cutoff
+```
+
+Now to make it run as a part of the pipeline, we need to wrap it in a function with a `@bauplan.expectation()` decorator:
+
+```python
+#! import datetime
+#! import pyarrow as pa
+#! import pyarrow.compute as pc
+#! def check_data_recency(table: pa.Table, column: str, hours: int) -> bool: return True
+import bauplan
+
+@bauplan.expectation()
+@bauplan.python('3.11')
+def test_data_freshness(data=bauplan.Model('model', columns=['timestamp'])):
+    return check_data_recency(data, 'timestamp', hours=24)
+```
+
 ## Failure handling strategies
 
 Expectations offer flexible failure handling to match the severity of different data quality issues.
@@ -198,20 +231,15 @@ def test_mandatory_field(data=bauplan.Model('model', columns=['field'])):
 Log issues without stopping the pipeline for non-critical problems:
 
 ```python
-#! import pyarrow
-#! def check_data_recency(data: pyarrow.Table, col: str, hours: int) -> bool: return True
+#! import pyarrow as pa
+#! def check_data_recency(table: pa.Table, column: str, hours: int) -> bool: return True
 import bauplan
-from bauplan.standard_expectations import expect_column_mean_greater_than
 
+# check_data_recency is the custom check defined above
 @bauplan.expectation()
 @bauplan.python('3.11')
 def test_data_freshness(data=bauplan.Model('model', columns=['timestamp'])):
     is_fresh = check_data_recency(data, 'timestamp', hours=24)
-
-    if is_fresh:
-        print('Data freshness check passed')
-    else:
-        print('Warning: Data may be stale')
 
     return is_fresh
 ```
