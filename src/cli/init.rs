@@ -80,7 +80,7 @@ pub(crate) fn handle(args: InitArgs) -> anyhow::Result<()> {
     //
     // [dependency-groups]
     // dev = [
-    //     "ruff>=0.15",
+    //     "ruff>=0.15,<0.16",
     //     "ty>=0.0.48",
     //     "polars>=1"
     // ]
@@ -103,7 +103,8 @@ pub(crate) fn handle(args: InitArgs) -> anyhow::Result<()> {
     dependency_groups.insert(
         "dev".into(),
         toml::Value::Array(vec![
-            toml::Value::String("ruff>=0.15".into()),
+            // ruff 0.16 enables B008 by default, which errors when we use the default argument position for `bauplan.Model()`.
+            toml::Value::String("ruff>=0.15,<0.16".into()),
             toml::Value::String("ty>=0.0.48".into()),
             toml::Value::String("polars>=1".into()),
         ]),
