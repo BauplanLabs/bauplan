@@ -8,6 +8,7 @@ toc_min_heading_level: 3
 <div className="faq-index">
 
 :::info Quick Index
+
 - [I need some help. Who do I call?](#i-need-some-help-who-do-i-call)
 - [I found a bug. Who do I tell?](#i-found-a-bug-who-do-i-tell)
 - [How easy is it to integrate Bauplan with other tools?](#how-easy-is-it-to-integrate-bauplan-with-other-tools)
@@ -24,7 +25,8 @@ toc_min_heading_level: 3
 - [Can I use the table I write with Bauplan somewhere else?](#can-i-use-the-table-i-write-with-bauplan-somewhere-else)
 - [I have an orchestrator and I like it. Do I have to ditch it to use Bauplan?](#i-have-an-orchestrator-and-i-like-it-do-i-have-to-ditch-it-to-use-bauplan)
 - [What does Bauplan mean?](#what-does-bauplan-mean)
-:::
+  :::
+
 </div>
 
 ---
@@ -48,12 +50,12 @@ Pretty easy. Bauplan is built **for S3** on **Iceberg's open format**
 and a **Python-native runtime**, ensuring seamless integration with
 modern data stacks:
 
--   **Object storage native** - runs directly on your S3 so you don't
-    really have to move data in Bauplan.
--   **Iceberg compatible** - Works with any engine and catalog that
-    speaks Iceberg - Snowflake, Databricks, Athena, and Trino.
--   **No proprietary dependencies** - Fully open and standards-based,
-    avoiding vendor lock-in.
+- **Object storage native** - runs directly on your S3 so you don't
+  really have to move data in Bauplan.
+- **Iceberg compatible** - Works with any engine and catalog that
+  speaks Iceberg - Snowflake, Databricks, Athena, and Trino.
+- **No proprietary dependencies** - Fully open and standards-based,
+  avoiding vendor lock-in.
 
 We really don't believe in vendor lock-in so it is very easy to get out
 of Bauplan: your data remains in your S3 and your code is just pure
@@ -64,30 +66,30 @@ Python.
 Bauplan's **Iceberg tables** support schema evolution without breaking
 queries.
 
--   Add, rename, or drop columns.
--   Maintain backward compatibility.
+- Add, rename, or drop columns.
+- Maintain backward compatibility.
 
 ## How does Bauplan help with managing and querying data in a lakehouse architecture?
 
 Bauplan is designed to make lakehouse implementation as seamless as
 possible by eliminating complexity and reducing infrastructure overhead:
 
- -   **Native object storage access (S3)** - Query data directly from
-    your object storage
- -   **SQL querying with ACID guarantees** - Leverages Iceberg for
-    transactional consistency and schema evolution.
- -   **Flexible, serverless compute** - Run workloads efficiently
-    without managing clusters or proprietary infrastructure.
+- **Native object storage access (S3)** - Query data directly from
+  your object storage
+- **SQL querying with ACID guarantees** - Leverages Iceberg for
+  transactional consistency and schema evolution.
+- **Flexible, serverless compute** - Run workloads efficiently
+  without managing clusters or proprietary infrastructure.
 
 ## Does Bauplan support versioned data access?
 
 Yes, Bauplan enables **versioning** in two ways:
 
- -   **Time-travel queries**: access previous table versions at any point
-    in time.
- -   **Data branching**: isolate data changes safely, enabling
-    experimentation without affecting production
-    ([docs](/concepts/git-for-data/data-branches)).
+- **Time-travel queries**: access previous table versions at any point
+  in time.
+- **Data branching**: isolate data changes safely, enabling
+  experimentation without affecting production
+  ([docs](/concepts/git-for-data/data-branches)).
 
 All this, while ensuring **transactional consistency** and integrity
 across updates, merges, and queries.
@@ -120,14 +122,14 @@ Bauplan ensures **reproducible debugging** by versioning **data, code,
 and execution environments**, so you can always trace and fix issues
 efficiently:
 
--   **Time travel for data** - Access the exact version of a dataset
-    from when an issue occurred.
--   **Branching for debugging** - Create an isolated **debug branch**
-    to reproduce and fix failures without disrupting production.
--   **Immutable execution environments** - Containerized runs ensure
-    the same dependencies, preventing environment drift.
--   **Versioned pipelines** - Track and restore previous
-    transformations for consistent troubleshooting.
+- **Time travel for data** - Access the exact version of a dataset
+  from when an issue occurred.
+- **Branching for debugging** - Create an isolated **debug branch**
+  to reproduce and fix failures without disrupting production.
+- **Immutable execution environments** - Containerized runs ensure
+  the same dependencies, preventing environment drift.
+- **Versioned pipelines** - Track and restore previous
+  transformations for consistent troubleshooting.
 
 ## Does Bauplan optimize my code?
 
@@ -144,14 +146,14 @@ any way; it runs exactly as you write it.
 **Zero, zip, zilch, nada.** We designed Bauplan specifically to rely
 only on abstractions familiar to every developer.
 
--   **Standard Languages**: Utilize familiar languages like **Python**
-    and **SQL** to develop your applications.
--   **No Complex Frameworks**: Avoid the need for complex big-data
-    frameworks like Spark; Bauplan simplifies data processing without
-    additional infrastructure.
--   **Software Engineering Practices**: Apply standard software
-    engineering practices such as modularity, test-driven development,
-    and CI/CD directly within Bauplan.
+- **Standard Languages**: Utilize familiar languages like **Python**
+  and **SQL** to develop your applications.
+- **No Complex Frameworks**: Avoid the need for complex big-data
+  frameworks like Spark; Bauplan simplifies data processing without
+  additional infrastructure.
+- **Software Engineering Practices**: Apply standard software
+  engineering practices such as modularity, test-driven development,
+  and CI/CD directly within Bauplan.
 
 There are enough DSLs, data frameworks, and dataframe APIs in the world.
 We don't need a new one.
@@ -162,10 +164,10 @@ Yes, every table produced by Bauplan is stored as an **Iceberg table**
 in your S3 bucket, making it accessible to any engine that supports
 **Apache Iceberg**, such as:
 
--   **Databricks**
--   **Snowflake**
--   **Trino/Presto**
--   **Athena**
+- **Databricks**
+- **Snowflake**
+- **Trino/Presto**
+- **Athena**
 
 ## I have an orchestrator and I like it. Do I have to ditch it to use Bauplan?
 

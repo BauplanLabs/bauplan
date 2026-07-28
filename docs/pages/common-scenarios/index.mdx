@@ -1,0 +1,80 @@
+---
+title: "Common Scenarios"
+description: "Task-based Bauplan guides for real-world work: multi-stage pipelines, branching workflows, schema and merge conflicts, parameterized and detached runs, SQL files, and choosing the SDK or CLI."
+---
+
+import DocCardList from "@theme/DocCardList";
+import {
+  Workflow,
+  GitBranch,
+  AlertTriangle,
+  GitMerge,
+  SlidersHorizontal,
+  Clock,
+  FileCode,
+  GitCompare,
+} from "lucide-react";
+
+Practical, task-based guides for common Bauplan workflows - from building multi-stage pipelines to resolving conflicts and choosing between the SDK and CLI.
+
+<DocCardList
+  items={[
+    {
+      type: "link",
+      href: "/common-scenarios/multi-stage-pipelines",
+      label: "Multi-stage pipelines",
+      icon: <Workflow />,
+      description: "Chain models into a DAG and choose what to materialize.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/schema-conflicts",
+      label: "Schema conflicts",
+      icon: <AlertTriangle />,
+      description:
+        "Resolve column-type conflicts when creating tables from S3 files.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/branching-workflows",
+      label: "Branching workflows",
+      icon: <GitBranch />,
+      description: "Promote validated changes from a branch to production.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/detached-runs",
+      label: "Detached job runs",
+      icon: <Clock />,
+      description: "Submit, poll, and manage long-running or scheduled jobs.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/parameterized-runs",
+      label: "Parameterized runs",
+      icon: <SlidersHorizontal />,
+      description: "Pass parameters and encrypted secrets to pipelines.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/conflict-management",
+      label: "Conflict management",
+      icon: <GitMerge />,
+      description: "Handle merge, naming, and schema-drift conflicts safely.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/sql-files",
+      label: "SQL files",
+      icon: <FileCode />,
+      description: "Use standalone .sql files as models, dbt-style.",
+    },
+    {
+      type: "link",
+      href: "/common-scenarios/sdk-or-cli",
+      label: "SDK or CLI?",
+      icon: <GitCompare />,
+      description: "Choose between the CLI, Python SDK, and web app.",
+    },
+  ]}
+/>
