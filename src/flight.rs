@@ -1,6 +1,6 @@
 //! Support for fetching query results via Arrow Flight.
 
-use std::time;
+use std::{sync::Arc, time};
 
 use arrow::{array::RecordBatch, datatypes::Schema};
 use arrow_flight::{
@@ -113,6 +113,15 @@ async fn fetch_batches(
     Ok(stream)
 }
 
+/// The schema to describe the results with. The one advertised with them is not
+/// always the one the batches carry, so prefer the batches when there are any.
+pub fn result_schema(batch: Option<&RecordBatch>, advertised: Schema) -> Arc<Schema> {
+    match batch {
+        Some(batch) => batch.schema(),
+        None => Arc::new(advertised),
+    }
+}
+
 /// Truncates a stream of record batches to at most `row_limit` rows total.
 pub fn limit_rows<E>(
     stream: impl Stream<Item = Result<RecordBatch, E>>,
@@ -153,7 +162,6 @@ mod tests {
     use super::*;
 
     use arrow::datatypes::{DataType, Field};
-    use std::sync::Arc;
 
     #[tokio::test]
     async fn test_enforce_row_limit() -> anyhow::Result<()> {
@@ -170,5 +178,19 @@ mod tests {
         let row_counts: Vec<_> = batches.iter().map(|b| b.num_rows()).collect();
         assert_eq!(row_counts, vec![3, 1]);
         Ok(())
+    }
+
+    #[test]
+    fn test_result_schema_prefers_the_batches() {
+        let advertised = Schema::new(vec![Field::new("x", DataType::LargeUtf8, true)]);
+        let schema = Arc::new(Schema::new(vec![Field::new("x", DataType::Utf8, true)]));
+        let array = arrow::array::StringArray::from(vec!["a"]);
+        let batch = RecordBatch::try_new(schema.clone(), vec![Arc::new(array)]).unwrap();
+
+        assert_eq!(result_schema(Some(&batch), advertised.clone()), schema);
+        assert_eq!(
+            result_schema(None, advertised.clone()),
+            Arc::new(advertised)
+        );
     }
 }

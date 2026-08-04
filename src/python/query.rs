@@ -203,7 +203,13 @@ impl Client {
             .await?;
 
         futures::pin_mut!(batches);
-        let mut writer = open(Arc::new(schema)).map_err(query_err)?;
+
+        let first = batches.try_next().await?;
+        let mut writer = open(flight::result_schema(first.as_ref(), schema)).map_err(query_err)?;
+
+        if let Some(batch) = first {
+            writer.write(&batch).map_err(query_err)?;
+        }
 
         loop {
             let Some(batch) = batches.try_next().await? else {
@@ -309,7 +315,8 @@ impl Client {
                 .await?;
 
             let batches: Vec<RecordBatch> = stream.try_collect().await?;
-            pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))
+            let schema = flight::result_schema(batches.first(), schema);
+            pyo3_arrow::PyTable::try_new(batches, schema)
         })?;
 
         Ok(table.into_pyarrow(py)?.unbind())
@@ -743,7 +750,8 @@ impl Client {
                 .await?;
 
             let batches: Vec<RecordBatch> = stream.try_collect().await?;
-            pyo3_arrow::PyTable::try_new(batches, Arc::new(schema))
+            let schema = flight::result_schema(batches.first(), schema);
+            pyo3_arrow::PyTable::try_new(batches, schema)
         })?;
 
         Ok(table.into_pyarrow(py)?.unbind())
