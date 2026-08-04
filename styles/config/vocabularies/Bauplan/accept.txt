@@ -64,6 +64,7 @@ Polars
 Private Link
 productionize
 pushdown
+pyarrow
 RAG
 RDS
 READMEs
@@ -83,6 +84,9 @@ SSM
 Streamlit
 subagents
 subcommands
+DataType
+TableField
+TableSchema
 Tagliabue
 Temporal
 TLC
