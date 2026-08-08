@@ -208,6 +208,16 @@ function stripJsxComponents(content) {
   // Remove export statements
   content = content.replace(/^export\s+const\s+.*$/gm, '');
 
+  // Turn video embeds into links, before the self-closing strip below discards them
+  content = content.replace(/<YouTube\s+([^>]*?)\/>/g, (_match, attrs) => {
+    const id = attrs.match(/\bid=["']([^"']+)["']/);
+    if (!id) return '';
+    const title = attrs.match(/\btitle=["']([^"']+)["']/);
+    const start = attrs.match(/\bstart=\{(\d+)\}/);
+    const url = `https://www.youtube.com/watch?v=${id[1]}${start ? `&t=${start[1]}` : ''}`;
+    return `[${title ? title[1] : 'Video'}](${url})\n`;
+  });
+
   // Remove self-closing tags like <Component /> and <br />
   content = content.replace(/<[a-zA-Z][a-zA-Z]*\s*[^>]*\/>/g, '');
 

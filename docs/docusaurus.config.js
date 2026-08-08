@@ -8,6 +8,7 @@ export default {
   clientModules: [
     require.resolve("./src/clientModules/scrollToAnchor.js"),
     require.resolve("./src/clientModules/tabTocSync.js"),
+    require.resolve("./src/clientModules/videoChapterLinks.js"),
   ],
   title: "Bauplan Documentation",
   tagline:

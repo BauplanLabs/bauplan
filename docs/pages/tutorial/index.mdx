@@ -7,20 +7,33 @@ slug: "/"
 
 import { HomePage } from "@site/src/theme/components/home/index";
 
-Bauplan is a Git-for-data lakehouse that brings Git-style workflows to your data, so AI agents can safely make changes on real production tables.
+Bauplan is a Git-for-data lakehouse that runs your Python and SQL pipelines directly on Apache Iceberg tables in your own object storage, with no servers or clusters to manage.
 
-It runs your Python and SQL pipelines directly on Apache Iceberg tables, with no servers or clusters to manage.
-
-You can run AI-generated pipeline changes on real production datasets while keeping your data and downstream applications protected, with a clean rollback path if something goes wrong.
-
-Bauplan provides a tight, tool-callable loop with a small API surface: write to an isolated branch, run and validate, then publish to `main` with an atomic merge. If a change fails validation or causes issues later, roll back to a previous commit.
-
-Use Bauplan for workloads where you produce and maintain tables: ingesting files into curated datasets, building transformation pipelines, running backfills, enforcing data quality tests, and iterating quickly on logic and outputs.
-
-In your architecture, Bauplan sits on top of your object storage and manages data as Iceberg tables. It produces versioned Iceberg outputs that remain compatible with any Iceberg-capable engine and catalog, so you can keep your existing tools for analytics and BI while using Bauplan as the execution and change-management layer for pipelines and agent workflows.
-
-📚 [Learn more →](/overview/)
-
-🚀 [Quick Start →](/tutorial/quick-start)
+Learn how Bauplan fits into your architecture [here](/overview/).
 
 <HomePage />
+
+<h2> Watch </h2>
+
+<VideoCardGrid>
+  <VideoCard
+    id="1x8BTeJrOKU"
+    title="Git-for-Data and AI Agents on Production Data"
+    duration="5:33"
+    blurb="Import from S3 on a branch, merge to main, and roll back a bad write."
+  />
+  <VideoCard
+    id="Nd5glmOz9QA"
+    title="Getting started with the Bauplan CLI and SDK"
+    duration="3:45"
+    blurb="Install, set your API key, and work with your first data branch."
+  />
+  <VideoCard
+    id="Di2AkSmitTc"
+    title="Platform primitives: Python, Iceberg, and Git-for-Data"
+    duration="6:25"
+    blurb="Write a Python model, query Iceberg tables, and version a pipeline run."
+  />
+</VideoCardGrid>
+
+More walkthroughs and webinars on the [Bauplan YouTube channel](https://www.youtube.com/@bauplan_labs).

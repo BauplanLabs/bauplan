@@ -4,8 +4,8 @@ description: "Use AI agents with Bauplan three ways: the MCP server, repository-
 sidebar_label: "Overview"
 ---
 
-import DocCardList from '@theme/DocCardList';
-import { Server, Workflow, FileText } from 'lucide-react';
+import DocCardList from "@theme/DocCardList";
+import { Server, Workflow, FileText } from "lucide-react";
 
 Bauplan is driven entirely by code, which makes it a natural fit for AI agents. The whole lakehouse is programmable through a [CLI](/reference/cli) and a [Python SDK](/reference/bauplan): there is no UI step an agent has to click through.
 
@@ -13,30 +13,37 @@ Bauplan is driven entirely by code, which makes it a natural fit for AI agents. 
 
 There are three complementary ways to use agents with Bauplan. They are not mutually exclusive: an assistant can use the MCP server for live access, run Skills for structured workflows, and read the documentation as context, all in the same session.
 
-<DocCardList items={[
-  {
-    type: 'link',
-    href: '/agents/skills',
-    label: 'Agent Skills',
-    icon: <Workflow />,
-    description: 'Reusable recipes for the main workflows, including pipelines, ingestion, exploration, and debugging.'
-  },
-  {
-    type: 'link',
-    href: '/agents/mcp',
-    label: 'MCP server',
-    icon: <Server />,
-    description: 'Give an assistant live access to your lakehouse through tool calls.'
-  },
-  {
-    type: 'link',
-    href: '/agents/context',
-    label: 'Context for agents',
-    icon: <FileText />,
-    description: 'Feed AGENTS.md, llms.txt, and the Markdown docs to any LLM or IDE assistant.'
-  }
-]} />
+<DocCardList
+  items={[
+    {
+      type: "link",
+      href: "/agents/skills",
+      label: "Agent Skills",
+      icon: <Workflow />,
+      description:
+        "Reusable recipes for the main workflows, including pipelines, ingestion, exploration, and debugging.",
+    },
+    {
+      type: "link",
+      href: "/agents/mcp",
+      label: "MCP server",
+      icon: <Server />,
+      description:
+        "Give an assistant live access to your lakehouse through tool calls.",
+    },
+    {
+      type: "link",
+      href: "/agents/context",
+      label: "Context for agents",
+      icon: <FileText />,
+      description:
+        "Feed AGENTS.md, llms.txt, and the Markdown docs to any LLM or IDE assistant.",
+    },
+  ]}
+/>
 
 ## Learn more
 
 The [Bauplan blog](https://www.bauplanlabs.com/blog) covers running AI and agents safely on your data, alongside technical deep-dives on the platform. The team also publishes peer-reviewed research on the data systems behind Bauplan and their application to AI and agentic workflows. Find our latest results on [Google Scholar](https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=bauplan+lakehouse&btnG=).
+
+For long-form talks and demos, see the [our YouTube channel](https://www.youtube.com/@bauplan_labs).
