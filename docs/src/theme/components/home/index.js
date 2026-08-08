@@ -6,13 +6,14 @@ import {
   GitBranch,
   Workflow,
   Blocks,
+  Youtube,
 } from "lucide-react";
 
 export const HomePage = () => {
   return (
     <>
       <h2 className="text-2xl font-bold mb-6">Get Started</h2>
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <a
           href="/tutorial/installation"
           className="group flex items-center p-4 rounded-lg
@@ -25,8 +26,8 @@ export const HomePage = () => {
         >
           <Package className="h-5 w-5 mr-3" />
           <div className="text-[var(--docsearch-text-color)]">
-            <div className="font-semibold">Setup</div>
-            <div className="text-sm ">Quick setup guide</div>
+            <div className="font-semibold">Install Bauplan</div>
+            <div className="text-sm ">CLI, SDK, and your API key</div>
           </div>
         </a>
         <a
@@ -58,8 +59,25 @@ export const HomePage = () => {
         >
           <Terminal className="h-5 w-5 mr-3" />
           <div className="text-[var(--docsearch-text-color)]">
-            <div className="font-semibold">API Reference</div>
-            <div className="text-sm ">Complete API docs</div>
+            <div className="font-semibold">Reference</div>
+            <div className="text-sm ">CLI and SDK</div>
+          </div>
+        </a>
+
+        <a
+          href="https://www.youtube.com/@bauplan_labs"
+          className="group flex items-center p-4 rounded-lg
+                bg-[var(--ifm-card-background-color)]
+                transition-all duration-300 ease-in-out hover:-translate-y-2
+                shadow-md
+                border border-transparent
+                hover:border-[var(--ifm-link-hover-color)] hover:text-[var(--ifm-link-hover-color)]
+                no-underline"
+        >
+          <Youtube className="h-5 w-5 mr-3" />
+          <div className="text-[var(--docsearch-text-color)]">
+            <div className="font-semibold">Videos</div>
+            <div className="text-sm ">Demos and webinars</div>
           </div>
         </a>
       </div>

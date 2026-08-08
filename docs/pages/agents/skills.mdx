@@ -15,9 +15,14 @@ Skills are available at [github.com/BauplanLabs/bauplan-skills](https://github.c
 
 ## Installation
 
+<YouTube
+  id="TD7gME7JnZw"
+  title="Installing Bauplan Skills for Different Agent Harnesses"
+/>
+
 ### Claude Code
 
-Inside Claude Code, follow these steps:
+Inside Claude Code, follow these steps ([watch this step at 1:51](https://youtu.be/TD7gME7JnZw?t=111)):
 
 1. Add the marketplace `/plugin marketplace add https://github.com/BauplanLabs/bauplan-skills` and restart Claude Code;
 
@@ -27,7 +32,7 @@ Inside Claude Code, follow these steps:
 
 ### Codex
 
-Inside Codex, run the skill installer pointing at the Bauplan skills directory:
+Inside Codex, run the skill installer pointing at the Bauplan skills directory ([watch this step at 3:00](https://youtu.be/TD7gME7JnZw?t=180)):
 
 ```
 $skill-installer https://github.com/BauplanLabs/bauplan-skills/tree/main/plugins/bauplan/skills
@@ -39,7 +44,7 @@ To verify the installation, run `/skills` and select **List skills**.
 
 ### Cursor
 
-Go to **Settings > Cursor Settings > Rules, Skills, Subagents**.
+Go to **Settings > Cursor Settings > Rules, Skills, Subagents** ([watch this step at 4:08](https://youtu.be/TD7gME7JnZw?t=248)).
 
 From there you have two options:
 
@@ -54,11 +59,11 @@ From there you have two options:
 
 Once installed, the following skills are available as slash commands:
 
-| Skill                      | Description                                                                                                                                                                                         |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Data Pipeline**          | Create a new pipeline project from scratch with proper setup, model definitions, source validation, and execution on a development branch.                                                          |
-| **Safe Ingestion**         | Ingest data from S3 using the Write-Audit-Publish pattern: the agent loads data on an isolated branch, validates it, and merges only after quality checks pass.                                      |
-| **Explore Data**           | Structured, read-only investigation of lakehouse data through schema inspection, sampling, profiling, and join discovery. Produces a `summary.md` report.                                           |
-| **Data Assessment**        | Evaluate whether lakehouse data can answer a business question. Maps concepts to tables, profiles quality, and delivers a feasibility verdict.                                                       |
-| **Data Quality Checks**    | Generate quality check code as pipeline expectations with `@bauplan.expectation` and ingestion validation functions covering completeness, uniqueness, validity, freshness, consistency, and volume. |
-| **Debug and Fix Pipeline** | Structured diagnostics for failed jobs: pins the failure, collects evidence, identifies root cause, and applies a minimal fix with checkpoint reports.                                              |
+| Skill                                                      | Description                                                                                                                                                                                          |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [**Data Pipeline**](https://youtu.be/Qt_jKxC0jZw)          | Create a new pipeline project from scratch with proper setup, model definitions, source validation, and execution on a development branch.                                                           |
+| [**Safe Ingestion**](https://youtu.be/YPEACHXYQOY)         | Ingest data from S3 using the Write-Audit-Publish pattern: the agent loads data on an isolated branch, validates it, and merges only after quality checks pass.                                      |
+| [**Explore Data**](https://youtu.be/Md4TFZxIZEM)           | Structured, read-only investigation of lakehouse data through schema inspection, sampling, profiling, and join discovery. Produces a `summary.md` report.                                            |
+| [**Data Assessment**](https://youtu.be/VMDIIp_gA6Q)        | Evaluate whether lakehouse data can answer a business question. Maps concepts to tables, profiles quality, and delivers a feasibility verdict.                                                       |
+| [**Data Quality Checks**](https://youtu.be/cVrjdTJ1jug)    | Generate quality check code as pipeline expectations with `@bauplan.expectation` and ingestion validation functions covering completeness, uniqueness, validity, freshness, consistency, and volume. |
+| [**Debug and Fix Pipeline**](https://youtu.be/tt7FN26dvhA) | Structured diagnostics for failed jobs: pins the failure, collects evidence, identifies root cause, and applies a minimal fix with checkpoint reports.                                               |
