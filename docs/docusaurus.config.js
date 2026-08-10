@@ -145,7 +145,7 @@ export default {
           type: "docSidebar",
           sidebarId: "referenceSidebar",
           position: "left",
-          label: "API Reference",
+          label: "Reference",
         },
         {
           href: "https://github.com/BauplanLabs/bauplan/tree/main/examples",

@@ -25,17 +25,19 @@ user data ever reaches this layer.
 The **Data Plane** executes your functions securely and efficiently
 within isolated, tenant-specific environments.
 
+{/* vale Google.Parens = NO */}
+
 - **Serverless Runtime:** Spins up ephemeral containers for each
   function invocation, optimized for fast startup and minimal
   overhead.
-{/* vale Google.Parens = NO */}
 - **Data Movement:** Shares data between functions through zero-copy
   Arrow tables (within hosts) or over high-performance Arrow Flight
   (across hosts).
-{/* vale Google.Parens = YES */}
 - **Scheduling and Caching:** Dynamically schedules functions to
   maximize resource usage and caches results to accelerate repeated
   data accesses.
+
+{/* vale Google.Parens = YES */}
 
 ## Storage layer (user-owned)
 
@@ -57,6 +59,7 @@ The diagram below illustrates the flow from local development to
 execution and data storage:
 
 <div style={{ display: 'flex', justifyContent: 'center' }}>
+
 ```mermaid
 flowchart TD
     A["<b>Bauplan CLI / SDK</b></br>(Local)"]
@@ -86,5 +89,5 @@ flowchart TD
     classDef wide white-space:nowrap
 
 ```
+
 </div>
-```

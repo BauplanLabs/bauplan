@@ -3,7 +3,7 @@ title: "Installation"
 description: "Install the Bauplan CLI and Python SDK with uv, then generate and configure your API key via the CLI or config.yml to start building data pipelines."
 ---
 
-To follow this page as a screencast, watch [Getting started with the Bauplan CLI and SDK](https://youtu.be/Nd5glmOz9QA) (3:45). The written steps are below.
+To follow this page as a screencast, watch [Getting started with the Bauplan CLI and SDK](https://youtu.be/Nd5glmOz9QA). The written steps are below.
 
 <YouTube
   id="Nd5glmOz9QA"
@@ -51,7 +51,9 @@ one](https://app.bauplanlabs.com/sign-up) for free.
 
 ### Option A: configure via CLI (recommended)
 
-Set your API key directly in the Bauplan CLI ([watch this step at 0:50](https://youtu.be/Nd5glmOz9QA?t=50)). This sets the key for your `default` profile:
+You can configure and verify the API key for Bauplan using the instructions in this [video](https://youtu.be/Nd5glmOz9QA?t=50).
+
+Otherwise, use the following command to set the API key for your `default` profile:
 
 ```sh
 bauplan config set api_key <your_api_key>
@@ -85,3 +87,23 @@ If you are using the Python SDK, see [notes on Client authentication](/reference
   Never share your API key publicly. Store it securely using environment
   variables or secrets management tools in your deployment workflows.
 </Danger>
+
+## Upgrade Bauplan
+
+If you added Bauplan to a project:
+
+```sh
+uv lock --upgrade-package bauplan
+uv sync
+```
+
+If you installed Bauplan globally:
+
+```sh
+uv tool upgrade bauplan
+```
+
+<Note>
+  You can see the release notes
+  [here](https://github.com/BauplanLabs/bauplan/releases).
+</Note>
