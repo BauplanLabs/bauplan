@@ -151,7 +151,6 @@ pipeline that violates the contract never reaches a mergeable state, so making
 the merge conditional on run success is enough to keep `main` clean. You need
 no explicit conflict handling because the bad branch simply never gets merged.
 
-{/* prettier-ignore */}
 <Note>
   A judicious use of the `columns` parameter in the `@bauplan.model` decorator
   can complement expectations and further enforce schema compliance by
@@ -159,13 +158,15 @@ no explicit conflict handling because the bad branch simply never gets merged.
   would fail when `strict="on"`. For other uses of expectations in Bauplan,
   please consult the [dedicated
   example](https://github.com/BauplanLabs/bauplan/tree/b31d9226d5c8177a1974e97aa93ed710256e10fa/examples/learn/02-data-quality-expectations).
-   ```python
-   #!import bauplan
-   @bauplan.python("3.12")
-   @bauplan.model(columns=["Age"], materialization_strategy="REPLACE")
-   def give_back_age(data=bauplan.Model("titanic")):
-         return data.select(["PassengerId", "Age"])
-   ```
+
+```python
+#!import bauplan
+@bauplan.python("3.12")
+@bauplan.model(columns=["Age"], materialization_strategy="REPLACE")
+def give_back_age(data=bauplan.Model("titanic")):
+      return data.select(["PassengerId", "Age"])
+```
+
 </Note>
 
 ---
