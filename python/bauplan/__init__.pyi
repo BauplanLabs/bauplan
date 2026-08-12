@@ -23,17 +23,37 @@ from bauplan.state import (
     TableCreatePlanState,
     TableDataImportState,
 )
-from bauplan._classes import Model
 from bauplan._decorators import (
-    ModelCacheStrategy,
-    ModelMaterializationStrategy,
     expectation,
     extras,
-    model,
-    python,
     resources,
 )
-from bauplan._parameters import Parameter
+
+from bpln_stubs._models import (
+    Model,
+    model,
+    ModelCacheStrategy,
+    ModelMaterializationStrategy,
+)
+from bpln_stubs._parameters import Parameter
+from bpln_stubs._runtimes import python
+from bpln_stubs._table_fields import (
+    TableField,
+    Bool,
+    Int32,
+    Int64,
+    Float64,
+    Date32,
+    Date64,
+    TimestampMicro,
+    TimestampNano,
+    TimestampMicroUTC,
+    TimestampNanoUTC,
+    Decimal128,
+    String,
+    Binary,
+)
+from bpln_stubs._table_schema import TableSchema
 
 __all__ = [
     "__version__",
@@ -52,15 +72,32 @@ __all__ = [
     "RunnerNodeInfo",
     "UserInfo",
     # Decorators and model definitions.
-    "Model",
-    "ModelCacheStrategy",
-    "ModelMaterializationStrategy",
-    "Parameter",
     "expectation",
     "extras",
     "model",
     "python",
     "resources",
+    "ModelCacheStrategy",
+    "ModelMaterializationStrategy",
+    # Entity Types
+    "Model",
+    "Parameter",
+    "TableField",
+    "TableSchema",
+    # DataTypes
+    "Bool",
+    "Int32",
+    "Int64",
+    "Float64",
+    "Date32",
+    "Date64",
+    "TimestampMicro",
+    "TimestampNano",
+    "TimestampMicroUTC",
+    "TimestampNanoUTC",
+    "Decimal128",
+    "String",
+    "Binary",
 ]
 
 import pathlib
@@ -823,7 +860,7 @@ class Client:
         EXPERIMENTAL: Get a job by ID.
 
         ```python
-        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
+        #! my_job: bauplan.schema.Job = ...  # ty: ignore[invalid-assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -848,7 +885,7 @@ class Client:
         EXPERIMENTAL: Get context for a job by ID.
 
         ```python
-        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
+        #! my_job: bauplan.schema.Job = ...  # ty: ignore[invalid-assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -877,7 +914,7 @@ class Client:
         EXPERIMENTAL: Get context for multiple jobs.
 
         ```python
-        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
+        #! my_job: bauplan.schema.Job = ...  # ty: ignore[invalid-assignment]
         import bauplan
         client = bauplan.Client()
 
@@ -898,7 +935,7 @@ class Client:
         EXPERIMENTAL: Get logs for a job.
 
         ```python
-        #! my_job: bauplan.schema.Job = ...  # type: ignore[assignment]
+        #! my_job: bauplan.schema.Job = ...  # ty: ignore[invalid-assignment]
         import bauplan
         client = bauplan.Client()
 

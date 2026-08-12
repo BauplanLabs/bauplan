@@ -1,0 +1,7 @@
+project:
+  id: bb37ab00-e14b-591f-4fe9-d091f2f63935
+  name: type contracts - missing schema
+
+defaults:
+  python:
+    version: "3.13"

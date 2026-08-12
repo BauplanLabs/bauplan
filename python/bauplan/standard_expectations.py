@@ -23,7 +23,7 @@ def _calculate_string_concatenation(
     The function does attempt type conversion to string if a column is not of type pa.string().
 
     """
-    fields = []
+    fields: list[pa.Array] = []
     for column in columns:
         fields.append(
             pc.cast(table[column], pa.string())
@@ -31,7 +31,7 @@ def _calculate_string_concatenation(
             else table[column]
         )
     # last item needs to be the separator
-    fields.append(separator)
+    fields.append(pa.array([separator] * len(fields[0])))
 
     return pc.binary_join_element_wise(*fields)
 

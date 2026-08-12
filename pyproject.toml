@@ -75,6 +75,7 @@ dev = [
 [tool.maturin]
 python-source = "python"
 module-name = "bauplan._internal"
+python-packages = ["bpln_stubs"]
 bindings = "pyo3"
 features = ["pyo3/extension-module", "python"]
 data = "python/data"
@@ -84,6 +85,7 @@ include = [
     # https://github.com/rust-lang/cargo/issues/5933
     { path = "LICENSE-APACHE", format = "sdist" },
     { path = "LICENSE-MIT", format = "sdist" },
+    { path = "python/data/**/*", format = "sdist" },
 ]
 
 [tool.ruff]
