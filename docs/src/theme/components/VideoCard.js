@@ -1,7 +1,9 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import { Play } from "lucide-react";
 
 const PLAYER_ORIGIN = "https://www.youtube-nocookie.com";
+
+const thumbnailUrl = (id, size) => `https://i.ytimg.com/vi/${id}/${size}.jpg`;
 
 export function VideoCardGrid({ children }) {
   return <div className="grid md:grid-cols-3 gap-4 mb-6">{children}</div>;
@@ -9,6 +11,16 @@ export function VideoCardGrid({ children }) {
 
 export function VideoCard({ id, title, duration, blurb, start }) {
   const [playing, setPlaying] = useState(false);
+  const [thumbnail, setThumbnail] = useState(thumbnailUrl(id, "maxresdefault"));
+
+  const rejectPlaceholder = useCallback(
+    (img) => {
+      if (img?.complete && img.naturalWidth <= 120) {
+        setThumbnail(thumbnailUrl(id, "hqdefault"));
+      }
+    },
+    [id],
+  );
 
   const params = new URLSearchParams({ rel: "0", autoplay: "1" });
   if (start) {
@@ -42,10 +54,10 @@ export function VideoCard({ id, title, duration, blurb, start }) {
             className="group absolute inset-0 h-full w-full cursor-pointer border-0 bg-transparent p-0"
           >
             <img
-              src={`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`}
-              onError={(e) => {
-                e.currentTarget.src = `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
-              }}
+              ref={rejectPlaceholder}
+              src={thumbnail}
+              onLoad={(e) => rejectPlaceholder(e.currentTarget)}
+              onError={() => setThumbnail(thumbnailUrl(id, "hqdefault"))}
               alt=""
               loading="lazy"
               className="absolute inset-0 h-full w-full object-cover"

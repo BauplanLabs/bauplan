@@ -22,6 +22,12 @@ export default {
     },
     {
       type: "category",
+      label: "Agents",
+      collapsed: true,
+      items: ["agents/overview", "agents/skills", "agents/mcp", "agents/context"],
+    },
+    {
+      type: "category",
       label: "Platform Overview",
       collapsed: true,
       link: {
@@ -61,12 +67,6 @@ export default {
           ],
         },
       ],
-    },
-    {
-      type: "category",
-      label: "Agents",
-      collapsed: true,
-      items: ["agents/overview", "agents/skills", "agents/mcp", "agents/context"],
     },
     {
       type: "category",
