@@ -157,24 +157,36 @@ parameters:
 ```
 
 ```python title="models.py"
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
+
+class PickupTimes(bauplan.TableSchema):
+    """Pickup timestamps for the filtered rides."""
+
+    pickup_datetime: bauplan.TimestampMicroUTC
 
 # models.py
 @bauplan.model(materialization_strategy='REPLACE')
 @bauplan.python('3.11', pip={'pandas': '2.2.0'})
 def filtered_taxi_rides_parameters(
-        data=bauplan.Model(
-            "taxi_fhvhv",
-            columns=['pickup_datetime'],
-            filter="pickup_datetime >= $start_time"
-        ),
-):
-    data = data.to_pandas()
+        taxi_table: Annotated[
+            pyarrow.Table,
+            bauplan.Model(
+                "taxi_fhvhv",
+                projection_schema=PickupTimes,
+                filter="pickup_datetime >= $start_time"
+            ),
+        ],
+) -> Annotated[pyarrow.Table, PickupTimes]:
+    taxi_df = taxi_table.to_pandas()
 
-    print(f"\nEarliest pickup in result:, {data['pickup_datetime'].min()}")
-    print(f"\nRows returned:, {len(data)}\n")
+    print(f"\nEarliest pickup in result:, {taxi_df['pickup_datetime'].min()}")
+    print(f"\nRows returned:, {len(taxi_df)}\n")
 
-    return data
+    return pyarrow.Table.from_pandas(taxi_df)
 ```
 
 You can set `start_time` when running the pipeline through DBOS:

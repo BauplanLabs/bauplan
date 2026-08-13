@@ -69,7 +69,7 @@ bauplan table get bauplan.ecommerce_users
 The first model reads from the lakehouse and filters raw session events
 down to completed purchases. Two things to note here:
 
-- **I/O pushdown.** The `columns` and `filter` parameters on
+- **I/O pushdown.** The `projection_schema` and `filter` parameters on
   `bauplan.Model()` push restrictions down to the Iceberg layer, so the
   function only receives the data it needs. On large tables this can
   reduce data transfer by orders of magnitude.
@@ -78,22 +78,48 @@ down to completed purchases. Two things to note here:
   for why.
 
 ```python title="models.py"
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
 
 
-@bauplan.model(
-    columns=['event_time', 'product_id', 'category_code',
-             'brand', 'price', 'user_id'],
-)
+class SessionEvents(bauplan.TableSchema):
+    """Raw session events read from the catalog."""
+
+    event_time: bauplan.String
+    event_type: bauplan.String
+    product_id: bauplan.Int64
+    category_code: bauplan.String
+    brand: bauplan.String
+    price: bauplan.Float64
+    user_id: bauplan.Int64
+
+
+class PurchaseEvents(bauplan.TableSchema):
+    """Completed purchases, with `event_type` dropped."""
+
+    event_time: bauplan.String
+    product_id: bauplan.Int64
+    category_code: bauplan.String
+    brand: bauplan.String
+    price: bauplan.Float64
+    user_id: bauplan.Int64
+
+
+@bauplan.model()
 @bauplan.python('3.11', pip={'polars': '1.15.0'})
 def purchase_events(
-    raw=bauplan.Model(
-        'ecommerce_sessions',
-        columns=['event_time', 'event_type', 'product_id',
-                 'category_code', 'brand', 'price', 'user_id'],
-        filter="event_type = 'purchase' AND price > 0",
-    )
-):
+    raw: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            'ecommerce_sessions',
+            projection_schema=SessionEvents,
+            filter="event_type = 'purchase' AND price > 0",
+        ),
+    ],
+) -> Annotated[pyarrow.Table, PurchaseEvents]:
     import polars as pl
 
     df = pl.from_arrow(raw)
@@ -106,7 +132,7 @@ def purchase_events(
     return result.to_arrow()
 ```
 
-The `columns` list on `@bauplan.model()` declares the expected output
+The schema in the model's return annotation declares the expected output
 schema. Bauplan validates the actual output against it, catching schema
 drift before it reaches downstream consumers.
 
@@ -115,27 +141,58 @@ drift before it reaches downstream consumers.
 This model takes two inputs - Bauplan resolves dependencies automatically
 based on the `bauplan.Model()` references.
 
-**Notice** that each input uses `columns` to select only what it needs:
+**Notice** that each input uses `projection_schema` to select only what it needs:
 
 ```python title="models.py"
 ...
 
-@bauplan.model(
-    columns=['event_time', 'category_code', 'brand', 'price',
-             'customer_segment'],
-)
+#! from typing import Annotated
+
+class PurchaseInputs(bauplan.TableSchema):
+    """Purchase columns needed for the join."""
+
+    event_time: bauplan.String
+    category_code: bauplan.String
+    brand: bauplan.String
+    price: bauplan.Float64
+    user_id: bauplan.Int64
+
+
+class UserSegments(bauplan.TableSchema):
+    """Segment assignment for each user."""
+
+    user_id: bauplan.Int64
+    customer_segment: bauplan.String
+
+
+class SegmentedPurchases(bauplan.TableSchema):
+    """Purchases labelled with the customer segment."""
+
+    event_time: bauplan.String
+    category_code: bauplan.String
+    brand: bauplan.String
+    price: bauplan.Float64
+    customer_segment: bauplan.String
+
+
+@bauplan.model()
 @bauplan.python('3.11', pip={'polars': '1.15.0'})
 def purchases_by_segment(
-    purchases=bauplan.Model(
-        'purchase_events',
-        columns=['event_time', 'category_code', 'brand',
-                 'price', 'user_id'],
-    ),
-    users=bauplan.Model(
-        'ecommerce_users',
-        columns=['user_id', 'customer_segment'],
-    ),
-):
+    purchases: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            'purchase_events',
+            projection_schema=PurchaseInputs,
+        ),
+    ],
+    users: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            'ecommerce_users',
+            projection_schema=UserSegments,
+        ),
+    ],
+) -> Annotated[pyarrow.Table, SegmentedPurchases]:
     import polars as pl
 
     purchases_df = pl.from_arrow(purchases)
@@ -168,18 +225,37 @@ it requires a full data copy and uses more memory.
 ```python title="models.py"
 ...
 
-@bauplan.model(
-    columns=['date', 'customer_segment', 'total_purchases',
-             'total_revenue', 'avg_order_value'],
-    materialization_strategy='REPLACE',
-)
+#! from typing import Annotated
+
+class SegmentStatsInputs(bauplan.TableSchema):
+    """Columns needed to compute the daily statistics."""
+
+    event_time: bauplan.String
+    price: bauplan.Float64
+    customer_segment: bauplan.String
+
+
+class DailySegmentStats(bauplan.TableSchema):
+    """Daily purchase statistics per customer segment."""
+
+    date: bauplan.String
+    customer_segment: bauplan.String
+    total_purchases: bauplan.Int64
+    total_revenue: bauplan.Float64
+    avg_order_value: bauplan.Float64
+
+
+@bauplan.model(materialization_strategy='REPLACE')
 @bauplan.python('3.11', pip={'polars': '1.15.0'})
 def daily_segment_stats(
-    data=bauplan.Model(
-        'purchases_by_segment',
-        columns=['event_time', 'price', 'customer_segment'],
-    )
-):
+    data: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            'purchases_by_segment',
+            projection_schema=SegmentStatsInputs,
+        ),
+    ],
+) -> Annotated[pyarrow.Table, DailySegmentStats]:
     import polars as pl
 
     df = pl.from_arrow(data)
@@ -201,18 +277,37 @@ def daily_segment_stats(
 ```python title="models.py"
 ...
 
-@bauplan.model(
-    columns=['date', 'customer_segment', 'total_purchases',
-             'total_revenue', 'avg_order_value'],
-    materialization_strategy='REPLACE',
-)
+#! from typing import Annotated
+
+class SegmentStatsInputs(bauplan.TableSchema):
+    """Columns needed to compute the daily statistics."""
+
+    event_time: bauplan.String
+    price: bauplan.Float64
+    customer_segment: bauplan.String
+
+
+class DailySegmentStats(bauplan.TableSchema):
+    """Daily purchase statistics per customer segment."""
+
+    date: bauplan.String
+    customer_segment: bauplan.String
+    total_purchases: bauplan.Int64
+    total_revenue: bauplan.Float64
+    avg_order_value: bauplan.Float64
+
+
+@bauplan.model(materialization_strategy='REPLACE')
 @bauplan.python('3.11', pip={'duckdb': '1.0.0'})
 def daily_segment_stats(
-    data=bauplan.Model(
-        'purchases_by_segment',
-        columns=['event_time', 'price', 'customer_segment'],
-    )
-):
+    data: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            'purchases_by_segment',
+            projection_schema=SegmentStatsInputs,
+        ),
+    ],
+) -> Annotated[pyarrow.Table, DailySegmentStats]:
     import duckdb
 
     con = duckdb.connect()
