@@ -79,7 +79,13 @@ jobs:
 
       # Run typechecking after building, so that it also checks the generated mdx files.
       - name: Typecheck doc snippets
-        run: cargo test --test snippets -- docs_website
+        run: cargo test --test snippets
+
+      # `uv add bauplan` installs the latest release, not this branch, so the
+      # snippets also have to work on the oldest SDK we support. Tag a snippet
+      # ```python since:<version> when it documents a newer API.
+      - name: Typecheck doc snippets against the minimum SDK
+        run: just check-docs-release
 
       # By default we ship a strict robots.txt (Disallow: /) so the public
       # dev/qa sites don't get indexed. In prod we swap in a permissive

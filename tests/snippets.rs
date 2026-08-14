@@ -21,12 +21,51 @@ struct Snippet {
     code: String,
     path: PathBuf,
     line: usize,
+    /// From a `since:0.2.0` tag on the fence. The snippet is skipped when we
+    /// check against an SDK older than this.
+    since: Option<Version>,
 }
 
 impl fmt::Display for Snippet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}:{}", self.path.display(), self.line)
     }
+}
+
+type Version = (u64, u64, u64);
+
+/// The leading `major.minor.patch` of a version, ignoring any prerelease
+/// suffix. PyPI writes release candidates as `0.2.0rc1` and cargo writes them
+/// as `0.2.0-rc.1`; an API added in 0.2.0 is present in both, so for our
+/// purposes they compare equal to the release.
+fn parse_version(raw: &str) -> anyhow::Result<Version> {
+    let re = Regex::new(r"^(\d+)\.(\d+)\.(\d+)").unwrap();
+    let caps = re
+        .captures(raw)
+        .with_context(|| format!("can't read a version out of {raw:?}"))?;
+
+    Ok((caps[1].parse()?, caps[2].parse()?, caps[3].parse()?))
+}
+
+/// The version of bauplan installed in `env`. This doubles as a check that the
+/// environment exists and has the SDK in it, so a bad BAUPLAN_SNIPPET_ENV
+/// fails loudly rather than quietly checking nothing.
+fn installed_version(env: &Path) -> anyhow::Result<Version> {
+    let python = env.join("bin/python");
+    let output = Command::new(&python)
+        .args(["-c", "import bauplan; print(bauplan.__version__)"])
+        .output()
+        .with_context(|| format!("failed to run {}", python.display()))?;
+
+    if !output.status.success() {
+        bail!(
+            "no bauplan installed in {}:\n{}",
+            env.display(),
+            output.stderr.to_str_lossy()
+        );
+    }
+
+    parse_version(output.stdout.to_str_lossy().trim())
 }
 
 fn include_entry(entry: &walkdir::DirEntry) -> bool {
@@ -89,6 +128,15 @@ fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec
             continue;
         }
 
+        let mut since = None;
+        for t in tag.split_whitespace() {
+            if let Some(v) = t.strip_prefix("since:") {
+                since = Some(parse_version(v).with_context(|| {
+                    format!("{}:{line}: bad since: tag", path.display())
+                })?);
+            }
+        }
+
         let code = code_node.node.utf8_text(src.as_bytes())?;
 
         // In rare cases (bulleted lists), the entire block might be indented.
@@ -106,6 +154,7 @@ fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec
             code: re.replace_all(&code, "").into_owned(),
             path: path.to_owned(),
             line: line + 1, // Editors show files 1-indexed.
+            since,
         });
     }
 
@@ -141,15 +190,32 @@ fn extract_pyi_snippets(path: &Path, src: &str, snippets: &mut Vec<Snippet>) -> 
 
 fn typecheck_snippets(project_dir: &Path, snippets: &[Snippet]) -> anyhow::Result<()> {
     let dir = tempfile::tempdir()?;
-    let mut paths = Vec::new();
+
+    // Set by the `check-docs-release` recipe to an environment with a released
+    // bauplan in it. Unset means check against this checkout.
+    let env = std::env::var_os("BAUPLAN_SNIPPET_ENV").map(PathBuf::from);
+    let target = env.as_deref().map(installed_version).transpose()?;
+
+    let mut checked = Vec::new();
+    let mut skipped = 0;
 
     for (i, snippet) in snippets.iter().enumerate() {
+        // The snippet documents an API the target SDK doesn't have yet.
+        if let (Some(target), Some(since)) = (target, snippet.since)
+            && since > target
+        {
+            skipped += 1;
+            continue;
+        }
+
         let path = dir.path().join(format!("snippet_{i}.py"));
         let mut file = fs::File::create(&path)?;
         writeln!(file, "import bauplan\nimport pyarrow\n")?;
         file.write_all(snippet.code.as_bytes())?;
-        paths.push(path);
+        checked.push((path, snippet));
     }
+
+    let paths: Vec<&Path> = checked.iter().map(|(p, _)| p.as_path()).collect();
 
     let color = if std::io::stderr().is_terminal() {
         "always"
@@ -157,26 +223,100 @@ fn typecheck_snippets(project_dir: &Path, snippets: &[Snippet]) -> anyhow::Resul
         "never"
     };
 
-    let output = Command::new("uv")
-        .args(["run", "ty", "check", "--color", color, "--project"])
-        .arg(project_dir)
+    let mut cmd = Command::new("uv");
+    cmd.arg("run")
+        .args(["--project".as_ref(), project_dir.as_os_str()])
+        .args(["ty", "check", "--color", color]);
+
+    match &env {
+        // ty searches the directory it runs from before it searches
+        // site-packages, so we run from the snippet directory. From the repo it
+        // would find python/bauplan first and never look at the installed copy,
+        // which would check the working tree while claiming otherwise.
+        Some(env) => cmd.current_dir(dir.path()).arg("--python").arg(env),
+        None => cmd.arg("--project").arg(project_dir),
+    };
+
+    let output = cmd
         .args(&paths)
         .output()
         .context("failed to run ty")?;
 
     if output.status.success() {
-        eprintln!("{} snippets checked, all passed", snippets.len());
+        match target {
+            Some((x, y, z)) => eprintln!(
+                "{} snippets checked against bauplan {x}.{y}.{z}, all passed \
+                 ({skipped} skipped as newer)",
+                checked.len(),
+            ),
+            None => eprintln!("{} snippets checked, all passed", checked.len()),
+        }
+
         return Ok(());
     }
 
     // Map temp filenames back to original locations.
     let mut msg = [&output.stdout[..], &output.stderr[..]].concat();
-    for (i, snippet) in snippets.iter().enumerate() {
-        let tmp_path = dir.path().join(format!("snippet_{i}.py"));
-        msg = msg.replace(tmp_path.to_str().unwrap(), snippet.to_string());
+    for (path, snippet) in &checked {
+        msg = msg.replace(path.to_str().unwrap(), snippet.to_string());
+    }
+
+    if let Some((x, y, z)) = target {
+        msg.extend_from_slice(
+            format!(
+                "\nnote: checked against bauplan {x}.{y}.{z}. Tag a snippet \
+                 ```python since:<version> if it documents a newer API.\n"
+            )
+            .as_bytes(),
+        );
     }
 
     bail!("errors in snippets:\n{}", msg.to_str_lossy());
+}
+
+/// Checking against a released SDK only means anything if ty resolves `bauplan`
+/// from the environment we point it at. If this checkout's copy leaks onto the
+/// search path it shadows that, and every snippet passes while checking the
+/// working tree instead. That failure is silent, so pin it down here: against
+/// an empty environment, `bauplan` has to come up missing.
+#[test]
+fn snippet_env_is_not_shadowed() -> anyhow::Result<()> {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let dir = tempfile::tempdir()?;
+    let venv = dir.path().join("venv");
+
+    let status = Command::new("uv")
+        .args(["venv", "-q"])
+        .arg(&venv)
+        .status()
+        .context("failed to run uv venv")?;
+    if !status.success() {
+        bail!("failed to create an empty venv");
+    }
+
+    let probe = dir.path().join("probe.py");
+    fs::write(&probe, "import bauplan\n")?;
+
+    let output = Command::new("uv")
+        .arg("run")
+        .args(["--project".as_ref(), root.as_os_str()])
+        .args(["ty", "check", "--python"])
+        .arg(&venv)
+        .arg(&probe)
+        .current_dir(dir.path())
+        .output()
+        .context("failed to run ty")?;
+
+    let msg = [&output.stdout[..], &output.stderr[..]].concat();
+    if !msg.contains_str("Cannot resolve imported module `bauplan`") {
+        bail!(
+            "ty resolved `bauplan` from an empty environment, so the snippet \
+             check is not isolated from this checkout:\n{}",
+            msg.to_str_lossy()
+        );
+    }
+
+    Ok(())
 }
 
 #[test]

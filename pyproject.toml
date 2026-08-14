@@ -72,6 +72,13 @@ dev = [
     "temporalio>=1.24.0",
 ]
 
+# The oldest SDK the doc snippets have to keep working on. `uv add bauplan`
+# installs the latest release, not this checkout, so `just check-docs-release`
+# typechecks the docs against this version too. Raising it is a deliberate
+# decision: it drops support for readers who haven't upgraded.
+[tool.bauplan.docs]
+min-sdk = "0.1.16"
+
 [tool.maturin]
 python-source = "python"
 module-name = "bauplan._internal"
