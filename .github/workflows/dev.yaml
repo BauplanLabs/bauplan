@@ -1,0 +1,251 @@
+name: Dev build
+
+# Builds and publishes an unreleased dev version of the wheels and CLI from a
+# branch, without tagging, changing the changelog, or deploying docs. Intended
+# for validating other services against unmerged work.
+#
+# Nothing here writes to the repo: the version bump is applied to the checkout
+# in the runner and thrown away.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to build (e.g. the head branch of a PR)"
+        required: true
+        type: string
+      version:
+        description: "Override version (Cargo semver, e.g. 0.2.0-dev.7)"
+        required: false
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      version:
+        required: false
+        type: string
+
+permissions: {}
+
+concurrency:
+  group: dev-build-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Work out the dev version string once, so every matrix job stamps the same
+  # thing.
+  prepare:
+    name: Prepare
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    if: ${{ github.repository_owner == 'BauplanLabs' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    permissions:
+      contents: read # Clone repo at the requested ref
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          cache: false
+      - name: Compute dev version
+        id: version
+        env:
+          BUILD_VER_OVERRIDE: ${{ inputs.version }}
+        run: |
+          if [ -n "$BUILD_VER_OVERRIDE" ]; then
+            version="${BUILD_VER_OVERRIDE#v}"
+          else
+            current=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name=="bauplan") | .version')
+            # Drop any existing pre-release (0.2.0-rc.1 -> 0.2.0) so dev builds
+            # don't stack pre-release identifiers.
+            version="${current%%-*}-dev.${GITHUB_RUN_NUMBER}"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "Building dev version ${version} from ${GITHUB_SHA}"
+
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read # Clone repo at the requested ref
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: blacksmith-16vcpu-ubuntu-2404
+            os: linux
+            arch: amd64
+            pythons: "python3.11 python3.12 python3.13 python3.14"
+          - runner: blacksmith-16vcpu-ubuntu-2404-arm
+            os: linux
+            arch: arm64
+            pythons: "python3.11 python3.12 python3.13 python3.14"
+          - runner: macos-latest
+            os: macos
+            arch: arm64
+            pythons: "python3.11 python3.12 python3.13 python3.14"
+          - runner: windows-latest
+            os: windows
+            arch: amd64
+            pythons: "python3.11 python3.12 python3.13 python3.14"
+          - runner: windows-11-arm
+            os: windows
+            arch: arm64
+            # python-build-standalone only publishes Windows ARM64 builds from 3.12 onwards.
+            pythons: "python3.12 python3.13 python3.14"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+
+      - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+            ~/.local/share/uv/
+            ~/Library/Caches/uv/
+          key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
+
+      # The bump only lives in the runner's checkout; it is never committed.
+      - name: Stamp dev version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          # The first bare `version = ` in Cargo.toml is [workspace.package].
+          awk -v v="$VERSION" '
+            /^version = / && !done { print "version = \"" v "\""; done = 1; next }
+            { print }
+          ' Cargo.toml > Cargo.toml.new
+          mv Cargo.toml.new Cargo.toml
+
+          if ! grep -q "^version = \"${VERSION}\"$" Cargo.toml; then
+            echo "::error::Failed to stamp version ${VERSION} into Cargo.toml"
+            exit 1
+          fi
+
+      - name: Install Python versions
+        env:
+          PYTHONS: ${{ matrix.pythons }}
+        run: uv python install $PYTHONS
+
+      - name: Build CLI binary
+        env:
+          BIN_EXT: ${{ matrix.os == 'windows' && '.exe' || '' }}
+        run: |
+          cargo build --release --bin bauplan
+          rm -f python/data/scripts/.gitkeep python/data/scripts/.gitignore
+          cp "target/release/bauplan${BIN_EXT}" python/data/scripts/
+
+      - name: Build wheels
+        uses: PyO3/maturin-action@04ac600d27cdf7a9a280dadf7147097c42b757ad # v1.50.1
+        with:
+          args: >-
+            --release --out dist
+            -i ${{ matrix.pythons }}
+          docker-options: -v ~/.cargo:/root/.cargo
+          before-script-linux: |
+            ARCH=$(uname -m | sed 's/aarch64/aarch_64/')
+            curl -sL "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-${ARCH}.zip" -o /tmp/protoc.zip
+            unzip -qj /tmp/protoc.zip bin/protoc -d /tmp
+            export PATH="/tmp:$PATH"
+
+      # maturin normalizes the Cargo semver into a PEP 440 version, and the
+      # result is what other services pin against. Surface it, and fail if the
+      # pre-release got dropped: an unmarked 0.2.0 would permanently occupy the
+      # real release's version on PyPI.
+      - name: Check wheel version
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          REF: ${{ inputs.ref }}
+          OS: ${{ matrix.os }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          wheel=$(ls dist/*.whl | head -n1)
+          wheel_version=$(basename "$wheel" | cut -d- -f2)
+          echo "Cargo version ${VERSION} -> PEP 440 ${wheel_version}"
+
+          if [ "$wheel_version" = "${VERSION%%-*}" ]; then
+            echo "::error::maturin dropped the pre-release from ${VERSION};" \
+                 "wheels would collide with the real ${wheel_version} release"
+            exit 1
+          fi
+
+          {
+            echo "### Dev build \`${wheel_version}\`"
+            echo
+            echo "- ref: \`${REF}\` (\`${GITHUB_SHA}\`)"
+            echo "- platform: \`${OS}/${ARCH}\`"
+            echo
+            echo '```'
+            echo "pip install 'bauplan==${wheel_version}'"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Prefixed with dev- so these can never be picked up by the release
+      # workflow's `wheels-*` / `cli-tarball-*` globs.
+      - name: Upload wheels
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: dev-wheels-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist
+          retention-days: 14
+
+      - name: Create CLI tarball
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+          OS: ${{ matrix.os }}
+          ARCH: ${{ matrix.arch }}
+          BIN_EXT: ${{ matrix.os == 'windows' && '.exe' || '' }}
+        run: |
+          dir="bauplan-${VERSION}"
+          mkdir -p "${RUNNER_TEMP}/${dir}"
+          cp "target/release/bauplan${BIN_EXT}" README.md CHANGELOG.md LICENSE* \
+            "${RUNNER_TEMP}/${dir}"
+          tar -C "${RUNNER_TEMP}" --numeric-owner \
+            -cvzf "bauplan-${VERSION}-${OS}-${ARCH}.tar.gz" "${dir}"
+
+      - name: Upload CLI tarball
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: dev-cli-tarball-${{ matrix.os }}-${{ matrix.arch }}
+          path: "bauplan-${{ needs.prepare.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz"
+          retention-days: 14
+
+  # Push the dev wheels to PyPI so other services can pin the version. There is
+  # no GitHub release to attach the CLI tarballs to; those stay as artifacts.
+  publish:
+    name: Publish to PyPI
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write # Trusted publishing to PyPI
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+      - name: Download artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: dev-wheels-*
+
+      - name: Publish wheels to PyPI
+        run: uv publish --trusted-publishing always 'dev-wheels-*/*'
