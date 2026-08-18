@@ -225,6 +225,7 @@ class JobKind:
     The kind/type of a job.
     """
 
+    EXTERNAL_TABLE_CREATE: Final[JobKind]
     IMPORT_PLAN_APPLY: Final[JobKind]
     IMPORT_PLAN_CREATE: Final[JobKind]
     QUERY: Final[JobKind]

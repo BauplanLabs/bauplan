@@ -130,6 +130,7 @@ pub enum JobKind {
     TablePlanCreate,
     TablePlanCreateApply,
     TableImport,
+    ExternalTableCreate,
 }
 
 impl std::fmt::Display for JobKind {
@@ -143,6 +144,7 @@ impl std::fmt::Display for JobKind {
             JobKind::TablePlanCreate => write!(f, "TablePlanCreate"),
             JobKind::TablePlanCreateApply => write!(f, "TablePlanCreateApply"),
             JobKind::TableImport => write!(f, "TableImport"),
+            JobKind::ExternalTableCreate => write!(f, "ExternalTableCreate"),
         }
     }
 }
@@ -158,6 +160,7 @@ impl From<commanderpb::JobKind> for JobKind {
             commanderpb::JobKind::TablePlanCreate => Self::TablePlanCreate,
             commanderpb::JobKind::TablePlanCreateApply => Self::TablePlanCreateApply,
             commanderpb::JobKind::TableDataImport => Self::TableImport,
+            commanderpb::JobKind::ExternalTableCreate => Self::ExternalTableCreate,
         }
     }
 }
@@ -173,6 +176,7 @@ impl From<JobKind> for commanderpb::JobKind {
             JobKind::TablePlanCreate => Self::TablePlanCreate,
             JobKind::TablePlanCreateApply => Self::TablePlanCreateApply,
             JobKind::TableImport => Self::TableDataImport,
+            JobKind::ExternalTableCreate => Self::ExternalTableCreate,
         }
     }
 }
@@ -192,6 +196,7 @@ impl std::str::FromStr for JobKind {
             "table-plan-create" | "tableplancreate" => Ok(Self::TablePlanCreate),
             "table-plan-create-apply" | "tableplancreateapply" => Ok(Self::TablePlanCreateApply),
             "table-import" | "tableimport" | "table-data-import" => Ok(Self::TableImport),
+            "external-table-create" | "externaltablecreate" => Ok(Self::ExternalTableCreate),
             _ => Err(format!("invalid job kind: {s}")),
         }
     }

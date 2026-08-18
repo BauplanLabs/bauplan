@@ -27,6 +27,7 @@ pub enum JobKindArg {
     TablePlanCreate,
     TablePlanApply,
     TableImport,
+    ExternalTableCreate,
 }
 
 impl From<JobKindArg> for commanderpb::JobKind {
@@ -39,6 +40,7 @@ impl From<JobKindArg> for commanderpb::JobKind {
             JobKindArg::TablePlanCreate => Self::TablePlanCreate,
             JobKindArg::TablePlanApply => Self::TablePlanCreateApply,
             JobKindArg::TableImport => Self::TableDataImport,
+            JobKindArg::ExternalTableCreate => Self::ExternalTableCreate,
         }
     }
 }
