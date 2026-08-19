@@ -1,4 +1,11 @@
 
+## [0.2.0-rc.2] - 2026-08-19
+
+### New Features
+
+- [cli] Removed BPLN_USERNAME env variable (3c81f3930677d84b37c4fd64f15a2b34a5082389)
+- Add external-table-create job kind, fix unspecified name (a9fc429f7212dc58751a4be202746ac8c1f75294)
+
 ## [0.2.0-rc.1] - 2026-07-06
 
 ### New Features
