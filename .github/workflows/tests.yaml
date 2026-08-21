@@ -13,10 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: Test
+  lint:
+    name: Lint
     runs-on: blacksmith-16vcpu-ubuntu-2404
-    environment: test
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -29,7 +28,23 @@ jobs:
 
       - uses: ./.github/actions/setup-caches
 
-      - run: mise x -- just test
+      - run: mise x -- just lint
+
+  test-integration:
+    name: Integration Tests
+    # Skip on forked PRs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    environment: test
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+
+      - uses: ./.github/actions/setup-caches
+
+      - run: mise x -- just test-integration
         env:
           BAUPLAN_API_ENDPOINT: https://api.use1.aqa.bauplanlabs.com
           BAUPLAN_API_KEY: ${{ secrets.BAUPLAN_API_KEY }}
