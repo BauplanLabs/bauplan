@@ -1,3 +1,4 @@
+use crate::cli::config::config_set;
 use crate::cli::{bauplan, test_branch, username};
 use predicates::prelude::PredicateBooleanExt as _;
 use predicates::str::{contains, starts_with};
@@ -88,6 +89,32 @@ fn delete_if_exists() {
         .args(["branch", "delete", &branch])
         .assert()
         .failure();
+}
+
+#[test]
+fn delete_checked_out() {
+    let home = tempfile::tempdir().unwrap();
+    let api_key = "bpln_test_key";
+    let api_endpoint = "https://api.use1.adev.bauplanlabs.com";
+    let active_branch = "checked_out_branch";
+
+    // We want to avoid checking out to the new branch.
+    // Instead, we hijack the config so that we set the branch as active,
+    // without really creating it.
+    config_set(&home, "api_endpoint", api_endpoint);
+    config_set(&home, "api_key", api_key);
+    config_set(&home, "active_branch", active_branch);
+
+    bauplan()
+        .env("HOME", home.path())
+        .env("USERPROFILE", home.path())
+        .env_remove("BAUPLAN_PROFILE")
+        .env_remove("BAUPLAN_API_KEY")
+        .env_remove("BAUPLAN_API_ENDPOINT")
+        .args(["branch", "delete", active_branch])
+        .assert()
+        .failure()
+        .stderr(contains("which you are currently on"));
 }
 
 #[test]

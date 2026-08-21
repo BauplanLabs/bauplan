@@ -22,7 +22,7 @@ fn config_set_writes_supported_profile_settings() -> Result<()> {
     Ok(())
 }
 
-fn config_set(home: &tempfile::TempDir, name: &str, value: &str) {
+pub(crate) fn config_set(home: &tempfile::TempDir, name: &str, value: &str) {
     crate::bauplan()
         .env("HOME", home.path())
         .env("USERPROFILE", home.path())
