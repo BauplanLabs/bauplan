@@ -333,9 +333,7 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
     }
 
     eprintln!("Created branch \"{branch_name}\"");
-    anstream::eprintln!(
-        "{GREEN}TIP:{GREEN:#} To switch to the new branch, run:",
-    );
+    anstream::eprintln!("{GREEN}TIP:{GREEN:#} To switch to the new branch, run:");
     eprintln!("\tbauplan checkout {branch_name:?}");
     Ok(())
 }
@@ -347,6 +345,10 @@ fn delete_branch(cli: &Cli, args: BranchRmArgs) -> anyhow::Result<()> {
     } = args;
 
     let req = DeleteBranch { name: &branch_name };
+
+    if cli.profile.active_branch.as_deref().unwrap_or("main") == branch_name.as_str() {
+        bail!("cannot delete the active branch {branch_name:?}");
+    }
 
     if let Err(e) = cli.roundtrip(req) {
         if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::BranchNotFound { .. })) {
