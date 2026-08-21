@@ -39,10 +39,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    name: Deploy
-    permissions:
-      id-token: write # Required for AWS OIDC authentication
+  build:
+    name: Build
     runs-on: blacksmith-16vcpu-ubuntu-2404
     environment: ${{ inputs.environment || 'dev' }}
     steps:
@@ -61,15 +59,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ runner.arch }}-bun-
 
-      # Configure AWS credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
-        with:
-          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
-          role-session-name: DeployDocsWebsite
-          aws-region: ${{ vars.AWS_REGION }}
-          mask-aws-account-id: false
-
       - name: docusaurus build
         working-directory: ./docs
         env:
@@ -86,6 +75,38 @@ jobs:
       # robots.txt that allows crawling and points crawlers at the sitemap.
       - if: inputs.environment == 'prod'
         run: cp docs/prod-robots.txt /tmp/build/robots.txt
+
+      # Hand the built site to the deploy job.
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: docs-build
+          path: /tmp/build
+          include-hidden-files: true
+          retention-days: 1
+
+  deploy:
+    name: Deploy
+    needs: build
+    # Skip on fork PRs.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      id-token: write # Required for AWS OIDC authentication
+    runs-on: blacksmith-16vcpu-ubuntu-2404
+    environment: ${{ inputs.environment || 'dev' }}
+    steps:
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: docs-build
+          path: /tmp/build
+
+      # Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        with:
+          role-to-assume: ${{ vars.AWS_OIDC_ROLE_ARN }}
+          role-session-name: DeployDocsWebsite
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: false
 
       - name: aws s3 sync
         run: aws s3 sync /tmp/build s3://${DOCS_S3_BUCKET} --delete
