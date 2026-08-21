@@ -9,69 +9,6 @@ Python environments, with examples of how to use them.
 import functools
 from typing import Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
-ModelMaterializationStrategy = Literal[
-    "NONE", "REPLACE", "APPEND", "OVERWRITE_PARTITIONS"
-]
-ModelCacheStrategy = Literal["NONE", "DEFAULT"]
-
-
-def model(
-    name: Optional[str] = None,
-    columns: Optional[List[str]] = None,
-    partitioned_by: Optional[Union[str, List[str], Tuple[str, ...]]] = None,
-    materialization_strategy: Optional[ModelMaterializationStrategy] = None,
-    cache_strategy: Optional[ModelCacheStrategy] = None,
-    internet_access: Optional[bool] = None,
-    overwrite_filter: Optional[str] = None,
-    **kwargs: Any,
-) -> Callable:
-    """
-    Decorator that specifies a Bauplan model.
-
-    A model is a function from one (or more) dataframe-like object(s)
-    to another dataframe-like object: it is used to define a transformation in a
-    pipeline. Models are chained together implicitly by using them as inputs to
-    their children. A Python model needs a Python environment to run, which is defined
-    using the `python` decorator, e.g.:
-
-    ```python
-    import bauplan
-
-    @bauplan.model(
-        columns=['*'],
-        materialization_strategy='NONE'
-    )
-    @bauplan.python('3.11')
-    def source_scan(
-        data=bauplan.Model(
-            'iot_kaggle',
-            columns=['*'],
-            filter="motion='false'"
-        )
-    ):
-        # your code here
-        return data
-    ```
-
-    Parameters:
-        name: the name of the model (e.g. 'users'); if missing the function name is used.
-        columns: the columns of the output dataframe after the model runs (e.g. ['id', 'name', 'email']). Use ['*'] as a wildcard.
-        internet_access: whether the model requires internet access.
-        partitioned_by: the columns to partition the data by.
-        materialization_strategy: the materialization strategy to use.
-        cache_strategy: the cache strategy to use.
-        overwrite_filter: the overwrite filter expression.
-    """
-
-    def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
 
 def expectation(
     **kwargs: Any,
@@ -103,36 +40,7 @@ def expectation(
     """
 
     def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
-def python(
-    version: Optional[str] = None,
-    pip: Optional[Dict[str, str]] = None,
-    **kwargs: Any,
-) -> Callable:
-    """
-    Decorator that defines a Python environment for a Bauplan function (e.g. a model or expectation). It is used to
-    specify directly in code the configuration of the Python environment required to run the function, i.e.
-    the Python version and the Python packages required.
-
-    Parameters:
-        version: The python version for the interpreter (e.g. ``'3.11'``).
-        pip: A dictionary of dependencies (and versions) required by the function (e.g. ``{'requests': '2.26.0'}``).
-    """
-
-    def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
+        return f
 
     return decorator
 
@@ -156,18 +64,12 @@ def resources(
     """
 
     def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
+        return f
 
     return decorator
 
 
-def extras(
-    *args,
-) -> Callable:
+def extras(*args) -> Callable:
     """
     Decorator that defines the `bauplan` package extras to install.
 
@@ -182,10 +84,6 @@ def extras(
     """
 
     def decorator(f: Callable) -> Callable:
-        @functools.wraps(f)
-        def wrapper(*args, **kwargs) -> Any:
-            return f(*args, **kwargs)
-
-        return wrapper
+        return f
 
     return decorator

@@ -26,6 +26,8 @@ The file `expectations.py` contains an expectation test using `bauplan.standard_
 To calculate waiting times, the `on_scene_datetime` column must have no null values. The test uses `expect_column_no_nulls` and halts the pipeline via `assert` if it fails:
 
 ```python
+import pyarrow
+
 import bauplan
 from bauplan.standard_expectations import expect_column_no_nulls
 
@@ -35,13 +37,17 @@ def test_null_values_on_scene_datetime(
     data=bauplan.Model('normalized_taxi_trips'),
 ):
     column_to_check = 'on_scene_datetime'
-    _is_expectation_correct = expect_column_no_nulls(data, column_to_check)
 
-    assert _is_expectation_correct, (
-        f"expectation test failed: we expected {column_to_check} to have no null values"
-    )
+    if isinstance(data, pyarrow.Table):
+        _is_expectation_correct = expect_column_no_nulls(data, column_to_check)
 
-    return _is_expectation_correct
+        assert _is_expectation_correct, (
+            f"expectation test failed: we expected {column_to_check} to have no null values"
+        )
+
+        return _is_expectation_correct
+
+    return False
 ```
 
 Halting a pipeline on failure isn't always necessary, but it's important to be notified of potential data quality issues. The flexibility of expectations allows the user to make that decision.

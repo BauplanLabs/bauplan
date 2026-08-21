@@ -1,0 +1,7 @@
+project:
+  id: de9e4796-ca35-68cd-83d2-6a866c17b019
+  name: type contracts - invalid table schema base class
+
+defaults:
+  python:
+    version: "3.13"

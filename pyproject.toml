@@ -34,7 +34,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = ["pyarrow>=15.0.0"]
+dependencies = ["pyarrow>=23.0.1"]
 
 [project.urls]
 Documentation = "https://docs.bauplanlabs.com/"
@@ -46,12 +46,12 @@ Changelog = "https://github.com/BauplanLabs/bauplan/blob/main/CHANGELOG.md"
 [dependency-groups]
 dev = [
     "griffe>=1.4.0",
-    "pyarrow>=17.0.0",
+    "pyarrow>=23.0.1",
     "pyarrow-stubs>=20.0.0",
-    "pytest>=8.3.5",
+    "pytest>=9.1.1",
     "gitlint-core",
-    "ruff>=0.14.14",
-    "ty>=0.0.15",
+    "ruff>=0.15.22",
+    "ty>=0.0.65",
     "apache-airflow>=3.1.8",
     "dagster>=1.12.20",
     "dbos>=2.16.0",
@@ -75,6 +75,7 @@ dev = [
 [tool.maturin]
 python-source = "python"
 module-name = "bauplan._internal"
+python-packages = ["bpln_stubs"]
 bindings = "pyo3"
 features = ["pyo3/extension-module", "python"]
 data = "python/data"
@@ -84,6 +85,7 @@ include = [
     # https://github.com/rust-lang/cargo/issues/5933
     { path = "LICENSE-APACHE", format = "sdist" },
     { path = "LICENSE-MIT", format = "sdist" },
+    { path = "python/data/**/*", format = "sdist" },
 ]
 
 [tool.ruff]
