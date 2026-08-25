@@ -74,7 +74,7 @@ futures.workspace = true
 gethostname = "1"
 http = "1"
 humantime = "2"
-iceberg-catalog-rest = { git = "https://github.com/apache/iceberg-rust.git", rev = "1b640095" }
+iceberg-catalog-rest = "0.10"
 indicatif = "0.18"
 log = { version = "0.4", optional = true }
 nondestructive = { version = "0.0.28", features = ["serde", "yaml"] }
