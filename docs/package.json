@@ -16,6 +16,7 @@
     "@docusaurus/plugin-google-gtag": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
+    "@docusaurus/utils": "^3.9.2",
     "@tailwindcss/postcss": "^4.1.18",
     "lucide-react": "^0.544.0",
     "postcss": "^8.5.6",
