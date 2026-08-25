@@ -54,7 +54,7 @@ path = "src/gen_cli_docs.rs"
 
 [features]
 default = []
-python = ["dep:arrow-csv", "dep:parquet", "dep:pyo3", "dep:pyo3-arrow", "dep:pyo3-log", "dep:log", "pyo3/chrono", "pyo3/uuid"]
+python = ["dep:arrow-csv", "dep:parquet", "dep:polyglot-sql", "dep:pyo3", "dep:pyo3-arrow", "dep:pyo3-log", "dep:log", "pyo3/chrono", "pyo3/uuid"]
 _integration-tests = []
 _check-parse = []
 
@@ -80,7 +80,7 @@ log = { version = "0.4", optional = true }
 nondestructive = { version = "0.0.28", features = ["serde", "yaml"] }
 opentelemetry = { version = "0.28", default-features = false, features = ["trace"] }
 parquet = { version = "58", optional = true }
-polyglot-sql = "0.1"
+polyglot-sql = { version = "0.9", optional = true, default-features = false, features = ["dialect-datafusion", "builder"] }
 prost = "0.14"
 prost-types = "0.14"
 percent-encoding = "2"
