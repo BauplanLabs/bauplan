@@ -5,13 +5,19 @@
  * Copies all .mdx files from pages/ to static/ with .md extension,
  * stripping numeric prefixes so URLs match Docusaurus routes
  * (e.g. 03-import.mdx → import.md, accessible at /tutorial/import.md).
+ *
+ * Every page is written at both `<route>.md` and its source path, so that
+ * appending .md to any documentation URL resolves - including index pages
+ * (/overview → overview.md) and pages that override their route with `slug:`.
  */
 
 const fs = require('fs');
 const path = require('path');
+const { createSlugger, parseMarkdownHeadingId } = require('@docusaurus/utils');
 
 const PAGES_DIR = path.join(__dirname, '..', 'pages');
 const STATIC_DIR = path.join(__dirname, '..', 'static');
+const REDIRECTS_FILE = path.join(__dirname, '..', 'redirects.js');
 
 function getAllMdxFiles(dir, baseDir = dir) {
   const files = [];
@@ -39,7 +45,10 @@ function stripFrontmatter(content) {
 function stripImports(content) {
   // Only strip ESM imports (must contain `from '...'` or `from "..."`).
   // Plain "import ..." at the start of a prose line must survive.
-  return content.replace(/^import\s+.*\bfrom\s+['"].*$\n?/gm, '');
+  // Braced imports may span several lines, so match those first.
+  return content
+    .replace(/^import\s*\{[^}]*\}\s*from\s+['"][^'"]*['"];?[ \t]*\n?/gm, '')
+    .replace(/^import\s+.*\bfrom\s+['"].*$\n?/gm, '');
 }
 
 /** Parse JSX-style attributes from a tag body, handling both "quoted" and {expr} values. */
@@ -103,7 +112,7 @@ function extractSignature(content) {
 
 /** Extract a PyClassBase block as a markdown line. */
 function extractClassBase(content) {
-  // bases={[...]} — match a JSON array; links are /reference/... paths with no ]/> sequences.
+  // bases={[...]} - match a JSON array; links are /reference/... paths with no ]/> sequences.
   const baseMatch = content.match(/<PyClassBase\s+bases=\{(\[[\s\S]*?\])\}\s*\/>/);
   if (!baseMatch) return '';
   try {
@@ -195,9 +204,29 @@ function convertPyDocsToMarkdown(content) {
   return content;
 }
 
+/** Turn a <DocCardList items={[...]} /> card grid into a plain markdown link list. */
+function convertDocCardLists(content) {
+  return content.replace(/<DocCardList\s+items=\{\[([\s\S]*?)\]\}\s*\/>/g, (_match, items) => {
+    let list = '';
+    for (const item of items.matchAll(/\{([\s\S]*?)\n\s*\},?/g)) {
+      const href = item[1].match(/href:\s*"([^"]+)"/);
+      const label = item[1].match(/label:\s*"([^"]+)"/);
+      const description = item[1].match(/description:\s*"?([\s\S]*?)"\s*,?\s*$/m);
+      if (!href || !label) continue;
+      list += `- [${label[1]}](${href[1]})`;
+      if (description) list += `: ${description[1].replace(/^\s*"/, '').replace(/\s+/g, ' ').trim()}`;
+      list += '\n';
+    }
+    return list;
+  });
+}
+
 function stripJsxComponents(content) {
   // First, try to convert PyDocs components to markdown
   content = convertPyDocsToMarkdown(content);
+
+  // Card grids are navigation: keep them as links, not as leftover JSX
+  content = convertDocCardLists(content);
 
   // Remove PyModuleMember and PyClassMember wrappers (keep content)
   content = content.replace(/<\/?Py(?:ModuleMember|ClassMember|Parameters|Parameter)[^>]*>/g, '');
@@ -269,6 +298,14 @@ function cleanMdxContent(content) {
   return cleaned;
 }
 
+/** Read the `slug:` frontmatter value, which overrides a page's route. */
+function parseSlug(content) {
+  const frontmatter = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!frontmatter) return null;
+  const slug = frontmatter[1].match(/^slug:\s*["']?(.+?)["']?\s*$/m);
+  return slug ? slug[1] : null;
+}
+
 /** Strip leading numeric prefixes (e.g. "03-import" → "import") from each path segment. */
 function stripNumberPrefixes(relativePath) {
   return relativePath
@@ -277,35 +314,118 @@ function stripNumberPrefixes(relativePath) {
     .join(path.sep);
 }
 
+/**
+ * Where a page's markdown is written: its source path (e.g. tutorial/index.md,
+ * which llms.txt links to) plus its route with .md appended (e.g. tutorial.md),
+ * which is what agents ask for. `slug:` frontmatter wins over the file path.
+ */
+function outputPathsFor(relativePath, content) {
+  const sourcePath = stripNumberPrefixes(relativePath).split(path.sep).join('/').replace(/\.mdx?$/, '');
+  const slug = parseSlug(content);
+  const route =
+    slug !== null
+      ? slug.replace(/^\/+|\/+$/g, '')
+      : sourcePath.replace(/(^|\/)index$/, '');
+
+  return [...new Set([`${sourcePath}.md`, route === '' ? 'index.md' : `${route}.md`])];
+}
+
+/** The anchor ids Docusaurus gives a page's headings, including explicit `{#id}` ones. */
+function headingIds(content) {
+  const slugger = createSlugger();
+  const body = stripFrontmatter(content).replace(/```[\s\S]*?```/g, '');
+  const ids = new Set();
+  for (const [, heading] of body.matchAll(/^#{1,6}\s+(.+)$/gm)) {
+    const text = heading
+      .replace(/`([^`]*)`/g, '$1')
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/<[^>]+>/g, '')
+      .trim();
+    const { id, text: title } = parseMarkdownHeadingId(text);
+    ids.add(id ?? slugger.slug(title));
+  }
+  return ids;
+}
+
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 }
 
+/**
+ * Old URLs that only exist as HTML redirect pages get a markdown stub, so an
+ * agent following a stale link with `Accept: text/markdown` is pointed at the
+ * new page instead of hitting a 404.
+ *
+ * Fails when a redirect points at an anchor its target page doesn't have,
+ * which Docusaurus's own broken-anchor check doesn't cover.
+ */
+function writeRedirectStubs(pages) {
+  const source = fs.readFileSync(REDIRECTS_FILE, 'utf8');
+  const entries = [...source.matchAll(/from:\s*"([^"]+)",\s*to:\s*"([^"]+)"/g)];
+  const declared = (source.match(/\bfrom:/g) || []).length;
+  if (entries.length !== declared) {
+    throw new Error(`Parsed ${entries.length} of ${declared} redirects - redirects.js changed shape`);
+  }
+
+  const brokenAnchors = [];
+  let count = 0;
+  for (const [, from, to] of entries) {
+    const [route, anchor] = to.split('#');
+    if (anchor) {
+      const page = pages.get(`${route.replace(/^\/+|\/+$/g, '') || 'index'}.md`);
+      if (!page || !headingIds(fs.readFileSync(path.join(PAGES_DIR, page), 'utf8')).has(anchor)) {
+        brokenAnchors.push(`${from} → ${to}`);
+      }
+    }
+
+    const stubPath = `${from.replace(/^\/+|\/+$/g, '')}.md`;
+    if (pages.has(stubPath)) continue;
+    const outputPath = path.join(STATIC_DIR, stubPath);
+    ensureDir(path.dirname(outputPath));
+    fs.writeFileSync(outputPath, `This page moved to [${to}](${to}).\n`);
+    count++;
+  }
+
+  if (brokenAnchors.length > 0) {
+    throw new Error(`Redirects point at anchors that don't exist:\n  ${brokenAnchors.join('\n  ')}`);
+  }
+  return count;
+}
+
 function main() {
   console.log('Generating LLM-friendly markdown files...');
 
   const mdxFiles = getAllMdxFiles(PAGES_DIR);
+  // Output path → the page that wrote it. Each page writes up to two files, so two
+  // pages can map to the same one (e.g. foo.mdx and foo/index.mdx both write foo.md);
+  // we fail instead of letting the second silently overwrite the first.
+  // writeRedirectStubs also uses it to find the page behind a redirect target.
+  const written = new Map();
   let count = 0;
 
   for (const { fullPath, relativePath } of mdxFiles) {
-    // Convert .mdx to .md and strip numeric prefixes from path segments
-    const outputRelativePath = stripNumberPrefixes(relativePath).replace(/\.mdx$/, '.md');
-    const outputPath = path.join(STATIC_DIR, outputRelativePath);
-
-    // Ensure output directory exists
-    ensureDir(path.dirname(outputPath));
-
-    // Read, clean, and write the file
     const content = fs.readFileSync(fullPath, 'utf8');
     const cleanedContent = cleanMdxContent(content);
 
-    fs.writeFileSync(outputPath, cleanedContent);
-    count++;
+    for (const outputRelativePath of outputPathsFor(relativePath, content)) {
+      const claimedBy = written.get(outputRelativePath);
+      if (claimedBy) {
+        throw new Error(`${relativePath} and ${claimedBy} both write ${outputRelativePath}`);
+      }
+      written.set(outputRelativePath, relativePath);
+
+      const outputPath = path.join(STATIC_DIR, outputRelativePath);
+      ensureDir(path.dirname(outputPath));
+      fs.writeFileSync(outputPath, cleanedContent);
+      count++;
+    }
   }
 
-  console.log(`Generated ${count} markdown files in static/`);
+  const stubs = writeRedirectStubs(written);
+
+  console.log(`Generated ${count} markdown files (+ ${stubs} redirect stubs) in static/`);
 }
 
 main();
