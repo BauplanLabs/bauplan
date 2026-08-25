@@ -1,4 +1,10 @@
 
+## [0.2.0] - 2026-08-25
+
+### Bugfixes
+
+- [cli] Avoid deletion of checked-out branch (a64262c53a0f92e8be88a5bf7a3f7310218cfe62)
+
 ## [0.2.0-rc.2] - 2026-08-19
 
 ### New Features
