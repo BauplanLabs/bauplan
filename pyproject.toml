@@ -1,3 +1,10 @@
+[tool.uv.workspace]
+members = ["bauplan-sdk-types"]
+
+[tool.uv.sources]
+bauplan-sdk-types = { workspace = true }
+gitlint-core = { git = "https://github.com/colinmarc/gitlint", branch = "conventional-options", subdirectory = "gitlint-core" }
+
 [build-system]
 requires = ["maturin>=1.11,<2.0"]
 build-backend = "maturin"
@@ -34,7 +41,7 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = ["pyarrow>=15.0.0"]
+dependencies = ["bauplan-sdk-types=~0.1"]
 
 [project.urls]
 Documentation = "https://docs.bauplanlabs.com/"
@@ -119,6 +126,3 @@ cache-keys = [
     { file = "Cargo.toml" },
     { file = "src/**/*.rs" },
 ]
-
-[tool.uv.sources]
-gitlint-core = { git = "https://github.com/colinmarc/gitlint", branch = "conventional-options", subdirectory = "gitlint-core" }
