@@ -11,6 +11,19 @@
 
 @custom-variant dark (&:is([data-theme="dark"] *));
 
+/* The agent directive in src/theme/Root.js: in the DOM, out of the page. */
+.agent-directive {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
 /* fonts */
 @font-face {
   font-family: 'Satoshi';
