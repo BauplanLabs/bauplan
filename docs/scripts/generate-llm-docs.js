@@ -17,6 +17,9 @@ const path = require('path');
 const PAGES_DIR = path.join(__dirname, '..', 'pages');
 const STATIC_DIR = path.join(__dirname, '..', 'static');
 const REDIRECTS_FILE = path.join(__dirname, '..', 'redirects.js');
+const HOME_CARDS_FILE = path.join(__dirname, '..', 'src', 'theme', 'components', 'home', 'cards.json');
+
+const AGENT_DIRECTIVE = '> The complete documentation index is at [llms.txt](/llms.txt).\n\n';
 
 function getAllMdxFiles(dir, baseDir = dir) {
   const files = [];
@@ -203,6 +206,40 @@ function convertPyDocsToMarkdown(content) {
   return content;
 }
 
+/** Render the links inside react card components on landing page. */
+function convertHomePage(content) {
+  if (!content.includes('<HomePage')) return content;
+
+  const { sections, agentsCard } = JSON.parse(fs.readFileSync(HOME_CARDS_FILE, 'utf8'));
+  const markdown = sections
+    .map(({ title, cards }) => {
+      const links = cards.map((c) => `- [${c.title}](${c.href}): ${c.description}`).join('\n');
+      return `## ${title}\n\n${links}`;
+    })
+    .concat(`[${agentsCard.title}](${agentsCard.href}): ${agentsCard.description}`)
+    .join('\n\n');
+
+  return content.replace(/<HomePage\s*\/>/g, markdown);
+}
+
+/** Turn <VideoCard /> grids into links to the videos, with their blurbs. */
+function convertVideoCards(content) {
+  return content.replace(/^[ \t]*<VideoCard\s+([\s\S]*?)\/>/gm, (_match, attrString) => {
+    const attrs = parseAttrs(attrString);
+    if (!attrs.id) return '';
+    const duration = attrs.duration ? ` (${attrs.duration})` : '';
+    const blurb = attrs.blurb ? `: ${attrs.blurb}` : '';
+    return `- [${attrs.title || 'Video'}](https://www.youtube.com/watch?v=${attrs.id})${duration}${blurb}`;
+  });
+}
+
+/** Keep hand-written HTML headings as headings. */
+function convertHtmlHeadings(content) {
+  return content.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_match, level, inner) => {
+    return `\n${'#'.repeat(Number(level))} ${inner.trim()}\n`;
+  });
+}
+
 /** Turn a <DocCardList items={[...]} /> card grid into a plain markdown link list. */
 function convertDocCardLists(content) {
   return content.replace(/<DocCardList\s+items=\{\[([\s\S]*?)\]\}\s*\/>/g, (_match, items) => {
@@ -224,8 +261,11 @@ function stripJsxComponents(content) {
   // First, try to convert PyDocs components to markdown
   content = convertPyDocsToMarkdown(content);
 
-  // Card grids are navigation: keep them as links, not as leftover JSX
+  // Turn card grids into plain links
   content = convertDocCardLists(content);
+  content = convertHomePage(content);
+  content = convertVideoCards(content);
+  content = convertHtmlHeadings(content);
 
   // Remove PyModuleMember and PyClassMember wrappers (keep content)
   content = content.replace(/<\/?Py(?:ModuleMember|ClassMember|Parameters|Parameter)[^>]*>/g, '');
@@ -353,7 +393,7 @@ function writeRedirectStubs() {
     const outputPath = path.join(STATIC_DIR, `${from.replace(/^\/+|\/+$/g, '')}.md`);
     if (fs.existsSync(outputPath)) continue;
     ensureDir(path.dirname(outputPath));
-    fs.writeFileSync(outputPath, `This page moved to [${to}](${to}).\n`);
+    fs.writeFileSync(outputPath, `${AGENT_DIRECTIVE}This page moved to [${to}](${to}).\n`);
     count++;
   }
   return count;
@@ -379,7 +419,7 @@ function main() {
 
       const outputPath = path.join(STATIC_DIR, outputRelativePath);
       ensureDir(path.dirname(outputPath));
-      fs.writeFileSync(outputPath, cleanedContent);
+      fs.writeFileSync(outputPath, AGENT_DIRECTIVE + cleanedContent);
       count++;
     }
   }
