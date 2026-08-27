@@ -1,3 +1,4 @@
+-- bauplan: output_schema = Model1Schema
 SELECT
     CASE
         WHEN PULocationID IS NOT NULL THEN 'val_1'

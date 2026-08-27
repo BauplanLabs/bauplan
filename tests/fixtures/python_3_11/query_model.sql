@@ -1,4 +1,5 @@
 -- bauplan: materialization_strategy = NONE
+-- bauplan: output_schema = LocationSchema
 SELECT
     DISTINCT PULocationID AS location_id
 FROM

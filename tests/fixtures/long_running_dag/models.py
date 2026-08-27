@@ -1,27 +1,51 @@
 import time
+from typing import Annotated
 
 import bauplan
+import pyarrow
 
-
-@bauplan.model(
-    columns=[
-        'trip_time',
-        'pickup_datetime',
-        'trip_miles',
-        'log_trip_miles',
-        'ds',
-    ],
+from bauplan import (
+    Float64,
+    Int64,
+    Model,
+    TableField,
+    TableSchema,
+    TimestampMicroUTC,
 )
-@bauplan.python('3.11', pip={'pandas': '2.2.2'})
+
+
+class QueryModelSchema(TableSchema):
+    """The columns query_model selects from taxi_fhvhv."""
+
+    pickup_datetime: TimestampMicroUTC
+    dropoff_datetime: TimestampMicroUTC
+    PULocationID: Int64
+    DOLocationID: Int64
+    trip_miles: Float64
+    trip_time: Int64
+    base_passenger_fare: Float64
+    tolls: Float64
+    sales_tax: Float64
+    tips: Float64
+
+
+class NormalizedTripsSchema(TableSchema):
+    """The trip columns normalize_data reads from query_model and passes through."""
+
+    trip_time: Annotated[Int64, TableField(lineage=QueryModelSchema["trip_time"])]
+    pickup_datetime: Annotated[
+        TimestampMicroUTC, TableField(lineage=QueryModelSchema["pickup_datetime"])
+    ]
+    trip_miles: Annotated[Float64, TableField(lineage=QueryModelSchema["trip_miles"])]
+
+
+@bauplan.model()
+@bauplan.python("3.11", pip={"pandas": "2.2.2"})
 def normalize_data(
-    data=bauplan.Model(
-        'query_model',
-        columns=[
-            'trip_time',
-            'pickup_datetime',
-            'trip_miles',
-        ],
-    ),
-):
+    data: Annotated[
+        pyarrow.Table,
+        Model("query_model", projection_schema=NormalizedTripsSchema),
+    ],
+) -> Annotated[pyarrow.Table, NormalizedTripsSchema]:
     time.sleep(30)
     return data

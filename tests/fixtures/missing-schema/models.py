@@ -26,5 +26,5 @@ def typed_params_model(
             filter="PULocationID = 138",
         ),
     ],
-) -> 'Annotated[pyarrow.Table, TestSchemaMisnamed]':  # ty: ignore[unresolved-reference] # noqa: F821
-    return taxi_trips.slice(length=5).rename_columns(['misnamed_col'])
+) -> "Annotated[pyarrow.Table, TestSchemaMisnamed]":  # ty: ignore[unresolved-reference] # noqa: F821
+    return taxi_trips.slice(length=5).rename_columns(["misnamed_col"])
