@@ -12,17 +12,36 @@ from bauplan._internal import (
 # Submodules.
 from bauplan import exceptions, schema, state, standard_expectations
 from bauplan.schema import JobKind, JobState, RefType
-from bauplan._classes import Model
-from bauplan._decorators import (
+
+from bauplan_sdk_types import (
+    # Entity types
+    Model,
+    Parameter,
+    TableField,
+    TableSchema,
+    # Field types
+    Bool,
+    Int32,
+    Int64,
+    Float64,
+    Date32,
+    Date64,
+    TimestampMicro,
+    TimestampNano,
+    TimestampMicroUTC,
+    TimestampNanoUTC,
+    Decimal128,
+    String,
+    Binary,
+    # Node types
+    expectation,
+    model,
+    # Runtime decorators
+    python,
+    # Options
     ModelCacheStrategy,
     ModelMaterializationStrategy,
-    expectation,
-    extras,
-    model,
-    python,
-    resources,
 )
-from bauplan._parameters import Parameter
 
 
 __all__ = [
@@ -42,13 +61,28 @@ __all__ = [
     "RunnerNodeInfo",
     "UserInfo",
     # Decorators and model definitions.
-    "Model",
-    "ModelCacheStrategy",
-    "ModelMaterializationStrategy",
-    "Parameter",
     "expectation",
-    "extras",
     "model",
     "python",
-    "resources",
+    "ModelCacheStrategy",
+    "ModelMaterializationStrategy",
+    # Entity types
+    "Model",
+    "Parameter",
+    "TableField",
+    "TableSchema",
+    # DataTypes
+    "Bool",
+    "Int32",
+    "Int64",
+    "Float64",
+    "Date32",
+    "Date64",
+    "TimestampMicro",
+    "TimestampNano",
+    "TimestampMicroUTC",
+    "TimestampNanoUTC",
+    "Decimal128",
+    "String",
+    "Binary",
 ]
