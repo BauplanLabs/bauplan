@@ -10,7 +10,12 @@ Note that collecting all expectations in a single file is not required, but we f
 to keep the pipeline code clean and separate from the expectations code.
 """
 
+from typing import Annotated
+
 import bauplan
+import pyarrow
+
+from bauplan import Model
 
 # Import the standard expectations from the
 # library to use them in the functions below.
@@ -23,18 +28,21 @@ from bauplan.standard_expectations import expect_column_no_nulls
 # You can use this to specify the python version used during execution.
 @bauplan.python("3.11")
 def test_null_values_on_scene_datetime(
-    data=bauplan.Model(      
-        # As input, we declare the Bauplan model that we want to check.
-        "normalized_taxi_trips",
-    ),
-):
+    data: Annotated[
+        pyarrow.Table,
+        Model(
+            # As input, we declare the Bauplan model that we want to check.
+            "normalized_taxi_trips",
+        ),
+    ],
+) -> bool:
     # Just return the result of the standard
     # expectation (True if passed), passing to it
     # the input data, the column name to check, and the reference value.
-    
+
     # Here is where we declare the columns we want to check.
     column_to_check = "on_scene_datetime"
-    
+
     # Let's make sure there are no null values in the on_scene_datetime column!
     _is_expectation_correct = expect_column_no_nulls(data, column_to_check)
 
@@ -44,4 +52,4 @@ def test_null_values_on_scene_datetime(
     )
 
     # Return a boolean.
-    return _is_expectation_correct  
+    return _is_expectation_correct

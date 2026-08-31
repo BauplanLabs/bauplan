@@ -1,3 +1,4 @@
+-- bauplan: output_schema = QuerySchema
 SELECT dropoff_datetime
 FROM taxi_fhvhv
 WHERE

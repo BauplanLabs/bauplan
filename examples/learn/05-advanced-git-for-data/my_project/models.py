@@ -1,27 +1,53 @@
+from typing import Annotated
+
 import bauplan
+import pyarrow
+
+from bauplan import (
+    Int64,
+    Model,
+    Parameter,
+    TableField,
+    TableSchema,
+)
+
+
+class RunMarkerSchema(TableSchema):
+    """A single row marking when a given run wrote to the table."""
+
+    run_id: Annotated[
+        Int64, TableField(doc="The run_id parameter this run was invoked with.")
+    ]
+    time_ns: Annotated[
+        Int64, TableField(doc="Wall-clock time of the write, in nanoseconds.")
+    ]
 
 
 @bauplan.model(materialization_strategy="REPLACE")
 def my_taxxxi_zones(
-    data=bauplan.Model("bauplan.taxi_zones"),
-    run_id=bauplan.Parameter("run_id"),
-):
+    data: Annotated[pyarrow.Table, Model("bauplan.taxi_zones")],
+    run_id: Annotated[int, Parameter("run_id")],
+) -> Annotated[pyarrow.Table, RunMarkerSchema]:
     """
     This model materializes a trivial table, which will allow us to vary the run_id from the caller
     to verify different rows get persisted.
     """
     import time
 
-    return [
-        {
-            "run_id": run_id,
-            "time_ns": time.time_ns(),
-        }
-    ]
+    return pyarrow.Table.from_pylist(
+        [
+            {
+                "run_id": run_id,
+                "time_ns": time.time_ns(),
+            }
+        ]
+    )
 
 
 @bauplan.model()
-def my_taxxxi_zones_child(data=bauplan.Model("my_taxxxi_zones")):
+def my_taxxxi_zones_child(
+    data: Annotated[pyarrow.Table, Model("my_taxxxi_zones")],
+) -> Annotated[pyarrow.Table, RunMarkerSchema]:
     """
     This model is a child of the previous one, and it will be used to just test a scenario
     in which a pipeline fails with some artifacts written before the failure. This allows
@@ -37,9 +63,11 @@ def my_taxxxi_zones_child(data=bauplan.Model("my_taxxxi_zones")):
     if run_id > 4:
         raise ValueError("run_id should be less than 5")
 
-    return [
-        {
-            "run_id": run_id,
-            "time_ns": time.time_ns(),
-        }
-    ]
+    return pyarrow.Table.from_pylist(
+        [
+            {
+                "run_id": run_id,
+                "time_ns": time.time_ns(),
+            }
+        ]
+    )

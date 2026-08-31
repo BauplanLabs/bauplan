@@ -7,19 +7,55 @@ Bronze -> Silver: parse, clean, deduplicate raw sensor readings.
 Silver -> Gold: aggregate per-sensor hourly statistics.
 """
 
+from typing import Annotated
+
 import bauplan
+import pyarrow
 
-
-@bauplan.model(
-    columns=["dateTime", "signal", "value", "value_original"],
+from bauplan import (
+    Float64,
+    Int64,
+    Model,
+    String,
+    TableField,
+    TableSchema,
+    TimestampMicro,
+    TimestampMicroUTC,
 )
+
+
+class BronzeColumns(TableSchema):
+    """The projection of telemetry_bronze the Silver transformation reads."""
+
+    dateTime: TimestampMicroUTC
+    sensors: String
+    value: Annotated[String, TableField(doc="Raw reading, still unparsed text.")]
+
+
+class SignalCleanSchema(TableSchema):
+    """Silver: one parsed reading per (signal, dateTime)."""
+
+    dateTime: Annotated[
+        TimestampMicro,
+        TableField(
+            doc="Reading time, shifted to UTC and stored without a timezone.",
+        ),
+    ]
+    signal: Annotated[String, TableField(doc="Sensor name; the bronze `sensors` column.")]
+    value: Annotated[Float64, TableField(doc="Reading parsed out of the raw text.")]
+    value_original: Annotated[
+        Float64, TableField(doc="The parsed reading before any downstream correction.")
+    ]
+
+
+@bauplan.model()
 @bauplan.python("3.11", pip={"duckdb": "1.1.3"})
 def signal_clean(
-    bronze_data=bauplan.Model(
-        "telemetry_bronze",
-        columns=["dateTime", "sensors", "value"],
-    ),
-):
+    bronze_data: Annotated[
+        pyarrow.Table,
+        Model("telemetry_bronze", projection_schema=BronzeColumns),
+    ],
+) -> Annotated[pyarrow.Table, SignalCleanSchema]:
     """Bronze -> Silver: clean and deduplicate raw telemetry readings.
 
     - Column mapping: sensors -> signal
@@ -71,17 +107,39 @@ def signal_clean(
     return result
 
 
-@bauplan.model(
-    columns=["hour", "signal", "reading_count", "avg_value", "min_value", "max_value"],
-    materialization_strategy="REPLACE",
-)
+class SignalReadingColumns(TableSchema):
+    """The projection of signal_clean the Gold aggregation reads."""
+
+    dateTime: TimestampMicro
+    signal: String
+    value: Float64
+
+
+class SignalSummarySchema(TableSchema):
+    """Gold: hourly statistics per sensor."""
+
+    hour: Annotated[
+        TimestampMicro, TableField(doc="Reading time truncated to the hour.")
+    ]
+    signal: String
+    reading_count: Annotated[
+        Int64, TableField(doc="Number of readings for the sensor in the hour.")
+    ]
+    avg_value: Annotated[
+        Float64, TableField(doc="Mean reading for the hour, rounded to 2 decimals.")
+    ]
+    min_value: Annotated[Float64, TableField(doc="Smallest reading in the hour.")]
+    max_value: Annotated[Float64, TableField(doc="Largest reading in the hour.")]
+
+
+@bauplan.model(materialization_strategy="REPLACE")
 @bauplan.python("3.11", pip={"polars": "1.38.1"})
 def signal_summary(
-    data=bauplan.Model(
-        "signal_clean",
-        columns=["dateTime", "signal", "value"],
-    ),
-):
+    data: Annotated[
+        pyarrow.Table,
+        Model("signal_clean", projection_schema=SignalReadingColumns),
+    ],
+) -> Annotated[pyarrow.Table, SignalSummarySchema]:
     """Silver -> Gold: hourly statistics per sensor.
 
     Aggregates clean readings into per-sensor, per-hour summaries
@@ -99,7 +157,8 @@ def signal_summary(
         df.with_columns(pl.col("dateTime").dt.truncate("1h").alias("hour"))
         .group_by("hour", "signal")
         .agg(
-            pl.col("value").count().alias("reading_count"),
+            # `count()` is UInt32, which Iceberg has no type for: cast it to Int64.
+            pl.col("value").count().cast(pl.Int64).alias("reading_count"),
             pl.col("value").mean().round(2).alias("avg_value"),
             pl.col("value").min().alias("min_value"),
             pl.col("value").max().alias("max_value"),

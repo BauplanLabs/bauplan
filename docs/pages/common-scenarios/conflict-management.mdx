@@ -152,19 +152,31 @@ the merge conditional on run success is enough to keep `main` clean. You need
 no explicit conflict handling because the bad branch simply never gets merged.
 
 <Note>
-  A judicious use of the `columns` parameter in the `@bauplan.model` decorator
-  can complement expectations and further enforce schema compliance by
-  restricting the columns the function will output. For instance, the following
-  would fail when `strict="on"`. For other uses of expectations in Bauplan,
+  Specifying a model's output schema in the return annotation can complement
+  expectations. While expectations can be used for data validation, the output
+  schema enforces schema compliance by restricting the columns the function
+  will output as well as enforcing the availability and type of each declared
+  schema field. For instance, the following model declares an output of only
+  `Age` but projects `PassengerId` as well, and Bauplan reports the schema
+  mismatch. For other uses of expectations in Bauplan,
   please consult the [dedicated
   example](https://github.com/BauplanLabs/bauplan/tree/b31d9226d5c8177a1974e97aa93ed710256e10fa/examples/learn/02-data-quality-expectations).
 
 ```python
+#!from typing import Annotated
+#!import pyarrow
 #!import bauplan
+class AgeOnly(bauplan.TableSchema):
+    """Restrict the model output to each passenger's age."""
+
+    Age: bauplan.Float64
+
 @bauplan.python("3.12")
-@bauplan.model(columns=["Age"], materialization_strategy="REPLACE")
-def give_back_age(data=bauplan.Model("titanic")):
-      return data.select(["PassengerId", "Age"])
+@bauplan.model(materialization_strategy="REPLACE")
+def give_back_age(
+    titanic_table: Annotated[pyarrow.Table, bauplan.Model("titanic")],
+) -> Annotated[pyarrow.Table, AgeOnly]:
+    return titanic_table.select(["PassengerId", "Age"])
 ```
 
 </Note>
