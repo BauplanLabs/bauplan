@@ -1,55 +1,94 @@
+from typing import Annotated
+
 import bauplan
+import pyarrow as pa
+
+from bauplan import (
+    Float64,
+    Model,
+    String,
+    TableSchema,
+)
 from bauplan.standard_expectations import (
     expect_column_accepted_values,
     expect_column_all_unique,
     expect_column_no_nulls,
 )
-import pyarrow as pa
+
+
+class TxnId(TableSchema):
+    """The primary key of the transaction stream."""
+
+    txn_id: String
 
 
 @bauplan.expectation()
 @bauplan.python("3.13")
 def test_transactions_txn_id_unique(
-    data: pa.Table = bauplan.Model("transactions", columns=["txn_id"]),
-):
+    data: Annotated[pa.Table, Model("transactions", projection_schema=TxnId)],
+) -> bool:
     """txn_id is the primary key: duplicates would double-count downstream"""
     return expect_column_all_unique(data, "txn_id")
+
+
+class AccountId(TableSchema):
+    """The join key to account_events."""
+
+    account_id: String
 
 
 @bauplan.expectation()
 @bauplan.python("3.13")
 def test_transactions_account_id_complete(
-    data: pa.Table = bauplan.Model("transactions", columns=["account_id"]),
-):
+    data: Annotated[pa.Table, Model("transactions", projection_schema=AccountId)],
+) -> bool:
     """account_id is the join key to account_events: it cannot be null"""
     return expect_column_no_nulls(data, "account_id")
+
+
+class Currency(TableSchema):
+    """The currency each transaction was settled in."""
+
+    currency: String
 
 
 @bauplan.expectation()
 @bauplan.python("3.13")
 def test_transactions_currency_accepted(
-    data: pa.Table = bauplan.Model("transactions", columns=["currency"]),
-):
+    data: Annotated[pa.Table, Model("transactions", projection_schema=Currency)],
+) -> bool:
     """currency must stay within the supported set for FX conversion downstream"""
     return expect_column_accepted_values(data, "currency", ["EUR", "USD", "GBP"])
+
+
+class Status(TableSchema):
+    """The settlement status of each transaction."""
+
+    status: String
 
 
 @bauplan.expectation()
 @bauplan.python("3.13")
 def test_transactions_status_accepted(
-    data: pa.Table = bauplan.Model("transactions", columns=["status"]),
-):
+    data: Annotated[pa.Table, Model("transactions", projection_schema=Status)],
+) -> bool:
     """status drives settlement logic: an unknown value means a source contract change"""
     return expect_column_accepted_values(
         data, "status", ["settled", "pending", "declined"]
     )
 
 
+class Amount(TableSchema):
+    """The monetary amount of each transaction."""
+
+    amount: Float64
+
+
 @bauplan.expectation()
 @bauplan.python("3.13", pip={"polars": "1.42.1"})
 def test_transactions_amount_positive(
-    data: pa.Table = bauplan.Model("transactions", columns=["amount"]),
-):
+    data: Annotated[pa.Table, Model("transactions", projection_schema=Amount)],
+) -> bool:
     """amount feeds revenue aggregations: every transaction must be strictly positive"""
     import polars as pl
 

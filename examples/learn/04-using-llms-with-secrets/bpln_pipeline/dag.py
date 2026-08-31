@@ -1,4 +1,17 @@
+from typing import Annotated
+
 import bauplan
+import pyarrow
+
+from bauplan import (
+    Float64,
+    Int64,
+    Model,
+    Parameter,
+    String,
+    TableField,
+    TableSchema,
+)
 
 
 def _request_prediction_from_open_ai(
@@ -73,11 +86,26 @@ def _pdf_to_markdown(bucket, pdf_path):
         return result.text_content.split("Forward-Looking Statements")[0]
 
 
+class MarkdownSchema(TableSchema):
+    """The PDF metadata, with the document text extracted from S3."""
+
+    id: String
+    company: String
+    year: Int64
+    quarter: Int64
+    markdown_text: Annotated[
+        String,
+        TableField(doc="The PDF converted to markdown, truncated at the disclaimer."),
+    ]
+
+
 # We need boto3 to get the PDFs from S3
 # and markitdown to convert the PDFs to text.
 @bauplan.python("3.11", pip={"boto3": "1.35.86", "markitdown": "0.0.1a3"})
 @bauplan.model(internet_access=True)
-def sec_10_q_markdown(data=bauplan.Model("my_pdf_metadata")):
+def sec_10_q_markdown(
+    data: Annotated[pyarrow.Table, Model("my_pdf_metadata")],
+) -> Annotated[pyarrow.Table, MarkdownSchema]:
     """
     This function reads the metadata and the PDFs from S3 and converts them to markdown.
     The final table is therefore the same as the input table without bucket and path, with an additional column:
@@ -115,13 +143,29 @@ def sec_10_q_markdown(data=bauplan.Model("my_pdf_metadata")):
     return data
 
 
+class TabularDatasetSchema(TableSchema):
+    """One row per financial statement the LLM extracted from a report."""
+
+    statement: Annotated[
+        String, TableField(doc="Name of the statement, e.g. 'Net income'.")
+    ]
+    time_label: Annotated[
+        String, TableField(doc="Reporting period the statement covers.")
+    ]
+    usd: Annotated[Int64, TableField(doc="Amount of the statement, in USD.")]
+    year: Annotated[Int64, TableField(doc="Year the statement itself refers to.")]
+    report_company: String
+    report_year: Int64
+    report_quarter: Int64
+
+
 @bauplan.python("3.11", pip={"openai": "2.29.0"})
 # Make sure to persist the data as an Iceberg-backed table.
 @bauplan.model(internet_access=True, materialization_strategy="REPLACE")
 def sec_10_q_tabular_dataset(
-    data=bauplan.Model("sec_10_q_markdown"),
-    open_ai_key=bauplan.Parameter("openai_api_key"),
-):
+    data: Annotated[pyarrow.Table, Model("sec_10_q_markdown")],
+    open_ai_key: Annotated[str, Parameter("openai_api_key")],
+) -> Annotated[pyarrow.Table, TabularDatasetSchema]:
     """
     This function reads the markdown text of each document and uses the LLM to extract information
     in a tabular format. We leverage the structured outputs feature of the LLM to extract the required
@@ -173,9 +217,22 @@ def sec_10_q_tabular_dataset(
     return pa.Table.from_pylist(results)
 
 
+class AnalysisSchema(TableSchema):
+    """Mean statement amount per company."""
+
+    report_company: String
+    statement: String
+    usd: Annotated[
+        Float64,
+        TableField(doc="Mean of the USD amounts for this company and statement."),
+    ]
+
+
 @bauplan.python("3.11", pip={"polars": "1.38.1"})
 @bauplan.model(materialization_strategy="REPLACE")
-def sec_10_q_analysis(data=bauplan.Model("sec_10_q_tabular_dataset")):
+def sec_10_q_analysis(
+    data: Annotated[pyarrow.Table, Model("sec_10_q_tabular_dataset")],
+) -> Annotated[pyarrow.Table, AnalysisSchema]:
     """
     This function reads the tabular dataset prepared by the previous step and performs some analysis
     using Polars.

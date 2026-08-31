@@ -19,20 +19,26 @@ A typical Python model consists of two decorators `@bauplan.model()` and
 `@bauplan.python()` and a function.
 
 ```python
-#! import pyarrow
+#! from typing import Annotated
+class SelectedInputColumns(bauplan.TableSchema):
+    """Columns read from the input table."""
+
+    col_1: bauplan.String
+    col_2: bauplan.Int64
+    col_3: bauplan.Float64
+
 @bauplan.model()
 @bauplan.python('3.11')
 def my_model(
-        data=bauplan.Model(
-            'input_table',
-            columns=[
-                'col_1',
-                'col_2',
-                'col_3',
-            ],
-            filter="timestamp >= '2022-12-15T00:00:00-05:00'",
-        )
-):
+        data: Annotated[
+            pyarrow.Table,
+            bauplan.Model(
+                'input_table',
+                projection_schema=SelectedInputColumns,
+                filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+            )
+        ],
+) -> Annotated[pyarrow.Table, SelectedInputColumns]:
     ...
 
     #! output_table = pyarrow.table({})
@@ -64,18 +70,26 @@ version (for example, `3.11` or `3.12`) and any additional libraries and their
 versions using uv.
 
 ```python
+#! from typing import Annotated
+class ColOne(bauplan.TableSchema):
+    """The single column this model returns."""
+
+    col_1: bauplan.String
+
 @bauplan.model()
 # specify the package and version - in this case Pandas 2.2.0
 @bauplan.python('3.11', pip={'pandas': '2.2.0'})
-def my_model(data=bauplan.Model('input_table')):
+def my_model(
+    data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
+) -> Annotated[pyarrow.Table, ColOne]:
     # import the package declared in the decorator
     import pandas
 
     # use the package
     df = data.to_pandas()
-    df = df['col_1']
+    df = df[['col_1']]
 
-    return df
+    return pyarrow.Table.from_pandas(df)
 ```
 
 This approach allows you to run each Bauplan model as an independent
@@ -90,17 +104,31 @@ use different versions of the same packages and different versions of
 the Python interpreter.
 
 ```python
-@bauplan.model()
-@bauplan.python('3.11', pip={'pandas': '2.2.0'})
-def step_1(data=bauplan.Model('input_table')):
-    import pandas
+#! from typing import Annotated
+class StepOutput(bauplan.TableSchema):
+    """The columns each step passes along."""
+
     ...
 
 @bauplan.model()
-@bauplan.python('3.11', pip={'pandas': '1.5.3'})
-def step_2(data=bauplan.Model('step_1')):
+@bauplan.python('3.11', pip={'pandas': '2.2.0'})
+def step_1(
+    data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
+) -> Annotated[pyarrow.Table, StepOutput]:
     import pandas
     ...
+
+    #! return pyarrow.table({})
+
+@bauplan.model()
+@bauplan.python('3.11', pip={'pandas': '1.5.3'})
+def step_2(
+    data: Annotated[pyarrow.Table, bauplan.Model('step_1')],
+) -> Annotated[pyarrow.Table, StepOutput]:
+    import pandas
+    ...
+
+    #! return pyarrow.table({})
 ```
 
 ## Materializing tables with models
@@ -127,14 +155,24 @@ then appends the new rows produced by the model. This is useful when you need to
 reprocess specific partitions without affecting the rest of the table.
 
 ```python
+#! from typing import Annotated
+class ReprocessedRows(bauplan.TableSchema):
+    """The reprocessed rows; `year` is the declared partition column."""
+
+    year: bauplan.Int64
+
 @bauplan.model(
     materialization_strategy='OVERWRITE_PARTITIONS',
     partitioned_by=['year'],
     overwrite_filter='year = 2024',
 )
 @bauplan.python('3.11')
-def my_model(input=bauplan.Model('upstream')):
+def my_model(
+    input: Annotated[pyarrow.Table, bauplan.Model('upstream')],
+) -> Annotated[pyarrow.Table, ReprocessedRows]:
     ...
+
+    #! return pyarrow.table({})
 ```
 
 Requirements:
@@ -155,15 +193,32 @@ practice today** for most use cases is to embed your SQL in a Python
 function using DuckDB.
 
 ```python
+#! from typing import Annotated
+class SelectedInputColumns(bauplan.TableSchema):
+    """Columns read from the input table."""
+
+    col_1: bauplan.String
+    col_2: bauplan.Int64
+    col_3: bauplan.Float64
+
+class CountByColOne(bauplan.TableSchema):
+    """Row counts grouped by `col_1`."""
+
+    col_1: bauplan.String
+    count: bauplan.Int64
+
 @bauplan.model()
 @bauplan.python("3.11", pip={'duckdb': '1.2.0'})
 def my_model(
-    data=bauplan.Model(
-        "input_table",
-        columns=["col_1", "col_2", "col_3"],
-        filter="timestamp >= '2022-12-15T00:00:00-05:00'",
-    )
-):
+    data: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            "input_table",
+            projection_schema=SelectedInputColumns,
+            filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+        )
+    ],
+) -> Annotated[pyarrow.Table, CountByColOne]:
     import duckdb
 
     # DuckDB will convert the Arrow input into a SQL-accessible table
@@ -171,7 +226,7 @@ def my_model(
         SELECT col_1, COUNT(*) as count
         FROM data
         GROUP BY col_1
-    """).arrow()
+    """).to_arrow_table()
 
     return output_table
 ```
@@ -188,15 +243,32 @@ def my_model(
 - Specify the shape of the output table of a model in its docstrings.
 
   ```python
+  #! from typing import Annotated
+  class SelectedInputColumns(bauplan.TableSchema):
+      """Columns read from the input table."""
+
+      col_1: bauplan.String
+      col_2: bauplan.Int64
+      col_3: bauplan.Float64
+
+  class CountByColOne(bauplan.TableSchema):
+      """Row counts grouped by `col_1`."""
+
+      col_1: bauplan.String
+      count: bauplan.Int64
+
   @bauplan.model()
   @bauplan.python("3.11")
   def my_model(
-      data=bauplan.Model(
-          "input_table",
-          columns=["col_1", "col_2", "col_3"],
-          filter="timestamp >= '2022-12-15T00:00:00-05:00'",
-      )
-  ):
+      data: Annotated[
+          pyarrow.Table,
+          bauplan.Model(
+              "input_table",
+              projection_schema=SelectedInputColumns,
+              filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+          )
+      ],
+  ) -> Annotated[pyarrow.Table, CountByColOne]:
       """
       This model will aggregate and count the data by Col_1.
       The output table will look like this:
@@ -205,6 +277,8 @@ def my_model(
       | A     | 100    |
       """
       ...
+
+      #! return pyarrow.table({})
   ```
 
 3. **Model environment Management**

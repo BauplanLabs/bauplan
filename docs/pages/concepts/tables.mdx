@@ -96,7 +96,19 @@ client.apply_table_creation_plan(plan)
 Use the `partitioned_by` parameter in the `@bauplan.model` decorator:
 
 ```python
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
+
+class PartitionedTrips(bauplan.TableSchema):
+    """Trip columns kept in the partitioned table."""
+
+    PULocationID: bauplan.Int64
+    trip_miles: bauplan.Float64
+    tips: bauplan.Float64
+    pickup_datetime: bauplan.TimestampMicroUTC
 
 @bauplan.python('3.11')
 @bauplan.model(
@@ -104,19 +116,17 @@ import bauplan
     materialization_strategy='REPLACE'
 )
 def create_partitioned_table(
-    data=bauplan.Model(
-        'taxi_fhvhv',
-        columns=[
-            'PULocationID',
-            'trip_miles',
-            'tips',
-            'pickup_datetime'
-        ],
-        filter="pickup_datetime >= '2022-12-23T00:00:00-05:00'"
-    )
-):
+    taxi_table: Annotated[
+        pyarrow.Table,
+        bauplan.Model(
+            'taxi_fhvhv',
+            projection_schema=PartitionedTrips,
+            filter="pickup_datetime >= '2022-12-23T00:00:00-05:00'"
+        )
+    ],
+) -> Annotated[pyarrow.Table, PartitionedTrips]:
     """Creates a partitioned table from taxi data"""
-    return data
+    return taxi_table
 ```
 
 In SQL models, use comments:

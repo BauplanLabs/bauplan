@@ -52,17 +52,26 @@ Key use cases include:
 Expectations are Python functions decorated with `@bauplan.expectation()`:
 
 ```python
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
 from bauplan.standard_expectations import expect_column_no_nulls
+
+class CriticalField(bauplan.TableSchema):
+    """The column this expectation validates."""
+
+    critical_field: bauplan.String
 
 @bauplan.expectation()
 @bauplan.python('3.11')
 def test_critical_field_completeness(
-    data=bauplan.Model(
-        'my_model',
-        columns=['critical_field']
-    )
-):
+    data: Annotated[
+        pyarrow.Table,
+        bauplan.Model('my_model', projection_schema=CriticalField),
+    ],
+) -> bool:
     """Validate that critical_field has no null values."""
     return expect_column_no_nulls(data, 'critical_field')
 ```
@@ -196,11 +205,22 @@ Now to make it run as a part of the pipeline, we need to wrap it in a function w
 #! import pyarrow as pa
 #! import pyarrow.compute as pc
 #! def check_data_recency(table: pa.Table, column: str, hours: int) -> bool: return True
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
+
+class Timestamps(bauplan.TableSchema):
+    """The column this expectation checks for freshness."""
+
+    timestamp: bauplan.TimestampMicroUTC
 
 @bauplan.expectation()
 @bauplan.python('3.11')
-def test_data_freshness(data=bauplan.Model('model', columns=['timestamp'])):
+def test_data_freshness(
+    data: Annotated[pyarrow.Table, bauplan.Model('model', projection_schema=Timestamps)],
+) -> bool:
     return check_data_recency(data, 'timestamp', hours=24)
 ```
 
@@ -213,12 +233,23 @@ Expectations offer flexible failure handling to match the severity of different 
 Use assertions to halt the pipeline immediately when critical issues are detected:
 
 ```python
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
 from bauplan.standard_expectations import expect_column_no_nulls
 
+class MandatoryField(bauplan.TableSchema):
+    """The column that must never contain nulls."""
+
+    field: bauplan.String
+
 @bauplan.expectation()
 @bauplan.python('3.11')
-def test_mandatory_field(data=bauplan.Model('model', columns=['field'])):
+def test_mandatory_field(
+    data: Annotated[pyarrow.Table, bauplan.Model('model', projection_schema=MandatoryField)],
+) -> bool:
     is_valid = expect_column_no_nulls(data, 'field')
     assert is_valid, "Critical field cannot contain nulls"
     return is_valid
@@ -233,12 +264,23 @@ Log issues without stopping the pipeline for non-critical problems:
 ```python
 #! import pyarrow as pa
 #! def check_data_recency(table: pa.Table, column: str, hours: int) -> bool: return True
+from typing import Annotated
+
+import pyarrow
+
 import bauplan
+
+class Timestamps(bauplan.TableSchema):
+    """The column this expectation checks for freshness."""
+
+    timestamp: bauplan.TimestampMicroUTC
 
 # check_data_recency is the custom check defined above
 @bauplan.expectation()
 @bauplan.python('3.11')
-def test_data_freshness(data=bauplan.Model('model', columns=['timestamp'])):
+def test_data_freshness(
+    data: Annotated[pyarrow.Table, bauplan.Model('model', projection_schema=Timestamps)],
+) -> bool:
     is_fresh = check_data_recency(data, 'timestamp', hours=24)
 
     return is_fresh

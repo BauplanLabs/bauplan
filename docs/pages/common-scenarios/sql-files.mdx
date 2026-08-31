@@ -20,12 +20,20 @@ When declaring a model as an input to a DAG node, Bauplan resolves it from one o
 The simplest case. When declaring the following, Bauplan looks for `input_table` as a table in the Bauplan lakehouse.
 
 ```python
+#! from typing import Annotated
+class ModelOutput(bauplan.TableSchema):
+    """The columns this model returns."""
+
+    ...
+
 @bauplan.model()
 @bauplan.python("3.13")
 def my_model(
-    data=bauplan.Model("input_table")
-):
-    pass
+    data: Annotated[pyarrow.Table, bauplan.Model("input_table")],
+) -> Annotated[pyarrow.Table, ModelOutput]:
+    ...
+
+    #! return pyarrow.table({})
 ```
 
 ### Case 2: from another node
@@ -33,19 +41,34 @@ def my_model(
 When a pipeline consists of multiple connected nodes, Bauplan resolves inter-node dependencies automatically. In the example below, the output of `my_first_model` feeds directly into `my_second_model`.
 
 ```python
+#! from typing import Annotated
+class FirstModelOutput(bauplan.TableSchema):
+    """The columns `my_first_model` returns."""
+
+    ...
+
 @bauplan.model()
 @bauplan.python("3.13")
 def my_first_model(
-    data=bauplan.Model("input_table")
-):
-    pass
+    data: Annotated[pyarrow.Table, bauplan.Model("input_table")],
+) -> Annotated[pyarrow.Table, FirstModelOutput]:
+    ...
+
+    #! return pyarrow.table({})
+
+class SecondModelOutput(bauplan.TableSchema):
+    """The columns `my_second_model` returns."""
+
+    ...
 
 @bauplan.model()
 @bauplan.python("3.13")
 def my_second_model(
-    data=bauplan.Model("my_first_model")
-):
-    pass
+    data: Annotated[pyarrow.Table, bauplan.Model("my_first_model")],
+) -> Annotated[pyarrow.Table, SecondModelOutput]:
+    ...
+
+    #! return pyarrow.table({})
 ```
 
 ### Case 3: from a SQL file

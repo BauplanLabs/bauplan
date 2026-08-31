@@ -1,0 +1,53 @@
+name: Publish SDK types
+
+# Builds the pure-Python `bauplan-sdk-types` package and publishes it to PyPI.
+#
+# This package is versioned independently of `bauplan` (whose version comes from
+# Cargo.toml via maturin), so it publishes here rather than through release.yaml.
+# The version is whatever `bauplan-sdk-types/pyproject.toml` says: bump it, commit
+# it, then run this workflow against the branch holding that commit.
+#
+# NB: If you rename this workflow, it will break PyPI trusted publishing.
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: publish-sdk-types-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'BauplanLabs' }}
+    environment: release
+    permissions:
+      contents: read # Clone repo at the selected branch
+      id-token: write # Trusted publishing to PyPI
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          cache: false
+
+      - name: Build wheel
+        run: |
+          uv build \
+            --wheel \
+            --package bauplan-sdk-types \
+            --clear \
+            --out-dir dist/bauplan-sdk-types
+
+      # --check-url makes a re-run idempotent: files already on the index are
+      # skipped instead of failing the job.
+      - name: Publish to PyPI
+        run: |
+          uv publish \
+            --trusted-publishing always \
+            --check-url https://pypi.org/simple/ \
+            'dist/bauplan-sdk-types/*.whl'

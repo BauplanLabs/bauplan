@@ -23,15 +23,20 @@ def _calculate_string_concatenation(
     The function does attempt type conversion to string if a column is not of type pa.string().
 
     """
-    fields = []
+
+    if not columns:
+        raise ValueError("at least 1 column is required")
+
+    fields: list[pa.Array] = []
     for column in columns:
         fields.append(
             pc.cast(table[column], pa.string())
             if table[column].type != pa.string()
             else table[column]
         )
+
     # last item needs to be the separator
-    fields.append(separator)
+    fields.append(pa.array([separator] * len(fields[0]), type=pa.string()))
 
     return pc.binary_join_element_wise(*fields)
 
@@ -67,14 +72,18 @@ def expect_column_equal_concatenation(
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_equal_concatenation
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_full_name_is_concat(
-        data=bauplan.Model('customers'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('customers')],
+    ) -> bool:
         assert expect_column_equal_concatenation(
             data,
             target_column='full_name',
@@ -111,14 +120,18 @@ def expect_column_mean_greater_than(
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_mean_greater_than
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_positive_avg_fare(
-        data=bauplan.Model('normalized_taxi_trips'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('normalized_taxi_trips')],
+    ) -> bool:
         assert expect_column_mean_greater_than(data, 'fare_amount', 0.0)
         return True
     ```
@@ -144,14 +157,18 @@ def expect_column_mean_greater_or_equal_than(
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_mean_greater_or_equal_than
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_avg_rating_at_least_three(
-        data=bauplan.Model('product_reviews'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('product_reviews')],
+    ) -> bool:
         assert expect_column_mean_greater_or_equal_than(data, 'rating', 3.0)
         return True
     ```
@@ -177,14 +194,18 @@ def expect_column_mean_smaller_than(
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_mean_smaller_than
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_error_rate_below_five_percent(
-        data=bauplan.Model('request_logs'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('request_logs')],
+    ) -> bool:
         assert expect_column_mean_smaller_than(data, 'error_rate', 0.05)
         return True
     ```
@@ -210,14 +231,18 @@ def expect_column_mean_smaller_or_equal_than(
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_mean_smaller_or_equal_than
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_avg_latency_within_slo(
-        data=bauplan.Model('request_logs'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('request_logs')],
+    ) -> bool:
         assert expect_column_mean_smaller_or_equal_than(data, 'latency_ms', 250.0)
         return True
     ```
@@ -244,14 +269,18 @@ def expect_column_some_null(table: pa.Table, column_name: str) -> bool:
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_some_null
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_optional_notes_has_nulls(
-        data=bauplan.Model('customers'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('customers')],
+    ) -> bool:
         assert expect_column_some_null(data, 'optional_notes')
         return True
     ```
@@ -273,14 +302,18 @@ def expect_column_no_nulls(table: pa.Table, column_name: str) -> bool:
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_no_nulls
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_no_null_pickup_datetime(
-        data=bauplan.Model('normalized_taxi_trips'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('normalized_taxi_trips')],
+    ) -> bool:
         column = 'pickup_datetime'
         ok = expect_column_no_nulls(data, column)
         assert ok, f'expected {column} to have no nulls'
@@ -304,14 +337,18 @@ def expect_column_all_null(table: pa.Table, column_name: str) -> bool:
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_all_null
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_legacy_user_id_fully_blanked(
-        data=bauplan.Model('customers'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('customers')],
+    ) -> bool:
         assert expect_column_all_null(data, 'legacy_user_id')
         return True
     ```
@@ -337,14 +374,18 @@ def expect_column_all_unique(table: pa.Table, column_name: str) -> bool:
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_all_unique
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_trip_id_is_unique(
-        data=bauplan.Model('normalized_taxi_trips'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('normalized_taxi_trips')],
+    ) -> bool:
         assert expect_column_all_unique(data, 'trip_id')
         return True
     ```
@@ -366,14 +407,18 @@ def expect_column_not_unique(table: pa.Table, column_name: str) -> bool:
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_not_unique
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_customer_id_repeats_in_orders(
-        data=bauplan.Model('orders'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('orders')],
+    ) -> bool:
         assert expect_column_not_unique(data, 'customer_id')
         return True
     ```
@@ -404,14 +449,18 @@ def expect_column_accepted_values(
     ## Examples
 
     ```python
+    from typing import Annotated
+
     import bauplan
+    import pyarrow
+
     from bauplan.standard_expectations import expect_column_accepted_values
 
     @bauplan.expectation()
     @bauplan.python('3.11')
     def test_order_status_domain(
-        data=bauplan.Model('orders'),
-    ):
+        data: Annotated[pyarrow.Table, bauplan.Model('orders')],
+    ) -> bool:
         assert expect_column_accepted_values(
             data,
             'order_status',

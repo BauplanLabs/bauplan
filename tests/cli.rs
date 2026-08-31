@@ -18,6 +18,7 @@ mod cli {
     mod run;
     mod table;
     mod tpch;
+    mod types;
 
     use super::*;
 }

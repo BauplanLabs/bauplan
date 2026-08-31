@@ -15,20 +15,38 @@ To chain models into a DAG, simply pass a previous Bauplan model as an
 input.
 
 ```python
-@bauplan.model()
-@bauplan.python('3.11')
-def step_1(data=bauplan.Model('input_table')):
+#! from typing import Annotated
+class StepOutput(bauplan.TableSchema):
+    """The columns each step passes to the next."""
+
     ...
 
 @bauplan.model()
 @bauplan.python('3.11')
-def step_2(data=bauplan.Model('step_1')):
+def step_1(
+    data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
+) -> Annotated[pyarrow.Table, StepOutput]:
     ...
+
+    #! return pyarrow.table({})
 
 @bauplan.model()
 @bauplan.python('3.11')
-def step_3(data=bauplan.Model('step_2')):
+def step_2(
+    data: Annotated[pyarrow.Table, bauplan.Model('step_1')],
+) -> Annotated[pyarrow.Table, StepOutput]:
     ...
+
+    #! return pyarrow.table({})
+
+@bauplan.model()
+@bauplan.python('3.11')
+def step_3(
+    data: Annotated[pyarrow.Table, bauplan.Model('step_2')],
+) -> Annotated[pyarrow.Table, StepOutput]:
+    ...
+
+    #! return pyarrow.table({})
 ```
 
 ## Pipeline constraints

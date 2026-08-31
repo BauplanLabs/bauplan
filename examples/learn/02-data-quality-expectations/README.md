@@ -26,15 +26,21 @@ The file `expectations.py` contains an expectation test using `bauplan.standard_
 To calculate waiting times, the `on_scene_datetime` column must have no null values. The test uses `expect_column_no_nulls` and halts the pipeline via `assert` if it fails:
 
 ```python
+from typing import Annotated
+
 import bauplan
+import pyarrow
+
+from bauplan import Model
 from bauplan.standard_expectations import expect_column_no_nulls
 
 @bauplan.expectation()
-@bauplan.python('3.11')
+@bauplan.python("3.11")
 def test_null_values_on_scene_datetime(
-    data=bauplan.Model('normalized_taxi_trips'),
-):
-    column_to_check = 'on_scene_datetime'
+    data: Annotated[pyarrow.Table, Model("normalized_taxi_trips")],
+) -> bool:
+    column_to_check = "on_scene_datetime"
+
     _is_expectation_correct = expect_column_no_nulls(data, column_to_check)
 
     assert _is_expectation_correct, (
@@ -70,7 +76,7 @@ The expectation flags a data quality issue - there are null values in `on_scene_
 bauplan run --project-dir pipeline --strict
 ```
 
-To fix the underlying data issue, open `models.py` and add a filter before line 37 (`return result.to_arrow()`) in `normalized_taxi_trips`:
+To fix the underlying data issue, open `models.py` and add a filter before line 108 (`return result.to_arrow()`) in `normalized_taxi_trips`:
 
 ```python type:ignore
     # drop rows where on_scene_datetime is null

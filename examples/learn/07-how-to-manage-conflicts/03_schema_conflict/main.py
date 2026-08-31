@@ -15,21 +15,30 @@ def main(
     profile: Annotated[str, typer.Option(help="Bauplan profile to use")] = "default",
 ) -> None:
     """
-    Demonstrate how a Bauplan expectation catches a subtle schema drift between two
-    versions of the same pipeline and prevents the drift.
+    Example that demonstrates how Bauplan expectations and type contracts catch, and
+    prevent, a subtle schema drift when an old data pipeline is extended to address a
+    new need. An output schema is defined to guarantee the shape of a model's outputs
+    and an expectation is defined to catch data violations.
 
     Both pipelines run sequentially on the same branch with strict mode enabled.
     In order:
       1. The old pipeline runs on the branch. It computes the mean Titanic fare per
-         passenger class, with `Fare` cast to Float32. An expectation that ships with
-         the pipeline asserts `Fare` must be Float32: downstream dashboards rely on
-         that type. The run succeeds.
-      2. The business asks for a finer-grained view: group by `Pclass` AND `Sex`, and
-         include the number of passengers. A new pipeline is built for that.
-      3. A subtle change slips in while rewriting: `Fare` is cast with Python's `float`
-         (Float64 in polars) instead of `pl.Float32`.
-      4. The new pipeline runs on the same branch. The expectation fires on the new
-         output, the run fails, and no drift happens on the branch.
+         passenger class, over standard fares only, and publishes `Fare` as a
+         Decimal128[4, 2] so the money is exact rather than binary floating point.
+         The output schema specifies the decimal data type for the `Fare` column and
+         the expectation checks that the fares being averaged fit that precision.
+         The run succeeds.
+      2. The business asks for a broader, finer-grained view: cover every passenger
+         class, split by `Sex`, and include the number of passengers. A new pipeline
+         is built for that.
+      3. The pipeline is modified and the filter on `Pclass` is dropped, so first
+         class fares now enter the analysis. Those reach 512.33, and the mean fare
+         for first class women is 106.13, so neither fits a Decimal128[4, 2].
+      4. The expectation fires on the widened input and fails the run, so no drift
+         happens on the branch. The fix is a deliberate one: widen the column to
+         Decimal128[5, 2] in the output schema and raise the bound the expectation
+         checks. Here the schema and the expectation each do a job the other cannot,
+         since the declared type is what the expectation validates the data against.
     """
     client = bauplan.Client(profile=profile)
 
@@ -42,7 +51,8 @@ def main(
 
     # --- Step 1: ship the old pipeline ---
     print(
-        "\n=== Step 1: ship the old pipeline (mean fare per Pclass, Fare: Float32) ===\n"
+        "\n=== Step 1: ship the old pipeline "
+        "(mean standard fare per Pclass, Fare: Decimal128[4, 2]) ===\n"
     )
 
     # Setting strict="on" tells Bauplan to run the expectations associated with the DAG,
@@ -55,19 +65,20 @@ def main(
         raise Exception(
             f"Old pipeline failed unexpectedly: {run_state.job_status} - {run_state.error}"
         )
-    print("Old pipeline succeeded; expectation passed (Fare is Float32)")
+    print("Old pipeline succeeded; expectation passed (fares fit Decimal128[4, 2])")
     print(f"{TABLE_NAME} is now published")
     assert client.has_table(table=TABLE_NAME, ref=branch)
 
     print(f"\nSchema of {TABLE_NAME}:")
     print_schema(client, ref=branch)
 
-    # --- Step 2: run the new pipeline; the expectation catches the type drift ---
-    # `cast(float)` inside the new pipeline promotes Fare to Float64 (polars' default
-    # for Python's `float`). The pipeline still carries the expectation that Fare must
-    # be Float32, so it fires after the model materializes and fails the run.
+    # --- Step 2: run the new pipeline; the expectation catches the precision drift ---
+    # Dropping the filter on Pclass pulls first class fares into the analysis, which
+    # reach 512.33 and average 106.13 for first class women. The pipeline still declares
+    # Fare as a Decimal128[4, 2] and still carries the expectation that fares must fit
+    # that precision, so the expectation fails the run.
     print(
-        "\n=== Step 2: build the new pipeline (adds Sex, n_passengers; subtle Fare drift) ===\n"
+        "\n=== Step 2: build the new pipeline (all classes, adds Sex, n_passengers) ===\n"
     )
 
     print("Running the new pipeline...")

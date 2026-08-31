@@ -24,9 +24,13 @@ bauplan parameter set openai_api_key <key> --type secret
 At runtime, your pipeline function declares the secret as a parameter and Bauplan decrypts and injects it automatically:
 
 ```python
+from typing import Annotated
+
+from bauplan import Model, Parameter
+
 def sec_10_q_tabular_dataset(
-    data=bauplan.Model("sec_10_q_markdown"),
-    open_ai_key=bauplan.Parameter("openai_api_key"),  # decrypted at runtime
+    data: Annotated[pyarrow.Table, Model("sec_10_q_markdown")],
+    open_ai_key: Annotated[str, Parameter("openai_api_key")],  # decrypted at runtime
 ):
     ...
 ```

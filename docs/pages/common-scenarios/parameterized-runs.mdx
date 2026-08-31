@@ -66,14 +66,22 @@ Parameters let you pass runtime values to models without changing code. They can
         Parameters can be passed as variables to your model code:
 
         ```python
+        #! from typing import Annotated
+        class LoanSummary(bauplan.TableSchema):
+            """The columns this model returns."""
+
+            ...
+
         @bauplan.model()
         @bauplan.python('3.11')
         def loan_model(
-            interest_rate=bauplan.Parameter('interest_rate'), # passing parameters as variables
-            loan_amount=bauplan.Parameter('loan_amount'),
-            loan_term_years=bauplan.Parameter('loan_term_years'),
-        ):
+            interest_rate: Annotated[float, bauplan.Parameter('interest_rate')], # passing parameters as variables
+            loan_amount: Annotated[float, bauplan.Parameter('loan_amount')],
+            loan_term_years: Annotated[int, bauplan.Parameter('loan_term_years')],
+        ) -> Annotated[pyarrow.Table, LoanSummary]:
             ...
+
+            #! return pyarrow.table({})
         ```
 
         <Note>
@@ -85,15 +93,26 @@ Parameters let you pass runtime values to models without changing code. They can
         using the `$param_name` syntax:
 
         ```python
+        #! from typing import Annotated
+        class QualifyingLoans(bauplan.TableSchema):
+            """The columns this model returns."""
+
+            ...
+
         @bauplan.model()
         @bauplan.python('3.11')
         def qualifying_loans(
-            data=bauplan.Model(
-                'loans',
-                filter='interest_rate <= $interest_rate AND amount >= $loan_amount',
-            ),
-        ):
+            data: Annotated[
+                pyarrow.Table,
+                bauplan.Model(
+                    'loans',
+                    filter='interest_rate <= $interest_rate AND amount >= $loan_amount',
+                ),
+            ],
+        ) -> Annotated[pyarrow.Table, QualifyingLoans]:
             ...
+
+            #! return pyarrow.table({})
         ```
     </TabItem>
     <TabItem value="sql" label="SQL query">
