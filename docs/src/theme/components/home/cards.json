@@ -20,7 +20,7 @@
     }
   ],
   "agentsCard": {
-    "href": "/agents/overview",
+    "href": "/tutorial/connect-your-agent",
     "image": "/img/icons/rocket.png",
     "title": "AI Agents",
     "description": "Use AI Agents to build pipelines, explore data, and manage your lakehouse with MCP Server and Skills.",
