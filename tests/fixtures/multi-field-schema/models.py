@@ -83,7 +83,13 @@ def multi_field_model(
     ],
     locations: Annotated[
         pyarrow.Table,
-        Model("query_model", projection_schema=LocationsPushdown),
+        Model(
+            "taxi_fhvhv",
+            projection_schema=LocationsPushdown,
+            filter=(
+                "pickup_datetime >= $start_datetime AND pickup_datetime < $end_datetime"
+            ),
+        ),
     ],
 ) -> Annotated[pyarrow.Table, FullTypesSchema]:
     print(
