@@ -2,12 +2,12 @@ import sdkPages from "./pages/reference/_sidebar.json";
 
 export default {
   documentationSidebar: [
+    "tutorial/index",
     {
       type: "category",
       label: "Getting Started",
       collapsed: true,
       items: [
-        "tutorial/index",
         "tutorial/installation",
         {
           type: "category",

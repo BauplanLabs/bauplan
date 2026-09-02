@@ -7,7 +7,7 @@ import {
   GitBranch,
   Workflow,
   Blocks,
-  Youtube,
+  Zap,
 } from "lucide-react";
 import cards from "./cards.json";
 
@@ -21,7 +21,7 @@ const icons = {
   GitBranch,
   Workflow,
   Blocks,
-  Youtube,
+  Zap,
 };
 
 const cardClass = `group flex items-center p-4 rounded-lg
@@ -37,26 +37,6 @@ export const HomePage = () => {
 
   return (
     <>
-      {sections.map((section) => (
-        <React.Fragment key={section.title}>
-          <h2 className="text-2xl font-bold mb-6">{section.title}</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {section.cards.map((card) => {
-              const Icon = icons[card.icon];
-              return (
-                <a key={card.href} href={card.href} className={cardClass}>
-                  <Icon className="h-5 w-5 mr-3" />
-                  <div className="text-[var(--docsearch-text-color)]">
-                    <div className="font-semibold">{card.title}</div>
-                    <div className="text-sm">{card.description}</div>
-                  </div>
-                </a>
-              );
-            })}
-          </div>
-        </React.Fragment>
-      ))}
-
       <a
         href={agentsCard.href}
         className="block no-underline text-[var(--docsearch-text-color)]"
@@ -77,6 +57,25 @@ export const HomePage = () => {
           <span>{agentsCard.cta}</span>
         </div>
       </a>
+      {sections.map((section) => (
+        <React.Fragment key={section.title}>
+          <h2 className="text-2xl font-bold mb-6">{section.title}</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            {section.cards.map((card) => {
+              const Icon = icons[card.icon];
+              return (
+                <a key={card.href} href={card.href} className={cardClass}>
+                  <Icon className="h-5 w-5 mr-3" />
+                  <div className="text-[var(--docsearch-text-color)]">
+                    <div className="font-semibold">{card.title}</div>
+                    <div className="text-sm">{card.description}</div>
+                  </div>
+                </a>
+              );
+            })}
+          </div>
+        </React.Fragment>
+      ))}
     </>
   );
 };
