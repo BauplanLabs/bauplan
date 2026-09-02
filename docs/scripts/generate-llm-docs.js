@@ -212,13 +212,13 @@ function convertHomePage(content) {
   if (!content.includes('<HomePage')) return content;
 
   const { sections, agentsCard } = JSON.parse(fs.readFileSync(HOME_CARDS_FILE, 'utf8'));
-  const markdown = sections
-    .map(({ title, cards }) => {
+  const markdown = [
+    `[${agentsCard.title}](${agentsCard.href}): ${agentsCard.description}`,
+    ...sections.map(({ title, cards }) => {
       const links = cards.map((c) => `- [${c.title}](${c.href}): ${c.description}`).join('\n');
       return `## ${title}\n\n${links}`;
-    })
-    .concat(`[${agentsCard.title}](${agentsCard.href}): ${agentsCard.description}`)
-    .join('\n\n');
+    }),
+  ].join('\n\n');
 
   return content.replace(/<HomePage\s*\/>/g, markdown);
 }

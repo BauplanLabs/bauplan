@@ -4,23 +4,23 @@
       "title": "Get Started",
       "cards": [
         { "icon": "Package", "href": "/tutorial/installation", "title": "Install Bauplan", "description": "CLI, SDK, and your API key" },
+        { "icon": "Zap", "href": "/tutorial/quick-start", "title": "Quick start", "description": "Your first branch and run" },
         { "icon": "Layers", "href": "https://github.com/BauplanLabs/bauplan/tree/main/examples", "title": "Examples", "description": "Learn by example" },
-        { "icon": "Terminal", "href": "/reference/bauplan", "title": "Reference", "description": "CLI and SDK" },
-        { "icon": "Youtube", "href": "https://www.youtube.com/@bauplan_labs", "title": "Videos", "description": "Demos and webinars" }
+        { "icon": "Terminal", "href": "/reference/bauplan", "title": "Reference", "description": "CLI and SDK" }
       ]
     },
     {
       "title": "Go Deeper",
       "cards": [
-        { "icon": "BookOpen", "href": "/concepts/projects", "title": "Core Concepts", "description": "Models, tables, pipelines" },
         { "icon": "GitBranch", "href": "/concepts/git-for-data", "title": "Git for Data", "description": "Branch, commit, roll back" },
+        { "icon": "BookOpen", "href": "/concepts/projects", "title": "Core Concepts", "description": "Models, tables, pipelines" },
         { "icon": "Workflow", "href": "/common-scenarios/", "title": "Common Workflows", "description": "Real-world patterns" },
         { "icon": "Blocks", "href": "/integrations/", "title": "Integrations", "description": "Connect your stack" }
       ]
     }
   ],
   "agentsCard": {
-    "href": "/agents",
+    "href": "/agents/overview",
     "image": "/img/icons/rocket.png",
     "title": "AI Agents",
     "description": "Use AI Agents to build pipelines, explore data, and manage your lakehouse with MCP Server and Skills.",
