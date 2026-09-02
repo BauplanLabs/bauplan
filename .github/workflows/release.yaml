@@ -96,11 +96,11 @@ jobs:
     with:
       tag: ${{ needs.release.outputs.tag }}
 
-  # Deploy docs for the new version.
+  # Deploy docs for the new version, but not for release candidates.
   docs:
     name: Deploy docs
     needs: release
-    if: ${{ needs.release.outputs.release_created == 'true' }}
+    if: ${{ needs.release.outputs.release_created == 'true' && !contains(needs.release.outputs.tag, '-rc') }}
     permissions:
       id-token: write # AWS OIDC authentication
       contents: read
