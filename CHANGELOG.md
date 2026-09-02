@@ -1,4 +1,10 @@
 
+## [0.2.1] - 2026-09-02
+
+### New Features
+
+- Update for new pysdk stubs (4636083cca722580b9e3302679b79cdfa53cab4f)
+
 ## [0.2.0] - 2026-08-25
 
 ### Bugfixes
