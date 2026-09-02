@@ -33,6 +33,13 @@ jobs:
       # without going through a shim.
       - run: mise bin-paths >> "$GITHUB_PATH"
 
+      # Pin the version of vale to the version in mise.toml.
+      - id: vale-version
+        run: |
+          version=$(mise tool vale --json | jq -er '.active_versions[0]')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
+          version: ${{ steps.vale-version.outputs.version }}
           files: '["docs/pages", "examples"]'
