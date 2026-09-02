@@ -9,6 +9,7 @@ export default {
       collapsed: true,
       items: [
         "tutorial/installation",
+        "tutorial/connect-your-agent",
         {
           type: "category",
           label: "Quick Start",
@@ -19,12 +20,6 @@ export default {
           items: ["tutorial/data-branches", "tutorial/import"],
         },
       ],
-    },
-    {
-      type: "category",
-      label: "Agents",
-      collapsed: true,
-      items: ["agents/overview", "agents/skills", "agents/mcp", "agents/context"],
     },
     {
       type: "category",
