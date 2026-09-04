@@ -428,17 +428,26 @@ fn handle_get_table(
             println!();
         }
         Output::Tty => {
+            if let Some(comment) = resp.comment() {
+                println!("Table Documentation:\n{comment}\n");
+            }
+
             let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAME\tREQUIRED\tTYPE")?;
+            writeln!(&mut tw, "NAME\tREQUIRED\tTYPE\tDOC")?;
 
             for TableField {
                 name,
                 required,
                 r#type,
+                doc,
                 ..
             } in resp.fields
             {
-                writeln!(&mut tw, "{name}\t{required}\t{type}")?;
+                writeln!(
+                    &mut tw,
+                    "{name}\t{required}\t{type}\t{}",
+                    doc.as_deref().unwrap_or("-")
+                )?;
             }
 
             tw.flush()?;
