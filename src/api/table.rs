@@ -31,6 +31,9 @@ pub struct TableField {
     pub required: bool,
     /// The field type.
     pub r#type: String,
+    /// The field documentation.
+    #[serde(default)]
+    pub doc: Option<String>,
 }
 
 /// A partition field on a table.
@@ -121,6 +124,11 @@ impl Table {
     pub fn fqn(&self) -> String {
         format!("{}.{}", self.namespace, self.name)
     }
+
+    /// The table documentation, carried as the `comment` table property.
+    pub fn comment(&self) -> Option<&str> {
+        self.properties.get("comment").map(String::as_str)
+    }
 }
 
 #[cfg(feature = "python")]
@@ -130,6 +138,12 @@ impl Table {
     #[getter(fqn)]
     fn py_fqn(&self) -> String {
         self.fqn()
+    }
+
+    /// The table documentation, carried as the `comment` table property.
+    #[getter(comment)]
+    fn py_comment(&self) -> Option<&str> {
+        self.comment()
     }
 
     /// Whether this is a managed table.
