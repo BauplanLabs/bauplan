@@ -408,6 +408,34 @@ fn handle_list_tables(
     Ok(())
 }
 
+/// Condense documentation into a single cell, cut at the first newline or at
+/// `DOC_WIDTH` characters, whichever comes first.
+///
+/// Anything dropped is marked with `...`; the full text is available from
+/// `--output json`.
+fn doc_summary(doc: Option<&str>) -> String {
+    const DOC_WIDTH: usize = 40;
+    const ELLIPSIS: &str = "...";
+
+    let Some(doc) = doc.map(str::trim).filter(|d| !d.is_empty()) else {
+        return "-".to_string();
+    };
+
+    // Tabs are expanded because the tab writer reads them as cell separators.
+    let mut lines = doc.lines();
+    let first = lines.next().unwrap_or_default().replace('\t', " ");
+    let first = first.trim_end();
+
+    // The cell holds the whole doc only if nothing follows the first line and
+    // that line fits.
+    if lines.next().is_none() && first.chars().count() <= DOC_WIDTH {
+        return first.to_string();
+    }
+
+    let kept: String = first.chars().take(DOC_WIDTH - ELLIPSIS.len()).collect();
+    format!("{}{ELLIPSIS}", kept.trim_end())
+}
+
 fn handle_get_table(
     cli: &Cli,
     TableGetArgs { table_name, r#ref }: TableGetArgs,
@@ -428,17 +456,26 @@ fn handle_get_table(
             println!();
         }
         Output::Tty => {
+            if let Some(comment) = resp.comment() {
+                println!("Table Documentation:\n{comment}\n");
+            }
+
             let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAME\tREQUIRED\tTYPE")?;
+            writeln!(&mut tw, "NAME\tREQUIRED\tTYPE\tDOC")?;
 
             for TableField {
                 name,
                 required,
                 r#type,
+                doc,
                 ..
             } in resp.fields
             {
-                writeln!(&mut tw, "{name}\t{required}\t{type}")?;
+                writeln!(
+                    &mut tw,
+                    "{name}\t{required}\t{type}\t{}",
+                    doc_summary(doc.as_deref())
+                )?;
             }
 
             tw.flush()?;
@@ -961,4 +998,53 @@ fn handle_revert_table(cli: &Cli, args: TableRevertArgs) -> anyhow::Result<()> {
     eprintln!("Reverted table {table_name:?} to {source_ref:?} in {into_branch:?}");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The width `doc_summary` caps a cell at.
+    const WIDTH: usize = 40;
+
+    #[test]
+    fn doc_summary_marks_missing_documentation() {
+        assert_eq!(doc_summary(None), "-");
+        assert_eq!(doc_summary(Some("")), "-");
+        assert_eq!(doc_summary(Some(" \n\t ")), "-");
+    }
+
+    #[test]
+    fn doc_summary_keeps_documentation_that_fits() {
+        let exact = "x".repeat(WIDTH);
+        assert_eq!(doc_summary(Some(&exact)), exact);
+        assert_eq!(doc_summary(Some("Vendor code.")), "Vendor code.");
+        assert_eq!(doc_summary(Some("Vendor\tcode.")), "Vendor code.");
+    }
+
+    #[test]
+    fn doc_summary_cuts_at_the_first_newline() {
+        assert_eq!(
+            doc_summary(Some("First line.\nSecond line.")),
+            "First line...."
+        );
+    }
+
+    #[test]
+    fn doc_summary_cuts_at_the_width() {
+        let summary = doc_summary(Some(&"x".repeat(WIDTH + 1)));
+        assert_eq!(summary, format!("{}...", "x".repeat(WIDTH - 3)));
+        assert_eq!(summary.chars().count(), WIDTH);
+
+        // Multi-byte characters are counted as characters, not bytes.
+        let summary = doc_summary(Some(&"é".repeat(WIDTH + 1)));
+        assert_eq!(summary, format!("{}...", "é".repeat(WIDTH - 3)));
+
+        // A cut that lands on whitespace does not leave it before the `...`.
+        let padded = format!("{}  tail", "x".repeat(WIDTH - 5));
+        assert_eq!(
+            doc_summary(Some(&padded)),
+            format!("{}...", "x".repeat(WIDTH - 5))
+        );
+    }
 }
