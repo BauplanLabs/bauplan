@@ -11,6 +11,31 @@ use crate::{
     api::{PathArgs, urlformat},
 };
 
+/// Load the full iceberg metadata for a table, including the schema with
+/// per-field metadata such as `doc`.
+#[derive(Debug, Clone)]
+pub struct LoadTable<'a> {
+    /// The table name, without a namespace.
+    pub name: &'a str,
+    /// The ref (branch, tag, etc) at which to read the table.
+    pub at_ref: &'a str,
+    /// The namespace the table is in.
+    pub namespace: &'a str,
+}
+
+impl ApiRequest for LoadTable<'_> {
+    type Response = IcebergTable;
+
+    fn path(&self) -> PathArgs {
+        urlformat!(
+            "/iceberg/v1/{}/namespaces/{}/tables/{}",
+            self.at_ref,
+            self.namespace,
+            self.name,
+        )
+    }
+}
+
 /// Register a table in a namespace on a branch, using an existing metadata
 /// file.
 #[derive(Debug, Clone)]
