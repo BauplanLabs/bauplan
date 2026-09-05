@@ -69,7 +69,7 @@ def survival_rate_by_age(
     | 20       | 0.4           |
     """
 
-    import polars as pl
+    import polars as pl  # ty: ignore[unresolved-import]
 
     df = pl.DataFrame(passengers)
     return (
