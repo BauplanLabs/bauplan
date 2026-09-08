@@ -10,13 +10,14 @@ from bauplan import (
     TableSchema,
 )
 from bauplan.standard_expectations import expect_column_mean_greater_than
+from models import QueryModelSchema
 
 
 class TripMilesPushdown(TableSchema):
     """The single column the expectation reads from query_model."""
 
     trip_miles: Annotated[
-        Float64 | None, TableField(lineage="QueryModelSchema['trip_miles']")
+        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
     ]
 
 
