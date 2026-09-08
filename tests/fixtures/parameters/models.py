@@ -55,7 +55,6 @@ def params_are_cool_model(
         Model(
             "query_model",
             projection_schema=TripsPushdown,
-            filter="PULocationID = $location_id",
         ),
     ],
     golden_ratio: Annotated[float, Parameter("golden_ratio")],
