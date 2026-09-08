@@ -194,9 +194,9 @@ def model_overwrite_partitions(
     return data
 
 
-# Neither decorator requires arguments
+# The model decorator has no required args
 @model()
-@python()
+@python("3.14")
 def model_no_decorator_args(
     data: Annotated[pyarrow.Table, Model("model_overwrite_partitions")],
 ) -> Annotated[pyarrow.Table, AnnotatedTypesSchema]:

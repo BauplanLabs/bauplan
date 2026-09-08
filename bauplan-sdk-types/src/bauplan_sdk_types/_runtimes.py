@@ -4,6 +4,7 @@ from typing import Optional, Callable
 
 
 def python(
+    # TODO(colin): make this required.
     version: Optional[str] = None,
     pip: Optional[dict[str, str]] = None,
 ) -> Callable:

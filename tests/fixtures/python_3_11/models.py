@@ -20,7 +20,7 @@ class LocationSchema(TableSchema):
 @bauplan.model(
     materialization_strategy="NONE",
 )
-@bauplan.python()
+@bauplan.python("3.11")
 def normalize_data(
     data: Annotated[pyarrow.Table, Model("query_model")],
 ) -> Annotated[pyarrow.Table, LocationSchema]:
