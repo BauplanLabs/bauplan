@@ -9,18 +9,16 @@ class SurvivalColumns(bauplan.TableSchema):
     """A projection of 2 columns for survival rate analysis."""
 
     Age: Annotated[
-        bauplan.Float64,
+        bauplan.Float64 | None,
         bauplan.TableField(
             doc="A passenger's age in years according to the solar calendar.",
-            lineage="titanic['Age']",
         ),
     ]
 
     Survived: Annotated[
-        bauplan.Int64,
+        bauplan.Int64 | None,
         bauplan.TableField(
             doc="Indicator of passenger's survival; may be 1 (survived) or 0 (did not).",
-            lineage="titanic['Survived']",
         ),
     ]
 
@@ -29,7 +27,7 @@ class SurvivalRateSchema(bauplan.TableSchema):
     """Analysis result of passenger survival rate by age (grouped by year)."""
 
     Age: Annotated[
-        bauplan.Float64,
+        bauplan.Float64 | None,
         bauplan.TableField(
             doc="Passenger age group by year.",
             lineage=SurvivalColumns["Age"],
@@ -37,7 +35,7 @@ class SurvivalRateSchema(bauplan.TableSchema):
     ]
 
     survival_rate: Annotated[
-        bauplan.Float64,
+        bauplan.Float64 | None,
         bauplan.TableField(
             doc="Likelihood of passenger survival for a given age group (by year).",
             lineage=SurvivalColumns["Survived"],

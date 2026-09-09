@@ -8,11 +8,11 @@ from bauplan_sdk_types._function_types import (
 from bauplan_sdk_types._parameters import Parameter
 from bauplan_sdk_types._runtimes import python
 from bauplan_sdk_types._table_fields import (
+    Any,
     Bool,
     Int32,
     Int64,
     Float64,
-    Decimal128,
     Binary,
     String,
     Date32,
@@ -32,11 +32,11 @@ __all__ = [
     "TableField",
     "TableSchema",
     # field types
+    "Any",
     "Bool",
     "Int32",
     "Int64",
     "Float64",
-    "Decimal128",
     "Date32",
     "Date64",
     "TimestampMicro",

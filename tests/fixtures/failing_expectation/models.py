@@ -16,25 +16,32 @@ from bauplan import (
 class QueryModelSchema(TableSchema):
     """The columns query_model selects from taxi_fhvhv."""
 
-    pickup_datetime: TimestampMicroUTC
-    trip_miles: Float64
-    trip_time: Int64
+    pickup_datetime: TimestampMicroUTC | None
+    trip_miles: Float64 | None
+    trip_time: Int64 | None
 
 
 class TripMilesPushdown(TableSchema):
     """The single column the expectation reads from query_model."""
 
-    trip_miles: Annotated[Float64, TableField(lineage=QueryModelSchema["trip_miles"])]
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
+    ]
 
 
 class NormalizedTripsSchema(TableSchema):
     """The trip columns normalize_data reads from query_model and passes through."""
 
-    trip_time: Annotated[Int64, TableField(lineage=QueryModelSchema["trip_time"])]
-    pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=QueryModelSchema["pickup_datetime"])
+    trip_time: Annotated[
+        Int64 | None, TableField(lineage=QueryModelSchema["trip_time"])
     ]
-    trip_miles: Annotated[Float64, TableField(lineage=QueryModelSchema["trip_miles"])]
+    pickup_datetime: Annotated[
+        TimestampMicroUTC | None,
+        TableField(lineage=QueryModelSchema["pickup_datetime"]),
+    ]
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
+    ]
 
 
 @bauplan.expectation()

@@ -36,26 +36,6 @@ class Float64(FieldType):
     ...
 
 
-PrecisionParam = TypeVar("PrecisionParam", bound=int)
-ScaleParam = TypeVar("ScaleParam", bound=int)
-
-
-class Decimal128(FieldType, Generic[PrecisionParam, ScaleParam]):
-    """
-    Fixed-point data type corresponding to the Arrow data type `Decimal128`.
-
-    Precision and scale are given as type parameters ("get item" syntax), because a call
-    is not a valid type expression and is reported as an error by type checkers:
-
-    ```
-    class PriceSchema(TableSchema):
-        price: Decimal128[Literal[38], Literal[10]]
-    ```
-    """
-
-    ...
-
-
 class String(FieldType):
     """String data type corresponding to the Arrow data type `String`."""
 
@@ -112,6 +92,12 @@ class Binary(FieldType):
     ...
 
 
+class Any(FieldType):
+    """Bypasses type validation"""
+
+    ...
+
+
 class TableField:
     """A schema field that contains metadata for a table column."""
 
@@ -120,13 +106,10 @@ class TableField:
         self,
         doc: Optional[str] = None,
         lineage: Optional[FieldType | str] = None,
-        nullable: Optional[bool] = None,
     ):
         """
         `doc`: Documentation for the TableField.
         `lineage`: A reference to a `TableField` to "inherit" data and metadata from.
-        `nullable`: `True` if the TableField may contain `None` values (`NULL` in SQL);
-                    default value is `None`, default meaning is to accept `None` values.
         """
 
         super().__init__()

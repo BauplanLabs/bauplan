@@ -17,34 +17,38 @@ from bauplan import (
 class QueryModelSchema(TableSchema):
     """The columns query_model selects from taxi_fhvhv."""
 
-    pickup_datetime: TimestampMicroUTC
-    dropoff_datetime: TimestampMicroUTC
-    PULocationID: Int64
-    DOLocationID: Int64
-    trip_miles: Float64
-    trip_time: Int64
-    base_passenger_fare: Float64
-    tolls: Float64
-    sales_tax: Float64
-    tips: Float64
+    pickup_datetime: TimestampMicroUTC | None
+    dropoff_datetime: TimestampMicroUTC | None
+    PULocationID: Int64 | None
+    DOLocationID: Int64 | None
+    trip_miles: Float64 | None
+    trip_time: Int64 | None
+    base_passenger_fare: Float64 | None
+    tolls: Float64 | None
+    sales_tax: Float64 | None
+    tips: Float64 | None
 
 
 class TripsPushdown(TableSchema):
     """The trip columns the model reads from query_model."""
 
     dropoff_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=QueryModelSchema["dropoff_datetime"])
+        TimestampMicroUTC | None,
+        TableField(lineage=QueryModelSchema["dropoff_datetime"]),
     ]
     pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=QueryModelSchema["pickup_datetime"])
+        TimestampMicroUTC | None,
+        TableField(lineage=QueryModelSchema["pickup_datetime"]),
     ]
-    trip_miles: Annotated[Float64, TableField(lineage=QueryModelSchema["trip_miles"])]
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
+    ]
 
 
 class ConstantSchema(TableSchema):
     """A fixed table, returned so the model has an output at all."""
 
-    y: Annotated[Int64, TableField(doc="A constant, unrelated to the input.")]
+    y: Annotated[Int64 | None, TableField(doc="A constant, unrelated to the input.")]
 
 
 @bauplan.model(materialization_strategy="NONE")

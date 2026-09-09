@@ -19,80 +19,91 @@ from bauplan import (
 class QueryModelSchema(TableSchema):
     """The columns query_model selects from taxi_fhvhv."""
 
-    pickup_datetime: TimestampMicroUTC
-    dropoff_datetime: TimestampMicroUTC
-    PULocationID: Int64
-    DOLocationID: Int64
-    trip_miles: Float64
-    trip_time: Int64
-    base_passenger_fare: Float64
-    tolls: Float64
-    sales_tax: Float64
-    tips: Float64
+    pickup_datetime: TimestampMicroUTC | None
+    dropoff_datetime: TimestampMicroUTC | None
+    PULocationID: Int64 | None
+    DOLocationID: Int64 | None
+    trip_miles: Float64 | None
+    trip_time: Int64 | None
+    base_passenger_fare: Float64 | None
+    tolls: Float64 | None
+    sales_tax: Float64 | None
+    tips: Float64 | None
 
 
 class TripsPushdown(TableSchema):
     """The trip columns normalize_data reads from query_model."""
 
-    trip_time: Annotated[Int64, TableField(lineage=QueryModelSchema["trip_time"])]
-    pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=QueryModelSchema["pickup_datetime"])
+    trip_time: Annotated[
+        Int64 | None, TableField(lineage=QueryModelSchema["trip_time"])
     ]
-    trip_miles: Annotated[Float64, TableField(lineage=QueryModelSchema["trip_miles"])]
+    pickup_datetime: Annotated[
+        TimestampMicroUTC | None,
+        TableField(lineage=QueryModelSchema["pickup_datetime"]),
+    ]
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
+    ]
 
 
 class NormalizedTripsSchema(TableSchema):
     """Trips from 2023 on with a positive distance, plus a log transform and a date."""
 
     trip_time: Annotated[
-        Int64,
+        Int64 | None,
         TableField(
             doc="Trip duration (in seconds), for trips from 2023 on.",
             lineage=TripsPushdown["trip_time"],
         ),
     ]
     pickup_datetime: Annotated[
-        TimestampNanoUTC,
+        TimestampNanoUTC | None,
         TableField(
             doc="Pickup time, at nanosecond precision after the pandas round trip.",
         ),
     ]
     trip_miles: Annotated[
-        Float64,
+        Float64 | None,
         TableField(
             doc="Miles traveled, for trips that covered more than zero of them.",
             lineage=TripsPushdown["trip_miles"],
         ),
     ]
     log_trip_miles: Annotated[
-        Float64, TableField(doc="Base 10 logarithm of trip_miles.")
+        Float64 | None, TableField(doc="Base 10 logarithm of trip_miles.")
     ]
-    ds: Annotated[Date32, TableField(doc="The pickup date, without a time of day.")]
+    ds: Annotated[
+        Date32 | None, TableField(doc="The pickup date, without a time of day.")
+    ]
 
 
 class TrainingDatePushdown(TableSchema):
     """The date column training_dataset counts trips by."""
 
-    ds: Annotated[Date32, TableField(lineage=NormalizedTripsSchema["ds"])]
+    ds: Annotated[Date32 | None, TableField(lineage=NormalizedTripsSchema["ds"])]
 
 
 class TrainingDatasetSchema(TableSchema):
     """Trips per day, the series the forecast is fit on."""
 
-    ds: Annotated[Date32, TableField(lineage=TrainingDatePushdown["ds"])]
-    y: Annotated[Int64, TableField(doc="Number of trips taken on ds.")]
+    ds: Annotated[Date32 | None, TableField(lineage=TrainingDatePushdown["ds"])]
+    y: Annotated[Int64 | None, TableField(doc="Number of trips taken on ds.")]
 
 
 class ForecastSchema(TableSchema):
     """Predicted daily trip counts, with the bounds of the prediction interval."""
 
     ds: Annotated[
-        TimestampNano,
+        TimestampNano | None,
         TableField(doc="Day being predicted; extends past the training data."),
     ]
-    yhat: Annotated[Float64, TableField(doc="Predicted number of trips on ds.")]
-    yhat_lower: Annotated[Float64, TableField(doc="Lower bound of the prediction.")]
-    yhat_upper: Annotated[Float64, TableField(doc="Upper bound of the prediction.")]
+    yhat: Annotated[Float64 | None, TableField(doc="Predicted number of trips on ds.")]
+    yhat_lower: Annotated[
+        Float64 | None, TableField(doc="Lower bound of the prediction.")
+    ]
+    yhat_upper: Annotated[
+        Float64 | None, TableField(doc="Upper bound of the prediction.")
+    ]
 
 
 @bauplan.model(materialization_strategy="NONE")

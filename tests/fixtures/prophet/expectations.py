@@ -15,7 +15,9 @@ from bauplan.standard_expectations import expect_column_mean_greater_than
 class TripMilesPushdown(TableSchema):
     """The single column the expectation reads from query_model."""
 
-    trip_miles: Annotated[Float64, TableField(lineage="QueryModelSchema['trip_miles']")]
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage="QueryModelSchema['trip_miles']")
+    ]
 
 
 @bauplan.expectation()

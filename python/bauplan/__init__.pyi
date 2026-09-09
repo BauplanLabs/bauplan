@@ -4,10 +4,10 @@ __version__: str
 from bauplan_sdk_types import (
     Binary,
     # Field types
+    Any,
     Bool,
     Date32,
     Date64,
-    Decimal128,
     Float64,
     Int32,
     Int64,
@@ -82,6 +82,7 @@ __all__ = [
     "TableField",
     "TableSchema",
     # Field types
+    "Any",
     "Bool",
     "Int32",
     "Int64",
@@ -92,7 +93,6 @@ __all__ = [
     "TimestampNano",
     "TimestampMicroUTC",
     "TimestampNanoUTC",
-    "Decimal128",
     "String",
     "Binary",
 ]
