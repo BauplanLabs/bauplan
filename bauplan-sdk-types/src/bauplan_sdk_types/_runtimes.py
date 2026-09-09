@@ -4,7 +4,7 @@ from typing import Optional, Callable
 
 
 def python(
-    version: Optional[str] = None,
+    version: str,
     pip: Optional[dict[str, str]] = None,
 ) -> Callable:
     """
