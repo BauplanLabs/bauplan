@@ -354,12 +354,10 @@ output column declarations - without materializing anything:
 bauplan run --dry-run
 ```
 
-Add `--strict` during development to fail immediately on runtime
-warnings (such as column mismatches or failing [expectations](/concepts/expectations)) instead of
-completing with a warning:
+Strict mode is enabled by default: runtime warnings, such as column mismatches or failing [expectations](/concepts/expectations), fail the run. To allow the run to complete with warnings, pass `--no-strict`:
 
 ```sh
-bauplan run --dry-run --strict
+bauplan run --dry-run --no-strict
 ```
 
 Once the dry run passes, execute the pipeline:

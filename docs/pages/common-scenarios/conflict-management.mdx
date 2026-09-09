@@ -126,9 +126,7 @@ and the pipeline still "works": the output table is there, row counts still
 look right. What changes is the contract with downstream consumers, and the
 break surfaces far from its source.
 
-[Expectations](/concepts/expectations) turn that implicit contract into
-executable code that lives next to the model. Run the pipeline with
-`strict="on"` so a failed expectation fails the run:
+[Expectations](/concepts/expectations) turn that implicit contract into executable code that lives next to the model. Strict mode is enabled by default, so a failed expectation fails the run. The example sets `strict=True` explicitly:
 
 ```python
 #! import bauplan
@@ -136,7 +134,7 @@ executable code that lives next to the model. Run the pipeline with
 run_state = client.run(
     project_dir="path/to/pipeline",
     ref="my_branch",
-    strict="on",
+    strict=True,
 )
 
 if (run_state.job_status or "").lower() != "success":
