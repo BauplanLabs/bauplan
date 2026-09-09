@@ -147,7 +147,7 @@ def test_get_job_logs(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
-        cache="off",
+        cache=False,
     )
 
     assert state.job_id is not None
