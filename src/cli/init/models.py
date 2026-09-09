@@ -82,7 +82,7 @@ class PassengerAgeGroup(bauplan.TableSchema):
     """Projection schema for age group data."""
 
     Age: Annotated[
-        bauplan.Float64,
+        bauplan.Float64 | None,
         bauplan.TableField(lineage=SurvivalRateSchema["Age"]),
     ]
 
