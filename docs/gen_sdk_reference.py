@@ -40,6 +40,7 @@ SDK_PAGE_DESCRIPTIONS = {
     'bauplan.exceptions': 'Reference for bauplan.exceptions: the Python SDK error hierarchy covering HTTP, merge conflict, not-found, forbidden, and table-plan errors raised by Bauplan.',
     'bauplan.schema': 'Reference for bauplan.schema types: Branch, Ref, Commit, Tag, Namespace, Table, Job, and DAG classes returned by the Bauplan Python SDK over Iceberg catalogs.',
     'bauplan.standard_expectations': 'Reference for bauplan.standard_expectations: built-in data quality checks for null, uniqueness, accepted values, mean, and concatenation in Bauplan pipelines.',
+    'bauplan_sdk_types': 'Reference for the Bauplan type contract API: Model, Parameter, TableSchema, TableField, the model, expectation and python decorators, and the column data types.',
     'bauplan.state': 'Reference for bauplan.state types: RunState, RunExecutionContext, and table-create and import state objects returned by Bauplan Python SDK run and import jobs.',
 }
 
@@ -47,6 +48,9 @@ SDK_PAGE_DESCRIPTIONS = {
 #   bauplan.module.Name  — full_ref=bauplan.module.Name, name=Name (dotted)
 #   Client.method        — full_ref=Client.method,       name=method
 #   bauplan.ClassName    — full_ref=bauplan.InfoState,   name=InfoState (short)
+# The short form also covers lowercase names, for the model/expectation/python
+# decorators. Names that aren't registered (bauplan.schema, bauplan.leaf_table)
+# simply miss the lookup and pass through unlinked.
 # Methods register as full_ref ("Client.run"); classes register as name ("InfoState"),
 # so bauplan.InfoState in prose needs the name fallback to match.
 _REF_PATTERN = re.compile(
@@ -54,7 +58,7 @@ _REF_PATTERN = re.compile(
     r'(?P<full>'
     r'bauplan\.(?:\w+\.)+(?P<dotted>\w+)'
     r'|Client\.(?P<method>\w+)'
-    r'|bauplan\.(?P<short>[A-Z]\w+)'
+    r'|bauplan\.(?P<short>[A-Za-z]\w*)'
     r')'
     r'(?P<close>`?)'
 )
@@ -169,10 +173,12 @@ class TypeLinker:
                     logging.debug('Could not resolve member %s', member.name)
                     continue
 
+                member_page = TYPES_PAGE_SLUG if _is_contract_member(resolved) else page
+
                 match resolved.kind:
                     case griffe.Kind.CLASS:
-                        anchor = f'{page}-{member.name.lower()}'
-                        self.register(resolved.name, page, anchor)
+                        anchor = f'{member_page}-{member.name.lower()}'
+                        self.register(resolved.name, member_page, anchor)
                         for cls_member in resolved.members.values():
                             if not cls_member.is_public or cls_member.name.startswith('_'):
                                 continue
@@ -183,13 +189,15 @@ class TypeLinker:
                                 continue
                             if cls_resolved.kind == griffe.Kind.FUNCTION:
                                 method_anchor = f'{anchor}-{cls_member.name.lower()}'
-                                self.register(f'{resolved.name}.{cls_member.name}', page, method_anchor)
+                                self.register(
+                                    f'{resolved.name}.{cls_member.name}', member_page, method_anchor
+                                )
                     case griffe.Kind.FUNCTION:
-                        anchor = function_slug(page, member.name)
-                        self.register(resolved.name, page, anchor)
-                    case griffe.Kind.ATTRIBUTE if resolved.annotation is None and resolved.value is not None:
-                        anchor = f'{page}-{member.name.lower()}'
-                        self.register(resolved.name, page, anchor)
+                        anchor = function_slug(member_page, member.name)
+                        self.register(resolved.name, member_page, anchor)
+                    case griffe.Kind.ATTRIBUTE if _is_type_alias(resolved):
+                        anchor = f'{member_page}-{member.name.lower()}'
+                        self.register(resolved.name, member_page, anchor)
                     # MODULE case: handled by _walk_module_tree
 
 
@@ -436,51 +444,97 @@ def main() -> None:
         json.dump(pages, f)
 
 
+# The type contract API lives in the bauplan_sdk_types package and is re-exported
+# by bauplan. It gets its own reference page rather than crowding the Client page.
+TYPES_PAGE_SLUG = 'bauplan-sdk-types'
+TYPES_PAGE_TITLE = 'bauplan_sdk_types'
+
+
+def _is_contract_member(m: griffe.Object) -> bool:
+    """True for symbols defined in bauplan_sdk_types, which own the types page."""
+    try:
+        return m.module.path.startswith('bauplan_sdk_types')
+    except Exception:
+        return False
+
+
+def _is_type_alias(m: griffe.Object) -> bool:
+    """A module-level assignment with no annotation, like ModelCacheStrategy."""
+    return m.kind is griffe.Kind.ATTRIBUTE and m.annotation is None and m.value is not None
+
+
+def _is_renderable(m: griffe.Object) -> bool:
+    if not m.is_public:
+        return False
+    if m.kind in (griffe.Kind.CLASS, griffe.Kind.FUNCTION):
+        return True
+    return _is_type_alias(m)
+
+
 def _member_sort_key(m: griffe.Object) -> tuple[int, str]:
     return (0 if m.name == 'Client' else 1, m.name)
 
 
+def _write_page(
+    output_dir: Path,
+    slug: str,
+    title: str,
+    members: list[griffe.Object],
+    linker: TypeLinker,
+    docstring: griffe.Docstring | None = None,
+) -> None:
+    with open(output_dir / f'{slug}.mdx', 'w') as f:
+        f.write('---\n')
+        f.write(f'title: "{title}"\n')
+        description = SDK_PAGE_DESCRIPTIONS.get(title)
+        if description:
+            f.write(f'description: "{description}"\n')
+        f.write('---\n\n')
+
+        toc: list[dict] = []
+
+        if docstring:
+            ParsedDocstring(docstring, linker).write(f)
+
+        for member in sorted(members, key=_member_sort_key):
+            with wrap(f, 'PyModuleMember', member.name):
+                match member.kind:
+                    case griffe.Kind.CLASS:
+                        process_class(f, toc, member, linker, page_slug=slug)
+                    case griffe.Kind.FUNCTION:
+                        process_function(f, toc, 2, member, linker, slug=function_slug(slug, member.name))
+                    case _:
+                        process_type_alias(f, toc, member, page_slug=slug)
+
+        toc_json = json.dumps(json.dumps(toc))
+        f.write(f'export const toc = JSON.parse({toc_json});\n')
+
+
 def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) -> list[str]:
     names = []
+    contract_members: list[griffe.Object] = []
+
     for mod in _walk_module_tree(module):
         name = path_slug(mod)
         names.append(name)
 
-        with open(output_dir / f'{name}.mdx', 'w') as f:
-            f.write('---\n')
-            f.write(f'title: "{mod.path}"\n')
-            description = SDK_PAGE_DESCRIPTIONS.get(mod.path)
-            if description:
-                f.write(f'description: "{description}"\n')
-            f.write('---\n\n')
+        own_members = []
+        for member in mod.members.values():
+            if member.is_public and member.kind is not griffe.Kind.MODULE and not _is_renderable(member):
+                print(f'WARNING: skipping {member.path}: {member.kind}')
+            if not _is_renderable(member):
+                continue
+            # Re-exported contract symbols are documented once, on the types page.
+            if _is_contract_member(member):
+                contract_members.append(member)
+            else:
+                own_members.append(member)
 
-            # Build a table of contents.
-            toc = []
+        _write_page(output_dir, name, mod.path, own_members, linker, docstring=mod.docstring)
 
-            if mod.docstring:
-                ParsedDocstring(mod.docstring, linker).write(f)
-
-            for member in sorted(mod.members.values(), key=_member_sort_key): # ty:ignore
-                if not member.is_public:
-                    continue
-
-                match member.kind:
-                    case griffe.Kind.CLASS:
-                        with wrap(f, 'PyModuleMember', member.name):
-                            process_class(f, toc, member, linker, page_slug=name)
-                    case griffe.Kind.FUNCTION:
-                        with wrap(f, 'PyModuleMember', member.name):
-                            process_function(f, toc, 2, member, linker, slug=function_slug(name, member.name))
-                    case griffe.Kind.MODULE:
-                        pass  # handled by _walk_module_tree
-                    case griffe.Kind.ATTRIBUTE if member.annotation is None and member.value is not None:
-                        with wrap(f, 'PyModuleMember', member.name):
-                            process_type_alias(f, toc, member)
-                    case _:
-                        print(f'WARNING: skipping {member.path}: {member.kind}')
-
-            toc_json = json.dumps(json.dumps(toc))
-            f.write(f'export const toc = JSON.parse({toc_json});\n')
+    if contract_members:
+        names.append(TYPES_PAGE_SLUG)
+        _write_page(output_dir, TYPES_PAGE_SLUG, TYPES_PAGE_TITLE, contract_members, linker)
 
     return names
 
@@ -591,10 +645,15 @@ def _get_class_bases(cls: griffe.Class, linker: TypeLinker) -> list[dict[str, st
 
 
 def process_class(
-    output: TextIO, toc: list[dict], cls: griffe.Class, linker: TypeLinker, page_slug: str | None = None
+    output: TextIO,
+    toc: list[dict],
+    cls: griffe.Class,
+    linker: TypeLinker,
+    page_slug: str | None = None,
+    toc_level: int = 2,
 ) -> None:
     slug = f'{page_slug}-{cls.name.lower()}' if page_slug else path_slug(cls)
-    toc.append({'value': cls.name, 'id': slug, 'level': 2})
+    toc.append({'value': cls.name, 'id': slug, 'level': toc_level})
 
     is_enum = any('Enum' in str(b) for b in cls.bases)
     is_sealed = _get_signature_params(cls, linker) is None and not is_enum
@@ -808,9 +867,17 @@ def process_function(
     output.write('</PyFunction>\n\n')
 
 
-def process_type_alias(output: TextIO, toc: list[dict], alias: griffe.TypeAlias) -> None:
-    slug = path_slug(alias)
-    toc.append({'value': alias.name, 'id': slug, 'level': 2})
+def process_type_alias(
+    output: TextIO,
+    toc: list[dict],
+    alias: griffe.TypeAlias,
+    page_slug: str | None = None,
+    toc_level: int = 2,
+) -> None:
+    # Mirrors process_class: the id must be built from the page the alias renders on,
+    # not from the module that defines it, or the linker's anchors won't resolve.
+    slug = f'{page_slug}-{alias.name.lower()}' if page_slug else path_slug(alias)
+    toc.append({'value': alias.name, 'id': slug, 'level': toc_level})
 
     annotation = html.escape(str(alias.value or ''))
     output.write(f'<PyTypeAlias id="{slug}" name="{alias.name}" annotation="{annotation}"/>\n')
