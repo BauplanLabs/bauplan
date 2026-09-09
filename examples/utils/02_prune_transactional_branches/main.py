@@ -53,7 +53,7 @@ def prune_branches(
         r"^(?P<user>[^.]+)\.(?P<branch>[^-]+)-bpln-tx-(?P<command>.+)-(?P<timestamp>\d{14})-(?P<job_id>[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$"
     )
 
-    transactional_branches_data = []
+    transactional_branches_data: list[dict[str, str]] = []
 
     # Transactional branches contain 'bpln-tx' in their name; pre-filter on that substring to 'push-down' filtering
     for branch in client.get_branches(name="bpln-tx"):
@@ -74,7 +74,7 @@ def prune_branches(
             client.get_jobs(
                 filter_by_current_user=False,
                 filter_by_ids=[
-                    datum.get("job_id") for datum in transactional_branches_data
+                    datum["job_id"] for datum in transactional_branches_data
                 ],
                 filter_by_statuses="fail",
                 filter_by_created_after=jobs_failed_after,
@@ -87,11 +87,11 @@ def prune_branches(
     transactional_branches_to_prune = [
         branch
         for branch in transactional_branches_data
-        if branch.get("job_id") in failed_job_ids
+        if branch["job_id"] in failed_job_ids
     ]
 
     command_counter = Counter(
-        [branch.get("command") for branch in transactional_branches_to_prune]
+        [branch["command"] for branch in transactional_branches_to_prune]
     )
 
     print(
@@ -105,7 +105,7 @@ def prune_branches(
         print("\nDRY RUN ON. The job would have pruned the following branches:\n")
 
     for branch in transactional_branches_to_prune:
-        branch_name = branch.get("name")
+        branch_name = branch["name"]
         # In dry run, just print the branches that would have been pruned
         if dry_run:
             print(branch_name)

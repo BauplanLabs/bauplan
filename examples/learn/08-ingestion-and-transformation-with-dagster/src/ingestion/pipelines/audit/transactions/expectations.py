@@ -19,7 +19,7 @@ from bauplan.standard_expectations import (
 class TxnId(TableSchema):
     """The primary key of the transaction stream."""
 
-    txn_id: String
+    txn_id: String | None
 
 
 @bauplan.expectation()
@@ -34,7 +34,7 @@ def test_transactions_txn_id_unique(
 class AccountId(TableSchema):
     """The join key to account_events."""
 
-    account_id: String
+    account_id: String | None
 
 
 @bauplan.expectation()
@@ -49,7 +49,7 @@ def test_transactions_account_id_complete(
 class Currency(TableSchema):
     """The currency each transaction was settled in."""
 
-    currency: String
+    currency: String | None
 
 
 @bauplan.expectation()
@@ -64,7 +64,7 @@ def test_transactions_currency_accepted(
 class Status(TableSchema):
     """The settlement status of each transaction."""
 
-    status: String
+    status: String | None
 
 
 @bauplan.expectation()
@@ -81,7 +81,7 @@ def test_transactions_status_accepted(
 class Amount(TableSchema):
     """The monetary amount of each transaction."""
 
-    amount: Float64
+    amount: Float64 | None
 
 
 @bauplan.expectation()

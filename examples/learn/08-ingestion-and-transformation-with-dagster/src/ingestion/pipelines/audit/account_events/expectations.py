@@ -18,7 +18,7 @@ from bauplan.standard_expectations import (
 class EventId(TableSchema):
     """The primary key of the event stream."""
 
-    event_id: String
+    event_id: String | None
 
 
 @bauplan.expectation()
@@ -33,7 +33,7 @@ def test_account_events_event_id_unique(
 class AccountId(TableSchema):
     """The join key back to transactions."""
 
-    account_id: String
+    account_id: String | None
 
 
 @bauplan.expectation()
@@ -48,7 +48,7 @@ def test_account_events_account_id_complete(
 class EventType(TableSchema):
     """The kind of account event."""
 
-    event_type: String
+    event_type: String | None
 
 
 @bauplan.expectation()
@@ -67,7 +67,7 @@ def test_account_events_event_type_accepted(
 class Channel(TableSchema):
     """The channel the event came through."""
 
-    channel: String
+    channel: String | None
 
 
 @bauplan.expectation()
