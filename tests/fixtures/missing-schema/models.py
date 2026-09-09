@@ -12,7 +12,7 @@ from bauplan import (
 class TestSchema(TableSchema):
     """Placeholder for a schema definition."""
 
-    trip_miles: Float64
+    trip_miles: Float64 | None
 
 
 @bauplan.model(materialization_strategy="NONE")

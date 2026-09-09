@@ -17,26 +17,31 @@ from bauplan import (
 class QueryModelSchema(TableSchema):
     """The columns query_model selects from taxi_fhvhv."""
 
-    pickup_datetime: TimestampMicroUTC
-    dropoff_datetime: TimestampMicroUTC
-    PULocationID: Int64
-    DOLocationID: Int64
-    trip_miles: Float64
-    trip_time: Int64
-    base_passenger_fare: Float64
-    tolls: Float64
-    sales_tax: Float64
-    tips: Float64
+    pickup_datetime: TimestampMicroUTC | None
+    dropoff_datetime: TimestampMicroUTC | None
+    PULocationID: Int64 | None
+    DOLocationID: Int64 | None
+    trip_miles: Float64 | None
+    trip_time: Int64 | None
+    base_passenger_fare: Float64 | None
+    tolls: Float64 | None
+    sales_tax: Float64 | None
+    tips: Float64 | None
 
 
 class NormalizedTripsSchema(TableSchema):
     """The trip columns normalize_data reads from query_model and passes through."""
 
-    trip_time: Annotated[Int64, TableField(lineage=QueryModelSchema["trip_time"])]
-    pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=QueryModelSchema["pickup_datetime"])
+    trip_time: Annotated[
+        Int64 | None, TableField(lineage=QueryModelSchema["trip_time"])
     ]
-    trip_miles: Annotated[Float64, TableField(lineage=QueryModelSchema["trip_miles"])]
+    pickup_datetime: Annotated[
+        TimestampMicroUTC | None,
+        TableField(lineage=QueryModelSchema["pickup_datetime"]),
+    ]
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
+    ]
 
 
 @bauplan.model()

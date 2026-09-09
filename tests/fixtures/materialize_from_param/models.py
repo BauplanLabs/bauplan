@@ -16,14 +16,14 @@ from bauplan import (
 class QuerySchema(TableSchema):
     """The single column query selects from taxi_fhvhv."""
 
-    dropoff_datetime: TimestampMicroUTC
+    dropoff_datetime: TimestampMicroUTC | None
 
 
 class MagicValSchema(TableSchema):
     """A single row holding the value the run was parameterized with."""
 
     magicval_field: Annotated[
-        String, TableField(doc="The value of the magicval parameter.")
+        String | None, TableField(doc="The value of the magicval parameter.")
     ]
 
 

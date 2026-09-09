@@ -14,20 +14,20 @@ from bauplan import (
 class Model0Schema(TableSchema):
     """The single column model_0 selects."""
 
-    col_0: String
+    col_0: String | None
 
 
 class Model1Schema(TableSchema):
     """The single column model_1 selects."""
 
-    col_1: String
+    col_1: String | None
 
 
 class Model2Schema(TableSchema):
     """The values of col_0 and col_1, stacked into one column."""
 
     col_2: Annotated[
-        String,
+        String | None,
         TableField(doc="One row per parent: the col_0 value, then the col_1 value."),
     ]
 
@@ -35,14 +35,14 @@ class Model2Schema(TableSchema):
 class Model3Schema(TableSchema):
     """model_2 with its column renamed."""
 
-    col_3: Annotated[String, TableField(lineage=Model2Schema["col_2"])]
+    col_3: Annotated[String | None, TableField(lineage=Model2Schema["col_2"])]
 
 
 class Model4Schema(TableSchema):
     """Every value seen across all four parents, stacked into one column."""
 
     col_4: Annotated[
-        String,
+        String | None,
         TableField(
             doc="col_0, col_1, both col_2 values and both col_3 values, in order."
         ),

@@ -15,7 +15,7 @@ from bauplan import (
 class PickupsSchema(TableSchema):
     """The single column read from taxi_fhvhv and passed down the DAG."""
 
-    pickup_datetime: TimestampMicroUTC
+    pickup_datetime: TimestampMicroUTC | None
 
 
 # @bauplan.model(materialization_strategy='REPLACE')

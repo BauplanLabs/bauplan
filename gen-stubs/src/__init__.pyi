@@ -30,6 +30,7 @@ from bauplan_sdk_types import (
     TableField,
     TableSchema,
     # Field types
+    Any,
     Bool,
     Int32,
     Int64,
@@ -40,7 +41,6 @@ from bauplan_sdk_types import (
     TimestampNano,
     TimestampMicroUTC,
     TimestampNanoUTC,
-    Decimal128,
     String,
     Binary,
     # Node types
@@ -81,6 +81,7 @@ __all__ = [
     "TableField",
     "TableSchema",
     # Field types
+    "Any",
     "Bool",
     "Int32",
     "Int64",
@@ -91,7 +92,6 @@ __all__ = [
     "TimestampNano",
     "TimestampMicroUTC",
     "TimestampNanoUTC",
-    "Decimal128",
     "String",
     "Binary",
 ]

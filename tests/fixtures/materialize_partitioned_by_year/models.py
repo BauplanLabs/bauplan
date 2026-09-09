@@ -14,8 +14,8 @@ from bauplan import (
 class DropoffsSchema(TableSchema):
     """The dropoff columns the materialized table is partitioned on."""
 
-    dropoff_datetime: TimestampMicroUTC
-    PULocationID: Int64
+    dropoff_datetime: TimestampMicroUTC | None
+    PULocationID: Int64 | None
 
 
 @bauplan.model(

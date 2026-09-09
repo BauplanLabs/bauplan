@@ -17,18 +17,20 @@ from bauplan import (
 class PickupPushdown(TableSchema):
     """The single column parent reads from taxi_fhvhv."""
 
-    pickup_datetime: TimestampMicroUTC
+    pickup_datetime: TimestampMicroUTC | None
 
 
 class SyntheticSchema(TableSchema):
     """Columns built by hand, standing in for a table that carries field ids."""
 
-    col1: Annotated[Int32, TableField(doc="Carries PARQUET:field_id 3 on the way out.")]
+    col1: Annotated[
+        Int32 | None, TableField(doc="Carries PARQUET:field_id 3 on the way out.")
+    ]
     col2: Annotated[
-        String, TableField(doc="Carries PARQUET:field_id 6 on the way out.")
+        String | None, TableField(doc="Carries PARQUET:field_id 6 on the way out.")
     ]
     col3: Annotated[
-        Float64, TableField(doc="Carries PARQUET:field_id 20 on the way out.")
+        Float64 | None, TableField(doc="Carries PARQUET:field_id 20 on the way out.")
     ]
 
 

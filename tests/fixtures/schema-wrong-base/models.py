@@ -17,11 +17,11 @@ class CustomBase: ...
 class BadBaseSchema(CustomBase):
     """This schema has the wrong base class and should not be registered."""
 
-    trip_miles: Float64
+    trip_miles: Float64 | None
 
 
 class TaxiPushdown(TableSchema):
-    trip_miles: Float64
+    trip_miles: Float64 | None
 
 
 @bauplan.model()

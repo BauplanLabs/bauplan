@@ -20,57 +20,73 @@ class TaxiModelSchema(bauplan.TableSchema):
     """Schema demonstrating all supported field types."""
 
     pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(doc="Pickup time for the ride")
+        TimestampMicroUTC | None, TableField(doc="Pickup time for the ride")
     ]
     dropoff_datetime: Annotated[
-        TimestampMicroUTC, TableField(doc="Dropoff time for the ride")
+        TimestampMicroUTC | None, TableField(doc="Dropoff time for the ride")
     ]
-    PULocationID: Annotated[Int64, TableField(doc="Identifier for pickup location")]
-    DOLocationID: Annotated[Int64, TableField(doc="Identifier for dropoff location")]
-    trip_miles: Annotated[Float64, TableField(doc="Miles traveled for a trip")]
-    trip_time: Annotated[Int64, TableField(doc="Trip duration (in seconds) ")]
-    base_passenger_fare: Annotated[Float64, TableField(doc="Base fare for a trip")]
-    tolls: Annotated[Float64, TableField(doc="Total cost from road tolls")]
-    sales_tax: Annotated[Float64, TableField(doc="Salex tax applied on the fare")]
-    tips: Annotated[Float64, TableField(doc="Amount tendered for driver tip")]
+    PULocationID: Annotated[
+        Int64 | None, TableField(doc="Identifier for pickup location")
+    ]
+    DOLocationID: Annotated[
+        Int64 | None, TableField(doc="Identifier for dropoff location")
+    ]
+    trip_miles: Annotated[Float64 | None, TableField(doc="Miles traveled for a trip")]
+    trip_time: Annotated[Int64 | None, TableField(doc="Trip duration (in seconds) ")]
+    base_passenger_fare: Annotated[
+        Float64 | None, TableField(doc="Base fare for a trip")
+    ]
+    tolls: Annotated[Float64 | None, TableField(doc="Total cost from road tolls")]
+    sales_tax: Annotated[
+        Float64 | None, TableField(doc="Salex tax applied on the fare")
+    ]
+    tips: Annotated[Float64 | None, TableField(doc="Amount tendered for driver tip")]
 
 
 class TripsPushdown(bauplan.TableSchema):
     """Pushdown to get just basic trip information."""
 
-    PULocationID: Annotated[Int64, TableField(doc="Identifier for pickup location")]
-    DOLocationID: Annotated[Int64, TableField(doc="Identifier for dropoff location")]
-    pickup_datetime: TimestampMicroUTC
-    trip_miles: Annotated[Float64, TableField(doc="Miles traveled for a trip")]
-    trip_time: Annotated[Int64, TableField(doc="Trip duration (in seconds) ")]
+    PULocationID: Annotated[
+        Int64 | None, TableField(doc="Identifier for pickup location")
+    ]
+    DOLocationID: Annotated[
+        Int64 | None, TableField(doc="Identifier for dropoff location")
+    ]
+    pickup_datetime: TimestampMicroUTC | None
+    trip_miles: Annotated[Float64 | None, TableField(doc="Miles traveled for a trip")]
+    trip_time: Annotated[Int64 | None, TableField(doc="Trip duration (in seconds) ")]
 
 
 class LocationsPushdown(bauplan.TableSchema):
     """Pushdown to get just pickup and dropoff location identifiers."""
 
-    PULocationID: Annotated[Int64, TableField(doc="Identifier for pickup location")]
-    DOLocationID: Annotated[Int64, TableField(doc="Identifier for dropoff location")]
+    PULocationID: Annotated[
+        Int64 | None, TableField(doc="Identifier for pickup location")
+    ]
+    DOLocationID: Annotated[
+        Int64 | None, TableField(doc="Identifier for dropoff location")
+    ]
 
 
 class FullTypesSchema(bauplan.TableSchema):
     """Schema demonstrating all supported field types."""
 
-    pickup_datetime: TimestampMicroUTC
+    pickup_datetime: TimestampMicroUTC | None
     pickup_location: Annotated[
-        Int64, bauplan.TableField(doc="ID of a trip's pickup location")
+        Int64 | None, bauplan.TableField(doc="ID of a trip's pickup location")
     ]
-    dropoff_location: Int64
-    trip_miles: Float64
-    trip_time: Int64
-    is_shared_ride: Bool
-    driver_name: String
-    raw_data: Binary
+    dropoff_location: Int64 | None
+    trip_miles: Float64 | None
+    trip_time: Int64 | None
+    is_shared_ride: Bool | None
+    driver_name: String | None
+    raw_data: Binary | None
 
 
 class SecondSchema(bauplan.TableSchema):
     """A second schema for multi-model coverage."""
 
-    trip_time: Int64
+    trip_time: Int64 | None
 
 
 @bauplan.model(materialization_strategy="NONE")
