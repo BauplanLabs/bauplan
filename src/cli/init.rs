@@ -92,7 +92,7 @@ pub(crate) fn handle(args: InitArgs) -> anyhow::Result<()> {
     project.insert("version".into(), toml::Value::String("0.1.0".into()));
     project.insert(
         "requires-python".into(),
-        toml::Value::String("~=3.12".into()),
+        toml::Value::String("~=3.13.15".into()),
     );
     project.insert(
         "dependencies".into(),
