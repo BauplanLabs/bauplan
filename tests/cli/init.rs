@@ -42,7 +42,7 @@ fn init_generates_valid_dag() -> Result<()> {
     }
 
     crate::bauplan()
-        .args(["run", "--dry-run", "--no-cache", "--strict", "-p"])
+        .args(["run", "--dry-run", "--no-cache", "-p"])
         .arg(dir.path())
         .assert()
         .success();

@@ -64,7 +64,6 @@ fn expectations_returns_int() {
             "run",
             "--dry-run",
             "--no-cache",
-            "--strict",
             "-p",
             "tests/fixtures/expectation_returns_int",
         ])
@@ -80,7 +79,6 @@ fn run_failing_expectation() {
             "run",
             "--dry-run",
             "--no-cache",
-            "--strict",
             "-p",
             "tests/fixtures/failing_expectation",
         ])
@@ -96,7 +94,6 @@ fn run_failing_expectation_strict_on() {
             "run",
             "--dry-run",
             "--no-cache",
-            "--strict",
             "-p",
             "tests/fixtures/assert_in_expectation",
         ])
@@ -112,6 +109,7 @@ fn failing_expectation() {
             "run",
             "--dry-run",
             "--no-cache",
+            "--no-strict",
             "-p",
             "tests/fixtures/failing_expectation",
         ])
@@ -126,6 +124,7 @@ fn run_assert_in_expectation() {
             "run",
             "--dry-run",
             "--no-cache",
+            "--no-strict",
             "-p",
             "tests/fixtures/assert_in_expectation",
         ])

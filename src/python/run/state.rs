@@ -28,14 +28,14 @@ pub(crate) struct RunExecutionContext {
     pub namespace: String,
     /// Whether the run was a dry run (no models materialized).
     pub dry_run: bool,
-    /// Transaction mode (`"on"` / `"off"`). When on, all models are
+    /// Whether transaction mode was enabled. When true, all models are
     /// materialized on a temporary branch and merged atomically on success.
-    pub transaction: String,
-    /// Strict mode (`"on"` / `"off"`). When on, runtime warnings such as
+    pub transaction: bool,
+    /// Whether to run in strict mode. When true, runtime warnings such as
     /// failing expectations or invalid column outputs fail the run.
-    pub strict: String,
-    /// Cache mode used for the run (`"on"` / `"off"`).
-    pub cache: String,
+    pub strict: bool,
+    /// Whether caching was enabled for the run.
+    pub cache: bool,
     /// Preview mode used for the run (`"on"`, `"off"`, `"head"`, `"tail"`).
     pub preview: String,
     /// Whether debug logging was enabled for the run.
@@ -71,7 +71,12 @@ impl fmt::Debug for RunExecutionContext {
 /// The state of a completed (or failed) run, including logs, timing, and
 /// per-task lifecycle events.
 #[derive(Debug, Clone)]
-#[pyclass(name = "RunState", module = "bauplan.state", skip_from_py_object, get_all)]
+#[pyclass(
+    name = "RunState",
+    module = "bauplan.state",
+    skip_from_py_object,
+    get_all
+)]
 pub(crate) struct RunState {
     /// The job ID assigned by the server.
     pub job_id: Option<String>,

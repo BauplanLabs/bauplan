@@ -1,7 +1,37 @@
 __version__: str
 
 # Submodules.
-from bauplan import exceptions, schema, state, standard_expectations
+from bauplan_sdk_types import (
+    Binary,
+    # Field types
+    Bool,
+    Date32,
+    Date64,
+    Decimal128,
+    Float64,
+    Int32,
+    Int64,
+    # Entity types
+    Model,
+    # Options
+    ModelCacheStrategy,
+    ModelMaterializationStrategy,
+    Parameter,
+    String,
+    TableField,
+    TableSchema,
+    TimestampMicro,
+    TimestampMicroUTC,
+    TimestampNano,
+    TimestampNanoUTC,
+    # Node types
+    expectation,
+    model,
+    # Runtime decorators
+    python,
+)
+
+from bauplan import exceptions, schema, standard_expectations, state
 from bauplan.schema import (
     Branch,
     Commit,
@@ -22,35 +52,6 @@ from bauplan.state import (
     TableCreatePlanApplyState,
     TableCreatePlanState,
     TableDataImportState,
-)
-from bauplan_sdk_types import (
-    # Entity types
-    Model,
-    Parameter,
-    TableField,
-    TableSchema,
-    # Field types
-    Bool,
-    Int32,
-    Int64,
-    Float64,
-    Date32,
-    Date64,
-    TimestampMicro,
-    TimestampNano,
-    TimestampMicroUTC,
-    TimestampNanoUTC,
-    Decimal128,
-    String,
-    Binary,
-    # Node types
-    expectation,
-    model,
-    # Runtime decorators
-    python,
-    # Options
-    ModelCacheStrategy,
-    ModelMaterializationStrategy,
 )
 
 __all__ = [
@@ -1849,10 +1850,10 @@ class Client:
         ref: "str | Ref | None" = None,
         namespace: "str | Namespace | None" = None,
         parameters: "dict[str, str | int | float | bool | None] | None" = None,
-        cache: "Literal['on', 'off'] | None" = None,
-        transaction: "Literal['on', 'off'] | None" = None,
+        cache: "bool" = True,
+        transaction: "bool" = True,
         dry_run: "bool | None" = None,
-        strict: "Literal['on', 'off'] | None" = None,
+        strict: "bool" = True,
         preview: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1861,7 +1862,7 @@ class Client:
     ) -> "RunState":
         """
         Run a Bauplan project and return the state of the run. This is the equivalent of
-        running through the CLI the `bauplan run` command. All parameters default to 'off'/false unless otherwise specified.
+        running through the CLI the `bauplan run` command. Caching, transaction mode, and strict mode are enabled by default.
 
         ## Examples
 
@@ -1883,10 +1884,10 @@ class Client:
             ref: The ref, branch name or tag name from which to run the project.
             namespace: The Namespace to run the job in. If not set, the job will be run in the default namespace.
             parameters: Parameters for templating into SQL or Python models.
-            cache: Whether to enable or disable caching for the run. Defaults to 'on'.
-            transaction: Whether to enable or disable transaction mode for the run. Defaults to 'on'.
+            cache: Whether to enable caching for the run. Defaults to True. Set to False to disable caching.
+            transaction: Whether to enable transaction mode for the run. Defaults to True. Set to False to disable transaction mode.
             dry_run: Whether to enable or disable dry-run mode for the run; models are not materialized.
-            strict: Whether to enable or disable strict schema validation.
+            strict: Whether runtime warnings, including failing expectations and invalid column outputs, fail the run. Defaults to True. Set to False to disable strict mode.
             preview: Whether to enable or disable preview mode for the run.
             args: Additional arguments (optional).
             priority: Optional job priority (1-10, where 10 is highest priority).
