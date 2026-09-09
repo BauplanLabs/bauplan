@@ -41,9 +41,11 @@ def _ok(msg: str):
 def main(file_path: str):
     client = bauplan.Client()
     user = client.info().user
+    if user is None:
+        raise RuntimeError("Bauplan user information is unavailable")
     username = user.username
     full_name = user.full_name
-    assert full_name is not None and username is not None and user is not None
+    assert full_name is not None and username is not None
 
     source_branch_name = "main"
     my_branch_name = f"{username}.commit_flow"
@@ -83,7 +85,7 @@ def main(file_path: str):
     run_1 = client.run(
         project_dir="./my_project",
         ref=my_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 1},
     )
     assert run_1.job_id is not None and run_1.job_status == "SUCCESS"
@@ -101,7 +103,7 @@ def main(file_path: str):
     client.run(
         project_dir="./my_project",
         ref=my_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 2},
     )
     rows = client.query(run_id_query, ref=my_branch_name).to_pylist()
@@ -124,10 +126,10 @@ def main(file_path: str):
     # ── audit ────────────────────────────────────────────────────────
 
     _step(5, TOTAL, f"Auditing commit history for author '{full_name}'...")
-    
+
     if not full_name:
         my_author_commit_history = client.get_commits(
-            my_branch_name, filter_by_username=username, limit=5
+            my_branch_name, filter_by_author_username=username, limit=5
         )
     else:
         my_author_commit_history = client.get_commits(
@@ -150,7 +152,7 @@ def main(file_path: str):
     run_5 = client.run(
         project_dir="./my_project",
         ref=my_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 5},
     )
     assert run_5.job_status != "SUCCESS" and run_5.job_id is not None
@@ -226,7 +228,7 @@ def main(file_path: str):
     txn_run = client.run(
         project_dir="./my_project",
         ref=txn_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 3},
     )
     assert txn_run.job_status == "SUCCESS", f"Run failed: {txn_run.job_status}"

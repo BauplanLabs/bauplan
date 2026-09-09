@@ -11,7 +11,7 @@ from typing import Annotated
 
 # Import bauplan for decorators and classes.
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Float64,
@@ -30,16 +30,16 @@ from bauplan import (
 class TripColumns(TableSchema):
     """The projection of taxi_fhvhv used to compute trip statistics."""
 
-    pickup_datetime: TimestampMicroUTC
-    dropoff_datetime: TimestampMicroUTC
-    PULocationID: Int64
-    DOLocationID: Int64
-    trip_miles: Float64
-    trip_time: Int64
-    base_passenger_fare: Float64
-    tolls: Float64
-    sales_tax: Float64
-    tips: Float64
+    pickup_datetime: TimestampMicroUTC | None
+    dropoff_datetime: TimestampMicroUTC | None
+    PULocationID: Int64 | None
+    DOLocationID: Int64 | None
+    trip_miles: Float64 | None
+    trip_time: Int64 | None
+    base_passenger_fare: Float64 | None
+    tolls: Float64 | None
+    sales_tax: Float64 | None
+    tips: Float64 | None
 
 
 # The columns produced by the trips_and_zones model. The optional `lineage` parameter
@@ -49,33 +49,32 @@ class TripsAndZonesSchema(TableSchema):
     """Taxi trips enriched with the borough and zone of their pickup location."""
 
     pickup_datetime: Annotated[
-        TimestampMicroUTC,
-        TableField(lineage=TripColumns['pickup_datetime']),
+        TimestampMicroUTC | None,
+        TableField(lineage=TripColumns["pickup_datetime"]),
     ]
     dropoff_datetime: Annotated[
-        TimestampMicroUTC,
-        TableField(lineage=TripColumns['dropoff_datetime']),
+        TimestampMicroUTC | None,
+        TableField(lineage=TripColumns["dropoff_datetime"]),
     ]
-    PULocationID: Annotated[Int64, TableField(lineage=TripColumns['PULocationID'])]
-    DOLocationID: Annotated[Int64, TableField(lineage=TripColumns['DOLocationID'])]
-    trip_miles: Annotated[Float64, TableField(lineage=TripColumns['trip_miles'])]
-    trip_time: Annotated[Int64, TableField(lineage=TripColumns['trip_time'])]
+    PULocationID: Annotated[Int64 | None, TableField(lineage=TripColumns["PULocationID"])]
+    DOLocationID: Annotated[Int64 | None, TableField(lineage=TripColumns["DOLocationID"])]
+    trip_miles: Annotated[Float64 | None, TableField(lineage=TripColumns["trip_miles"])]
+    trip_time: Annotated[Int64 | None, TableField(lineage=TripColumns["trip_time"])]
     base_passenger_fare: Annotated[
-        Float64, TableField(lineage=TripColumns['base_passenger_fare'])
+        Float64 | None, TableField(lineage=TripColumns["base_passenger_fare"])
     ]
-    tolls: Annotated[Float64, TableField(lineage=TripColumns['tolls'])]
-    sales_tax: Annotated[Float64, TableField(lineage=TripColumns['sales_tax'])]
-    tips: Annotated[Float64, TableField(lineage=TripColumns['tips'])]
-    Borough: Annotated[String, TableField(lineage="taxi_zones['Borough']")]
-    Zone: Annotated[String, TableField(lineage="taxi_zones['Zone']")]
-    service_zone: Annotated[String, TableField(lineage="taxi_zones['service_zone']")]
+    tolls: Annotated[Float64 | None, TableField(lineage=TripColumns["tolls"])]
+    sales_tax: Annotated[Float64 | None, TableField(lineage=TripColumns["sales_tax"])]
+    tips: Annotated[Float64 | None, TableField(lineage=TripColumns["tips"])]
+    Borough: String
+    Zone: String
+    service_zone: String
 
 
 # The `model` decorator tells Bauplan that this function defines a model: a
 # transformation with many (>= 1) input tables and an output table.
 # Arrow tables are the standard structure for input tables and the output table.
 @bauplan.model()
-
 # The `python` decorator allows you to specify a Python version and any pip packages that
 # should be installed when executing this function. Each function is executed in an
 # independent environment and may:
@@ -85,20 +84,18 @@ class TripsAndZonesSchema(TableSchema):
 @bauplan.python("3.12")
 def trips_and_zones(
     trips: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model(
             # Specify the model identifier with the first positional arg or `name` kwarg.
             "taxi_fhvhv",
-
             # Specify specific columns to read with the `projection_schema` parameter.
             projection_schema=TripColumns,
-
             # Specify filtering for rows to retrieve with the `filter` parameter.
             filter="pickup_datetime >= '2022-12-15T00:00:00-05:00' AND pickup_datetime < '2023-01-01T00:00:00-05:00'",
         ),
     ],
-    zones: Annotated[pyarrow.Table, Model("taxi_zones")],
-) -> Annotated[pyarrow.Table, TripsAndZonesSchema]:
+    zones: Annotated[pa.Table, Model("taxi_zones")],
+) -> Annotated[pa.Table, TripsAndZonesSchema]:
     # Using PyArrow (https://arrow.apache.org/docs/python/index.html),
     # join 'trips' with 'zones' on 'PULocationID'.
     pickup_location_table = trips.join(
@@ -106,7 +103,7 @@ def trips_and_zones(
     ).combine_chunks()
 
     # The return value will be checked against the return annotation:
-    # A pyarrow.Table whose schema is compatible with `TripsAndZonesSchema`
+    # A pa.Table whose schema is compatible with `TripsAndZonesSchema`
     return pickup_location_table
 
 
@@ -114,7 +111,7 @@ class NormalizedTaxiTripsSchema(TableSchema):
     """Trips filtered to plausible distances, with a log-transformed distance column."""
 
     pickup_datetime: Annotated[
-        TimestampMicroUTC,
+        TimestampMicroUTC | None,
         TableField(
             doc=(
                 "Timestamp (microseconds; UTC) of trip start time (passenger pickup). "
@@ -122,18 +119,18 @@ class NormalizedTaxiTripsSchema(TableSchema):
             ),
         ),
     ]
-    dropoff_datetime: TimestampMicroUTC
-    PULocationID: Int64
-    DOLocationID: Int64
+    dropoff_datetime: TimestampMicroUTC | None
+    PULocationID: Int64 | None
+    DOLocationID: Int64 | None
     trip_miles: Annotated[
-        Float64,
+        Float64 | None,
         TableField(doc="Trip distance (miles) filtered to be between 0 and 200."),
     ]
-    trip_time: Int64
-    base_passenger_fare: Float64
-    tolls: Float64
-    sales_tax: Float64
-    tips: Float64
+    trip_time: Int64 | None
+    base_passenger_fare: Float64 | None
+    tolls: Float64 | None
+    sales_tax: Float64 | None
+    tips: Float64 | None
     Borough: String
     Zone: String
     service_zone: String
@@ -149,8 +146,8 @@ class NormalizedTaxiTripsSchema(TableSchema):
 def normalized_taxi_trips(
     # Bauplan models are referenced by name to form a DAG.
     # The `data` input comes from the results of the 'trips_and_zones' model.
-    data: Annotated[pyarrow.Table, Model("trips_and_zones")],
-) -> Annotated[pyarrow.Table, NormalizedTaxiTripsSchema]:
+    data: Annotated[pa.Table, Model("trips_and_zones")],
+) -> Annotated[pa.Table, NormalizedTaxiTripsSchema]:
     import polars as pl
     import math
 
@@ -158,8 +155,8 @@ def normalized_taxi_trips(
     size_in_gb = round(data.nbytes / math.pow(1024, 3), 3)
     print(f"\nThis table is {size_in_gb} GB and has {data.num_rows} rows\n")
 
-    # Initialize a polars.DataFrame from a pyarrow.Table (zero-copy).
-    df = pl.from_arrow(data)
+    # Initialize a polars.DataFrame from a pa.Table (zero-copy).
+    df = pl.DataFrame(data)
 
     # Filter by timestamp and trip_miles, and add a log-transformed column.
     df = (
@@ -172,5 +169,5 @@ def normalized_taxi_trips(
         .with_columns(pl.col("trip_miles").log(base=10).alias("log_trip_miles"))
     )
 
-    # Return the data as a pyarrow.Table
+    # Return the data as a pa.Table
     return df.to_arrow()

@@ -5,7 +5,7 @@ description = "Go from a marimo notebook to a production Bauplan pipeline"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "bauplan>=0.1.9",
+    "bauplan==0.3.0rc1",
     "marimo==0.23.9",
     "polars>=1.30.0",
 ]

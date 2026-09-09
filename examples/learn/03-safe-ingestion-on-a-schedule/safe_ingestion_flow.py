@@ -19,7 +19,7 @@ from datetime import datetime
 import bauplan
 from prefect import flow, task
 from prefect.cache_policies import NONE
-from prefect.transactions import transaction, get_transaction
+from prefect.transactions import Transaction, get_transaction, transaction
 
 
 @task(cache_policy=NONE)
@@ -32,32 +32,35 @@ def source_to_iceberg_table(
 ):
     """Wrap the table creation and upload process in Bauplan."""
     get_transaction().set("bauplan_ingestion_branch", bauplan_ingestion_branch)
-    
+
     # Since this is a demo, we'll delete the branch and recreate it from scratch.
     bauplan_client.delete_branch(bauplan_ingestion_branch, if_exists=True)
 
     # Create the branch from main HEAD.
     bauplan_client.create_branch(bauplan_ingestion_branch, from_ref="main")
-    
+
     # We check if the branch is there.
     assert bauplan_client.has_branch(bauplan_ingestion_branch), "Branch not found"
-    
+
     # Ensure the namespace exists on the branch, create it if not.
-    if not bauplan_client.has_namespace(namespace=namespace, ref=bauplan_ingestion_branch):
+    if not bauplan_client.has_namespace(
+        namespace=namespace, ref=bauplan_ingestion_branch
+    ):
         print(f"Namespace '{namespace}' not found, creating it...")
-        bauplan_client.create_namespace(namespace=namespace, branch=bauplan_ingestion_branch)
-    
+        bauplan_client.create_namespace(
+            namespace=namespace, branch=bauplan_ingestion_branch
+        )
+
     # Now we create the table in the branch.
     bauplan_client.create_table(
         table=table_name,
         search_uri=source_s3_pattern,
         namespace=namespace,
         branch=bauplan_ingestion_branch,
-        
         # Just in case the test table is already there for other reasons.
         replace=True,
     )
-    
+
     # We check if the table is there.
     fq_name = f"{namespace}.{table_name}"
     assert bauplan_client.has_table(table=fq_name, ref=bauplan_ingestion_branch), (
@@ -75,7 +78,10 @@ def source_to_iceberg_table(
 
 @task(cache_policy=NONE)
 def run_quality_checks(
-    bauplan_client: bauplan.Client, bauplan_ingestion_branch: str, table_name: str, namespace: str
+    bauplan_client: bauplan.Client,
+    bauplan_ingestion_branch: str,
+    table_name: str,
+    namespace: str,
 ):
     """
     This task uses the Bauplan SDK to query the data as an Arrow table,
@@ -83,13 +89,13 @@ def run_quality_checks(
     operations.
     """
     get_transaction().set("bauplan_ingestion_branch", bauplan_ingestion_branch)
-    
+
     # We retrieve the data and check if the column has no nulls.
     # Make sure the column you're checking is in
     # the table, so change this appropriately
     # if you're using a different dataset
     column_to_check = "Age"
-    
+
     # NOTE: If you don't want to use any SQL, you
     # can interact with the lakehouse in pure Python
     # and still get back an Arrow table (for this one
@@ -122,7 +128,7 @@ def merge_branch(bauplan_client: bauplan.Client, bauplan_ingestion_branch: str):
 @source_to_iceberg_table.on_rollback
 @run_quality_checks.on_rollback
 @merge_branch.on_commit
-def delete_branch_if_exists(transaction):
+def delete_branch_if_exists(transaction: Transaction) -> None:
     """If the task fails or the merge succeeded, we delete the branch to avoid clutter!"""
     _client = bauplan.Client()
     ingestion_branch = transaction.get("bauplan_ingestion_branch")
@@ -138,6 +144,8 @@ def delete_branch_if_exists(transaction):
 def _generate_branch_name(bauplan_client: bauplan.Client) -> str:
     """Generate a unique ingestion branch name from the authenticated username."""
     user = bauplan_client.info().user
+    if user is None:
+        raise RuntimeError("Bauplan user information is unavailable")
     username = user.username
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{username}.ingestion_{timestamp}"
@@ -161,7 +169,6 @@ def safe_ingestion_with_bauplan(
     print(f"Using ingestion branch: {bauplan_ingestion_branch}")
     # Start a Prefect transaction.
     with transaction():
-        
         ### Write ###
         # First, ingest data from the S3 source
         # into a table on the Bauplan branch.
@@ -172,13 +179,16 @@ def safe_ingestion_with_bauplan(
             source_s3_pattern,
             bauplan_ingestion_branch,
         )
-        
+
         ### Audit ###
         # We query the table in the branch and check we have no nulls.
         run_quality_checks(
-            bauplan_client, bauplan_ingestion_branch, table_name=table_name, namespace=namespace
+            bauplan_client,
+            bauplan_ingestion_branch,
+            table_name=table_name,
+            namespace=namespace,
         )
-        
+
         ### Publish ###
         # Finally, we merge the branch into the main
         # branch if the quality checks passed.
@@ -195,20 +205,22 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    
+
     # Table_name and s3_path are the main arguments from the command line.
     # The ingestion branch is auto-generated from the authenticated username.
     parser.add_argument("--table_name", type=str, default="titanic_from_prefect")
-    parser.add_argument("--s3_path", type=str, default="s3://alpha-hello-bauplan/titanic.csv")
+    parser.add_argument(
+        "--s3_path", type=str, default="s3://alpha-hello-bauplan/titanic.csv"
+    )
     parser.add_argument("--namespace", type=str, default="prefect")
     args = parser.parse_args()
 
     # The name of the table we will be ingesting data into.
     table_name = args.table_name
-    
+
     # Namespace for the table: note that bauplan is the default.
     namespace = args.namespace
-    
+
     # The S3 pattern for the data we want to ingest.
     # NOTE: If you're using Bauplan Alpha environment,
     # this should be a publicly accessible path
@@ -217,7 +229,7 @@ if __name__ == "__main__":
     print(
         f"Starting the safe ingestion flow with the following parameters: {table_name}, {s3_path}"
     )
-    
+
     safe_ingestion_with_bauplan(
         source_s3_pattern=s3_path,
         table_name=table_name,

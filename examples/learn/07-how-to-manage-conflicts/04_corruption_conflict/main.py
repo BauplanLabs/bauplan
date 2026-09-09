@@ -6,7 +6,10 @@ TABLE_NAME = "workshop_fare_table"
 
 
 def run_pipeline(
-    client: bauplan.Client, branch: str, pipeline_path: str, parameters: dict = None
+    client: bauplan.Client,
+    branch: str,
+    pipeline_path: str,
+    parameters: dict[str, str | int | float | bool | None] | None = None,
 ) -> None:
     """Run a Bauplan pipeline on `branch` and raise if the job does not succeed."""
     run_state = client.run(project_dir=pipeline_path, ref=branch, parameters=parameters)
@@ -70,6 +73,7 @@ def fix_and_backfill(
         )
         print(f"  [fix] Backfilled {year}")
 
+
 def main(
     profile: Annotated[str, typer.Option(help="Bauplan profile to use")] = "default",
 ) -> None:
@@ -91,7 +95,10 @@ def main(
     """
     client = bauplan.Client(profile=profile)
 
-    username = client.info().user.username
+    user = client.info().user
+    if user is None:
+        raise RuntimeError("Bauplan user information is unavailable")
+    username = user.username
 
     # Set up branches
     main_branch = f"{username}.reprocessing_race_main"

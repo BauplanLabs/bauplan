@@ -50,18 +50,33 @@ wheels = [
 
 [[package]]
 name = "bauplan"
-version = "0.1.9"
+version = "0.3.0rc1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bauplan-sdk-types" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fd/da/c8cd545afdef7bb0e7a66488c1becc6a9047452c0fc5c267a4e4208b595c/bauplan-0.3.0rc1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:ed8274fc2903a96bfbfb7ab0d36fb02f2e8cde1ced83bf82a079cca9b91aaf4e", size = 27954098, upload-time = "2026-09-02T17:41:42.082Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/ad/2f8a5290bd03e796328623031d4fa501dbe588505f585feb72a15dd726df/bauplan-0.3.0rc1-cp313-cp313-manylinux_2_34_aarch64.whl", hash = "sha256:0b8e3e56e302e50bb3766ac296e6e6c20a976914d0c7683c903909a494d1737f", size = 30563156, upload-time = "2026-09-02T17:41:36.68Z" },
+    { url = "https://files.pythonhosted.org/packages/19/81/06bf72d75493a83a58631f03c26424b21dcade7677995a8d459b067003e2/bauplan-0.3.0rc1-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:6e68ea4dab39a3a70e158c21988ab6830b21f187f4abd2a101dee6261a4ed63f", size = 32843238, upload-time = "2026-09-02T17:41:58.414Z" },
+    { url = "https://files.pythonhosted.org/packages/07/56/1e0cf201b249a0a0f67855caa195f3e365b4216b3b7f00bd369614897179/bauplan-0.3.0rc1-cp313-cp313-win_amd64.whl", hash = "sha256:2c756f22693700f6e077ab0624305eec2a4dace491cc903f233c4a62f2eb04b8", size = 30509991, upload-time = "2026-09-02T17:42:07.48Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/e0/d1cd5532b69ac545098431e25afca6d07832b01ce4cd22d83d07ac6cf943/bauplan-0.3.0rc1-cp313-cp313-win_arm64.whl", hash = "sha256:1a56e86442fa3beaa1f6240c001b265ae07334eff4f8ed2703d9e1c0edd137d5", size = 29007419, upload-time = "2026-09-02T17:41:17.28Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/49/476a7c27659c36ffdb4f45f11353fd03f85600b0f8006e07f982b0c4aa55/bauplan-0.3.0rc1-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:57658d644ae37b251d6f2d1764e7bde3ac1ff067ab5a2d6f0230cc64a0ef160a", size = 27957558, upload-time = "2026-09-02T17:41:44.689Z" },
+    { url = "https://files.pythonhosted.org/packages/93/0d/ee5d6ec403badd4a4ad9d0a9d5c80757a78c401c131bd9d5ca2f92fc92a8/bauplan-0.3.0rc1-cp314-cp314-manylinux_2_34_aarch64.whl", hash = "sha256:4ef85c1d51545fd46b0c72f1fbad2e9a626ce66eb23b52332b436dc6e905ce18", size = 30563020, upload-time = "2026-09-02T17:41:28.426Z" },
+    { url = "https://files.pythonhosted.org/packages/2b/9f/94c23cd26a2d0bff7cb134749041a8789dd8fecebf1fcb46a29cd250dbff/bauplan-0.3.0rc1-cp314-cp314-manylinux_2_34_x86_64.whl", hash = "sha256:ff97f9472db839e8c4ccb8133d53b8b0046494106b3ddc35f7e6336fc68f11e3", size = 32838105, upload-time = "2026-09-02T17:42:10.243Z" },
+    { url = "https://files.pythonhosted.org/packages/61/60/6453d4b1897b952a18a55a48d2abc9ab3ee72de01185a5e2e617b2a06c32/bauplan-0.3.0rc1-cp314-cp314-win_amd64.whl", hash = "sha256:e7f2e48db6764e8f0dfe040cf977b717a9ae9f527d62ae5c581f843259b18c87", size = 30506218, upload-time = "2026-09-02T17:41:50.183Z" },
+    { url = "https://files.pythonhosted.org/packages/67/2a/82a7e1df60d2f7a9f51f9b40c4caa50f2fe0c8e8f0d759686272c85d628b/bauplan-0.3.0rc1-cp314-cp314-win_arm64.whl", hash = "sha256:dddd5aad16874abbedd2ffd33f85028818841fe463a317f413d4d6a9b4ac0b13", size = 29019177, upload-time = "2026-09-02T17:41:55.594Z" },
+]
+
+[[package]]
+name = "bauplan-sdk-types"
+version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyarrow" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/d1/3411462029b590afe498775c421d0eb7ecb706ab2298d45a3a53642882f6/bauplan-0.1.9-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:17c516f149192e430d3aa865cd794df82f3ce6e28f849f97c9b03ec0bc4e36fc", size = 16196855, upload-time = "2026-03-17T19:16:39.766Z" },
-    { url = "https://files.pythonhosted.org/packages/1c/3d/35804efa6ba56ef36400ab8a27f4a9d772b420d7fcd0835945805b346c62/bauplan-0.1.9-cp313-cp313-manylinux_2_34_aarch64.whl", hash = "sha256:a35eb4c08e016682f0cf89d7daca0aa9e97a764c3537445f166978f1eb37abfe", size = 16891768, upload-time = "2026-03-17T19:17:16.037Z" },
-    { url = "https://files.pythonhosted.org/packages/49/9c/c34989f626ac260aedd0b50ebea8833839187f9ccdc3c032d04b1298ccbf/bauplan-0.1.9-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:b7d33044e1e1730e909aec90c193732b5a11d95c938fdded5fb27adca46dfd35", size = 19165740, upload-time = "2026-03-17T19:16:46.698Z" },
-    { url = "https://files.pythonhosted.org/packages/6b/11/a2317a27b72c5f62987dd8dab7502051de7f4ca1437731f9befecaddd0f6/bauplan-0.1.9-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:a0bb71e7d8375e35a53c815fdf2cb9033c489aedeca83f9095f043bc49cbb0cb", size = 16201195, upload-time = "2026-03-17T19:16:43.236Z" },
-    { url = "https://files.pythonhosted.org/packages/77/e2/40551fefe7fabc8ec9a3c45aff01ebdcd363690f7e3d1f754ec1f96694b0/bauplan-0.1.9-cp314-cp314-manylinux_2_34_aarch64.whl", hash = "sha256:9a43ba9f52d0ad3617ff34cf6370f19cc6afcf933a2de45f934730463e454ae6", size = 16882845, upload-time = "2026-03-17T19:17:19.5Z" },
-    { url = "https://files.pythonhosted.org/packages/d2/e1/0e241006112e45509e6d009f31fcdb56967411b836a99ff12895d46e497c/bauplan-0.1.9-cp314-cp314-manylinux_2_34_x86_64.whl", hash = "sha256:afaa00835c16c01f7852c002e5f293ccf3788fefdc04d12f45186be08d1f2d0f", size = 19159153, upload-time = "2026-03-17T19:16:59.545Z" },
+    { url = "https://files.pythonhosted.org/packages/07/5c/350d5c9450eacdbd46a287734a9692a05e4c9a97674dcb21e045710b6f51/bauplan_sdk_types-0.1.0-py3-none-any.whl", hash = "sha256:12656a726233040f9885993ec744099e246662ff180c5466e79293ca3dbce9a0", size = 8069, upload-time = "2026-09-02T18:34:50.328Z" },
 ]
 
 [[package]]
@@ -950,7 +965,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bauplan", specifier = ">=0.1.9" },
+    { name = "bauplan", specifier = "==0.3.0rc1" },
     { name = "matplotlib", specifier = ">=3.10.0" },
     { name = "openai", specifier = ">=1.57.0" },
     { name = "pinecone", specifier = ">=5.4.2" },

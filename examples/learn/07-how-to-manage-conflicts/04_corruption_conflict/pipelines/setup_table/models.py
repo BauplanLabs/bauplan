@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Float64,
@@ -16,8 +16,8 @@ from bauplan import (
 class PassengerFare(TableSchema):
     """The projection of titanic needed to track fares by passenger."""
 
-    Name: String
-    Fare: Float64
+    Name: String | None
+    Fare: Float64 | None
 
 
 class FareTableSchema(TableSchema):
@@ -34,10 +34,10 @@ class FareTableSchema(TableSchema):
 @bauplan.model(materialization_strategy="REPLACE")
 def workshop_fare_table(
     workshop_passengers_fare: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model("titanic", projection_schema=PassengerFare),
     ],
-) -> Annotated[pyarrow.Table, FareTableSchema]:
+) -> Annotated[pa.Table, FareTableSchema]:
     """
     Find fare for each passenger.
 
@@ -53,7 +53,7 @@ def workshop_fare_table(
     import polars as pl
 
     return (
-        pl.from_arrow(workshop_passengers_fare)
+        pl.DataFrame(workshop_passengers_fare)
         .select("Name", "Fare")
         .sort("Name")
         .with_columns(

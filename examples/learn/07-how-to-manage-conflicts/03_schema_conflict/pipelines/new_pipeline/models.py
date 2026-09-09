@@ -1,10 +1,9 @@
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
-    Decimal128,
     Float64,
     Int64,
     Model,
@@ -13,16 +12,16 @@ from bauplan import (
     TableSchema,
 )
 
-# Largest value a Decimal128[4, 2] column can hold.
+# Largest value a decimal(4, 2) column can hold
 MAX_FARE = 99.99
 
 
 class PassengerFare(TableSchema):
     """The projection of titanic needed to average fares by class and sex."""
 
-    Pclass: Int64
-    Fare: Float64
-    Sex: String
+    Pclass: Int64 | None
+    Fare: Float64 | None
+    Sex: String | None
 
 
 class AverageFareSchema(TableSchema):
@@ -30,17 +29,8 @@ class AverageFareSchema(TableSchema):
 
     Pclass: Int64
     Sex: String
-    # A different type than the input is only allowed without `lineage`.
-    Fare: Annotated[
-        Decimal128[4, 2],
-        TableField(
-            doc=(
-                "Mean fare paid by passengers in this class, as precise decimal "
-                "instead of floating point value. Standard fares stay well under "
-                "99.99, so they are guaranteed to fit into Decimal128[4, 2]."
-            ),
-        ),
-    ]
+    # Decimal fields are unpinned in the typed SDK
+    Fare: bauplan.Any
     n_passengers: Annotated[
         Int64, TableField(doc="Number of passengers in this class and sex.")
     ]
@@ -50,15 +40,15 @@ class AverageFareSchema(TableSchema):
 @bauplan.model(materialization_strategy="REPLACE")
 def workshop_average_fares(
     data: Annotated[
-        pyarrow.Table,
+        pa.Table,
         # Widening the analysis to every class: the filter on Pclass is gone.
         Model("bauplan.titanic", projection_schema=PassengerFare),
     ],
-) -> Annotated[pyarrow.Table, AverageFareSchema]:
+) -> Annotated[pa.Table, AverageFareSchema]:
     """Compute the mean Titanic fare for each passenger class and sex."""
     import polars as pl
 
-    df = pl.from_arrow(data)
+    df = pl.DataFrame(data)
 
     return (
         df.group_by(pl.col("Pclass"), pl.col("Sex"))
@@ -73,16 +63,15 @@ def workshop_average_fares(
 class FareOnly(TableSchema):
     """The column validated by `test_fare_fits_precision`."""
 
-    Fare: Float64
+    Fare: Float64 | None
 
 
-# `AverageFareSchema` guarantees Fare is a Decimal128[4, 2]; what it cannot check is
-# whether the fares being averaged actually fit that precision.
+# The schema leaves the decimal type unpinned, so this expectation checks precision
 @bauplan.expectation()
 @bauplan.python("3.12")
 def test_fare_fits_precision(
     data: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model("bauplan.titanic", projection_schema=FareOnly),
     ],
 ) -> bool:
@@ -95,8 +84,8 @@ def test_fare_fits_precision(
     ]
 
     assert not too_wide, (
-        f"Found Fare value {too_wide[0]} that does not fit Decimal128[4, 2], "
-        f"if value is valid, widen the precision in 'AverageFareSchema' and raise "
+        f"Found Fare value {too_wide[0]} that does not fit decimal(4, 2), "
+        f"if value is valid, widen the model's decimal precision and raise "
         f"MAX_FARE to match"
     )
     return True

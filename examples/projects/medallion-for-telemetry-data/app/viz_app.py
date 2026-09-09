@@ -101,7 +101,7 @@ def main():
         st.stop()
 
     arrow = query_as_dataframe(client, sql=f"SELECT * FROM {TABLE_NAME}")
-    df = pl.from_arrow(arrow) if arrow is not None else None
+    df = pl.DataFrame(arrow) if arrow is not None else None
 
     if df is not None and not df.is_empty():
         total_readings = df["reading_count"].sum()

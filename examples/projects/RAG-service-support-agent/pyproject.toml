@@ -5,7 +5,7 @@ description = "RAG pipeline with bauplan and Pinecone"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "bauplan>=0.1.9",
+    "bauplan==0.3.0rc1",
     "matplotlib>=3.10.0",
     "openai>=1.57.0",
     "pinecone>=5.4.2",

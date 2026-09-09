@@ -105,13 +105,13 @@ class AccountActivitySummarySchema(TableSchema):
     event_count: Annotated[Int64, TableField(doc="Number of events on this day.")]
     login_count: Annotated[Int64, TableField(doc="Number of login events on this day.")]
     total_amount: Annotated[
-        Float64, TableField(doc="Settled spend on this day, null if none.")
+        Float64 | None, TableField(doc="Settled spend on this day, null if none.")
     ]
     transaction_count: Annotated[
-        Int64, TableField(doc="Settled transactions on this day, null if none.")
+        Int64 | None, TableField(doc="Settled transactions on this day, null if none.")
     ]
     avg_amount: Annotated[
-        Float64, TableField(doc="Mean settled amount on this day, null if none.")
+        Float64 | None, TableField(doc="Mean settled amount on this day, null if none.")
     ]
 
 

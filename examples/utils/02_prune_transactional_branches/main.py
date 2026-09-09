@@ -72,7 +72,7 @@ def prune_branches(
         failed_job.id
         for failed_job in (
             client.get_jobs(
-                all_users=True,
+                filter_by_current_user=False,
                 filter_by_ids=[
                     datum.get("job_id") for datum in transactional_branches_data
                 ],

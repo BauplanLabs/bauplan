@@ -5,7 +5,7 @@ This pipeline computes a table with the zones of NY ordered by how long it takes
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Float64,
@@ -21,50 +21,52 @@ from bauplan import (
 class TripTimestamps(TableSchema):
     """The projection of taxi_fhvhv used to measure how long a cab takes to arrive."""
 
-    PULocationID: Int64
-    request_datetime: TimestampMicroUTC
-    on_scene_datetime: TimestampMicroUTC
+    PULocationID: Int64 | None
+    request_datetime: TimestampMicroUTC | None
+    on_scene_datetime: TimestampMicroUTC | None
     pickup_datetime: Annotated[
-        TimestampMicroUTC,
+        TimestampMicroUTC | None,
         TableField(doc="Trip start time, filtered to December 2022."),
     ]
-    dropoff_datetime: TimestampMicroUTC
+    dropoff_datetime: TimestampMicroUTC | None
 
 
 class NormalizedTaxiTripsSchema(TableSchema):
     """Trip timestamps enriched with the borough and zone of the pickup location."""
 
-    PULocationID: Annotated[Int64, TableField(lineage=TripTimestamps['PULocationID'])]
+    PULocationID: Annotated[Int64, TableField(lineage=TripTimestamps["PULocationID"])]
     request_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['request_datetime'])
+        TimestampMicroUTC | None,
+        TableField(lineage=TripTimestamps["request_datetime"]),
     ]
     on_scene_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['on_scene_datetime'])
+        TimestampMicroUTC | None,
+        TableField(lineage=TripTimestamps["on_scene_datetime"]),
     ]
     pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['pickup_datetime'])
+        TimestampMicroUTC, TableField(lineage=TripTimestamps["pickup_datetime"])
     ]
     dropoff_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['dropoff_datetime'])
+        TimestampMicroUTC, TableField(lineage=TripTimestamps["dropoff_datetime"])
     ]
-    Borough: Annotated[String, TableField(lineage="taxi_zones['Borough']")]
-    Zone: Annotated[String, TableField(lineage="taxi_zones['Zone']")]
-    service_zone: Annotated[String, TableField(lineage="taxi_zones['service_zone']")]
+    Borough: String
+    Zone: String
+    service_zone: String
 
 
 @bauplan.model()
 @bauplan.python("3.12", pip={"polars": "1.38.1"})
 def normalized_taxi_trips(
     trips: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model(
             "taxi_fhvhv",
             projection_schema=TripTimestamps,
             filter="pickup_datetime >= '2022-12-01T00:00:00-05:00' AND pickup_datetime < '2023-01-01T00:00:00-05:00'",
         ),
     ],
-    zones: Annotated[pyarrow.Table, Model("taxi_zones")],
-) -> Annotated[pyarrow.Table, NormalizedTaxiTripsSchema]:
+    zones: Annotated[pa.Table, Model("taxi_zones")],
+) -> Annotated[pa.Table, NormalizedTaxiTripsSchema]:
     import polars as pl
     import math
 
@@ -73,8 +75,8 @@ def normalized_taxi_trips(
 
     # Join trips with zones on PULocationID to get
     # Zone and Borough for each pickup location.
-    trips_df = pl.from_arrow(trips)
-    zones_df = pl.from_arrow(zones)
+    trips_df = pl.DataFrame(trips)
+    zones_df = pl.DataFrame(zones)
     result = trips_df.join(zones_df, left_on="PULocationID", right_on="LocationID")
 
     return result.to_arrow()
@@ -84,27 +86,29 @@ class TaxiTripWaitingTimesSchema(TableSchema):
     """Normalized trips with the wait between requesting a cab and its arrival."""
 
     PULocationID: Int64
-    request_datetime: TimestampMicroUTC
-    on_scene_datetime: TimestampMicroUTC
+    request_datetime: TimestampMicroUTC | None
+    on_scene_datetime: TimestampMicroUTC | None
     pickup_datetime: TimestampMicroUTC
     dropoff_datetime: TimestampMicroUTC
     Borough: String
     Zone: String
     service_zone: String
     waiting_time_minutes: Annotated[
-        Int64,
-        TableField(doc="Whole minutes elapsed between request_datetime and on_scene_datetime."),
+        Int64 | None,
+        TableField(
+            doc="Whole minutes elapsed between request_datetime and on_scene_datetime."
+        ),
     ]
 
 
 @bauplan.model()
 @bauplan.python("3.12", pip={"polars": "1.38.1"})
 def taxi_trip_waiting_times(
-    data: Annotated[pyarrow.Table, Model("normalized_taxi_trips")],
-) -> Annotated[pyarrow.Table, TaxiTripWaitingTimesSchema]:
+    data: Annotated[pa.Table, Model("normalized_taxi_trips")],
+) -> Annotated[pa.Table, TaxiTripWaitingTimesSchema]:
     import polars as pl
 
-    df = pl.from_arrow(data)
+    df = pl.DataFrame(data)
 
     # Waiting time = minutes between request_datetime and on_scene_datetime.
     df = df.with_columns(
@@ -132,13 +136,11 @@ class ZoneAvgWaitingTimesSchema(TableSchema):
 @bauplan.model(materialization_strategy="REPLACE")
 @bauplan.python("3.12", pip={"polars": "1.38.1"})
 def zone_avg_waiting_times(
-    taxi_trip_waiting_times: Annotated[
-        pyarrow.Table, Model("taxi_trip_waiting_times")
-    ],
-) -> Annotated[pyarrow.Table, ZoneAvgWaitingTimesSchema]:
+    taxi_trip_waiting_times: Annotated[pa.Table, Model("taxi_trip_waiting_times")],
+) -> Annotated[pa.Table, ZoneAvgWaitingTimesSchema]:
     import polars as pl
 
-    df = pl.from_arrow(taxi_trip_waiting_times)
+    df = pl.DataFrame(taxi_trip_waiting_times)
 
     # Average waiting time per Borough/Zone, ordered by longest wait first.
     result = (

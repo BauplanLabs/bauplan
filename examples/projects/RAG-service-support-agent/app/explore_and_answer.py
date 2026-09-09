@@ -114,7 +114,10 @@ def main(one_big_table_name: str):
     st.title("Explore the Vector Space and Ask AI About Your Programming Issue!")
 
     # Automatically infer the bauplan username from the authenticated client
-    bauplan_user_name = bauplan_client.info().user.username
+    user = bauplan_client.info().user
+    if user is None:
+        raise RuntimeError("Bauplan user information is unavailable")
+    bauplan_user_name = user.username
 
     # Retrieve branches from Bauplan and let the user select one
     all_branches = [
@@ -143,7 +146,7 @@ def main(one_big_table_name: str):
         st.write("Something went wrong! Please check your branch and try again!")
         st.stop()
 
-    st.dataframe(pl.from_arrow(table.slice(length=3)), width=1200)
+    st.dataframe(pl.DataFrame(table.slice(length=3)), width=1200)
 
     # Prepare data for scatterplot
     all_items = table["question_id"].to_pylist()
