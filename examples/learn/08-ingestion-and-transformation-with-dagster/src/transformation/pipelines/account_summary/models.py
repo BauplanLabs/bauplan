@@ -11,19 +11,20 @@ from bauplan import (
     String,
     TableField,
     TableSchema,
-    TimestampMicro,
+    TimestampMicroUTC,
 )
 
 
 class TransactionColumns(TableSchema):
     """The projection of transactions needed to measure settled spend."""
 
-    account_id: String
-    amount: Float64
-    merchant_category: String
-    status: String
+    account_id: String | None
+    amount: Float64 | None
+    merchant_category: String | None
+    status: String | None
     txn_ts: Annotated[
-        TimestampMicro, TableField(doc="Transaction time, filtered to the run window.")
+        TimestampMicroUTC | None,
+        TableField(doc="Transaction time, filtered to the run window."),
     ]
 
 
@@ -33,7 +34,7 @@ class SettledTransactionsSchema(TableSchema):
     account_id: String
     amount: Float64
     merchant_category: String
-    txn_ts: TimestampMicro
+    txn_ts: TimestampMicroUTC
     date: Annotated[Date32, TableField(doc="Calendar day of txn_ts.")]
 
 
@@ -63,7 +64,9 @@ class DailyAccountSpendSchema(TableSchema):
     account_id: String
     date: Date32
     total_amount: Annotated[Float64, TableField(doc="Sum of settled amounts.")]
-    transaction_count: Annotated[Int64, TableField(doc="Number of settled transactions.")]
+    transaction_count: Annotated[
+        Int64, TableField(doc="Number of settled transactions.")
+    ]
     avg_amount: Annotated[Float64, TableField(doc="Mean settled amount.")]
 
 
@@ -90,10 +93,11 @@ def daily_account_spend(
 class EventColumns(TableSchema):
     """The projection of account_events needed to count daily activity."""
 
-    account_id: String
-    event_type: String
+    account_id: String | None
+    event_type: String | None
     event_ts: Annotated[
-        TimestampMicro, TableField(doc="Event time, filtered to the run window.")
+        TimestampMicroUTC | None,
+        TableField(doc="Event time, filtered to the run window."),
     ]
 
 

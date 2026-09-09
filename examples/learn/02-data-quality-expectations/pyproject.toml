@@ -5,5 +5,5 @@ description = "Add expectation tests to a Bauplan pipeline to catch data quality
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "bauplan==0.3.0rc1",
+    "bauplan==0.3.0",
 ]

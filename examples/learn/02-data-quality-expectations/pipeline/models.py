@@ -128,7 +128,7 @@ class ZoneAvgWaitingTimesSchema(TableSchema):
     Borough: String
     Zone: String
     avg_waiting_time: Annotated[
-        Float64,
+        Float64 | None,
         TableField(doc="Mean of waiting_time_minutes across the trips in the zone."),
     ]
 

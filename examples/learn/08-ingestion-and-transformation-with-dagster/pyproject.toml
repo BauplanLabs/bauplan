@@ -5,7 +5,7 @@ description = "Ingestion and transformation with Bauplan and Dagster"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "bauplan==0.3.0rc1",
+    "bauplan==0.3.0",
     "dagster~=1.13.13",
     "dagster-dg-cli~=1.13.13",
     "dagster-webserver~=1.13.13",

@@ -2,4 +2,4 @@
 name = "audit_transactions"
 version = "0.1.0"
 requires-python = "~=3.13"
-dependencies = ["bauplan==0.3.0rc1"]
+dependencies = ["bauplan==0.3.0"]
