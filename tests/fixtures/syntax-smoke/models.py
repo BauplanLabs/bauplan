@@ -51,48 +51,47 @@ materialize_partitions: ModelMaterializationStrategy = "OVERWRITE_PARTITIONS"
 
 # Define some schemas
 class BareTypesSchema(TableSchema):
-    bare_bool: Bool
-    bare_int: Int32
-    bare_long: Int64
-    bare_float: Float64
+    bare_bool: Bool | None
+    bare_int: Int32 | None
+    bare_long: Int64 | None
+    bare_float: Float64 | None
     # A parameterized type takes its parameters as type parameters
-    bare_decimal: Decimal128[38, 10]  # ty: ignore[invalid-type-form]
-    bare_str: String
-    bare_binary: Binary
-    bare_date32: Date32
-    bare_date64: Date64
-    bare_ts_micro: TimestampMicro
-    bare_ts_nano: TimestampNano
-    bare_ts_micro_utc: TimestampMicroUTC
-    bare_ts_nano_utc: TimestampNanoUTC
+    bare_decimal: Decimal128[38, 10] | None  # ty: ignore[invalid-type-form]
+    bare_str: String | None
+    bare_binary: Binary | None
+    bare_date32: Date32 | None
+    bare_date64: Date64 | None
+    bare_ts_micro: TimestampMicro | None
+    bare_ts_nano: TimestampNano | None
+    bare_ts_micro_utc: TimestampMicroUTC | None
+    bare_ts_nano_utc: TimestampNanoUTC | None
 
 
 class AnnotatedTypesSchema(TableSchema):
-    annotated_bool: Annotated[Bool, TableField(doc="bool docstring")]
-    annotated_int: Annotated[Int32, TableField(title="int32 doc title")]
-    annotated_long: Annotated[Int64, TableField(nullable=True)]
-    annotated_float: Annotated[Float64, TableField(nullable=False)]
+    annotated_bool: Annotated[Bool | None, TableField(doc="bool docstring")]
+    annotated_int: Annotated[Int32 | None, TableField(title="int32 doc title")]
+    annotated_long: Annotated[Int64 | None, TableField()]
+    annotated_float: Annotated[Float64, TableField()]
     annotated_decimal: Annotated[
-        Decimal128[38, 10],  # ty: ignore[invalid-type-form]
+        Decimal128[38, 10] | None,  # ty: ignore[invalid-type-form]
         TableField(
             doc="decimal docstring",
             lineage=BareTypesSchema["bare_decimal"],
         ),
     ]
-    annotated_str: Annotated[String, TableField(lineage=BareTypesSchema["bare_str"])]
+    annotated_str: Annotated[
+        String | None, TableField(lineage=BareTypesSchema["bare_str"])
+    ]
     annotated_binary: Annotated[
-        Binary, TableField(lineage='BareTypesSchema["bare_binary"]')
+        Binary | None, TableField(lineage='BareTypesSchema["bare_binary"]')
     ]
-    annotated_date32: Annotated[Date32, TableField(doc="days since epoch")]
-    annotated_date64: Annotated[
-        Date64, TableField(doc="milliseconds since epoch", nullable=False)
-    ]
+    annotated_date32: Annotated[Date32 | None, TableField(doc="days since epoch")]
+    annotated_date64: Annotated[Date64, TableField(doc="milliseconds since epoch")]
     annotated_ts_micro: Annotated[
         TimestampMicro,
         TableField(
             doc="TS micro docstring",
             title="TS micro doc title",
-            nullable=False,
             lineage=BareTypesSchema["bare_ts_micro"],
         ),
     ]
@@ -101,25 +100,22 @@ class AnnotatedTypesSchema(TableSchema):
         TableField(
             doc="TS nano docstring",
             title="TS nano doc title",
-            nullable=False,
             lineage="BareTypesSchema['bare_ts_nano']",
         ),
     ]
     annotated_ts_micro_utc: Annotated[
-        TimestampMicroUTC,
+        TimestampMicroUTC | None,
         TableField(
             doc="TS micro UTC docstring",
             title="TS micro UTC doc title",
-            nullable=True,
             lineage=BareTypesSchema["bare_ts_micro_utc"],
         ),
     ]
     annotated_ts_nano_utc: Annotated[
-        TimestampNanoUTC,
+        TimestampNanoUTC | None,
         TableField(
             doc="TS nano UTC docstring",
             title="TS nano UTC doc title",
-            nullable=True,
             lineage="BareTypesSchema['bare_ts_nano_utc']",
         ),
     ]

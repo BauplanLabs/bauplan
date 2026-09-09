@@ -14,7 +14,7 @@ from bauplan import (
 class LocationSchema(TableSchema):
     """The distinct pickup locations query_model selects from taxi_fhvhv."""
 
-    location_id: Int64
+    location_id: Int64 | None
 
 
 @bauplan.model(

@@ -16,13 +16,13 @@ from bauplan import (
 class TripMilesPushdown(TableSchema):
     """The single column the model reads from taxi_fhvhv."""
 
-    trip_miles: Float64
+    trip_miles: Float64 | None
 
 
 class ConstantSchema(TableSchema):
     """A fixed table, returned so the model has an output at all."""
 
-    y: Annotated[Int64, TableField(doc="A constant, unrelated to the input.")]
+    y: Annotated[Int64 | None, TableField(doc="A constant, unrelated to the input.")]
 
 
 @bauplan.model(materialization_strategy="NONE")
