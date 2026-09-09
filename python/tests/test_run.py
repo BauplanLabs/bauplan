@@ -96,6 +96,22 @@ def test_cancel_job(client: bauplan.Client):
     assert job.status == bauplan.JobState.ABORT
 
 
+def test_get_job_logs(client: bauplan.Client):
+    state = client.run(
+        project_dir="tests/fixtures/simple_taxi_dag",
+        dry_run=True,
+        cache="off",
+    )
+
+    assert state.job_id is not None
+    assert state.job_status == "SUCCESS"
+
+    logs = client.get_job_logs(state.job_id)
+
+    assert len(logs) > 0
+    assert any("===> Normalizing model <===" in log.message for log in logs)
+
+
 def test_job_context_snapshot(client: bauplan.Client):
     # TODO: For some reason, this is timing out ocassionally in automated tests.
     client = bauplan.Client(client_timeout=60)
