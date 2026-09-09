@@ -2,8 +2,8 @@
 members = ["bauplan-sdk-types"]
 
 [tool.uv.sources]
-bauplan-sdk-types = { workspace = true }
 gitlint-core = { git = "https://github.com/colinmarc/gitlint", branch = "conventional-options", subdirectory = "gitlint-core" }
+bauplan-sdk-types = { workspace = true }
 
 [build-system]
 requires = ["maturin>=1.11,<2.0"]
@@ -41,7 +41,9 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
-dependencies = ["bauplan-sdk-types==0.2.0a2"]
+dependencies = [
+    "bauplan-sdk-types==0.2.0",
+]
 
 [project.urls]
 Documentation = "https://docs.bauplanlabs.com/"
