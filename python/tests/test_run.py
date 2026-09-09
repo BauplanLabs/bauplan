@@ -1,6 +1,7 @@
 """Tests for run operations."""
 
 import time
+from typing import Any
 
 import pytest
 import bauplan
@@ -15,7 +16,7 @@ def test_dry_run(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
-        cache="off",
+        cache=False,
     )
 
     assert state.job_id is not None
@@ -23,14 +24,58 @@ def test_dry_run(client: bauplan.Client):
     assert state.error is None
     assert state.ctx is not None
     assert state.ctx.dry_run is True
-    assert state.ctx.cache == "off"
+    assert state.ctx.cache is False
+    assert state.ctx.transaction is True
+    assert state.ctx.strict is True
+
+
+@pytest.mark.parametrize(
+    "strict,expected_status", [(True, "FAILED"), (False, "SUCCESS")]
+)
+def test_strict_expectation(
+    client: bauplan.Client, strict: bool, expected_status: str
+) -> None:
+    """Check that strict mode controls whether a failing expectation fails the run."""
+    state = client.run(
+        project_dir="tests/fixtures/failing_expectation",
+        dry_run=True,
+        cache=False,
+        strict=strict,
+    )
+
+    assert state.ctx.strict is strict
+    assert state.job_status == expected_status
+
+
+@pytest.mark.parametrize("option", ["strict", "cache", "transaction"])
+@pytest.mark.parametrize("value", [None, "on", "off"])
+def test_run_rejects_non_boolean(
+    client: bauplan.Client, option: str, value: Any
+) -> None:
+    """Reject legacy strings and None before submitting a run."""
+    with pytest.raises(TypeError):
+        client.run(project_dir="tests/fixtures/failing_expectation", **{option: value})
+
+
+@pytest.mark.parametrize("cache,transaction", [(True, False), (False, True)])
+def test_run_modes(client: bauplan.Client, cache: bool, transaction: bool) -> None:
+    """Check that cache and transaction modes are independent boolean settings."""
+    state = client.run(
+        project_dir="tests/fixtures/simple_taxi_dag",
+        dry_run=True,
+        cache=cache,
+        transaction=transaction,
+    )
+
+    assert state.job_status == "SUCCESS"
+    assert state.ctx.cache is cache
+    assert state.ctx.transaction is transaction
 
 
 def test_dry_run_duration(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
-        cache="off",
     )
 
     assert state.ended_at_ns is not None
@@ -38,13 +83,15 @@ def test_dry_run_duration(client: bauplan.Client):
     assert state.duration > 0
     assert state.duration_ns is not None
     assert state.duration_ns > 0
+    assert state.ctx.cache is True
+    assert state.ctx.transaction is True
 
 
 def test_dry_run_tasks(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
-        cache="off",
+        cache=False,
     )
 
     assert len(state.tasks_started) > 0
@@ -55,7 +102,7 @@ def test_detach(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
-        cache="off",
+        cache=False,
         detach=True,
     )
 
@@ -77,7 +124,7 @@ def test_detach(client: bauplan.Client):
 def test_cancel_job(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/long_running_dag",
-        cache="off",
+        cache=False,
         detach=True,
         dry_run=True,
     )
@@ -102,7 +149,7 @@ def test_job_context_snapshot(client: bauplan.Client):
     state = client.run(
         project_dir="tests/fixtures/simple_taxi_dag",
         dry_run=True,
-        cache="off",
+        cache=False,
     )
 
     assert state.job_id is not None

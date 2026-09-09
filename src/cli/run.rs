@@ -20,9 +20,9 @@ use tabwriter::TabWriter;
 use tracing::{debug, error, info};
 
 use crate::cli::{
-    Cli, KeyValue, Priority, on_off,
+    Cli, KeyValue, Priority,
     color::*,
-    format_grpc_status,
+    format_grpc_status, on_off,
     parameter::{parse_parameter, resolve_project_dir},
     spinner::{self, ProgressExt},
 };
@@ -56,8 +56,11 @@ impl Display for Preview {
   # Dry run without materializing models
   bauplan run --dry-run
 
-  # Run with strict mode and preview
-  bauplan run --strict --preview head
+  # Run with strict mode (the default) and preview
+  bauplan run --preview head
+
+  # Allow runtime warnings without failing the run
+  bauplan run --no-strict
 
   # Run on specific branch with parameters
   bauplan run --ref main --param env=prod
@@ -81,9 +84,9 @@ pub(crate) struct RunArgs {
     /// Set the preview mode.
     #[arg(long, default_value_t = Preview::default())]
     pub preview: Preview,
-    /// Exit upon encountering runtime warnings (e.g., invalid column output)
+    /// Disable strict mode.
     #[arg(long)]
-    pub strict: bool,
+    pub no_strict: bool,
     /// Disable transactional execution.
     #[arg(long)]
     pub no_transaction: bool,
@@ -283,7 +286,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         namespace,
         no_cache,
         preview,
-        strict,
+        no_strict,
         no_transaction,
         dry_run,
         param,
@@ -321,7 +324,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         namespace,
         dry_run,
         transaction: on_off(!no_transaction),
-        strict: on_off(strict),
+        strict: on_off(!no_strict),
         cache: on_off(!no_cache),
         preview: preview.to_string(),
         project_id: project.project.id.as_hyphenated().to_string(),

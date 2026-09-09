@@ -1,6 +1,7 @@
-from bauplan.schema import JobLogEvent
 from datetime import datetime
 from typing import final
+
+from bauplan.schema import JobLogEvent
 
 @final
 class ExternalTableCreateContext:
@@ -58,9 +59,9 @@ class RunExecutionContext:
     """
     def __repr__(self, /) -> str: ...
     @property
-    def cache(self, /) -> str:
+    def cache(self, /) -> bool:
         """
-        Cache mode used for the run (`"on"` / `"off"`).
+        Whether caching was enabled for the run.
         """
     @property
     def debug(self, /) -> bool:
@@ -108,15 +109,15 @@ class RunExecutionContext:
         URI locating the project snapshot that the server executed.
         """
     @property
-    def strict(self, /) -> str:
+    def strict(self, /) -> bool:
         """
-        Strict mode (`"on"` / `"off"`). When on, runtime warnings such as
+        Whether to enable or disable strict schema validation. When true, runtime warnings such as
         failing expectations or invalid column outputs fail the run.
         """
     @property
-    def transaction(self, /) -> str:
+    def transaction(self, /) -> bool:
         """
-        Transaction mode (`"on"` / `"off"`). When on, all models are
+        Whether transaction mode was enabled. When true, all models are
         materialized on a temporary branch and merged atomically on success.
         """
 

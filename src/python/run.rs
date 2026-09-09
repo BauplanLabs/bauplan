@@ -20,7 +20,7 @@ use crate::grpc::{self, generated as commanderpb};
 use crate::project::{ParameterType, ParameterValue, ProjectFile};
 use crate::python::job::JobLogEvent;
 use crate::python::namespace::NamespaceArg;
-use crate::python::{job_err, optional_on_off, rt};
+use crate::python::{job_err, rt};
 use gethostname::gethostname;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -204,7 +204,7 @@ impl RawParameterValue {
 #[pymethods]
 impl Client {
     /// Run a Bauplan project and return the state of the run. This is the equivalent of
-    /// running through the CLI the `bauplan run` command. All parameters default to 'off'/false unless otherwise specified.
+    /// running through the CLI the `bauplan run` command. Caching, transaction mode, and strict mode are enabled by default.
     ///
     /// ## Examples
     ///
@@ -226,10 +226,10 @@ impl Client {
     ///     ref: The ref, branch name or tag name from which to run the project.
     ///     namespace: The Namespace to run the job in. If not set, the job will be run in the default namespace.
     ///     parameters: Parameters for templating into SQL or Python models.
-    ///     cache: Whether to enable or disable caching for the run. Defaults to 'on'.
-    ///     transaction: Whether to enable or disable transaction mode for the run. Defaults to 'on'.
+    ///     cache: Whether to enable caching for the run. Defaults to True. Set to False to disable caching.
+    ///     transaction: Whether to enable transaction mode for the run. Defaults to True. Set to False to disable transaction mode.
     ///     dry_run: Whether to enable or disable dry-run mode for the run; models are not materialized.
-    ///     strict: Whether to enable or disable strict schema validation.
+    ///     strict: Whether runtime warnings, including failing expectations and invalid column outputs, fail the run. Defaults to True. Set to False to disable strict mode.
     ///     preview: Whether to enable or disable preview mode for the run.
     ///     args: Additional arguments (optional).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
@@ -243,10 +243,10 @@ impl Client {
         r#ref: "str | Ref | None" = None,
         namespace: "str | Namespace | None" = None,
         parameters: "dict[str, str | int | float | bool | None] | None" = None,
-        cache: "Literal['on', 'off'] | None" = None,
-        transaction: "Literal['on', 'off'] | None" = None,
+        cache: "bool" = true,
+        transaction: "bool" = true,
         dry_run: "bool | None" = None,
-        strict: "Literal['on', 'off'] | None" = None,
+        strict: "bool" = true,
         preview: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -261,10 +261,10 @@ impl Client {
         r#ref: Option<RefArg>,
         namespace: Option<NamespaceArg>,
         parameters: Option<HashMap<String, Option<RawParameterValue>>>,
-        cache: Option<&str>,
-        transaction: Option<&str>,
+        cache: bool,
+        transaction: bool,
         dry_run: Option<bool>,
-        strict: Option<&str>,
+        strict: bool,
         preview: Option<&str>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -273,9 +273,9 @@ impl Client {
     ) -> PyResult<RunState> {
         let timeout = self.job_timeout(client_timeout);
         let common = self.job_request_common(priority, args.unwrap_or_default())?;
-        let cache = optional_on_off("cache", cache)?;
-        let transaction = optional_on_off("transaction", transaction)?;
-        let strict = optional_on_off("strict", strict)?;
+        let cache = if cache { "on" } else { "off" };
+        let transaction = if transaction { "on" } else { "off" };
+        let strict = if strict { "on" } else { "off" };
 
         let dry_run = match dry_run {
             Some(true) => commanderpb::JobRequestOptionalBool::True,
@@ -302,9 +302,9 @@ impl Client {
             r#ref: r#ref.map(|a| a.0),
             namespace: namespace.map(|a| a.0),
             dry_run: dry_run.into(),
-            transaction: transaction.unwrap_or_default().to_owned(),
-            strict: strict.unwrap_or_default().to_owned(),
-            cache: cache.unwrap_or_default().to_owned(),
+            transaction: transaction.to_owned(),
+            strict: strict.to_owned(),
+            cache: cache.to_owned(),
             preview: preview.unwrap_or_default().to_owned(),
             project_id: project.project.id.as_hyphenated().to_string(),
             project_name: project.project.name.clone().unwrap_or_default(),
@@ -332,9 +332,9 @@ impl Client {
                 r#ref: resp.r#ref,
                 namespace: resp.namespace,
                 dry_run: resp.dry_run,
-                transaction: resp.transaction,
-                strict: resp.strict,
-                cache: resp.cache,
+                transaction: resp.transaction == "on",
+                strict: resp.strict == "on",
+                cache: resp.cache == "on",
                 preview: resp.preview,
                 debug: false,
                 detach,
