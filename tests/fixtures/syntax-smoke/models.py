@@ -69,7 +69,7 @@ class BareTypesSchema(TableSchema):
 
 class AnnotatedTypesSchema(TableSchema):
     annotated_bool: Annotated[Bool, TableField(doc="bool docstring")]
-    annotated_int: Annotated[Int32, TableField(title="int32 doc title")]
+    annotated_int: Annotated[Int32, TableField(doc="int32 docstring")]
     annotated_long: Annotated[Int64, TableField(nullable=True)]
     annotated_float: Annotated[Float64, TableField(nullable=False)]
     annotated_decimal: Annotated[
@@ -91,7 +91,6 @@ class AnnotatedTypesSchema(TableSchema):
         TimestampMicro,
         TableField(
             doc="TS micro docstring",
-            title="TS micro doc title",
             nullable=False,
             lineage=BareTypesSchema["bare_ts_micro"],
         ),
@@ -100,7 +99,6 @@ class AnnotatedTypesSchema(TableSchema):
         TimestampNano,
         TableField(
             doc="TS nano docstring",
-            title="TS nano doc title",
             nullable=False,
             lineage="BareTypesSchema['bare_ts_nano']",
         ),
@@ -109,7 +107,6 @@ class AnnotatedTypesSchema(TableSchema):
         TimestampMicroUTC,
         TableField(
             doc="TS micro UTC docstring",
-            title="TS micro UTC doc title",
             nullable=True,
             lineage=BareTypesSchema["bare_ts_micro_utc"],
         ),
@@ -118,7 +115,6 @@ class AnnotatedTypesSchema(TableSchema):
         TimestampNanoUTC,
         TableField(
             doc="TS nano UTC docstring",
-            title="TS nano UTC doc title",
             nullable=True,
             lineage="BareTypesSchema['bare_ts_nano_utc']",
         ),
