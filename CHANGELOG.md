@@ -1,4 +1,11 @@
 
+## [0.3.0-rc.2] - 2026-09-09
+
+### Bugfixes
+
+- [pysdk] Use boolean run options and enable strict mode by default (7a582a0ecc05e11dcfe7f7439d7de83eac7ee326)
+- Test was using cache=Off instead of cache=False (cadb2255f33d8bb67194b88586d137f104fae7df)
+
 ## [0.3.0-rc.1] - 2026-09-02
 
 ### New Features
