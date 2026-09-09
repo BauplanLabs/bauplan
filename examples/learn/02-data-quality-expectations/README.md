@@ -1,14 +1,14 @@
 # Data quality and expectations
 
-Add expectation tests to a Bauplan pipeline to catch data quality issues before they reach production. Expectation tests are statistical and quality checks applied to Bauplan models - they help detect problems early and can halt the pipeline when critical issues are found.
+Add an expectation to a Bauplan pipeline to validate a relationship between columns and control whether a failed check blocks downstream models.
 
 ## The pipeline
 
-The pipeline computes average taxi waiting times for NYC neighborhoods, using [Polars](https://docs.pola.rs/) for data processing:
+The pipeline computes average taxi waiting times for NYC neighborhoods using [Polars](https://docs.pola.rs/):
 
-- `normalized_taxi_trips`: joins raw trip data from `taxi_fhvhv` with `taxi_zones` to enrich each trip with Borough and Zone information.
-- `taxi_trip_waiting_times`: calculates the time in minutes between calling a cab and its arrival for each row.
-- `zone_avg_waiting_times`: computes average waiting times aggregated by Borough and Zone, ordered by longest wait first.
+- `normalized_taxi_trips` joins raw trip data from `taxi_fhvhv` with `taxi_zones` to add Borough and Zone information.
+- `taxi_trip_waiting_times` calculates the minutes between requesting a cab and the driver's arrival.
+- `zone_avg_waiting_times` computes average waiting times by Borough and Zone.
 
 ```mermaid
 flowchart LR
@@ -19,83 +19,108 @@ id3[models.taxi_trip_waiting_times] -->
 id4[models.zone_avg_waiting_times]
 ```
 
+## Type contracts and expectations
+
+The model schema declares `request_datetime` and `on_scene_datetime` as `TimestampMicroUTC | None`. This contract checks each column's type and allows the null values present in the source data.
+
+A type contract cannot express the relationship between the two timestamps. The expectation checks that a non-null `on_scene_datetime` never occurs before its corresponding `request_datetime`. Rows where either timestamp is null are excluded from this comparison.
+
 ## The expectation test
 
-The file `expectations.py` contains an expectation test using `bauplan.standard_expectations`. Bauplan's library comes with standard tests for common checks (column nulls, uniqueness, mean ranges, etc.). You can also write your own or use libraries like [Great Expectations](https://github.com/great-expectations/great_expectations).
-
-To calculate waiting times, the `on_scene_datetime` column must have no null values. The test uses `expect_column_no_nulls` and halts the pipeline via `assert` if it fails:
+The file `expectations.py` contains a custom cross-column consistency check:
 
 ```python
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
-from bauplan import Model
-from bauplan.standard_expectations import expect_column_no_nulls
+from bauplan import Model, TableSchema, TimestampMicroUTC
+
+
+class TripTimingColumns(TableSchema):
+    """Trip timestamps used to validate event ordering."""
+
+    request_datetime: TimestampMicroUTC | None
+    on_scene_datetime: TimestampMicroUTC | None
+
 
 @bauplan.expectation()
 @bauplan.python("3.11")
-def test_null_values_on_scene_datetime(
-    data: Annotated[pyarrow.Table, Model("normalized_taxi_trips")],
+def test_on_scene_not_before_request(
+    data: Annotated[
+        pa.Table,
+        Model(
+            "normalized_taxi_trips",
+            projection_schema=TripTimingColumns,
+        ),
+    ],
 ) -> bool:
-    column_to_check = "on_scene_datetime"
+    """Validate that driver arrival does not precede the ride request."""
+    import pyarrow.compute as pc
 
-    _is_expectation_correct = expect_column_no_nulls(data, column_to_check)
+    reversed_timestamps = pc.field("on_scene_datetime") < pc.field("request_datetime")
+    violation_count = data.filter(reversed_timestamps).num_rows
+    is_order_valid = violation_count == 0
 
-    assert _is_expectation_correct, (
-        f"expectation test failed: we expected {column_to_check} to have no null values"
+    assert is_order_valid, (
+        f"expectation test failed: {violation_count} rows have "
+        "on_scene_datetime before request_datetime"
     )
 
-    return _is_expectation_correct
+    return is_order_valid
 ```
-
-Halting a pipeline on failure isn't always necessary, but it's important to be notified of potential data quality issues. The flexibility of expectations allows the user to make that decision.
 
 ## Try it yourself
 
-Run the pipeline as-is and see what happens:
+Create a data branch and disable strict mode to observe a failed expectation without failing the run:
 
 ```sh
 bauplan checkout -b <YOUR_USERNAME>.expectations
 
-bauplan run --project-dir pipeline
+bauplan run --project-dir pipeline --no-strict
 ```
 
-The pipeline will succeed, but the expectation test will fail - notice how the downstream models still run and complete:
+The expectation fails, but the downstream models continue:
 
-```
+```text
 normalized_taxi_trips done
-test_null_values_on_scene_datetime [expectation] failed
+test_on_scene_not_before_request [expectation] failed
 taxi_trip_waiting_times done
 zone_avg_waiting_times done
 ```
 
-The expectation flags a data quality issue - there are null values in `on_scene_datetime` - but it doesn't block the rest of the pipeline. If you want to fail the pipeline based on the failed expectation you can add `--strict` to the CLI command, like so:
-```sh
-bauplan run --project-dir pipeline --strict
-```
-
-To fix the underlying data issue, open `models.py` and add a filter before line 108 (`return result.to_arrow()`) in `normalized_taxi_trips`:
-
-```python type:ignore
-    # drop rows where on_scene_datetime is null
-    result = result.filter(pl.col("on_scene_datetime").is_not_null())
-
-    return result.to_arrow()
-```
-
-Then re-run the pipeline:
+Strict mode is enabled by default. Run the pipeline without `--no-strict` to make the failed expectation block the run:
 
 ```sh
 bauplan run --project-dir pipeline
 ```
 
-This time the expectation test will pass - no nulls in `on_scene_datetime` - and you can be confident the downstream waiting time calculations are based on clean data.
+## Fix the data issue
+
+Filter rows with reversed non-null timestamps in `normalized_taxi_trips`, while preserving rows whose timestamps are null:
+
+```python type:ignore
+result = result.filter(
+    pl.col("on_scene_datetime").is_null()
+    | pl.col("request_datetime").is_null()
+    | (pl.col("on_scene_datetime") >= pl.col("request_datetime"))
+)
+
+return result.to_arrow()
+```
+
+Run the pipeline again:
+
+```sh
+bauplan run --project-dir pipeline
+```
+
+The expectation now passes because every pair of comparable timestamps is correctly ordered.
 
 ## Key takeaways
 
-- `@bauplan.expectation()` attaches data quality checks directly to a model - they run as part of the pipeline, not as a separate step
-- By default, a failed expectation surfaces the issue without blocking downstream models, so you get visibility without pipeline-wide halts
-- When a check is critical, running the pipeline with `--strict` will fail it immediately
-- Expectations are flexible: use built-in checks from `bauplan.standard_expectations`, write your own, or plug in libraries like Great Expectations
+- Type contracts validate table shape, column types, and declared nullability.
+- Expectations validate data properties and relationships that types cannot express.
+- Strict mode is enabled by default and blocks the run when an expectation fails.
+- `--no-strict` reports failed expectations while allowing downstream models to run.
