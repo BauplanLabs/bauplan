@@ -538,7 +538,7 @@ dev = [
 
 [[package]]
 name = "bauplan-sdk-types"
-version = "0.1.0"
+version = "0.2.0a1"
 source = { editable = "bauplan-sdk-types" }
 dependencies = [
     { name = "pyarrow" },
