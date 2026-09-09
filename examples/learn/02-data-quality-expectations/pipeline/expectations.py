@@ -24,7 +24,6 @@ from bauplan.standard_expectations import expect_column_no_nulls
 
 # Expectations are identified by a special decorator.
 @bauplan.expectation()
-
 # You can use this to specify the python version used during execution.
 @bauplan.python("3.11")
 def test_null_values_on_scene_datetime(

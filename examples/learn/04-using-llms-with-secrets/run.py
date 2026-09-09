@@ -211,9 +211,7 @@ if __name__ == "__main__":
     parser.add_argument("--s3_metadata_folder", type=str, default="my_pdf_metadata")
     parser.add_argument("--table_name", type=str, default="my_pdf_metadata")
     parser.add_argument("--namespace", type=str, default="my_pdfs")
-    parser.add_argument(
-        "--ingestion_branch", type=str, required=True
-    )
+    parser.add_argument("--ingestion_branch", type=str, required=True)
     args = parser.parse_args()
     # Run the upload and processing.
     upload_and_process(

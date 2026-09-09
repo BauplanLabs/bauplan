@@ -28,11 +28,11 @@ from typing import Annotated
 
 from bauplan import Model, Parameter
 
+
 def sec_10_q_tabular_dataset(
     data: Annotated[pyarrow.Table, Model("sec_10_q_markdown")],
     open_ai_key: Annotated[str, Parameter("openai_api_key")],  # decrypted at runtime
-):
-    ...
+): ...
 ```
 
 Secrets are set at the project level, so you can experiment on a development branch without re-setting them.

@@ -81,7 +81,7 @@ def _pdf_to_markdown(bucket, pdf_path):
         print(f"\n>>>> Processing {pdf_path.split('/')[-1]}")
         s3.download_fileobj(bucket, pdf_path, tmp_file)
         result = md.convert(tmp_file.name)
-        
+
         # Cut the text after the forward-looking statements.
         return result.text_content.split("Forward-Looking Statements")[0]
 
@@ -119,7 +119,7 @@ def sec_10_q_markdown(
     # Get lists from the Arrow columns, to iterate over them.
     bucket_name = data["bucket"].to_pylist()
     object_key = data["pdf_path"].to_pylist()
-    
+
     # We will store the markdown text in a list.
     values = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
@@ -133,10 +133,10 @@ def sec_10_q_markdown(
                 raise ex
 
     values, _ = zip(*sorted(values, key=lambda x: x[1]))
-    
+
     # Add the markdown text to the data.
     data = data.append_column("markdown_text", [values])
-    
+
     # Remove the bucket and path columns.
     data = data.drop_columns(["bucket", "pdf_path"])
 
@@ -191,15 +191,14 @@ def sec_10_q_tabular_dataset(
     results = []
     oai_client = OpenAI(api_key=open_ai_key)
     for company, year, quarter, t in zip(companies, years, quarters, text):
-        
         # Use the LLM to extract the required information.
         generated_result = _request_prediction_from_open_ai(
             company, year, quarter, t, oai_client
         )
-        
+
         # Parse the JSON response to get the rows.
         rows = generated_result.model_dump(mode="json")["statements"]
-        
+
         # Add the original metadata regarding the report to each row.
         for row in rows:
             row["report_company"] = company
@@ -207,7 +206,7 @@ def sec_10_q_tabular_dataset(
             row["report_quarter"] = quarter
         results.extend(rows)
     end_time = time.time()
-    
+
     # Print the time taken to process the documents.
     print(
         f"LLM loop time: {end_time - start_time} s, avg. {(end_time - start_time) / len(results)} s"
@@ -247,7 +246,7 @@ def sec_10_q_analysis(
 
     # Convert the Arrow table to a Polars DataFrame (zero-copy).
     df = pl.from_arrow(data)
-    
+
     # Group by company and statement, and calculate the mean of the USD values.
     df = df.group_by("report_company", "statement").agg(pl.col("usd").mean())
 

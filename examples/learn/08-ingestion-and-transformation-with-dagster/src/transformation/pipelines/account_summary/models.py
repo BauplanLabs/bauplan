@@ -63,7 +63,9 @@ class DailyAccountSpendSchema(TableSchema):
     account_id: String
     date: Date32
     total_amount: Annotated[Float64, TableField(doc="Sum of settled amounts.")]
-    transaction_count: Annotated[Int64, TableField(doc="Number of settled transactions.")]
+    transaction_count: Annotated[
+        Int64, TableField(doc="Number of settled transactions.")
+    ]
     avg_amount: Annotated[Float64, TableField(doc="Mean settled amount.")]
 
 

@@ -34,6 +34,7 @@ import pyarrow
 from bauplan import Model
 from bauplan.standard_expectations import expect_column_no_nulls
 
+
 @bauplan.expectation()
 @bauplan.python("3.11")
 def test_null_values_on_scene_datetime(

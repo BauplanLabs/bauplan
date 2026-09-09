@@ -88,7 +88,7 @@ def compute_stats_by_zone(df: pl.DataFrame) -> pl.DataFrame:
 
     # Clean up the dataset by excluding certain rows.
     time_filter = datetime(2022, 1, 1, tzinfo=timezone.utc)
-    
+
     # Filter df by timestamp, exclude rows with
     # trip_miles = 0 and trip_miles > 200.
     df = df.filter(

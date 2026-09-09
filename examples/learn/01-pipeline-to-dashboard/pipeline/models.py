@@ -50,22 +50,22 @@ class TripsAndZonesSchema(TableSchema):
 
     pickup_datetime: Annotated[
         TimestampMicroUTC,
-        TableField(lineage=TripColumns['pickup_datetime']),
+        TableField(lineage=TripColumns["pickup_datetime"]),
     ]
     dropoff_datetime: Annotated[
         TimestampMicroUTC,
-        TableField(lineage=TripColumns['dropoff_datetime']),
+        TableField(lineage=TripColumns["dropoff_datetime"]),
     ]
-    PULocationID: Annotated[Int64, TableField(lineage=TripColumns['PULocationID'])]
-    DOLocationID: Annotated[Int64, TableField(lineage=TripColumns['DOLocationID'])]
-    trip_miles: Annotated[Float64, TableField(lineage=TripColumns['trip_miles'])]
-    trip_time: Annotated[Int64, TableField(lineage=TripColumns['trip_time'])]
+    PULocationID: Annotated[Int64, TableField(lineage=TripColumns["PULocationID"])]
+    DOLocationID: Annotated[Int64, TableField(lineage=TripColumns["DOLocationID"])]
+    trip_miles: Annotated[Float64, TableField(lineage=TripColumns["trip_miles"])]
+    trip_time: Annotated[Int64, TableField(lineage=TripColumns["trip_time"])]
     base_passenger_fare: Annotated[
-        Float64, TableField(lineage=TripColumns['base_passenger_fare'])
+        Float64, TableField(lineage=TripColumns["base_passenger_fare"])
     ]
-    tolls: Annotated[Float64, TableField(lineage=TripColumns['tolls'])]
-    sales_tax: Annotated[Float64, TableField(lineage=TripColumns['sales_tax'])]
-    tips: Annotated[Float64, TableField(lineage=TripColumns['tips'])]
+    tolls: Annotated[Float64, TableField(lineage=TripColumns["tolls"])]
+    sales_tax: Annotated[Float64, TableField(lineage=TripColumns["sales_tax"])]
+    tips: Annotated[Float64, TableField(lineage=TripColumns["tips"])]
     Borough: Annotated[String, TableField(lineage="taxi_zones['Borough']")]
     Zone: Annotated[String, TableField(lineage="taxi_zones['Zone']")]
     service_zone: Annotated[String, TableField(lineage="taxi_zones['service_zone']")]
@@ -75,7 +75,6 @@ class TripsAndZonesSchema(TableSchema):
 # transformation with many (>= 1) input tables and an output table.
 # Arrow tables are the standard structure for input tables and the output table.
 @bauplan.model()
-
 # The `python` decorator allows you to specify a Python version and any pip packages that
 # should be installed when executing this function. Each function is executed in an
 # independent environment and may:
@@ -89,10 +88,8 @@ def trips_and_zones(
         Model(
             # Specify the model identifier with the first positional arg or `name` kwarg.
             "taxi_fhvhv",
-
             # Specify specific columns to read with the `projection_schema` parameter.
             projection_schema=TripColumns,
-
             # Specify filtering for rows to retrieve with the `filter` parameter.
             filter="pickup_datetime >= '2022-12-15T00:00:00-05:00' AND pickup_datetime < '2023-01-01T00:00:00-05:00'",
         ),

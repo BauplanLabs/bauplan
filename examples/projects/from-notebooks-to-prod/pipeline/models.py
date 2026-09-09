@@ -34,7 +34,7 @@ class TripsAndZonesSchema(TableSchema):
 
     pickup_datetime: Annotated[
         TimestampMicroUTC,
-        TableField(lineage=TripColumns['pickup_datetime']),
+        TableField(lineage=TripColumns["pickup_datetime"]),
     ]
     PULocationID: Annotated[
         Int64,
@@ -43,11 +43,11 @@ class TripsAndZonesSchema(TableSchema):
                 "Pickup location. The join is a full outer join with coalesce, so this "
                 "column carries taxi_zones' LocationID for zones with no trips."
             ),
-            lineage=TripColumns['PULocationID'],
+            lineage=TripColumns["PULocationID"],
         ),
     ]
-    trip_miles: Annotated[Float64, TableField(lineage=TripColumns['trip_miles'])]
-    Zone: Annotated[String, TableField(lineage=ZoneColumns['Zone'])]
+    trip_miles: Annotated[Float64, TableField(lineage=TripColumns["trip_miles"])]
+    Zone: Annotated[String, TableField(lineage=ZoneColumns["Zone"])]
 
 
 @bauplan.model()
@@ -79,7 +79,9 @@ def trips_and_zones(
 class StatsByTaxiZoneSchema(TableSchema):
     """Median log-transformed trip distance per pickup zone."""
 
-    Zone: Annotated[String, TableField(doc="Pickup zone the statistics are grouped by.")]
+    Zone: Annotated[
+        String, TableField(doc="Pickup zone the statistics are grouped by.")
+    ]
     log_trip_miles: Annotated[
         Float64,
         TableField(

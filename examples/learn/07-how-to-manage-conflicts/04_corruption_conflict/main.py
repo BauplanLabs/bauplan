@@ -70,6 +70,7 @@ def fix_and_backfill(
         )
         print(f"  [fix] Backfilled {year}")
 
+
 def main(
     profile: Annotated[str, typer.Option(help="Bauplan profile to use")] = "default",
 ) -> None:

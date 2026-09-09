@@ -34,18 +34,18 @@ class TripTimestamps(TableSchema):
 class NormalizedTaxiTripsSchema(TableSchema):
     """Trip timestamps enriched with the borough and zone of the pickup location."""
 
-    PULocationID: Annotated[Int64, TableField(lineage=TripTimestamps['PULocationID'])]
+    PULocationID: Annotated[Int64, TableField(lineage=TripTimestamps["PULocationID"])]
     request_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['request_datetime'])
+        TimestampMicroUTC, TableField(lineage=TripTimestamps["request_datetime"])
     ]
     on_scene_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['on_scene_datetime'])
+        TimestampMicroUTC, TableField(lineage=TripTimestamps["on_scene_datetime"])
     ]
     pickup_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['pickup_datetime'])
+        TimestampMicroUTC, TableField(lineage=TripTimestamps["pickup_datetime"])
     ]
     dropoff_datetime: Annotated[
-        TimestampMicroUTC, TableField(lineage=TripTimestamps['dropoff_datetime'])
+        TimestampMicroUTC, TableField(lineage=TripTimestamps["dropoff_datetime"])
     ]
     Borough: Annotated[String, TableField(lineage="taxi_zones['Borough']")]
     Zone: Annotated[String, TableField(lineage="taxi_zones['Zone']")]
@@ -93,7 +93,9 @@ class TaxiTripWaitingTimesSchema(TableSchema):
     service_zone: String
     waiting_time_minutes: Annotated[
         Int64,
-        TableField(doc="Whole minutes elapsed between request_datetime and on_scene_datetime."),
+        TableField(
+            doc="Whole minutes elapsed between request_datetime and on_scene_datetime."
+        ),
     ]
 
 
@@ -132,9 +134,7 @@ class ZoneAvgWaitingTimesSchema(TableSchema):
 @bauplan.model(materialization_strategy="REPLACE")
 @bauplan.python("3.12", pip={"polars": "1.38.1"})
 def zone_avg_waiting_times(
-    taxi_trip_waiting_times: Annotated[
-        pyarrow.Table, Model("taxi_trip_waiting_times")
-    ],
+    taxi_trip_waiting_times: Annotated[pyarrow.Table, Model("taxi_trip_waiting_times")],
 ) -> Annotated[pyarrow.Table, ZoneAvgWaitingTimesSchema]:
     import polars as pl
 

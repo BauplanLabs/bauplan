@@ -48,6 +48,7 @@ The key trick is marimo's `@app.function` decorator. Functions marked with it ar
 def join_taxi_tables(table_1, table_2):
     return table_1.join(table_2, ...)
 
+
 # in models.py (Bauplan pipeline)
 from taxi_notebook import join_taxi_tables
 ```

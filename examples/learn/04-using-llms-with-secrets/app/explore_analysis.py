@@ -15,6 +15,7 @@ bauplan_client = bauplan.Client()
 
 ### Utility Functions ###
 
+
 @st.cache_data()
 def query_as_arrow(_client: bauplan.Client, sql: str, namespace: str):
     """
@@ -62,7 +63,7 @@ def plot_bar_chart(statements: list, means: list):
 
 def main(analysis_table_name: str, namespace: str):
     st.title("Explore the data extracted from the PDFs!")
-    
+
     # Check that the table exists before querying.
     full_table_name = f"{namespace}.{analysis_table_name}"
     if not bauplan_client.has_table(full_table_name, ref="main"):
@@ -85,7 +86,6 @@ def main(analysis_table_name: str, namespace: str):
 
 
 if __name__ == "__main__":
-    
     # Parse the arguments.
     import argparse
 
@@ -93,6 +93,6 @@ if __name__ == "__main__":
     parser.add_argument("--analysis_table_name", type=str, default="sec_10_q_analysis")
     parser.add_argument("--namespace", type=str, default="my_pdfs")
     args = parser.parse_args()
-    
+
     # Start the app.
     main(args.analysis_table_name, args.namespace)

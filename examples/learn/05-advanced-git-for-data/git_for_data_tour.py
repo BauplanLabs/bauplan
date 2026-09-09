@@ -124,7 +124,7 @@ def main(file_path: str):
     # ── audit ────────────────────────────────────────────────────────
 
     _step(5, TOTAL, f"Auditing commit history for author '{full_name}'...")
-    
+
     if not full_name:
         my_author_commit_history = client.get_commits(
             my_branch_name, filter_by_username=username, limit=5

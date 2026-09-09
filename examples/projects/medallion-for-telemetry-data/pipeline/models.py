@@ -41,7 +41,9 @@ class SignalCleanSchema(TableSchema):
             doc="Reading time, shifted to UTC and stored without a timezone.",
         ),
     ]
-    signal: Annotated[String, TableField(doc="Sensor name; the bronze `sensors` column.")]
+    signal: Annotated[
+        String, TableField(doc="Sensor name; the bronze `sensors` column.")
+    ]
     value: Annotated[Float64, TableField(doc="Reading parsed out of the raw text.")]
     value_original: Annotated[
         Float64, TableField(doc="The parsed reading before any downstream correction.")

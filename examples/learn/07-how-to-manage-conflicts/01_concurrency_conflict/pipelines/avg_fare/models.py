@@ -31,9 +31,7 @@ class AverageFareSchema(TableSchema):
 @bauplan.python("3.12", pip={"polars": "1.37"})
 @bauplan.model(materialization_strategy="REPLACE")
 def workshop_average_fares(
-    data: Annotated[
-        pyarrow.Table, Model("titanic", projection_schema=PassengerFare)
-    ],
+    data: Annotated[pyarrow.Table, Model("titanic", projection_schema=PassengerFare)],
 ) -> Annotated[pyarrow.Table, AverageFareSchema]:
     """Compute the mean Titanic fare for each passenger class."""
     import polars as pl

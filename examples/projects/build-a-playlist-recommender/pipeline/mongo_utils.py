@@ -26,14 +26,14 @@ def upload_vectors_to_mongodb(
         db = client[db_name]
         if collection_name in db.list_collection_names():
             db[collection_name].drop()
-        
+
         # Create a new collection.
         collection = db[collection_name]
-        
+
         # Insert the table in the MongoDB collection
         # by converting it to a list of dictionaries.
         result = collection.insert_many(_table.to_pylist())
-        
+
         # Create a search index for the vectors.
         # Example from: https://www.mongodb.com/
         # docs/languages/python/pymongo-driver/
@@ -43,7 +43,6 @@ def upload_vectors_to_mongodb(
                 "fields": [
                     {
                         "type": "vector",
-                        
                         # This should match the
                         # dimensionality of the vectors.
                         "numDimensions": 48,

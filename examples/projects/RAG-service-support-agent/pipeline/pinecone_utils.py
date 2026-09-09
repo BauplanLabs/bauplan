@@ -51,10 +51,10 @@ def upload_documents_to_pinecone(
                 "field_map": {"text": "chunk_text"},
             },
         )
-    
+
     # Get the index object.
     index = pinecone_client.Index(index_name)
-    
+
     # Prepare the records for upsert, trying not
     # to exceed the max supported size.
     tot_records = 0

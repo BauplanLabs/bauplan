@@ -20,7 +20,11 @@ import polars as pl
 
 
 @st.cache_data
-def query_as_dataframe(_client: bauplan.Client, sql: str, branch: str) -> pa.Table | None:
+def query_as_dataframe(
+    _client: bauplan.Client,
+    sql: str,
+    branch: str,
+) -> pa.Table | None:
     """
     Runs a query with bauplan and returns the result as an Arrow dataframe.
     """
@@ -116,20 +120,20 @@ def main():
     )
 
     client = bauplan.Client()
-    
+
     # Make sure the branch exists before querying.
     assert client.has_branch(current_branch), (
         f"Branch '{current_branch}' does not exist. Please check the branch name and try again."
     )
-   
+
     # Make sure the table exists before querying.
-    assert client.has_table(
-        table_name, ref=current_branch
-    ), f"Table '{table_name}' does not exist on "
-       f"branch '{current_branch}'. Please check "
-       f"the branch name and make sure to run the "
-       f"pipeline first."
-   
+    assert client.has_table(table_name, ref=current_branch), (
+        f"Table '{table_name}' does not exist on "
+        f"branch '{current_branch}'. Please check "
+        f"the branch name and make sure to run the "
+        f"pipeline first."
+    )
+
     table = client.get_table(table_name, ref=current_branch)
     num_records = table.records
     print(f"Table '{table_name}' has {num_records} records.")
@@ -142,7 +146,7 @@ def main():
     )
     df = query_as_dataframe(_client=client, sql=sql, branch=current_branch)
     print("Query executed, got result. Converting to Polars DataFrame...")
-    
+
     # Convert to Polars DataFrame for easier
     # manipulation and plotting. This is zero-copy
     # and very fast.
