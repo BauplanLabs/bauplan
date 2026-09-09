@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Int64,
@@ -25,16 +25,16 @@ class RunMarkerSchema(TableSchema):
 
 @bauplan.model(materialization_strategy="REPLACE")
 def my_taxxxi_zones(
-    data: Annotated[pyarrow.Table, Model("bauplan.taxi_zones")],
+    data: Annotated[pa.Table, Model("bauplan.taxi_zones")],
     run_id: Annotated[int, Parameter("run_id")],
-) -> Annotated[pyarrow.Table, RunMarkerSchema]:
+) -> Annotated[pa.Table, RunMarkerSchema]:
     """
     This model materializes a trivial table, which will allow us to vary the run_id from the caller
     to verify different rows get persisted.
     """
     import time
 
-    return pyarrow.Table.from_pylist(
+    return pa.Table.from_pylist(
         [
             {
                 "run_id": run_id,
@@ -46,8 +46,8 @@ def my_taxxxi_zones(
 
 @bauplan.model()
 def my_taxxxi_zones_child(
-    data: Annotated[pyarrow.Table, Model("my_taxxxi_zones")],
-) -> Annotated[pyarrow.Table, RunMarkerSchema]:
+    data: Annotated[pa.Table, Model("my_taxxxi_zones")],
+) -> Annotated[pa.Table, RunMarkerSchema]:
     """
     This model is a child of the previous one, and it will be used to just test a scenario
     in which a pipeline fails with some artifacts written before the failure. This allows
@@ -63,7 +63,7 @@ def my_taxxxi_zones_child(
     if run_id > 4:
         raise ValueError("run_id should be less than 5")
 
-    return pyarrow.Table.from_pylist(
+    return pa.Table.from_pylist(
         [
             {
                 "run_id": run_id,

@@ -5,6 +5,6 @@ description = "Write-Audit-Publish pattern for safe lakehouse ingestion using Pr
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "bauplan>=0.1.9",
+    "bauplan==0.3.0rc1",
     "prefect>=3.6.28.dev2",
 ]

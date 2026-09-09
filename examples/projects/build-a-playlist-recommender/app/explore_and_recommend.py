@@ -20,6 +20,7 @@ import polars as pl
 import matplotlib.pyplot as plt
 import bauplan
 from pymongo import MongoClient
+from pymongo.database import Database
 import os
 import certifi
 
@@ -36,6 +37,7 @@ bauplan_client = bauplan.Client()
 
 
 ### Utility Functions ###
+
 
 @st.cache_data()
 def query_as_arrow(
@@ -97,7 +99,9 @@ def plot_scatterplot_with_lookup(
     return
 
 
-def check_search_index_availability(database, index_name, collection_name):
+def check_search_index_availability(
+    database: Database, index_name: str, collection_name: str
+) -> bool:
     collection = database[collection_name]
     indices = list(collection.list_search_indexes())
     if len(indices) == 0:
@@ -105,7 +109,13 @@ def check_search_index_availability(database, index_name, collection_name):
     return next(filter(lambda x: x["name"] == index_name, indices))["queryable"]
 
 
-def vector_search(database, query_vector, index_name, collection_name, limit=5):
+def vector_search(
+    database: Database,
+    query_vector: list[float],
+    index_name: str,
+    collection_name: str,
+    limit: int = 5,
+) -> list[dict[str, object]]:
     # Some vars are hardcoded here for simplicity.
     # These should be the same as the ones in the DAG
     # if you want to change them.
@@ -138,6 +148,7 @@ def vector_search(database, query_vector, index_name, collection_name, limit=5):
 
 ### The Streamlit App Begins Here ###
 
+
 def main(one_big_table_name: str, index_name: str, collection_name: str):
     st.title("Explore the vector space and get recommendations!")
 
@@ -147,9 +158,12 @@ def main(one_big_table_name: str, index_name: str, collection_name: str):
             "The Mongo search index is not available yet. Please wait a bit and try again!"
         )
         st.stop()
-    
+
     # Automatically infer the bauplan username from the authenticated client.
-    bauplan_user_name = bauplan_client.info().user.username
+    user = bauplan_client.info().user
+    if user is None:
+        raise RuntimeError("Bauplan user information is unavailable")
+    bauplan_user_name = user.username
     all_branches = list(
         _.name for _ in bauplan_client.get_branches(user=bauplan_user_name)
     )
@@ -174,21 +188,21 @@ def main(one_big_table_name: str, index_name: str, collection_name: str):
         st.write("Something went wrong! Please check your branch and try again!")
         st.stop()
 
-    st.dataframe(pl.from_arrow(table.slice(length=3)), width=1200)
+    st.dataframe(pl.DataFrame(table.slice(length=3)), width=1200)
     all_items = table["_id"].to_pylist()
     tracks_to_author = dict(
         zip(table["_id"].to_pylist(), table["artist_name"].to_pylist())
     )
-    
+
     # We highlight a few authors for the scatterplot.
     target_authors = ["Drake", "Kanye West", "Justin Bieber", "Ed Sheeran", "Eminem"]
-    
+
     # We mark as unknown the tracks not written by the target authors, so that
     # the visualization is more readable.
     for t, a in tracks_to_author.items():
         if a not in target_authors:
             tracks_to_author[t] = "unknown"
-    
+
     # Plot the embeddings, color-coded by author.
     plot_scatterplot_with_lookup(
         title="Music in (vector) space",
@@ -227,12 +241,12 @@ if __name__ == "__main__":
         "--one_big_table_name", type=str, default="track_vectors_with_metadata"
     )
     args = parser.parse_args()
-    
+
     # These are hardcoded to the same values as in the pipeline.
     # Change them here if you change them in the pipeline.
     COLLECTION_NAME = "track_vectors"
     INDEX_NAME = "bauplan_recs_index"
-    
+
     # Start the app.
     main(
         one_big_table_name=args.one_big_table_name,

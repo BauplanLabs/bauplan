@@ -107,8 +107,8 @@ def build_ingestion_asset(table: str, dt_partition_column: str) -> dg.AssetsDefi
             project_dir=str((AUDIT_DIR / table).resolve()),
             ref=branch,
             namespace=NAMESPACE,
-            cache="off",
-            strict="on",
+            cache=False,
+            strict=True,
         )
         passed = str(state.job_status).lower() == "success"
         check_metadata = {
@@ -192,8 +192,8 @@ def account_activity_summary(
         project_dir=str(TRANSFORM_DIR.resolve()),
         ref=branch,
         namespace=NAMESPACE,
-        cache="off",
-        strict="on",
+        cache=False,
+        strict=True,
         parameters={"start_date": start_date, "end_date": end_date},
     )
     if str(state.job_status).lower() != "success":
@@ -244,8 +244,8 @@ def transactions_audit(bauplan_client: BauplanResource) -> dg.AssetCheckResult:
         ref=BASE_BRANCH,
         namespace=NAMESPACE,
         dry_run=True,
-        cache="off",
-        strict="on",
+        cache=False,
+        strict=True,
     )
 
     successful = str(state.job_status).lower() == "success"
@@ -311,8 +311,8 @@ def account_events_audit(bauplan_client: BauplanResource) -> dg.AssetCheckResult
         ref=BASE_BRANCH,
         namespace=NAMESPACE,
         dry_run=True,
-        cache="off",
-        strict="on",
+        cache=False,
+        strict=True,
     )
 
     successful = str(state.job_status).lower() == "success"

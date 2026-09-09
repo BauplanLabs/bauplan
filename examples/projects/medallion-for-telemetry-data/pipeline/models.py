@@ -10,7 +10,7 @@ Silver -> Gold: aggregate per-sensor hourly statistics.
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Float64,
@@ -27,9 +27,9 @@ from bauplan import (
 class BronzeColumns(TableSchema):
     """The projection of telemetry_bronze the Silver transformation reads."""
 
-    dateTime: TimestampMicroUTC
-    sensors: String
-    value: Annotated[String, TableField(doc="Raw reading, still unparsed text.")]
+    dateTime: TimestampMicroUTC | None
+    sensors: String | None
+    value: Annotated[String | None, TableField(doc="Raw reading, still unparsed text.")]
 
 
 class SignalCleanSchema(TableSchema):
@@ -41,7 +41,9 @@ class SignalCleanSchema(TableSchema):
             doc="Reading time, shifted to UTC and stored without a timezone.",
         ),
     ]
-    signal: Annotated[String, TableField(doc="Sensor name; the bronze `sensors` column.")]
+    signal: Annotated[
+        String, TableField(doc="Sensor name; the bronze `sensors` column.")
+    ]
     value: Annotated[Float64, TableField(doc="Reading parsed out of the raw text.")]
     value_original: Annotated[
         Float64, TableField(doc="The parsed reading before any downstream correction.")
@@ -52,10 +54,10 @@ class SignalCleanSchema(TableSchema):
 @bauplan.python("3.11", pip={"duckdb": "1.1.3"})
 def signal_clean(
     bronze_data: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model("telemetry_bronze", projection_schema=BronzeColumns),
     ],
-) -> Annotated[pyarrow.Table, SignalCleanSchema]:
+) -> Annotated[pa.Table, SignalCleanSchema]:
     """Bronze -> Silver: clean and deduplicate raw telemetry readings.
 
     - Column mapping: sensors -> signal
@@ -136,10 +138,10 @@ class SignalSummarySchema(TableSchema):
 @bauplan.python("3.11", pip={"polars": "1.38.1"})
 def signal_summary(
     data: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model("signal_clean", projection_schema=SignalReadingColumns),
     ],
-) -> Annotated[pyarrow.Table, SignalSummarySchema]:
+) -> Annotated[pa.Table, SignalSummarySchema]:
     """Silver -> Gold: hourly statistics per sensor.
 
     Aggregates clean readings into per-sensor, per-hour summaries
@@ -151,7 +153,7 @@ def signal_summary(
     """
     import polars as pl
 
-    df = pl.from_arrow(data)
+    df = pl.DataFrame(data)
 
     result = (
         df.with_columns(pl.col("dateTime").dt.truncate("1h").alias("hour"))

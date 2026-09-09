@@ -1,7 +1,7 @@
-from typing import Annotated
+from typing import Annotated, Any
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Float64,
@@ -15,8 +15,8 @@ from bauplan import (
 
 
 def _request_prediction_from_open_ai(
-    company: str, year: int, quarter: int, text: str, oai_client
-) -> str:
+    company: str, year: int, quarter: int, text: str, oai_client: Any
+) -> Any:
     """ """
     # Structure of the response.
     from pydantic import BaseModel
@@ -62,7 +62,7 @@ def _request_prediction_from_open_ai(
     return completion.choices[0].message.parsed
 
 
-def _pdf_to_markdown(bucket, pdf_path):
+def _pdf_to_markdown(bucket: str, pdf_path: str) -> str:
     import tempfile
 
     # Instantiate the clients.
@@ -81,7 +81,7 @@ def _pdf_to_markdown(bucket, pdf_path):
         print(f"\n>>>> Processing {pdf_path.split('/')[-1]}")
         s3.download_fileobj(bucket, pdf_path, tmp_file)
         result = md.convert(tmp_file.name)
-        
+
         # Cut the text after the forward-looking statements.
         return result.text_content.split("Forward-Looking Statements")[0]
 
@@ -104,8 +104,8 @@ class MarkdownSchema(TableSchema):
 @bauplan.python("3.11", pip={"boto3": "1.35.86", "markitdown": "0.0.1a3"})
 @bauplan.model(internet_access=True)
 def sec_10_q_markdown(
-    data: Annotated[pyarrow.Table, Model("my_pdf_metadata")],
-) -> Annotated[pyarrow.Table, MarkdownSchema]:
+    data: Annotated[pa.Table, Model("my_pdf_metadata")],
+) -> Annotated[pa.Table, MarkdownSchema]:
     """
     This function reads the metadata and the PDFs from S3 and converts them to markdown.
     The final table is therefore the same as the input table without bucket and path, with an additional column:
@@ -119,7 +119,7 @@ def sec_10_q_markdown(
     # Get lists from the Arrow columns, to iterate over them.
     bucket_name = data["bucket"].to_pylist()
     object_key = data["pdf_path"].to_pylist()
-    
+
     # We will store the markdown text in a list.
     values = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=12) as executor:
@@ -133,10 +133,10 @@ def sec_10_q_markdown(
                 raise ex
 
     values, _ = zip(*sorted(values, key=lambda x: x[1]))
-    
+
     # Add the markdown text to the data.
     data = data.append_column("markdown_text", [values])
-    
+
     # Remove the bucket and path columns.
     data = data.drop_columns(["bucket", "pdf_path"])
 
@@ -163,9 +163,9 @@ class TabularDatasetSchema(TableSchema):
 # Make sure to persist the data as an Iceberg-backed table.
 @bauplan.model(internet_access=True, materialization_strategy="REPLACE")
 def sec_10_q_tabular_dataset(
-    data: Annotated[pyarrow.Table, Model("sec_10_q_markdown")],
+    data: Annotated[pa.Table, Model("sec_10_q_markdown")],
     open_ai_key: Annotated[str, Parameter("openai_api_key")],
-) -> Annotated[pyarrow.Table, TabularDatasetSchema]:
+) -> Annotated[pa.Table, TabularDatasetSchema]:
     """
     This function reads the markdown text of each document and uses the LLM to extract information
     in a tabular format. We leverage the structured outputs feature of the LLM to extract the required
@@ -191,15 +191,14 @@ def sec_10_q_tabular_dataset(
     results = []
     oai_client = OpenAI(api_key=open_ai_key)
     for company, year, quarter, t in zip(companies, years, quarters, text):
-        
         # Use the LLM to extract the required information.
         generated_result = _request_prediction_from_open_ai(
             company, year, quarter, t, oai_client
         )
-        
+
         # Parse the JSON response to get the rows.
         rows = generated_result.model_dump(mode="json")["statements"]
-        
+
         # Add the original metadata regarding the report to each row.
         for row in rows:
             row["report_company"] = company
@@ -207,7 +206,7 @@ def sec_10_q_tabular_dataset(
             row["report_quarter"] = quarter
         results.extend(rows)
     end_time = time.time()
-    
+
     # Print the time taken to process the documents.
     print(
         f"LLM loop time: {end_time - start_time} s, avg. {(end_time - start_time) / len(results)} s"
@@ -231,8 +230,8 @@ class AnalysisSchema(TableSchema):
 @bauplan.python("3.11", pip={"polars": "1.38.1"})
 @bauplan.model(materialization_strategy="REPLACE")
 def sec_10_q_analysis(
-    data: Annotated[pyarrow.Table, Model("sec_10_q_tabular_dataset")],
-) -> Annotated[pyarrow.Table, AnalysisSchema]:
+    data: Annotated[pa.Table, Model("sec_10_q_tabular_dataset")],
+) -> Annotated[pa.Table, AnalysisSchema]:
     """
     This function reads the tabular dataset prepared by the previous step and performs some analysis
     using Polars.
@@ -246,8 +245,8 @@ def sec_10_q_analysis(
     import polars as pl
 
     # Convert the Arrow table to a Polars DataFrame (zero-copy).
-    df = pl.from_arrow(data)
-    
+    df = pl.DataFrame(data)
+
     # Group by company and statement, and calculate the mean of the USD values.
     df = df.group_by("report_company", "statement").agg(pl.col("usd").mean())
 

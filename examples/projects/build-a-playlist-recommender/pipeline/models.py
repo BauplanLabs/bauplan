@@ -1,4 +1,22 @@
+from typing import Annotated
+
 import bauplan
+import pyarrow as pa
+
+
+class PlaylistTrackColumns(bauplan.TableSchema):
+    """Playlist columns used to build ordered track sequences."""
+
+    playlist_id: bauplan.Int64 | None
+    track_uri: bauplan.String | None
+    pos: bauplan.Int64 | None
+
+
+class PlaylistSequenceSchema(bauplan.TableSchema):
+    """Playlists represented as ordered track sequences."""
+
+    playlist_id: bauplan.Int64
+    track_ids: bauplan.Any
 
 
 # The standard bauplan decorator to declaratively define the necessary
@@ -6,23 +24,15 @@ import bauplan
 @bauplan.python("3.11", pip={"duckdb": "1.0.0"})
 @bauplan.model()
 def playlists_to_sequences(
-    tracks=bauplan.Model(
-        "spotify_playlists",
-        
-        # We leverage the columnar nature of the
-        # platform to only select the columns we
-        # need.
-        columns=["playlist_id", "track_uri", "pos"],
-        
-        # We filter out the playlists with less
-        # than 5 tracks and less than 2 followers.
-        # Bauplan is smart enough to push this filter down to the lakehouse.
-        # Note how we parametrize the filter using
-        # arguments (defaults are in the
-        # bauplan_project.yaml).
-        filter="num_followers > $num_followers and num_tracks > $num_tracks",
-    ),
-):
+    tracks: Annotated[
+        pa.Table,
+        bauplan.Model(
+            "spotify_playlists",
+            projection_schema=PlaylistTrackColumns,
+            filter="num_followers > $num_followers and num_tracks > $num_tracks",
+        ),
+    ],
+) -> Annotated[pa.Table, PlaylistSequenceSchema]:
     """
     We build sequences of tracks IDs based on the playlist order.
     The end result is a table with two columns: playlist_id, track_ids:
@@ -32,10 +42,10 @@ def playlists_to_sequences(
     | 112             | [1, 2, 3] |
     | 341             | [4, 5]    |
     """
-    
+
     # Print out the number of rows retrieved to the console.
     print("\n\n===> Number of tracks retrieved: ", tracks.num_rows)
-    
+
     # We use the duckdb library to quickly and concisely complete the group by.
     import duckdb
 
@@ -48,8 +58,8 @@ def playlists_to_sequences(
     GROUP BY 1
     ORDER BY 1 ASC
     """
-    data = duckdb.sql(sql_query).arrow()
-    
+    data = duckdb.sql(sql_query).to_arrow_table()
+
     # We print out the number of rows returned by the query
     # due to the GROUP BY.
     print("\n\n===> Number of playlists: ", data.num_rows)
@@ -59,16 +69,23 @@ def playlists_to_sequences(
     return data
 
 
+class PopularTracksSchema(bauplan.TableSchema):
+    """Track popularity ranked by playlist occurrence."""
+
+    track_id: bauplan.String
+    count: bauplan.Int64
+
+
 @bauplan.python("3.11", pip={"duckdb": "1.0.0"})
 @bauplan.model()
 def popular_tracks(
-    
     # We re-use the playlists_to_sequences model as an input.
-    playlists_to_sequences=bauplan.Model("playlists_to_sequences"),
-    
+    playlists_to_sequences: Annotated[
+        pa.Table, bauplan.Model("playlists_to_sequences")
+    ],
     # We take an additional parameter to filter the top k tracks.
-    top_k=bauplan.Parameter("top_k"),
-):
+    top_k: Annotated[int, bauplan.Parameter("top_k")],
+) -> Annotated[pa.Table, PopularTracksSchema]:
     """
     Get the most popular tracks in the playlist tables we pre-filtered.
 
@@ -92,11 +109,30 @@ def popular_tracks(
     ORDER BY 2 DESC
     LIMIT {top_k}
     """
-    rows = duckdb.sql(sql_query).arrow()
-    
+    rows = duckdb.sql(sql_query).to_arrow_table()
+
     # Double-check the number of rows returned == top_k.
     assert rows.num_rows == top_k
     return rows
+
+
+class TrackMetadataColumns(bauplan.TableSchema):
+    """Track metadata used to label recommendation vectors."""
+
+    track_name: bauplan.String | None
+    artist_name: bauplan.String | None
+    track_uri: bauplan.String | None
+
+
+class TrackVectorsSchema(bauplan.TableSchema):
+    """Track vectors enriched with popularity and display metadata."""
+
+    _id: bauplan.String
+    embeddings: bauplan.Any
+    two_d_vectors: bauplan.Any
+    popularity: bauplan.Int64
+    track_name: bauplan.String
+    artist_name: bauplan.String
 
 
 @bauplan.python(
@@ -115,23 +151,23 @@ def popular_tracks(
 # Note: We enable internet access to connect to our MongoDB cluster!
 @bauplan.model(materialization_strategy="REPLACE", internet_access=True)
 def track_vectors_with_metadata(
-    playlists_to_sequences=bauplan.Model("playlists_to_sequences"),
-    popular_tracks=bauplan.Model("popular_tracks"),
-    
+    playlists_to_sequences: Annotated[
+        pa.Table, bauplan.Model("playlists_to_sequences")
+    ],
+    popular_tracks: Annotated[pa.Table, bauplan.Model("popular_tracks")],
     # Extract metadata for user-facing purposes.
-    metadata=bauplan.Model(
-        "spotify_playlists",
-        columns=["track_name", "artist_name", "track_uri"],
-        
-        # For consistency, we filter out the tracks
-        # with the same criteria as before.
-        filter="num_followers > $num_followers and num_tracks > $num_tracks",
-    ),
-    
+    metadata: Annotated[
+        pa.Table,
+        bauplan.Model(
+            "spotify_playlists",
+            projection_schema=TrackMetadataColumns,
+            filter="num_followers > $num_followers and num_tracks > $num_tracks",
+        ),
+    ],
     # This will read the secret in and decrypt it ONLY in the secure worker
     # at runtime!
-    mongo_uri=bauplan.Parameter("mongo_uri"),
-):
+    mongo_uri: Annotated[str, bauplan.Parameter("mongo_uri")],
+) -> Annotated[pa.Table, TrackVectorsSchema]:
     """
     Produce a final table with the embeddings for each track, including a 2-D representation for visualization
     purposes. We use gensim to train a sequential model on track sequences, scikit-learn for TSNE.
@@ -158,11 +194,11 @@ def track_vectors_with_metadata(
     print(f"Trained a total of {len(model)} vectors!")
     top_k_track_id = popular_tracks["track_id"].to_pylist()
     top_k_tracks_embeddings = np.array([model[t] for t in top_k_track_id])
-    
+
     # Now we compute the 2D embeddings with TSNE.
     two_d_embeddings = tsne_analysis(top_k_tracks_embeddings)
     assert len(two_d_embeddings) == len(top_k_track_id)
-    
+
     # Temp table, before joining with the content embeddings.
     table = pa.Table.from_pydict(
         {
@@ -195,8 +231,8 @@ def track_vectors_with_metadata(
     JOIN track_metadata ON track_metadata.track_uri = t.track_id
     """
     duckdb.register("track_table", table)
-    final_table = duckdb.sql(sql_query).arrow()
-    
+    final_table = duckdb.sql(sql_query).to_arrow_table()
+
     # There should should be at most `top_k` rows in the final table.
     print(f"Final One Big Table has {final_table.num_rows} rows.")
 

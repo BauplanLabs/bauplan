@@ -13,43 +13,43 @@ to keep the pipeline code clean and separate from the expectations code.
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
-from bauplan import Model
+from bauplan import Model, TableSchema, TimestampMicroUTC
 
-# Import the standard expectations from the
-# library to use them in the functions below.
-from bauplan.standard_expectations import expect_column_no_nulls
+
+class TripTimingColumns(TableSchema):
+    """Trip timestamps used to validate event ordering."""
+
+    request_datetime: TimestampMicroUTC | None
+    on_scene_datetime: TimestampMicroUTC | None
 
 
 # Expectations are identified by a special decorator.
 @bauplan.expectation()
-
 # You can use this to specify the python version used during execution.
 @bauplan.python("3.11")
-def test_null_values_on_scene_datetime(
+def test_on_scene_not_before_request(
     data: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model(
             # As input, we declare the Bauplan model that we want to check.
             "normalized_taxi_trips",
+            projection_schema=TripTimingColumns,
         ),
     ],
 ) -> bool:
-    # Just return the result of the standard
-    # expectation (True if passed), passing to it
-    # the input data, the column name to check, and the reference value.
+    """Validate that driver arrival does not precede the ride request."""
+    import pyarrow.compute as pc
 
-    # Here is where we declare the columns we want to check.
-    column_to_check = "on_scene_datetime"
+    # Null comparisons produce null masks and Table.filter drops them
+    reversed_timestamps = pc.less(data["on_scene_datetime"], data["request_datetime"])
+    violation_count = data.filter(reversed_timestamps).num_rows
+    is_order_valid = violation_count == 0
 
-    # Let's make sure there are no null values in the on_scene_datetime column!
-    _is_expectation_correct = expect_column_no_nulls(data, column_to_check)
-
-    # Assert the result of the test.
-    assert _is_expectation_correct, (
-        f"expectation test failed: we expected {column_to_check} to have no null values"
+    assert is_order_valid, (
+        f"expectation test failed: {violation_count} rows have "
+        "on_scene_datetime before request_datetime"
     )
 
-    # Return a boolean.
-    return _is_expectation_correct
+    return is_order_valid

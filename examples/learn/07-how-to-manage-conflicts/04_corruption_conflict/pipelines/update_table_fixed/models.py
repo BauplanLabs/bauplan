@@ -1,7 +1,7 @@
 from typing import Annotated
 
 import bauplan
-import pyarrow
+import pyarrow as pa
 
 from bauplan import (
     Float64,
@@ -17,8 +17,8 @@ from bauplan import (
 class PassengerFare(TableSchema):
     """The projection of titanic needed to adjust fares for inflation."""
 
-    Name: String
-    Fare: Float64
+    Name: String | None
+    Fare: Float64 | None
 
 
 class FareTableSchema(TableSchema):
@@ -37,12 +37,12 @@ class FareTableSchema(TableSchema):
 @bauplan.model(materialization_strategy="APPEND")
 def workshop_fare_table(
     passengers_fare: Annotated[
-        pyarrow.Table,
+        pa.Table,
         Model("titanic", projection_schema=PassengerFare),
     ],
     year: Annotated[int, Parameter("year")],
     inflation_rate: Annotated[float, Parameter("inflation_rate")],
-) -> Annotated[pyarrow.Table, FareTableSchema]:
+) -> Annotated[pa.Table, FareTableSchema]:
     """
     Append inflation-adjusted fares for the given year using the correct formula.
 
@@ -52,7 +52,7 @@ def workshop_fare_table(
     import polars as pl
 
     return (
-        pl.from_arrow(passengers_fare)
+        pl.DataFrame(passengers_fare)
         .with_columns(
             Fare=pl.col("Fare")
             * pl.lit(

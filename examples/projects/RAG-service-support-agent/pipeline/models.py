@@ -1,4 +1,42 @@
+from typing import Annotated
+
 import bauplan
+import pyarrow as pa
+
+
+class StackOverflowQuestionColumns(bauplan.TableSchema):
+    """Stack Overflow question columns used to build the QA table."""
+
+    id: bauplan.Int64 | None
+    title: bauplan.Binary | None
+    body: bauplan.Binary | None
+
+
+class StackOverflowAnswerColumns(bauplan.TableSchema):
+    """Stack Overflow answer columns used to build the QA table."""
+
+    parentid: bauplan.Int64 | None
+    body: bauplan.Binary | None
+
+
+class QATableSchema(bauplan.TableSchema):
+    """Questions joined with their answers and tags."""
+
+    question_id: bauplan.Int64
+    question_text: bauplan.Binary
+    answer_text: bauplan.Binary
+    tags: bauplan.Any
+
+
+class QATableWithEmbeddingsSchema(bauplan.TableSchema):
+    """Question and answer records enriched with embedding vectors."""
+
+    question_id: bauplan.Int64
+    question_text: bauplan.Binary
+    answer_text: bauplan.Binary
+    tags: bauplan.Any
+    embeddings: bauplan.Any
+    two_d_vectors: bauplan.Any
 
 
 # The standard bauplan decorator to declaratively define the necessary
@@ -10,39 +48,24 @@ import bauplan
 # We use the REPLACE materialization strategy to overwrite the table every time.
 @bauplan.model(materialization_strategy="REPLACE")
 def one_big_qa_table(
-    questions=bauplan.Model(
-        "stack_overflow_questions",
-        
-        # We leverage the columnar nature of the
-        # platform to only select the columns we
-        # need.
-        columns=["id", "title", "body"],
-        
-        # We filter out all the questions submitted before a certain date
-        # to showcase parametrized filter pushdown
-        # to the data lake in a declarative way.
-        # NOTE: If you have a production Pinecone
-        # cluster, you can process the entire dataset
-        # without being throttled by the API!
-        filter="creationdate > $creation_date_start",
-    ),
-    answers=bauplan.Model(
-        "stack_overflow_answers",
-        columns=[
-            "parentid",  # need for the join
-            "body",
-        ],
-        
-        # Answers cannot be created before the questions,
-        # so the filter should be pushed down also here.
-        filter="creationdate > $creation_date_start",
-    ),
-    tags=bauplan.Model(
-        "stack_overflow_tags"
-        # We retrieve all the columns here, which
-        # are just id (for the join) and tag.
-    ),
-):
+    questions: Annotated[
+        pa.Table,
+        bauplan.Model(
+            "stack_overflow_questions",
+            projection_schema=StackOverflowQuestionColumns,
+            filter="creationdate > $creation_date_start",
+        ),
+    ],
+    answers: Annotated[
+        pa.Table,
+        bauplan.Model(
+            "stack_overflow_answers",
+            projection_schema=StackOverflowAnswerColumns,
+            filter="creationdate > $creation_date_start",
+        ),
+    ],
+    tags: Annotated[pa.Table, bauplan.Model("stack_overflow_tags")],
+) -> Annotated[pa.Table, QATableSchema]:
     """
     We build a "one big table" by joining the questions, answers, and tags tables from the Stack Overflow dataset.
     We also save it back in the catalog because it's a useful table to have for further analysis!
@@ -53,10 +76,10 @@ def one_big_qa_table(
     |-----------------|----------------|--------------|------------------|
     | 1               | How to...      | You d..      | [python, pandas] |
     """
-    
+
     # Print out the number of rows retrieved to the console.
     print(f"\n\n===> Number of questions retrieved: {questions.num_rows}\n\n")
-    
+
     # We use the duckdb library to quickly and concisely complete the join.
     import duckdb
 
@@ -81,9 +104,9 @@ def one_big_qa_table(
     ORDER BY
         question_id ASC
     """
-    data = duckdb.sql(sql_query).arrow()
+    data = duckdb.sql(sql_query).to_arrow_table()
     print(f"\n\n===> Total big table size: {data.num_rows}\n\n")
-    
+
     # As in every bauplan model, functions return a "dataframe-like" object,
     # in this case, an Arrow table.
     return data
@@ -99,7 +122,6 @@ def one_big_qa_table(
 )
 # Note: We enable internet access to connect to our Pinecone cluster!
 @bauplan.model(
-    
     # We can override the default name of the model in the catalog by
     # specifying the name parameter.
     name="one_big_qa_table_with_embeddings",
@@ -107,11 +129,10 @@ def one_big_qa_table(
     internet_access=True,
 )
 def q_and_a_to_rag(
-    big_table=bauplan.Model("one_big_qa_table"),
-    
+    big_table: Annotated[pa.Table, bauplan.Model("one_big_qa_table")],
     # Read in securely the Pinecone API key.
-    pinecone_key=bauplan.Parameter("pinecone_key"),
-):
+    pinecone_key: Annotated[str, bauplan.Parameter("pinecone_key")],
+) -> Annotated[pa.Table, QATableWithEmbeddingsSchema]:
     """
     Produce a final table with the embeddings for each question+answer, including a 2-D representation of the
     questions for visualization purposes. We use scikit-learn for TSNE, and use the Pinecone API both for
@@ -128,7 +149,7 @@ def q_and_a_to_rag(
     # Utility functions live in utils.py to
     # keep this module focused on the DAG structure.
     from utils import tsne_analysis
-    
+
     # We connect to Pinecone to get the embeddings.
     from pinecone_utils import (
         get_text_embeddings_from_pinecone,
@@ -138,7 +159,7 @@ def q_and_a_to_rag(
 
     # Initialize a Pinecone client with your API key.
     pc = Pinecone(api_key=pinecone_key)
-    
+
     # Concatenate the question and answer text to embed them together.
     # Put a limit to the length of the text to embed for convenience.
     text_to_embed = [
@@ -150,10 +171,10 @@ def q_and_a_to_rag(
     print("\n\n=====> Start getting the embeddings from Pinecone...\n")
     text_embeddings = get_text_embeddings_from_pinecone(pc, text_to_embed)
     print("\n\n=====> Finished getting the embeddings from Pinecone!\n")
-    
+
     # Get the vectors out of the Pinecone return object.
     _vectors = [e["values"] for e in text_embeddings]
-    
+
     # Now we compute the 2D embeddings with TSNE.
     two_d_embeddings = tsne_analysis(np.array(_vectors))
     assert (
@@ -162,7 +183,7 @@ def q_and_a_to_rag(
         == len(text_embeddings)
         == len(_vectors)
     )
-    
+
     # Upload to Pinecone.
     print("\n\n=====> Start the Pinecone upsert process...\n")
     num_doc_inserted = upload_documents_to_pinecone(
@@ -173,7 +194,7 @@ def q_and_a_to_rag(
     )
     print(f"\nInserted {num_doc_inserted} documents in Pinecone")
     print("\n\n=====> Finished the Pinecone upload process!\n")
-    
+
     # Add the embeddings and their 2D version to the table before returning it.
     final_table = big_table.append_column("embeddings", [_vectors])
     final_table = final_table.append_column(

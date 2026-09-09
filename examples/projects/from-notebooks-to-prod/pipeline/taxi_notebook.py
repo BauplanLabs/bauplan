@@ -5,20 +5,18 @@ app = marimo.App(width="medium")
 
 with app.setup:
     # Initialization code that runs before all other cells.
+    import bauplan
     import polars as pl
 
 
 @app.cell
 def _():
-    # Import bauplan SDK as usual.
-    import bauplan
-
     bpln_client = bauplan.Client()
     return (bpln_client,)
 
 
 @app.cell
-def _(bpln_client):
+def _(bpln_client: bauplan.Client):
     # Get data from the data lake by using Bauplan Python SDK.
     # Since we are just reading now, we get the
     # tables directly from main: the "prod" version
@@ -31,7 +29,7 @@ def _(bpln_client):
     columns_taxi_zones = ["LocationID", "Zone"]
 
     # Get first table with the data from taxi trips.
-    taxi_trips_df = pl.from_arrow(
+    taxi_trips_df = pl.DataFrame(
         bpln_client.scan(
             table=taxi_trips,
             ref=branch,
@@ -41,20 +39,20 @@ def _(bpln_client):
     )
 
     # Get second table with data from NYC zones and neighborhoods.
-    taxi_zones_df = pl.from_arrow(
+    taxi_zones_df = pl.DataFrame(
         bpln_client.scan(table=taxi_zones, ref=branch, columns=columns_taxi_zones)
     )
     return taxi_trips_df, taxi_zones_df
 
 
 @app.cell
-def _(taxi_trips_df):
+def _(taxi_trips_df: pl.DataFrame):
     taxi_trips_df.head()
     return
 
 
 @app.cell
-def _(taxi_zones_df):
+def _(taxi_zones_df: pl.DataFrame):
     taxi_zones_df.head()
     return
 
@@ -71,13 +69,13 @@ def join_taxi_tables(table_1: pl.DataFrame, table_2: pl.DataFrame) -> pl.DataFra
 
 
 @app.cell
-def _(taxi_trips_df, taxi_zones_df):
+def _(taxi_trips_df: pl.DataFrame, taxi_zones_df: pl.DataFrame):
     parent_df = join_taxi_tables(taxi_trips_df, taxi_zones_df)
     return (parent_df,)
 
 
 @app.cell
-def _(parent_df):
+def _(parent_df: pl.DataFrame):
     parent_df.head()
     return
 
@@ -88,7 +86,7 @@ def compute_stats_by_zone(df: pl.DataFrame) -> pl.DataFrame:
 
     # Clean up the dataset by excluding certain rows.
     time_filter = datetime(2022, 1, 1, tzinfo=timezone.utc)
-    
+
     # Filter df by timestamp, exclude rows with
     # trip_miles = 0 and trip_miles > 200.
     df = df.filter(
@@ -111,13 +109,13 @@ def compute_stats_by_zone(df: pl.DataFrame) -> pl.DataFrame:
 
 
 @app.cell
-def _(parent_df):
+def _(parent_df: pl.DataFrame):
     child_df = compute_stats_by_zone(parent_df)
     return (child_df,)
 
 
 @app.cell
-def _(child_df):
+def _(child_df: pl.DataFrame):
     child_df.head()
     return
 
