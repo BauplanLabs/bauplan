@@ -87,14 +87,13 @@ tfield_double: Float64
 ### `TableField`
 
 Metadata and constraints associated with a table column. Initial support includes:
-documentation fields (`title` and `doc`), `nullable`, and explicit column `lineage`.
+a documentation field (`doc`), `nullable`, and explicit column `lineage`.
 
 ```python type:ignore
 # Float64 with metadata or constraints
 tfield_double: Annotated[
     Float64,
     TableField(
-        title='TableField: tfield_double',
         doc='An example TableField for column metadata',
         nullable=True,
         lineage="src_table['src_col_double']",

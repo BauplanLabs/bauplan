@@ -119,13 +119,11 @@ class TableField:
     def __init__(
         self,
         doc: Optional[str] = None,
-        title: Optional[str] = None,
         lineage: Optional[FieldType | str] = None,
         nullable: Optional[bool] = None,
     ):
         """
         `doc`: Documentation for the TableField.
-        `title`: A title for the TableField and its documentation.
         `lineage`: A reference to a `TableField` to "inherit" data and metadata from.
         `nullable`: `True` if the TableField may contain `None` values (`NULL` in SQL);
                     default value is `None`, default meaning is to accept `None` values.
