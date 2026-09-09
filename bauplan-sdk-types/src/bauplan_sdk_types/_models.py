@@ -12,13 +12,17 @@ class Model:
     ('namespace.name') or may be bare ('name'). A bare model name will be prefixed with
     the default namespace.
 
-    As a simple example, consider two models: (1) a leaf model, `leaf_model` that reads
-    from the catalog and (2) a downstream model, `my_model`, that reads from the leaf
-    model. In the code below, `leaf_model` specifies the catalog table it depends on
-    using `Model('src_table')`; then, `my_model` specifies its dependency on the output
-    of `leaf_model` using `Model('bauplan.leaf_table')`. If `leaf_model` wasn't defined
-    to have the identifier "bauplan.leaf_table", then its default identifier (its
-    function name, "leaf_model") would be used instead.
+    As a simple example, consider two models:
+
+    1. a leaf model, `leaf_model` that reads from the catalog
+    2. a downstream model, `my_model`, that reads from the leaf model
+
+    In the code below, `leaf_model` specifies the catalog table it depends on using
+    `Model('src_table')`; then, `my_model` specifies its dependency on the output of
+    `leaf_model` using `Model('bauplan.leaf_table')`.
+
+    If `leaf_model` wasn't defined to have the identifier "bauplan.leaf_table", then its
+    default identifier (its function name, "leaf_model") would be used instead.
 
     ```python
     from typing import Annotated

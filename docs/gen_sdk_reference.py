@@ -187,6 +187,9 @@ class TypeLinker:
                     case griffe.Kind.FUNCTION:
                         anchor = function_slug(page, member.name)
                         self.register(resolved.name, page, anchor)
+                    case griffe.Kind.ATTRIBUTE if resolved.annotation is None and resolved.value is not None:
+                        anchor = f'{page}-{member.name.lower()}'
+                        self.register(resolved.name, page, anchor)
                     # MODULE case: handled by _walk_module_tree
 
 
@@ -418,7 +421,9 @@ def main() -> None:
     output_dir = Path(__file__).parent / 'pages' / 'reference'
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    bauplan = griffe.load('bauplan')
+    collection = griffe.ModulesCollection()
+    griffe.load('bauplan_sdk_types', modules_collection=collection)
+    bauplan = griffe.load('bauplan', modules_collection=collection, resolve_aliases=True)
 
     assert isinstance(bauplan, griffe.Module)
     linker = TypeLinker()
@@ -468,6 +473,9 @@ def process_module(output_dir: Path, module: griffe.Module, linker: TypeLinker) 
                             process_function(f, toc, 2, member, linker, slug=function_slug(name, member.name))
                     case griffe.Kind.MODULE:
                         pass  # handled by _walk_module_tree
+                    case griffe.Kind.ATTRIBUTE if member.annotation is None and member.value is not None:
+                        with wrap(f, 'PyModuleMember', member.name):
+                            process_type_alias(f, toc, member)
                     case _:
                         print(f'WARNING: skipping {member.path}: {member.kind}')
 

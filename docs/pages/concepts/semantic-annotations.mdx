@@ -24,7 +24,7 @@ output is specified to have the schema `BaseResult`. This model receives its inp
 from the model `src_table`, whose schema is determined from the catalog directly.
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
+%%{init: {'themeVariables': {'fontSize': '12px', 'edgeLabelBackground': '#DB6672'}}}%%
 flowchart LR
     A["</br>src_table</br>(Catalog)"]
     B["</br>base_model</br>(Node 1)"]
@@ -75,9 +75,40 @@ There are three building blocks for pipeline type annotations:
 
 The type of data a table column will have. We support Apache Arrow types that are also
 supported by Apache Iceberg, but we use system-agnostic names that mostly follow Arrow's
-type names. Currently, we support the following data types: `Bool`, `Int32`, `Int64`,
-`Float64`, `String`, `Binary`, `TimestampMicro`, `TimestampNano`, `TimestampMicroUTC`,
-`TimestampNanoUTC`.
+type names.
+
+| Bauplan | PyArrow | Iceberg |
+|---------|---------|---------|
+| `Bool` | `bool_()` | `boolean` |
+| `Int32` | `int32()` | `int` |
+| `Int64` | `int64()` | `long` |
+| `Float64` | `float64()` | `double` |
+| `Decimal128[P, S]` | `decimal128(P, S)` | `decimal(P, S)` |
+| `String` | `large_string()` | `string` |
+| `Binary` | `large_binary()` | `binary` |
+| `Date32` | `date32()` | `date` |
+| `Date64` | `date64()` | no equivalent |
+| `TimestampMicro` | `timestamp('us')` | `timestamp` |
+| `TimestampNano` | `timestamp('ns')` | `timestamp_ns` |
+| `TimestampMicroUTC` | `timestamp('us', tz='UTC')` | `timestamptz` |
+| `TimestampNanoUTC` | `timestamp('ns', tz='UTC')` | `timestamptz_ns` |
+
+`Date64` has no Iceberg counterpart, so no catalog column reads back as `Date64`.
+Use `Date32` for dates you read from or write to the catalog.
+
+`Decimal128` takes precision and scale as type parameters rather than call
+arguments, because a call isn't a valid type expression. Precision must be
+between 1 and 38, and scale between 0 and the precision:
+
+```python
+#! from typing import Annotated, Literal
+#! from bauplan import Decimal128, TableSchema
+class PriceSchema(TableSchema):
+    price: Decimal128[Literal[38], Literal[10]]
+```
+
+The UTC timestamps hold absolute instants. Iceberg stores them as UTC and does not
+preserve the timezone they were written from.
 
 ```python type:ignore
 # Float64 without metadata
@@ -131,7 +162,7 @@ are defined in Python, such as `QuerySchema` and `ProjSchema`, but they can be r
 from each model for cross-language guarantees.
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
+%%{init: {'themeVariables': {'fontSize': '12px', 'edgeLabelBackground': '#DB6672'}}}%%
 flowchart LR
     A["</br>src_table</br>(Catalog)"]
     B["</br>sql_query</br>(Node 1)"]

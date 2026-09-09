@@ -55,6 +55,20 @@ whether it's an Iceberg Table, PyArrow Table, Pandas dataframe, or
 Polars dataframe. This approach makes the code fully portable, easier to
 reproduce across environments, and simpler to maintain.
 
+:::note Filters only apply to catalog inputs
+
+`filter` only works on an input that reads from the catalog. Filtering an input
+that is another model in the same pipeline is not valid syntax, and the planner
+rejects it.
+
+For example, `bauplan.Model('orders', filter='amount > 100')` is valid when
+`orders` is a catalog table, but the same filter on
+`bauplan.Model('purchases', ...)` is rejected when `purchases` is a model in the
+same pipeline. To narrow the rows `purchases` passes along, apply the filter
+inside `purchases` and return the filtered table.
+
+:::
+
 ## Importing Python packages
 
 Bauplan models are fully containerized, with each model running in the
