@@ -43,8 +43,8 @@ class SurvivalRateSchema(bauplan.TableSchema):
     ]
 
 
-@bauplan.python("3.12", pip={"polars": "1.37"})
 @bauplan.model()
+@bauplan.python("3.12", pip={"polars": "1.37"})
 def survival_rate_by_age(
     passengers: Annotated[
         pyarrow.Table,
