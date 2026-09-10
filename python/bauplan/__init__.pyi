@@ -1509,7 +1509,7 @@ class Client:
         *,
         ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = True,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1542,7 +1542,7 @@ class Client:
             query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
-            cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+            cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
             priority: Optional job priority (1-10, where 10 is highest priority).
@@ -1558,7 +1558,7 @@ class Client:
         *,
         ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = True,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1584,7 +1584,7 @@ class Client:
             query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
-            cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+            cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
             client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
@@ -1598,7 +1598,7 @@ class Client:
         *,
         ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = True,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1626,7 +1626,7 @@ class Client:
             query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
-            cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+            cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: `None`).
             priority: Optional job priority (1-10, where 10 is highest priority).
@@ -1644,7 +1644,7 @@ class Client:
         file_format: "Literal['json', 'jsonl']" = "json",
         ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = True,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1671,7 +1671,7 @@ class Client:
             file_format: The format to write the results in; default: `json`. Allowed values are 'json' and 'jsonl'.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
-            cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+            cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
             client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
@@ -1686,7 +1686,7 @@ class Client:
         *,
         ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = True,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1712,7 +1712,7 @@ class Client:
             query: The Bauplan query to execute. Column and table names are case-sensitive.
             ref: The ref, branch name or tag name to query from.
             max_rows: The maximum number of rows to return; default: `None` (no limit).
-            cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+            cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
             args: Additional arguments to pass to the query (default: None).
             client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
@@ -1905,7 +1905,7 @@ class Client:
         columns: "list[str] | None" = None,
         filters: "str | None" = None,
         limit: "int | None" = None,
-        cache: "bool" = True,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1938,7 +1938,7 @@ class Client:
             columns: The columns to return (default: `None`).
             filters: The filters to apply (default: `None`).
             limit: The maximum number of rows to return (default: `None`).
-            cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+            cache: Whether to enable or disable caching for the query.
             namespace: The Namespace to run the scan in. If not set, the scan will be run in the default namespace for your account.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).

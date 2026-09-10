@@ -27,7 +27,7 @@ def test_query_taxi_fhvhv(client: bauplan.Client):
             "   AND pickup_datetime < '2023-01-02T00:00:00-05:00'"
         ),
         ref="main",
-        cache=False,
+        cache="off",
     )
 
     assert len(result) == 448004
@@ -44,7 +44,7 @@ def test_parallel_query_correctness(client: bauplan.Client):
             " ORDER BY row_number, tips"
         ),
         ref="main",
-        cache=False,
+        cache="off",
         args={
             "num_endpoints": "10",
             "flight-python": "on",
