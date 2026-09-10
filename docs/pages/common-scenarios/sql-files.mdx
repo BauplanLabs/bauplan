@@ -5,70 +5,69 @@ description: "Use standalone .sql files as models in Bauplan pipelines - familia
 
 Bauplan supports SQL both as part of a [Python function](https://docs.bauplanlabs.com/concepts/models#using-sql) and as standalone `.sql` files. The latter is particularly convenient for users coming from the dbt world.
 
-<Note>
-  The described functionality is fully supported from version `0.1.15`. Upgrade
-  your Bauplan installation with `uv add --upgrade bauplan` or `uv tool install
-  --upgrade bauplan`, depending on your original installation method.
-</Note>
-
 ## Resolving models
 
-When declaring a model as an input to a DAG node, Bauplan resolves it from one of three sources: the lake, another node in the DAG, or an included `.sql` file.
+A model reference is of the form `Model("namespace.table")` or `Model("table")` and is
+used by Bauplan to identify which model produces a desired table. Bauplan resolves a
+model reference from one of three sources: the lake, a python function (python model), or
+an included `.sql` file (SQL model).
 
 ### Case 1: from the lake
 
-The simplest case. When declaring the following, Bauplan looks for `input_table` as a table in the Bauplan lakehouse.
+In the simplest case below, Bauplan resolves `input_table` as a table in the Bauplan
+lakehouse.
 
 ```python
-#! from typing import Annotated
+from typing import Annotated
+import bauplan
+
 class ModelOutput(bauplan.TableSchema):
     """The columns this model returns."""
 
-    ...
+    col: Int64
 
 @bauplan.model()
 @bauplan.python("3.13")
 def my_model(
     data: Annotated[pyarrow.Table, bauplan.Model("input_table")],
 ) -> Annotated[pyarrow.Table, ModelOutput]:
-    ...
-
-    #! return pyarrow.table({})
+    return data.select(['col'])
 ```
 
-### Case 2: from another node
+### Case 2: from a python node
 
-When a pipeline consists of multiple connected nodes, Bauplan resolves inter-node dependencies automatically. In the example below, the output of `my_first_model` feeds directly into `my_second_model`.
+When a pipeline consists of multiple connected nodes, Bauplan resolves inter-node
+dependencies automatically. In the example below, the output of `my_first_model` feeds
+directly into `my_second_model`.
 
 ```python
-#! from typing import Annotated
+from typing import Annotated
+import bauplan
+
 class FirstModelOutput(bauplan.TableSchema):
     """The columns `my_first_model` returns."""
 
-    ...
+    col_first: Int64
+    col_second: Float64
 
 @bauplan.model()
 @bauplan.python("3.13")
 def my_first_model(
     data: Annotated[pyarrow.Table, bauplan.Model("input_table")],
 ) -> Annotated[pyarrow.Table, FirstModelOutput]:
-    ...
-
-    #! return pyarrow.table({})
+    return data.select(['col_first', 'col_second'])
 
 class SecondModelOutput(bauplan.TableSchema):
     """The columns `my_second_model` returns."""
 
-    ...
+    col_second: Float64
 
 @bauplan.model()
 @bauplan.python("3.13")
 def my_second_model(
     data: Annotated[pyarrow.Table, bauplan.Model("my_first_model")],
 ) -> Annotated[pyarrow.Table, SecondModelOutput]:
-    ...
-
-    #! return pyarrow.table({})
+    return data.select(['col_second'])
 ```
 
 ### Case 3: from a SQL file
@@ -124,7 +123,7 @@ SELECT
 FROM bauplan.titanic
 ```
 
-Bauplan interprets it as a model called `my_titanic_view`. This behavior can be overridden with a header comment:
+Bauplan interprets it as a model named `my_titanic_view`. This behavior can be overridden with a header comment:
 
 ```sql
 -- bauplan: name=my_custom_name
@@ -139,6 +138,7 @@ Multiple overrides can be stacked:
 ```sql
 -- bauplan: name=my_custom_name
 -- bauplan: materialization_strategy=REPLACE
+-- bauplan: output_schema=ModelOutput
 SELECT
     Age,
     Survived
