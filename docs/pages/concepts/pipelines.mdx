@@ -50,9 +50,9 @@ def step_3(
 Models can take multiple tabular inputs but must return a single tabular
 output. Currently, `pyarrow.Table` is the only supported return type.
 
-```text
-✅ -- This is a valid Bauplan DAG, every model has 1 output.
+✅ This is a valid Bauplan DAG, every model has 1 output.
 
+```text
 ┌────────────┐
 │  Model 1   │──────────────┐
 └────────────┘              │
@@ -67,17 +67,23 @@ output. Currently, `pyarrow.Table` is the only supported return type.
 └────────────┘
 ```
 
-```text
-❌ -- This is **NOT** a valid Bauplan DAG, Model 2 has 2 outputs.
+❌ This is **NOT** a valid Bauplan DAG, Model 2 returns 2 tables.
 
+```text
                                         ┌────────────┐
-                            ┌──────────►│  Model 3   │
-                            │           └────────────┘
-                            │
-┌────────────┐      ┌────────────┐      ┌────────────┐
-│  Model 1   │─────►│  Model 2   │─────►│  Model 4   │
-└────────────┘      └────────────┘      └────────────┘
+                                    ┌──►│ Iceberg    │
+                                    │   │  Table A   │
+                                    │   └────────────┘
+┌────────────┐      ┌────────────┐  │
+│  Model 1   │─────►│  Model 2   │──┤
+└────────────┘      └────────────┘  │
+                                    │   ┌────────────┐
+                                    └──►│ Iceberg    │
+                                        │  Table B   │
+                                        └────────────┘
 ```
+
+Write two models instead. Both can read the same upstream model.
 
 ## Best practices
 

@@ -24,7 +24,7 @@ import bauplan
 class ModelOutput(bauplan.TableSchema):
     """The columns this model returns."""
 
-    col: Int64
+    col: bauplan.Int64
 
 @bauplan.model()
 @bauplan.python("3.13")
@@ -34,7 +34,7 @@ def my_model(
     return data.select(['col'])
 ```
 
-### Case 2: from a python node
+### Case 2: from a Python node
 
 When a pipeline consists of multiple connected nodes, Bauplan resolves inter-node
 dependencies automatically. In the example below, the output of `my_first_model` feeds
@@ -47,8 +47,8 @@ import bauplan
 class FirstModelOutput(bauplan.TableSchema):
     """The columns `my_first_model` returns."""
 
-    col_first: Int64
-    col_second: Float64
+    col_first: bauplan.Int64
+    col_second: bauplan.Float64
 
 @bauplan.model()
 @bauplan.python("3.13")
@@ -60,7 +60,7 @@ def my_first_model(
 class SecondModelOutput(bauplan.TableSchema):
     """The columns `my_second_model` returns."""
 
-    col_second: Float64
+    col_second: bauplan.Float64
 
 @bauplan.model()
 @bauplan.python("3.13")
