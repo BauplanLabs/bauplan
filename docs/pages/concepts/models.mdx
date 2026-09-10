@@ -3,6 +3,9 @@ title: "Models"
 description: "Build Bauplan models - declarative Python or SQL functions that transform tables. Pin per-model dependencies, materialize Iceberg outputs, and embed DuckDB SQL."
 ---
 
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+
 In Bauplan, **models** are the core unit of data manipulation. They are
 declarative functions written in Python or SQL that transform one or
 more input tables into a single output table. Models are designed to
@@ -118,8 +121,8 @@ compatibility. In fact, you can run a pipeline where different models
 use different versions of the same packages and different versions of
 the Python interpreter.
 
-Each model builds its own environment, so every package you declare is
-installed for that model alone. Declare only what the function body
+Each model builds its own environment, so Bauplan installs every package
+you declare for that model alone. Declare only what the function body
 imports.
 
 ```python
@@ -207,11 +210,49 @@ Requirements:
 Many transformations, especially filtering, joining, and basic
 aggregations, are easier in SQL than in Python.
 
-While Bauplan supports SQL models directly, the **recommended best
-practice today** for most use cases is to embed your SQL in a Python
-function using DuckDB.
+There are two ways to use SQL in a model. A **SQL model** lives in its own `.sql` file as
+a single, pure SQL query executed by a SQL engine of Bauplan's choice. Inside the Python
+function of a **Python model**, SQL can be executed using an embedded SQL engine of your
+choice such as DuckDB or DataFusion.
 
-```python
+In either approach, Bauplan treats the model's output the same - as an Arrow Table - so
+downstream models don't need to know which language produced it. This also gives you
+flexibility in handly the query results: a Python model can run SQL directly in its
+function body, you can pass a SQL model as an input to a separate Python model, or both.
+
+<Tabs>
+  <TabItem value="sql" label="SQL file">
+
+The schema lives in `models.py`:
+
+```python title="models.py"
+class CountByColOne(bauplan.TableSchema):
+    """Row counts grouped by `col_1`."""
+
+    col_1: bauplan.String
+    count: bauplan.Int64
+```
+
+The query lives in a `.sql` file. The optional `output_schema` header ties the query to
+that schema, the way the return annotation does in a Python model. If `output_schema` is
+not specified, the model still runs, but other models cannot use it as an input.
+
+```sql title="my_model.sql"
+-- bauplan: output_schema=CountByColOne
+SELECT col_1, COUNT(*) AS count
+FROM input_table
+WHERE timestamp >= '2022-12-15T00:00:00-05:00'
+GROUP BY col_1
+```
+
+Bauplan discovers `.sql` files in the project root and takes the model name from the
+filename, so this query is a model named `my_model`. Downstream models read it like any
+other node, with `bauplan.Model('my_model')`.
+
+  </TabItem>
+  <TabItem value="duckdb" label="Python with DuckDB">
+
+```python title="models.py"
 #! from typing import Annotated
 class SelectedInputColumns(bauplan.TableSchema):
     """Columns read from the input table."""
@@ -250,9 +291,15 @@ def my_model(
     return output_table
 ```
 
+  </TabItem>
+</Tabs>
+
+See [SQL files](/common-scenarios/sql-files) for the other header options
+and for including `.sql` files in subdirectories below the project root.
+
 ## Developing models
 
 Print statements in a model body stream back to your terminal while the
 run is in flight, which is the quickest way to see what a function
 actually received. Pair them with `bauplan run --dry-run` to iterate
-without materializing anything.
+without materializing data to the data lake.
