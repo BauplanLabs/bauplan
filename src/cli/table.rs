@@ -170,7 +170,7 @@ pub(crate) struct TableCreateArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Create plan and save to file
-  bauplan table create-plan customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.json
+  bauplan table create-plan customers --search-uri s3://mybucket/customers/*.parquet --save-plan plan.yaml
 
   # Create plan without saving
   bauplan table create-plan products --search-uri s3://mybucket/products/*.parquet
@@ -204,7 +204,7 @@ pub(crate) struct TableCreatePlanArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Apply previously created plan
-  bauplan table create-plan-apply --plan plan.json
+  bauplan table create-plan-apply --plan plan.yaml
 "))]
 pub(crate) struct TableCreatePlanApplyArgs {
     /// Path to a plan YAML file; reads from stdin if not provided
@@ -293,7 +293,7 @@ pub(crate) struct TableImportArgs {
     /// Force importing of files without checking what was already imported. This will likely result in duplicate rows being imported
     #[arg(long)]
     pub import_duplicate_files: bool,
-    /// Set to ignore new columns. if an import file  has column aa, bb, and parquet has col aa, bb, cc, columns aa and bb will be imported
+    /// Ignore source columns that are not in the table schema instead of failing the import
     #[arg(long)]
     pub best_effort: bool,
     /// Run the job in the background
