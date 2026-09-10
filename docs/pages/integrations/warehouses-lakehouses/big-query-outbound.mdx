@@ -1,11 +1,11 @@
 ---
-title: BigQuery (Outbound)
+title: "BigQuery (Outbound)"
 description: "Read BigQuery tables inside Bauplan pipelines as Apache Arrow. Run Python analytics on BigQuery data or export it to Iceberg."
 ---
 
 Connect Bauplan to Google BigQuery to read from BigQuery tables in your Bauplan pipelines. This lets you run arbitrary Python-based analytics on your tables, or even just write them wholesale to Iceberg for more flexibility.
 
-Bauplan can use a GCP service account to access your BigQuery tables, which are then provided as Apache Arrow tables to your Python code. Note that every run involving an external connector will by-pass the cache.
+Bauplan can use a GCP service account to access your BigQuery tables, which are then provided as Apache Arrow tables to your Python code. Note that every run involving an external connector will bypass the cache.
 
 ## When to use this integration
 
