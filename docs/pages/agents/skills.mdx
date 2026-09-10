@@ -6,7 +6,7 @@ description: "Install Bauplan Skills to guide AI agents through data engineering
 
 Bauplan Skills are reusable, declarative workflow templates that guide an LLM through multi-step data engineering tasks using Bauplan. Each skill encodes the intent, constraints, and expected sequence of a workflow that is otherwise easy to get wrong, while still operating on the same Bauplan primitives: branches, runs, validation, and publish.
 
-Skills are available at [github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills) and can be used in Claude Code, Codex, Cursor, and all major harnesses and IDEs. We recommend installing them from this repository to keep them automatically updated to the latest version.
+Skills are available at [github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills) and can be used in Claude Code, Codex, Cursor, and all major harnesses and IDEs. We recommend installing them from this repository so you can easily update to the latest version.
 
 ## Prerequisites
 
@@ -22,40 +22,39 @@ Skills are available at [github.com/BauplanLabs/bauplan-skills](https://github.c
 
 ### Claude Code
 
-Bauplan Skills can be installed in Claude Code using the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=111), or these steps:
+Install Bauplan Skills in Claude Code by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=111), or by running:
 
-1. Add the marketplace `/plugin marketplace add https://github.com/BauplanLabs/bauplan-skills` and restart Claude Code;
+```sh
+claude plugin marketplace add BauplanLabs/bauplan-skills
+claude plugin install bauplan@bauplan-skills
+```
 
-2. Open the plugin installer with `/plugin`. Then, select **Browse and install plugins** → select **bauplan-skills** → press `Space` to select **bauplan** → press `i` to install;
+To update to the latest version, run:
 
-3. Restart Claude Code.
+```sh
+claude plugin update bauplan@bauplan-skills
+```
 
 ### Codex
 
-Bauplan Skills can be installed in Codex using the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=180), or by following these steps inside Codex to run the skill installer pointing at the Bauplan skills directory:
+Install Bauplan Skills in Codex by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=180), or by running:
 
 ```sh
-skill-installer https://github.com/BauplanLabs/bauplan-skills/tree/main/plugins/bauplan/skills
+codex plugin marketplace add BauplanLabs/bauplan-skills
+codex plugin add bauplan@bauplan-skills
 ```
 
-Codex will fetch and install the Bauplan skills automatically. Restart Codex once the installer completes.
+To update to the latest version, run:
 
-To verify the installation, run `/skills` and select **List skills**.
+```sh
+codex plugin marketplace upgrade bauplan-skills
+```
 
 ### Cursor
 
-Bauplan Skills can be installed in Cursor by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=248).
+Install Bauplan Skills in Cursor by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=248), or by going to **Settings > Customize > Plugins > Add > From GitHub Repository**, entering `https://github.com/BauplanLabs/bauplan-skills`, and clicking **Add**.
 
-Otherwise, go to **Settings > Cursor Settings > Rules, Skills, Subagents**.
-
-From there you have two options:
-
-- **If you already use Claude Code** with Bauplan skills installed: enable the **Include third-party Plugins, Skills and Other Configs** toggle. Bauplan skills will appear automatically.
-
-- **If you only use Cursor**: in the Skills section, click **New** and prompt the agent to import Bauplan skills from:
-  ```
-  https://github.com/BauplanLabs/bauplan-skills/tree/main/plugins/bauplan/skills
-  ```
+To update to the latest version, click **Refresh**.
 
 ## Available skills
 
@@ -69,3 +68,4 @@ Once installed, the following skills are available as slash commands:
 | [**Data Assessment**](https://youtu.be/VMDIIp_gA6Q)        | Evaluate whether lakehouse data can answer a business question. Maps concepts to tables, profiles quality, and delivers a feasibility verdict.                                                       |
 | [**Data Quality Checks**](https://youtu.be/cVrjdTJ1jug)    | Generate quality check code as pipeline expectations with `@bauplan.expectation` and ingestion validation functions covering completeness, uniqueness, validity, freshness, consistency, and volume. |
 | [**Debug and Fix Pipeline**](https://youtu.be/tt7FN26dvhA) | Structured diagnostics for failed jobs: pins the failure, collects evidence, identifies root cause, and applies a minimal fix with checkpoint reports.                                               |
+| **Migrate to Typed SDK**                                   | Migrate existing Bauplan projects from the old SDK style (0.1.x or 0.2.x) to the typed SDK (0.3 and later).                                                            |
