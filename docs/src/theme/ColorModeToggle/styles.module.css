@@ -1,0 +1,34 @@
+.toggle {
+  width: 2rem;
+  height: 2rem;
+}
+
+.toggleButton {
+  -webkit-tap-highlight-color: transparent;
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transition: background var(--ifm-transition-fast);
+}
+
+.toggleButton:hover {
+  background: var(--ifm-color-emphasis-200);
+}
+
+.toggleIcon {
+  display: none;
+}
+
+/* Show the mode the button switches to, not the one already active. */
+[data-theme-choice='system'] .systemToggleIcon,
+[data-theme-choice='light'] .darkToggleIcon,
+[data-theme-choice='dark'] .lightToggleIcon {
+  display: initial;
+}
+
+.toggleButtonDisabled {
+  cursor: not-allowed;
+}

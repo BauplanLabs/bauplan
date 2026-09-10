@@ -85,3 +85,14 @@
     display: block;
   }
 }
+
+/* Show the mode the toggle switches to, not the one already active. */
+html[data-theme-choice='light'] [class*='lightToggleIcon'],
+html[data-theme-choice='dark'] [class*='darkToggleIcon'] {
+  display: none;
+}
+
+html[data-theme-choice='light'] [class*='darkToggleIcon'],
+html[data-theme-choice='dark'] [class*='lightToggleIcon'] {
+  display: initial;
+}
