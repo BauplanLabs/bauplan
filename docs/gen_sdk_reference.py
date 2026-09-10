@@ -32,6 +32,9 @@ import griffe
 
 SKIP_MODULES = ['bauplan.extras']
 
+# `*args` / `**kwargs` are never user-facing parameters.
+VARIADIC_KINDS = (griffe.ParameterKind.var_positional, griffe.ParameterKind.var_keyword)
+
 # SEO meta descriptions, keyed by module path. Emitted into each generated
 # reference page's front matter. Must be double-quoted in YAML: they contain
 # colons (none contain double quotes, so plain double-quoting is safe).
@@ -546,7 +549,7 @@ def process_parameters(
         return
     with wrap(output, 'PyParameters'):
         for parameter in parameters:
-            if parameter.name in ['self', 'cls', 'args', 'kwargs']:
+            if parameter.name in ('self', 'cls') or parameter.kind in VARIADIC_KINDS:
                 continue
 
             annotation = linker.format_annotation(str(parameter.annotation or ''))
@@ -589,7 +592,7 @@ def _get_signature_params(cls: griffe.Class, linker: TypeLinker) -> list[tuple[s
 
     params = []
     for p in resolved_constructor.parameters:
-        if p.name in ('self', 'cls', 'args', 'kwargs'):
+        if p.name in ('self', 'cls') or p.kind in VARIADIC_KINDS:
             continue
         if p.name == '*':
             params.append(('*', '', ''))
