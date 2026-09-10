@@ -1346,7 +1346,7 @@ class Client:
             namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
             continue_on_error: Do not fail the import even if 1 data import fails.
             import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
-            best_effort: Don't fail if schema of table does not match.
+            best_effort: Ignore source columns that are not in the table schema instead of failing the import.
             preview: Whether to enable or disable preview mode for the import.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).

@@ -60,7 +60,7 @@ pub(crate) enum BranchCommand {
 pub(crate) struct BranchLsArgs {
     /// Branch name
     pub branch_name: Option<String>,
-    /// Show all branches, including those from other namespaces (users)
+    /// Show the branches of all users, not only yours
     #[arg(short, long)]
     pub all_zones: bool,
     /// Filter by name
