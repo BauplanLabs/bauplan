@@ -50,7 +50,7 @@ def test_create_table_and_import(client: bauplan.Client, temp_branch: str):
     result = client.query(
         query='SELECT COUNT(*) FROM "my_import_table"',
         ref=temp_branch,
-        cache="off",
+        cache=False,
     )
 
     assert result.num_rows > 0
@@ -171,7 +171,7 @@ def test_plan_and_apply(client: bauplan.Client, temp_branch: str):
     result = client.query(
         query='SELECT COUNT(*) FROM "my_plan_table"',
         ref=temp_branch,
-        cache="off",
+        cache=False,
     )
 
     assert result.num_rows > 0

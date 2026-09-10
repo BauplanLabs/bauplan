@@ -83,7 +83,7 @@ def main(file_path: str):
     run_1 = client.run(
         project_dir="./my_project",
         ref=my_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 1},
     )
     assert run_1.job_id is not None and run_1.job_status == "SUCCESS"
@@ -101,7 +101,7 @@ def main(file_path: str):
     client.run(
         project_dir="./my_project",
         ref=my_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 2},
     )
     rows = client.query(run_id_query, ref=my_branch_name).to_pylist()
@@ -150,7 +150,7 @@ def main(file_path: str):
     run_5 = client.run(
         project_dir="./my_project",
         ref=my_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 5},
     )
     assert run_5.job_status != "SUCCESS" and run_5.job_id is not None
@@ -226,7 +226,7 @@ def main(file_path: str):
     txn_run = client.run(
         project_dir="./my_project",
         ref=txn_branch_name,
-        cache="off",
+        cache=False,
         parameters={"run_id": 3},
     )
     assert txn_run.job_status == "SUCCESS", f"Run failed: {txn_run.job_status}"
