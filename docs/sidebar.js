@@ -51,7 +51,7 @@ export default {
         "concepts/tables",
         "concepts/namespaces",
         "concepts/expectations",
-        "concepts/semantic_annotations",
+        "concepts/semantic-annotations",
         {
           type: "category",
           label: "Git for Data",

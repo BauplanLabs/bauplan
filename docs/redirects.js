@@ -9,6 +9,10 @@ const redirects = [
     from: "/concepts/schema-conflicts",
     to: "/common-scenarios/schema-conflicts",
   },
+  {
+    from: "/concepts/semantic_annotations",
+    to: "/concepts/semantic-annotations",
+  },
   { from: "/guides/detached_runs", to: "/common-scenarios/detached-runs" },
   { from: "/guides/import_data", to: "/tutorial/import" },
   { from: "/guides/parameters", to: "/common-scenarios/parameterized-runs" },

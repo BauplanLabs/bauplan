@@ -3,17 +3,11 @@ title: "Semantic Annotations"
 description: "Annotate Bauplan models with semantic documentation and static type information for a semantic layer with contractual guarantees."
 ---
 
-:::caution Preview feature
 
-This is a preview feature. Please contact Bauplan to enable it.
-
-:::
-
-
-In Bauplan, **semantic annotations** can be used to augment data pipelines with static
-type checking and semantic documentation. These annotations are used to build a rich
-representation of the data pipeline for validation of data constraints, type checking
-of table schemas, and propagation of metadata to and from the catalog.
+In Bauplan, **semantic annotations** augment data pipelines with static type checking and
+semantic documentation. These annotations are used to build a rich representation of the
+data pipeline for validation of data constraints, type checking of table schemas, and
+propagation of metadata to and from the catalog.
 
 
 ## Introduction
@@ -24,7 +18,7 @@ output is specified to have the schema `BaseResult`. This model receives its inp
 from the model `src_table`, whose schema is determined from the catalog directly.
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
+%%{init: {'themeVariables': {'fontSize': '12px', 'edgeLabelBackground': '#DB6672'}}}%%
 flowchart LR
     A["</br>src_table</br>(Catalog)"]
     B["</br>base_model</br>(Node 1)"]
@@ -42,9 +36,8 @@ This one-node DAG is defined in Python (with descriptive comments) as:
 import pyarrow
 from typing import Annotated
 
-# Annotations are temporarily available in a `bpln_sdk` namespace
-import bpln_sdk as bauplan
-from bpln_sdk import TableField, TableSchema, Float64
+import bauplan
+from bauplan import TableField, TableSchema, Float64
 
 # A `TableSchema` with one attribute
 class BaseResult(TableSchema):
@@ -52,8 +45,8 @@ class BaseResult(TableSchema):
 
     # Annotated `TableField` for column metadata and constraints
     tfield_double: Annotated[
-        Float64,                                           # column data type
-        TableField(lineage="src_table['src_col_double']"), # column metadata
+        Float64 | None, # column data type (may contain NULL values)
+        TableField(),   # column metadata (accepts `doc` or `lineage`)
     ]
 
 @bauplan.model()
@@ -75,52 +68,79 @@ There are three building blocks for pipeline type annotations:
 
 The type of data a table column will have. We support Apache Arrow types that are also
 supported by Apache Iceberg, but we use system-agnostic names that mostly follow Arrow's
-type names. Currently, we support the following data types: `Bool`, `Int32`, `Int64`,
-`Float64`, `String`, `Binary`, `TimestampMicro`, `TimestampNano`, `TimestampMicroUTC`,
-`TimestampNanoUTC`.
+type names.
+
+| Bauplan | PyArrow | Iceberg |
+|---------|---------|---------|
+| `Any` | - | - |
+| `Bool` | `bool_()` | `boolean` |
+| `Int32` | `int32()` | `int` |
+| `Int64` | `int64()` | `long` |
+| `Float64` | `float64()` | `double` |
+| `String` | `large_string()` | `string` |
+| `Binary` | `large_binary()` | `binary` |
+| `Date32` | `date32()` | `date` |
+| `Date64` | `date64()` | no equivalent |
+| `TimestampMicro` | `timestamp('us')` | `timestamp` |
+| `TimestampNano` | `timestamp('ns')` | `timestamp_ns` |
+| `TimestampMicroUTC` | `timestamp('us', tz='UTC')` | `timestamptz` |
+| `TimestampNanoUTC` | `timestamp('ns', tz='UTC')` | `timestamptz_ns` |
+
+`Any` represents a "passthrough" that skips type checking of the table column. This is
+best used for types that Bauplan does not yet support (such as `list`, `decimal128`, and
+others).
+
+`Date64` has no Iceberg counterpart, so no catalog column reads back as `Date64`.
+Use `Date32` for dates you read from or write to the catalog.
+
+The UTC timestamps hold absolute instants. Iceberg stores them as UTC and does not
+preserve the timezone they were written from.
+
+### `TableSchema`
+
+An ordered grouping of attributes that can be associated with Bauplan models.
 
 ```python type:ignore
-# Float64 without metadata
-tfield_double: Float64
+from bauplan import TableSchema, Float64
+
+# A schema specification must subclass `TableSchema`
+class BaseResult(TableSchema):
+    """An output schema."""
+
+    # typed tabled field with no other metadata or constraints
+    double_val: Float64 # "required" column may not contain null values
 ```
 
 ### `TableField`
 
 Metadata and constraints associated with a table column. Initial support includes:
-a documentation field (`doc`), `nullable`, and explicit column `lineage`.
+
+- column documentation
+- explicit column data flow
+- nullability
+  - if null values are accepted, it is "optional" or nullability is true
+  - otherwise, it is "required" or nullability is false
 
 ```python type:ignore
-# Float64 with metadata or constraints
-tfield_double: Annotated[
-    Float64,
-    TableField(
-        doc='An example TableField for column metadata',
-        nullable=True,
-        lineage="src_table['src_col_double']",
-    ),
-]
-```
+import bauplan
 
-### `TableSchema`
+class DerivedSchema(bauplan.TableSchema):
+    """Schema that is "downstream" from `BaseResult` schema."""
 
-An ordered grouping of `TableField` attributes that can be associated with Bauplan
-models.
-
-```python type:ignore
-# A "schema contract" that is defined by subclassing `TableSchema`
-class BaseResult(TableSchema):
-    """An output schema."""
-
-    # Annotated `TableField` for column metadata and constraints
+    # Float64 with metadata or constraints
     tfield_double: Annotated[
-        Float64,                                           # column data type
-        TableField(lineage="src_table['src_col_double']"), # column metadata
+        Float64 | None, # "optional" column may contain null values
+        TableField(
+            doc='A column specification with metadata',
+            lineage=BaseResult['double_val'],
+        ),
     ]
 ```
 
-Most semantic information is defined in `TableField` annotations that are grouped as a
-`TableSchema`; then, the `TableSchema` is associated with various input tables and the
-output table of a Bauplan `model`.
+Most semantic information is defined in schema attributes and optional `TableField`
+annotations. The `TableSchema` bridges column-level metadata and constraints with models
+(annotation on the return value) and their input tables (annotations on function
+parameters).
 
 ## Working example
 
@@ -130,7 +150,7 @@ are defined in Python, such as `QuerySchema` and `ProjSchema`, but they can be r
 from each model for cross-language guarantees.
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '12px'}}}%%
+%%{init: {'themeVariables': {'fontSize': '12px', 'edgeLabelBackground': '#DB6672'}}}%%
 flowchart LR
     A["</br>src_table</br>(Catalog)"]
     B["</br>sql_query</br>(Node 1)"]
@@ -148,25 +168,27 @@ altogether you get a data pipeline that explicitly declares the output schema of
 node and guarantees that there is a clear lineage for a column that flows from end to
 end.
 
-```python type:ignore
-class QuerySchema(TableSchema):
+```python
+from typing import Annotated
+import bauplan
+
+class QuerySchema(bauplan.TableSchema):
     """Schema of a result table from a SQL query."""
 
-    tfield_double: Float64
+    tfield_double: bauplan.Float64
     tfield_timestamp: Annotated[
-        TimestampMicroUTC,
-        TableField(
+        bauplan.TimestampMicroUTC | None,
+        bauplan.TableField(
             doc="timestamp for pyarrow.timestamp('us', tz='UTC') or timestamptz",
-            lineage="src_table['src_col_timestamp']",
         ),
     ]
 
-class ProjSchema(TableSchema):
+class ProjSchema(bauplan.TableSchema):
     """Schema for a simple projection."""
 
     tfield_timestamp: Annotated[
-        TimestampMicroUTC,
-        TableField(lineage=QuerySchema['tfield_timestamp']),
+        bauplan.TimestampMicroUTC | None,
+        bauplan.TableField(lineage=QuerySchema['tfield_timestamp']),
     ]
 
 @bauplan.model()
@@ -230,9 +252,9 @@ provide appropriate feedback even in the function body. Along with the return ty
 annotation, the local type checker can help validate that `data` remains a
 `pyarrow.Table` throughout the function body.
 
-The annotation `bauplan.Model('sql_query', ...)` specifies that `data` comes from the result of
-the `sql_query` model, which is specified to have the schema `QuerySchema`. In contrast
-to the `base_model` example, this annotation also specifies an argument for
+The annotation `bauplan.Model('sql_query', ...)` specifies that `data` comes from the
+result of the `sql_query` model, which is specified to have the schema `QuerySchema`. In
+contrast to the `base_model` example, this annotation also specifies an argument for
 `projection_schema` so that `py_model` need not apply a projection in its function body.
 When applying the projection, Bauplan will validate that `sql_query` has the column
 `tfield_timestamp` available as specified by the `lineage` constraint for

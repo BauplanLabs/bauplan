@@ -7,55 +7,51 @@ In Bauplan, pipelines are implicitly defined by chaining models together
 through their declared inputs and outputs. Pipelines take the form of
 Directed Acyclic Graphs (DAGs).
 
-You don't need to define a DAG manually, because Bauplan automatically
-analyzes the dependency graph based on model declarations and
-automatically infers the correct execution order.
+When you define a model, you only declare which inputs come from which models. Bauplan
+analyzes the dependency graph based on model definitions and automatically infers the
+correct execution order.
 
-To chain models into a DAG, simply pass a previous Bauplan model as an
-input.
+To declare model dependencies (chain models into a DAG), annotate a function parameter
+with a Bauplan model, using `Annotated` and `bauplan.Model`:
 
 ```python
-#! from typing import Annotated
+from typing import Annotated
+import bauplan
+
 class StepOutput(bauplan.TableSchema):
     """The columns each step passes to the next."""
 
-    ...
+    col: bauplan.Int64 | None
 
 @bauplan.model()
 @bauplan.python('3.11')
 def step_1(
     data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
 ) -> Annotated[pyarrow.Table, StepOutput]:
-    ...
-
-    #! return pyarrow.table({})
+    return data
 
 @bauplan.model()
 @bauplan.python('3.11')
 def step_2(
     data: Annotated[pyarrow.Table, bauplan.Model('step_1')],
 ) -> Annotated[pyarrow.Table, StepOutput]:
-    ...
-
-    #! return pyarrow.table({})
+    return data
 
 @bauplan.model()
 @bauplan.python('3.11')
 def step_3(
     data: Annotated[pyarrow.Table, bauplan.Model('step_2')],
 ) -> Annotated[pyarrow.Table, StepOutput]:
-    ...
-
-    #! return pyarrow.table({})
+    return data
 ```
 
 ## Pipeline constraints
 
 Models can take multiple tabular inputs but must return a single tabular
-output (for example, a Pandas `DataFrame` or Arrow table).
+output. Currently, `pyarrow.Table` is the only supported return type.
 
 ```text
-✅ -- This is a valid Bauplan DAG
+✅ -- This is a valid Bauplan DAG, every model has 1 output.
 
 ┌────────────┐
 │  Model 1   │──────────────┐
@@ -72,7 +68,7 @@ output (for example, a Pandas `DataFrame` or Arrow table).
 ```
 
 ```text
-❌ -- This is **NOT** a valid Bauplan DAG
+❌ -- This is **NOT** a valid Bauplan DAG, Model 2 has 2 outputs.
 
                                         ┌────────────┐
                             ┌──────────►│  Model 3   │

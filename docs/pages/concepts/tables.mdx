@@ -105,10 +105,10 @@ import bauplan
 class PartitionedTrips(bauplan.TableSchema):
     """Trip columns kept in the partitioned table."""
 
-    PULocationID: bauplan.Int64
-    trip_miles: bauplan.Float64
-    tips: bauplan.Float64
-    pickup_datetime: bauplan.TimestampMicroUTC
+    PULocationID: bauplan.Int64 | None
+    trip_miles: bauplan.Float64 | None
+    tips: bauplan.Float64 | None
+    pickup_datetime: bauplan.TimestampMicroUTC | None
 
 @bauplan.python('3.11')
 @bauplan.model(
