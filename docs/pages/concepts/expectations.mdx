@@ -224,69 +224,11 @@ def test_data_freshness(
     return check_data_recency(data, 'timestamp', hours=24)
 ```
 
-## Failure handling strategies
+## Handling expectation failures
 
-Expectations offer flexible failure handling to match the severity of different data quality issues.
+By default, Bauplan enforces expectations: if any expectation fails, the pipeline halts immediately.
 
-### Hard failures (assert)
-
-Use assertions to halt the pipeline immediately when critical issues are detected:
-
-```python
-from typing import Annotated
-
-import pyarrow
-
-import bauplan
-from bauplan.standard_expectations import expect_column_no_nulls
-
-class MandatoryField(bauplan.TableSchema):
-    """The column that must never contain nulls."""
-
-    field: bauplan.String
-
-@bauplan.expectation()
-@bauplan.python('3.11')
-def test_mandatory_field(
-    data: Annotated[pyarrow.Table, bauplan.Model('model', projection_schema=MandatoryField)],
-) -> bool:
-    is_valid = expect_column_no_nulls(data, 'field')
-    assert is_valid, "Critical field cannot contain nulls"
-    return is_valid
-```
-
-**Use for**: data quality issues that would lead to incorrect results, system failures, or compliance violations.
-
-### Soft failures (log and continue)
-
-Log issues without stopping the pipeline for non-critical problems:
-
-```python
-#! import pyarrow as pa
-#! def check_data_recency(table: pa.Table, column: str, hours: int) -> bool: return True
-from typing import Annotated
-
-import pyarrow
-
-import bauplan
-
-class Timestamps(bauplan.TableSchema):
-    """The column this expectation checks for freshness."""
-
-    timestamp: bauplan.TimestampMicroUTC
-
-# check_data_recency is the custom check defined above
-@bauplan.expectation()
-@bauplan.python('3.11')
-def test_data_freshness(
-    data: Annotated[pyarrow.Table, bauplan.Model('model', projection_schema=Timestamps)],
-) -> bool:
-    is_fresh = check_data_recency(data, 'timestamp', hours=24)
-
-    return is_fresh
-```
-
-**Use for**: issues you want to monitor but that don't require immediate pipeline termination, allowing you to collect metrics and set up alerts.
+When failures are not critical, you can log them and let the pipeline continue by disabling strict mode on the `run` command: pass `--no-strict` in the [CLI](/reference/cli#bauplan-run) or `strict=False` in the [Python SDK](/reference/bauplan#bauplan-client-run).
 
 ## Summary
 
