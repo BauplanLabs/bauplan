@@ -23,6 +23,7 @@ use crate::{
         detach,
         exceptions::{BauplanError, BauplanQueryError},
         namespace::NamespaceArg,
+        optional_on_off,
         refs::RefArg,
     },
 };
@@ -43,7 +44,7 @@ impl Client {
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<&str>,
         args: HashMap<String, String>,
         priority: Option<u32>,
@@ -51,13 +52,13 @@ impl Client {
     ) -> PyResult<(Schema, impl Stream<Item = PyResult<RecordBatch>> + use<>)> {
         let timeout = self.job_timeout(client_timeout);
         let common = self.job_request_common(priority, args)?;
-        let cache = if cache { "on" } else { "off" };
+        let cache = optional_on_off("cache", cache)?;
 
         let req = commanderpb::QueryRunRequest {
             job_request_common: Some(common),
             r#ref: r#ref.map(|r| r.0),
             sql_query: query.to_owned(),
-            cache: cache.to_owned(),
+            cache: cache.unwrap_or_default().to_owned(),
             namespace: namespace.map(str::to_owned),
         };
 
@@ -181,7 +182,7 @@ impl Client {
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<&str>,
         args: HashMap<String, String>,
         priority: Option<u32>,
@@ -261,7 +262,7 @@ impl Client {
     ///     query: The Bauplan query to execute.
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
-    ///     cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+    ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
@@ -273,7 +274,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = true,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -286,7 +287,7 @@ impl Client {
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -335,7 +336,7 @@ impl Client {
     ///     query: The Bauplan query to execute.
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
-    ///     cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+    ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: `None`).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
@@ -348,7 +349,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = true,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -361,7 +362,7 @@ impl Client {
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -404,7 +405,7 @@ impl Client {
     ///     query: The Bauplan query to execute.
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
-    ///     cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+    ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
@@ -416,7 +417,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = true,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -430,7 +431,7 @@ impl Client {
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -479,7 +480,7 @@ impl Client {
     ///     query: The Bauplan query to execute.
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
-    ///     cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+    ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
@@ -491,7 +492,7 @@ impl Client {
         *,
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = true,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -505,7 +506,7 @@ impl Client {
         query: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -555,7 +556,7 @@ impl Client {
     ///     file_format: The format to write the results in; default: `json`. Allowed values are 'json' and 'jsonl'.
     ///     ref: The ref, branch name or tag name to query from.
     ///     max_rows: The maximum number of rows to return; default: `None` (no limit).
-    ///     cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+    ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the query in. If not set, the query will be run in the default namespace for your account.
     ///     args: Additional arguments to pass to the query (default: None).
     ///     client_timeout: seconds to timeout; this also cancels the remote job execution. Defaults to 1800 seconds.
@@ -568,7 +569,7 @@ impl Client {
         file_format: "Literal['json', 'jsonl']" = "json",
         r#ref: "str | Ref | None" = None,
         max_rows: "int | None" = None,
-        cache: "bool" = true,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -583,7 +584,7 @@ impl Client {
         file_format: &str,
         r#ref: Option<RefArg>,
         max_rows: Option<u64>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -663,7 +664,7 @@ impl Client {
     ///     columns: The columns to return (default: `None`).
     ///     filters: The filters to apply (default: `None`).
     ///     limit: The maximum number of rows to return (default: `None`).
-    ///     cache: Whether to enable caching for the query. Defaults to True. Set to False to disable caching.
+    ///     cache: Whether to enable or disable caching for the query.
     ///     namespace: The Namespace to run the scan in. If not set, the scan will be run in the default namespace for your account.
     ///     args: dict of arbitrary args to pass to the backend.
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
@@ -677,7 +678,7 @@ impl Client {
         columns: "list[str] | None" = None,
         filters: "str | None" = None,
         limit: "int | None" = None,
-        cache: "bool" = true,
+        cache: "Literal['on', 'off'] | None" = None,
         namespace: "str | Namespace | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -692,7 +693,7 @@ impl Client {
         columns: Option<Vec<String>>,
         filters: Option<&str>,
         limit: Option<usize>,
-        cache: bool,
+        cache: Option<&str>,
         namespace: Option<NamespaceArg>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,

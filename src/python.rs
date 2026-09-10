@@ -255,6 +255,15 @@ where
     })
 }
 
+fn optional_on_off<'a>(name: &'static str, v: Option<&'a str>) -> PyResult<Option<&'a str>> {
+    match v {
+        None | Some("on") | Some("off") => Ok(v),
+        Some(_) => Err(PyValueError::new_err(format!(
+            "{name} must be 'on' or 'off'"
+        ))),
+    }
+}
+
 #[pymodule]
 mod _internal {
     use pyo3::prelude::*;
