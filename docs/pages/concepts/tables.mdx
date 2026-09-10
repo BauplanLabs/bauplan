@@ -133,7 +133,7 @@ In SQL models, use comments:
 
 ```sql
 -- bauplan: materialization_strategy=REPLACE
--- bauplan: partitioned-by="day(pickup_datetime), PULocationID"
+-- bauplan: partitioned_by=day(pickup_datetime),PULocationID
 
 SELECT
     PULocationID,
