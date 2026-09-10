@@ -112,7 +112,7 @@ fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec
     Ok(snippets)
 }
 
-fn extract_pyi_snippets(path: &Path, src: &str, snippets: &mut Vec<Snippet>) -> anyhow::Result<()> {
+fn extract_docstring_snippets(path: &Path, src: &str, snippets: &mut Vec<Snippet>) -> anyhow::Result<()> {
     let py_lang = tree_sitter_python::LANGUAGE.into();
 
     let mut py_parser = Parser::new();
@@ -184,17 +184,20 @@ fn docstrings() -> anyhow::Result<()> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     let mut snippets = Vec::new();
-    for entry in WalkDir::new(root.join("python/bauplan"))
-        .into_iter()
-        .filter_entry(include_entry)
-    {
+
+    let entries = ["python/bauplan", "bauplan-sdk-types/src"]
+        .iter()
+        .flat_map(|p| WalkDir::new(p).into_iter().filter_entry(include_entry));
+    for entry in entries {
         let entry = entry?;
         let path = entry.path();
-        if path.extension().is_some_and(|e| e == "pyi") {
-            let rel = path.strip_prefix(root).unwrap_or(path);
-            let src = fs::read_to_string(path)?;
-            extract_pyi_snippets(rel, &src, &mut snippets)?;
+        if path.extension().is_none_or(|e| e != "pyi" && e != "py") {
+            continue;
         }
+
+        let rel = path.strip_prefix(root).unwrap_or(path);
+        let src = fs::read_to_string(path)?;
+        extract_docstring_snippets(rel, &src, &mut snippets)?;
     }
 
     typecheck_snippets(root, &snippets)

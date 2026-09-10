@@ -97,7 +97,7 @@ def expectation() -> Callable:
                   "but is expected to not have any null values. "
                 )
             )
-        ],
+        ]
 
     @bauplan.expectation()
     @bauplan.python('3.11')
