@@ -1,4 +1,10 @@
 
+## [0.4.0] - 2026-09-10
+
+### New Features
+
+- [pysdk] Use a boolean cache option on query and scan (cde896f7e65fde2e05c1a3159c0ae136cd11315b)
+
 ## [0.3.1] - 2026-09-10
 
 ### Bugfixes
