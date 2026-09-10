@@ -43,7 +43,7 @@ def test_on_scene_not_before_request(
     import pyarrow.compute as pc
 
     # Null comparisons produce null masks and Table.filter drops them
-    reversed_timestamps = pc.less(data["on_scene_datetime"], data["request_datetime"])
+    reversed_timestamps = pc.field("on_scene_datetime") < pc.field("request_datetime")
     violation_count = data.filter(reversed_timestamps).num_rows
     is_order_valid = violation_count == 0
 

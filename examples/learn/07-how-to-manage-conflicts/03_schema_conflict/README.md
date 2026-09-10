@@ -18,10 +18,10 @@ gitGraph
 
 ## Pipelines
 
-| Pipeline | Source table | Filter | Groups by | Output columns | Model cast | Schema field |
-|---|---|---|---|---|---|---|
+|    Pipeline    |   Source table    |    Filter    | Groups by | Output columns | Model cast | Schema field |
+| -------------- | ----------------- | ------------ | --------- | -------------- | ---------- | ------------ |
 | `old_pipeline` | `bauplan.titanic` | `Pclass > 1` | `Pclass` | `Pclass`, `Fare` | `pl.Decimal(4, 2)` | `bauplan.Any` |
-| `new_pipeline` | `bauplan.titanic` | none | `Pclass`, `Sex` | `Pclass`, `Sex`, `Fare`, `n_passengers` | `pl.Decimal(4, 2)` | `bauplan.Any` |
+| `new_pipeline` | `bauplan.titanic` |    none      | `Pclass`, `Sex` | `Pclass`, `Sex`, `Fare`, `n_passengers` | `pl.Decimal(4, 2)` | `bauplan.Any` |
 
 Both pipelines ship the same expectation: every source fare must fit the maximum value supported by `decimal(4, 2)`.
 
@@ -76,10 +76,12 @@ The fix requires widening the model cast to `pl.Decimal(5, 2)` and raising `MAX_
 
 ## Why this matters
 
-The expectation is the mechanism that protects the decimal precision in this example.
+The expectation is the mechanism that protects the decimal precision in this example. The
+output schema still enforces the other declared columns. For `Fare`, `bauplan.Any` means
+the contract accepts the runtime Arrow type without pinning it. It cannot detect a change
+in decimal precision.
 
-The output schema still enforces the other declared columns. For `Fare`, `bauplan.Any` means the contract accepts the runtime Arrow type without pinning it. It cannot detect a change in decimal precision.
-
-The expectation validates the assumption behind the `pl.Decimal(4, 2)` cast: the selected fares must stay under 99.99. That assumption changes when the filter changes, so it requires a value-level check.
-
-With a Bauplan decimal schema field, the contract can pin the output type and precision. The expectation still checks whether the input values respect the precision chosen by the model. With `strict=True`, the current expectation failure stops the run before the branch can be merged.
+The expectation validates the assumption behind the `pl.Decimal(4, 2)` cast: the selected
+fares must stay under 99.99. That assumption changes when the filter changes, so it
+requires a value-level check. With `strict=True`, the current expectation failure stops
+the run before the branch can be merged.
