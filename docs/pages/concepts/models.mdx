@@ -48,7 +48,8 @@ def my_model(
 Bauplan Models are **fully declarative**, allowing for explicit column
 selection and filter pushdown. In practice, this means your code only
 requires the name of the inputs and, optionally, the desired columns and
-filters.
+filters. Naming the columns and filters you need lets the planner skip
+reading the rest of the table.
 
 For example, you don't need to specify the type of `input_table`,
 whether it's an Iceberg Table, PyArrow Table, Pandas dataframe, or
@@ -116,6 +117,10 @@ introduce new Python packages without worrying about backward
 compatibility. In fact, you can run a pipeline where different models
 use different versions of the same packages and different versions of
 the Python interpreter.
+
+Each model builds its own environment, so every package you declare is
+installed for that model alone. Declare only what the function body
+imports.
 
 ```python
 #! from typing import Annotated
@@ -245,64 +250,9 @@ def my_model(
     return output_table
 ```
 
-## Best practices
+## Developing models
 
-1. **Input Declaration**
-
-- Specify required columns explicitly.
-- Use filter pushdown whenever feasible for efficiency.
-
-2. **Output docstrings**
-
-- Specify the shape of the output table of a model in its docstrings.
-
-  ```python
-  #! from typing import Annotated
-  class SelectedInputColumns(bauplan.TableSchema):
-      """Columns read from the input table."""
-
-      col_1: bauplan.String
-      col_2: bauplan.Int64
-      col_3: bauplan.Float64
-
-  class CountByColOne(bauplan.TableSchema):
-      """Row counts grouped by `col_1`."""
-
-      col_1: bauplan.String
-      count: bauplan.Int64
-
-  @bauplan.model()
-  @bauplan.python("3.11")
-  def my_model(
-      data: Annotated[
-          pyarrow.Table,
-          bauplan.Model(
-              "input_table",
-              projection_schema=SelectedInputColumns,
-              filter="timestamp >= '2022-12-15T00:00:00-05:00'",
-          )
-      ],
-  ) -> Annotated[pyarrow.Table, CountByColOne]:
-      """
-      This model will aggregate and count the data by Col_1.
-      The output table will look like this:
-      | Col_1 | Count  |
-      |-------|--------|
-      | A     | 100    |
-      """
-      ...
-
-      #! return pyarrow.table({})
-  ```
-
-3. **Model environment Management**
-   - Include only minimal dependencies.
-   - Pin specific dependency versions for consistency.
-
-4. **Code Organization**
-   - Group models that form a pipeline within a single file.
-   - Separate function bodies into external modules and call them within the Bauplan models. This keeps business logic code neatly separated from the DAG and environment declaration, making code refactoring easier and future-proof.
-
-5. **Testing and Development**
-   - Use the `bauplan run --dry-run` flag for quick iteration.
-   - Employ print statements for real-time terminal feedback during development.
+Print statements in a model body stream back to your terminal while the
+run is in flight, which is the quickest way to see what a function
+actually received. Pair them with `bauplan run --dry-run` to iterate
+without materializing anything.
