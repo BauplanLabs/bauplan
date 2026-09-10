@@ -122,8 +122,7 @@ def purchase_events(
 ) -> Annotated[pyarrow.Table, PurchaseEvents]:
     import polars as pl
 
-    df = pl.from_arrow(raw)
-    assert isinstance(df, pl.DataFrame)
+    df = pl.DataFrame(raw)
 
     result = df.with_columns(
         pl.col('brand').fill_null('Unknown'),
@@ -195,11 +194,9 @@ def purchases_by_segment(
 ) -> Annotated[pyarrow.Table, SegmentedPurchases]:
     import polars as pl
 
-    purchases_df = pl.from_arrow(purchases)
-    assert isinstance(purchases_df, pl.DataFrame)
+    purchases_df = pl.DataFrame(purchases)
 
-    users_df = pl.from_arrow(users)
-    assert isinstance(users_df, pl.DataFrame)
+    users_df = pl.DataFrame(users)
 
     result = purchases_df.join(
         users_df,
@@ -258,8 +255,7 @@ def daily_segment_stats(
 ) -> Annotated[pyarrow.Table, DailySegmentStats]:
     import polars as pl
 
-    df = pl.from_arrow(data)
-    assert isinstance(df, pl.DataFrame)
+    df = pl.DataFrame(data)
 
     result = df.with_columns(
         pl.col('event_time').str.slice(0, 10).alias('date'),
