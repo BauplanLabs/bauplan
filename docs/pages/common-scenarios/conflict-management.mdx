@@ -156,7 +156,8 @@ no explicit conflict handling because the bad branch simply never gets merged.
   will output as well as enforcing the availability and type of each declared
   schema field. For instance, the following model declares an output of only
   `Age` but projects `PassengerId` as well, and Bauplan reports the schema
-  mismatch. For other uses of expectations in Bauplan,
+  mismatch: the run fails with a `bauplan.ModelOutputContractError` and
+  nothing is materialized. For other uses of expectations in Bauplan,
   please consult the [dedicated
   example](https://github.com/BauplanLabs/bauplan/tree/b31d9226d5c8177a1974e97aa93ed710256e10fa/examples/learn/02-data-quality-expectations).
 

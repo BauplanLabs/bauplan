@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { ChevronDown, Link, Check } from "lucide-react";
 import Markdown from "react-markdown";
 import useBrokenLinks from "@docusaurus/useBrokenLinks";
+import CodeBlockContainer from "@theme/CodeBlock/Container";
+import { useSignatureStyles, AnnotationTokens } from "./AnnotationTokenizer";
 
 function CopyAnchorLink({ id }) {
   const [copied, setCopied] = useState(false);
@@ -86,17 +88,25 @@ export function PyFunction(props) {
 
 export function PyTypeAlias(props) {
   useBrokenLinks().collectAnchor(props.id);
+  const styles = useSignatureStyles();
   return (
     <>
       <h2 id={props.id} className="anchor group">
         <div className="flex flex-row items-center gap-2">
-          <code>type</code>
-          <span>{props.name}</span>
+          <code style={{ fontSize: '0.775em' }}>type</code>
+          <span className="mb-0">{props.name}</span>
           <CopyAnchorLink id={props.id} />
         </div>
       </h2>
 
-      <code>{props.annotation}</code>
+      <CodeBlockContainer as="pre" tabIndex={0} className="thin-scrollbar">
+        <code style={{ font: 'inherit', float: 'left', minWidth: '100%' }}>
+          <span style={{ color: styles.plain.color }}>{props.name}</span>
+          <span style={styles.operator}>{' = '}</span>
+          <AnnotationTokens text={props.annotation} styles={styles} />
+          {'\n'}
+        </code>
+      </CodeBlockContainer>
     </>
   );
 }

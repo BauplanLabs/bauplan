@@ -85,11 +85,11 @@ Parameters let you pass runtime values to models without changing code. They can
         ```
 
         <Note>
-        To learn more, see [reference](/reference/bauplan#bauplan-parameter).
+        To learn more, see [reference](/reference/bauplan-sdk-types#bauplan-sdk-types-parameter).
         </Note>
     </TabItem>
     <TabItem value="filter" label="As a filter">
-        Parameters can be passed in [`bauplan.Model`](/reference/bauplan#bauplan-model) as a filter,
+        Parameters can be passed in [`bauplan.Model`](/reference/bauplan-sdk-types#bauplan-sdk-types-model) as a filter,
         using the `$param_name` syntax:
 
         ```python
@@ -173,7 +173,7 @@ Bauplan encrypts the value via AWS KMS and stores only the ciphertext
 in your `bauplan_project.yml`. Secrets are never stored or transmitted
 in plaintext.
 
-In your code, reference secrets with [`bauplan.Parameter`](/reference/bauplan#bauplan-parameter) just like
+In your code, reference secrets with [`bauplan.Parameter`](/reference/bauplan-sdk-types#bauplan-sdk-types-parameter) just like
 regular parameters.
 
 For a complete walkthrough using secrets with an LLM pipeline, see the

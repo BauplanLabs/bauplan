@@ -15,6 +15,8 @@ class TableSchema:
     For example:
 
     ```python
+    #! from typing import Annotated
+    #! from bauplan import Float64, Int64, TableField, TableSchema
     class NewTableSchema(TableSchema):
         first: Annotated[Int64, TableField(doc='first column')]
         second: Annotated[Float64, TableField(doc='second column')]
@@ -24,6 +26,10 @@ class TableSchema:
     `lineage` parameter of `TableField`, for example:
 
     ```python
+    #! from typing import Annotated
+    #! from bauplan import Int64, TableField, TableSchema
+    #! class NewTableSchema(TableSchema):
+    #!     first: Annotated[Int64, TableField(doc='first column')]
     class DerivedSchema(TableSchema):
         third: Annotated[Int64, TableField(lineage=NewTableSchema['first'])]
     ```
