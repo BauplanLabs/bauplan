@@ -48,10 +48,9 @@ Full applications that combine Bauplan with third-party tools and services. Find
 
 | Example | Description |
 |---------|-------------|
-| [RAG Service Support Agent](projects/RAG-service-support-agent) | RAG pipeline over Stack Overflow data with Pinecone vector search and LLM-powered Q&A |
-| [Playlist Recommender](projects/build-a-playlist-recommender) | Embedding-based music recommendations with MongoDB Atlas vector search |
 | [From Notebooks to Prod](projects/from-notebooks-to-prod) | From a marimo notebook to a production pipeline - same Python functions, no rewrite |
 | [Medallion for Telemetry Data](projects/medallion-for-telemetry-data) | Bronze-Silver-Gold medallion architecture for sensor telemetry with DuckDB, Polars, and a dashboard |
+| [Executive Questions with MCP](projects/executive-questions-with-mcp) | Use the Bauplan and Linear MCP to interrogate the lakehouse and open Linear tickets to build pipelines automatically |
 
 ## Learn more
 
