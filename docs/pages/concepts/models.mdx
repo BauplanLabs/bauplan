@@ -313,7 +313,99 @@ def my_model(
 
 ## Developing models
 
-Print statements in a model body stream back to your terminal while the
-run is in flight, which is the quickest way to see what a function
-actually received. Pair them with `bauplan run --dry-run` to iterate
-without materializing data to the data lake.
+The `--preview [on | off | head | tail]` option can be specified with `bauplan run` to
+see a portion of data for each model in the pipeline:
+
+```sh type:ignore
+bauplan run --preview head -p <path-to-project>
+```
+
+In addition, print statements in a model body stream back to your terminal while the run
+is in flight, which is the quickest way to see what a function actually received. Pair
+them with `bauplan run --dry-run` to iterate without materializing data to the data lake:
+
+```sh type:ignore
+bauplan run --dry-run --preview head -p <path-to-project>
+```
+
+## Best practices
+
+1. **Model Inputs**
+
+- For each model that reads from the lakehouse catalog:
+  - Define a projection schema to avoid reading unnecessary columns.
+  - Define a filter when appropriate to reduce reading unnecessary data.
+
+2. **Semantic Layer**
+
+- In column documentation, mention:
+  - the expected data properties of a column
+    - do values fall in a range
+    - have values been filtered
+  - if a column has a numerical type with a qualitative or categorical meaning
+  - if a column will participate in a join or aggregation
+
+- In table documentation, from a `TableSchema`, mention:
+  - if the schema is a projection schema or an output schema
+  - what models the schema is associated with
+
+
+  ```python
+  from typing import Annotated
+  import bauplan
+
+  class SelectedInputColumns(bauplan.TableSchema):
+      """
+      Projection schema applied to `input_table` containing three columns.
+
+      + ----------- +  SelectedInputColumns   + -------- +
+      | input_table | ----------------------> | my_model |
+      + ----------- +     (projection)        + -------- +
+      """
+
+      col_1: Annotated[bauplan.String, bauplan.TableField(
+          doc='aggregation key in `my_model`'
+      )]
+
+  class CountByColOne(bauplan.TableSchema):
+      """
+      Output schema for `my_model` containing two columns.
+      Row counts grouped by `col_1`.
+      """
+
+      col_1: Annotated[bauplan.String, bauplan.TableField(
+          doc='aggregation column for `my_model`',
+          lineage=SelectedInputColumns["col_1"],
+      )]
+      count: Annotated[bauplan.Int64, bauplan.TableField(
+          doc='count of unique values in `col_1`'
+      )]
+
+  @bauplan.model()
+  @bauplan.python("3.11")
+  def my_model(
+      data: Annotated[
+          pyarrow.Table,
+          bauplan.Model(
+              "input_table",
+              projection_schema=SelectedInputColumns,
+              filter="timestamp >= '2022-12-15T00:00:00-05:00'",
+          )
+      ],
+  ) -> Annotated[pyarrow.Table, CountByColOne]:
+      return (
+          data.group_by("col_1")
+              .aggregate([([], "count_all")])
+              .rename_columns(["col_1", "count"])
+      )
+  ```
+
+3. **Model environment Management**
+   - Include only minimal dependencies.
+   - Pin specific dependency versions, using `==`, for consistency.
+
+4. **Code Organization**
+   - Group models that form a pipeline within a single file.
+   - Separate function bodies into external modules and call them within the Bauplan
+     models. This keeps business logic code neatly separated from the DAG and environment
+     declaration, making code refactoring easier.

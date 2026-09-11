@@ -98,7 +98,10 @@ preserve the timezone they were written from.
 
 ### `TableSchema`
 
-An ordered grouping of attributes that can be associated with Bauplan models.
+An ordered grouping of attributes that is associated with Bauplan models. A `TableSchema`
+must be associated with each model output and describes the expected output schema and
+holds documentation. It may also be optionally associated with an input model to project
+an expected schema.
 
 ```python type:ignore
 from bauplan import TableSchema, Float64
@@ -115,8 +118,8 @@ class BaseResult(TableSchema):
 
 Metadata and constraints associated with a table column. Initial support includes:
 
-- column documentation
-- explicit column data flow
+- `doc`, containing documentation for the column
+- `lineage`, representing dependencies between columns (data flow)
 
 ```python type:ignore
 import bauplan
@@ -138,6 +141,36 @@ Most semantic information is defined in schema attributes and optional `TableFie
 annotations. The `TableSchema` bridges column-level metadata and constraints with models
 (annotation on the return value) and their input tables (annotations on function
 parameters).
+
+### Writing metadata to the lakehouse
+
+The metadata specified on `TableField` and `TableSchema` instances are persisted to the
+lakehouse for later access, even from external systems. Specifically, Bauplan persists:
+- A column's "nullability", meaning whether null values are accepted (optional) or not
+  accepted (required).
+- Column documentation from the `doc` parameter for a `TableField`
+- Table documentation from the python docstring of a python model if it is defined.
+  - If the python model does not have a docstring, the docstring from the output
+    `TableSchema` is used instead.
+  - Similarly, if the model is a SQL model instead of a python model, the docstring from
+    the associated `output_schema` is used for the table documentation.
+
+Column nullability is stored with the column type in a straightforward way; for an
+`Int64` type this is equivalent to:
+
+```python
+# pyarrow representation of `Int64 | None`
+pyarrow.field('name', pyarrow.int64(), nullable=True)
+```
+
+Column documentation is stored in the `doc` property of the corresponding schema field as
+shown in the Apache Iceberg spec for [JSON serialization of
+schemas](https://iceberg.apache.org/spec/#schemas).
+
+Table documentation is stored in the `comment` property of the table properties as
+described in the Apache Iceberg documentation for [informational
+properties](https://iceberg.apache.org/docs/latest/configuration/#informational-properties).
+
 
 ## Working example
 
