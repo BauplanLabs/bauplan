@@ -18,6 +18,10 @@ bucket with their own cloud credentials.
 
 ## Integration options
 
+:::warning Outbound connectors to pull external tables into a Bauplan pipeline from
+Snowflake or BigQuery are not yet supported by Bauplan's new pipeline DSL introduced in
+`bauplan~=0.3.0`.
+
 - **External catalog:** plug-and-play, auto-discovery, recommended whenever supported.
 - **External tables:** manual, per-table setup, fallback for engines without catalog support.
 
@@ -62,27 +66,11 @@ This approach works everywhere, but requires more operational overhead than cata
     },
     {
       type: "link",
-      href: "/integrations/warehouses-lakehouses/snowflake-outbound",
-      label: "Snowflake → Bauplan",
-      icon: snowflakeIcon,
-      description:
-        "Pull Snowflake data into a Bauplan pipeline as an Arrow table",
-    },
-    {
-      type: "link",
       href: "/integrations/warehouses-lakehouses/big-query-inbound",
       label: "Bauplan → BigQuery",
       icon: bauplanIcon,
       description:
         "Register Bauplan data as an external Iceberg table in BigQuery",
-    },
-    {
-      type: "link",
-      href: "/integrations/warehouses-lakehouses/big-query-outbound",
-      label: "BigQuery → Bauplan",
-      icon: bigqueryIcon,
-      description:
-        "Pull BigQuery data into a Bauplan pipeline as an Arrow table",
     },
     {
       type: "link",

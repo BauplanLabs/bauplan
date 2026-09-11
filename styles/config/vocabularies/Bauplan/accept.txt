@@ -22,6 +22,7 @@ dbt
 dbt Core
 dev
 docstrings
+docstring
 ELT
 EMR
 EMR Serverless
