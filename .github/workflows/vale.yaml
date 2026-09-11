@@ -39,7 +39,11 @@ jobs:
           version=$(mise tool vale --json | jq -er '.active_versions[0]')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      # Match `just lint`: only errors and warnings gate CI. Without this the
+      # action uses MinAlertLevel from .vale.ini (suggestion), and reviewdog
+      # hard-fails once a PR's diff collects 10 annotations, even at info level.
       - uses: errata-ai/vale-action@d89dee975228ae261d22c15adcd03578634d429c # v2.1.1
         with:
           version: ${{ steps.vale-version.outputs.version }}
           files: '["docs/pages", "examples"]'
+          vale_flags: "--minAlertLevel=warning"
