@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.13"
 
 [[package]]
-name = "08-ingestion-and-transformation-with-dagster"
+name = "07-ingestion-and-transformation-with-dagster"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

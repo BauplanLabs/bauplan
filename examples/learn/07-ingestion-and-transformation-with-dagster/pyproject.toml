@@ -1,5 +1,5 @@
 [project]
-name = "08-ingestion-and-transformation-with-dagster"
+name = "07-ingestion-and-transformation-with-dagster"
 version = "0.1.0"
 description = "Ingestion and transformation with Bauplan and Dagster"
 readme = "README.md"

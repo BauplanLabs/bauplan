@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.13.*"
 
 [[package]]
-name = "07-how-to-manage-conflicts"
+name = "06-how-to-manage-conflicts"
 version = "1.0.0"
 source = { virtual = "." }
 dependencies = [
