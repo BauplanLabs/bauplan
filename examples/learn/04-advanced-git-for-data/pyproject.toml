@@ -1,5 +1,5 @@
 [project]
-name = "05-advanced-git-for-data"
+name = "04-advanced-git-for-data"
 version = "0.1.0"
 description = "Deep dive into Bauplan branching, time travel, tagging, and transactions"
 readme = "README.md"

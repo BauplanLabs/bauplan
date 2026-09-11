@@ -1,5 +1,5 @@
 [project]
-name = "07-how-to-manage-conflicts"
+name = "06-how-to-manage-conflicts"
 version = "1.0.0"
 description = "Examples of how to manage conflicts in Bauplan"
 readme = "README.md"

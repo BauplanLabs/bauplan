@@ -37,9 +37,10 @@ These examples introduce core Bauplan concepts one at a time - pipelines, data q
 | 01 | [Pipeline to Dashboard](learn/01-pipeline-to-dashboard) | Build a two-model pipeline over NYC taxi data and visualize the output in a Streamlit dashboard |
 | 02 | [Data Quality & Expectations](learn/02-data-quality-expectations) | Add expectation tests to catch data quality issues before they reach production |
 | 03 | [Safe Ingestion on a Schedule](learn/03-safe-ingestion-on-a-schedule) | Implement the Write-Audit-Publish (WAP) pattern with Prefect to safely ingest data on a schedule |
-| 04 | [Using LLMs with Secrets](learn/04-using-llms-with-secrets) | Ingest PDFs from S3, extract structured financial data with an LLM, and explore results in Streamlit |
-| 05 | [Advanced Git for Data](learn/05-advanced-git-for-data) | Deep dive into branching, time travel, tagging, reverts, fault isolation, and multi-step transactions |
-| 06 | [Data Engineering with an AI Coding Assistant](learn/06-data-engineering-with-claude-code) | Interactive narrative: build a production telemetry pipeline with an AI coding assistant and Bauplan skills |
+| 04 | [Advanced Git for Data](learn/04-advanced-git-for-data) | Deep dive into branching, time travel, tagging, reverts, fault isolation, and multi-step transactions |
+| 05 | [Data Engineering with an AI Coding Assistant](learn/05-data-engineering-with-claude-code) | Interactive narrative: build a production telemetry pipeline with an AI coding assistant and Bauplan skills |
+| 06 | [How to Manage Conflicts](learn/06-how-to-manage-conflicts) | How Bauplan's Git-like branching handles common data engineering problems such as conflicts, corruption, and lakehouse hygiene|
+| 07 | [Ingestion and Transformation with Dagster](learn/07-ingestion-and-transformation-with-dagster) | Use Dagster as the orchestrator and Bauplan as the lakehouse and compute engine to run  ingestion and transformation pipelines|
 
 ## End-to-end applications
 
