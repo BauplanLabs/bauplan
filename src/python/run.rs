@@ -16,7 +16,7 @@ use tracing::{error, info, trace};
 
 use super::Client;
 use super::refs::RefArg;
-use crate::grpc::{self, generated as commanderpb};
+use crate::grpc::{self, generated as commanderpb, job::empty_parameter_value};
 use crate::project::{ParameterType, ParameterValue, ProjectFile};
 use crate::python::job::JobLogEvent;
 use crate::python::namespace::NamespaceArg;
@@ -430,6 +430,11 @@ async fn resolve_job_parameters(
             return Err(PyValueError::new_err(format!(
                 "missing required parameter: {name:?}"
             )));
+        } else {
+            resolved.push(commanderpb::Parameter {
+                name: name.clone(),
+                value: Some(empty_parameter_value(param)),
+            });
         }
     }
 

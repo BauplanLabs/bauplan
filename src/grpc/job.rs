@@ -296,6 +296,34 @@ impl From<project::ParameterValue> for commanderpb::parameter::Value {
     }
 }
 
+/// Build an unset [`commanderpb::parameter::Value`] of the right type for a
+/// parameter that has no value.
+pub fn empty_parameter_value(param: &project::ParameterDefault) -> commanderpb::parameter::Value {
+    use commanderpb::parameter::Value;
+
+    match param.param_type {
+        project::ParameterType::Str => {
+            Value::StrValue(commanderpb::StrParameterValue { value: None })
+        }
+        project::ParameterType::Int => {
+            Value::IntValue(commanderpb::IntParameterValue { value: None })
+        }
+        project::ParameterType::Float => {
+            Value::FloatValue(commanderpb::FloatParameterValue { value: None })
+        }
+        project::ParameterType::Bool => {
+            Value::BoolValue(commanderpb::BoolParameterValue { value: None })
+        }
+        project::ParameterType::Secret => Value::SecretValue(commanderpb::SecretParameterValue {
+            key: param.key.clone(),
+            value: None,
+        }),
+        project::ParameterType::Vault => {
+            Value::VaultValue(commanderpb::VaultParameterValue { value: None })
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Stdio {
     Stdout,

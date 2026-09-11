@@ -8,6 +8,7 @@ use bauplan::{
     grpc::{
         self,
         generated::{self as commanderpb, JobResponseCommon},
+        job::empty_parameter_value,
     },
     project::{ParameterType, ParameterValue, ProjectFile},
 };
@@ -697,6 +698,11 @@ async fn resolve_parameters(
             });
         } else if param.required {
             bail!("missing required parameter: {name:?}");
+        } else {
+            resolved.push(commanderpb::Parameter {
+                name: name.clone(),
+                value: Some(empty_parameter_value(param)),
+            });
         }
     }
 
