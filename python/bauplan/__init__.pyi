@@ -1076,9 +1076,12 @@ class Client:
         # You can get the total number of rows this way.
         num_records = table.records
 
+        # The table documentation, if the table has any.
+        print(table.comment)
+
         # Or access the schema.
         for c in table.fields:
-            ...
+            print(c.name, c.type, c.doc)
         ```
 
         Parameters:
