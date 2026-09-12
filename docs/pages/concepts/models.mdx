@@ -138,6 +138,7 @@ imports.
 ```python
 from typing import Annotated
 import bauplan
+import pyarrow
 
 class StepOutput(bauplan.TableSchema):
     """The columns each step passes along."""
@@ -378,7 +379,7 @@ bauplan run --dry-run --preview head -p <path-to-project>
           lineage=SelectedInputColumns["col_1"],
       )]
       count: Annotated[bauplan.Int64, bauplan.TableField(
-          doc='count of unique values in `col_1`'
+          doc='row count for each unique value in `col_1`'
       )]
 
   @bauplan.model()
