@@ -30,25 +30,28 @@ def model(
     by type annotations on function parameters as explicit data dependencies. See
     documentation for `bauplan.Model` for more details on referencing declared models.
 
-    Consider the following code example that defines two models, functions decorated with
+    Consider the following code example that defines a model, a function decorated with
     `bauplan.model`:
 
     ```python
     from typing import Annotated
+
     import bauplan
+    import pyarrow
 
     class IotSchema(bauplan.TableSchema):
         '''Schema for result of `source_scan`.'''
-        ...
+
+        motion: bauplan.Bool
 
     @bauplan.model(materialization_strategy='NONE')
     def source_scan(
         data: Annotated[
             pyarrow.Table,
-            bauplan.Model('iot_kaggle', filter="motion='false'")
+            bauplan.Model('iot_kaggle', projection_schema=IotSchema, filter="motion='false'")
         ],
     ) -> Annotated[pyarrow.Table, IotSchema]:
-        # your code here; schema of output should match `IotSchema`
+        # your code here; the returned table must match `IotSchema`
         return data
     ```
 

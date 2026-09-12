@@ -125,9 +125,9 @@ class Client:
     #### Notes on authentication
 
     ```python
-    # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yml
+    # by default, authenticate from BAUPLAN_API_KEY >> BAUPLAN_PROFILE >> ~/.bauplan/config.yaml
     client = bauplan.Client()
-    # client used ~/.bauplan/config.yml profile 'default'
+    # client used ~/.bauplan/config.yaml profile 'default'
 
     import os
     os.environ['BAUPLAN_PROFILE'] = "someprofile"
@@ -141,29 +141,30 @@ class Client:
     # specify authentication directly - this supersedes BAUPLAN_API_KEY in the environment
     client = bauplan.Client(api_key='MY_KEY')
 
-    # specify a profile from ~/.bauplan/config.yml - this supersedes BAUPLAN_PROFILE in the environment
+    # specify a profile from ~/.bauplan/config.yaml - this supersedes BAUPLAN_PROFILE in the environment
     client = bauplan.Client(profile='default')
     ```
 
     #### Handling Exceptions
 
-    Catalog operations (branch/table methods) raise a subclass of `bauplan.exceptions.BauplanError` that mirror HTTP status codes.
-        - 400: `bauplan.exceptions.InvalidDataError`
-        - 401: `bauplan.exceptions.UnauthorizedError`
-        - 403: `bauplan.exceptions.ForbiddenError`
-        - 404: `bauplan.exceptions.ResourceNotFoundError` e.g. ID doesn't match any records
-        - 404: `bauplan.exceptions.ApiMethodError` e.g. the given API method doesn't exist
-        - 405: `bauplan.exceptions.ApiRouteError` e.g. POST on a route with only GET defined
-        - 409: `bauplan.exceptions.UpdateConflictError` e.g. creating a record with a name that already exists
-        - 429: `bauplan.exceptions.TooManyRequestsError`
+    Catalog operations (branch, tag, namespace and table methods) raise a subclass of
+    `bauplan.exceptions.BauplanHTTPError` matching the HTTP status code:
 
-    Run/Query/Scan/Import operations raise a subclass of `bauplan.exceptions.BauplanError` that represents the error, and also return a `bauplan.state.RunState` object containing details and logs:
-        - `bauplan.exceptions.BauplanJobError` e.g. something went wrong in a run/query/import/scan; includes error details
+    - 400: `bauplan.exceptions.BadRequestError` (e.g. `InvalidRefError`)
+    - 401: `bauplan.exceptions.UnauthorizedError`
+    - 403: `bauplan.exceptions.ForbiddenError`
+    - 404: `bauplan.exceptions.NotFoundError` (e.g. `TableNotFoundError`)
+    - 405: `bauplan.exceptions.MethodNotAllowedError`
+    - 409: `bauplan.exceptions.ConflictError` (e.g. `MergeConflictError`)
+    - 429: `bauplan.exceptions.TooManyRequestsError`
+    - 5xx: `bauplan.exceptions.InternalError`, `BadGatewayError`, `ServiceUnavailableError`, `GatewayTimeoutError`
 
-    Run/import operations also return a state object that includes a `job_status` and other details.
-    There are two ways to check status for run/import operations:
-        1. try/except `bauplan.exceptions.BauplanJobError`
-        2. check the `state.job_status` attribute
+    Jobs like `run` and `import_data` return a state object instead. A failed job doesn't
+    raise; check `state.job_status` and `state.error`. `bauplan.exceptions.BauplanJobError`
+    is only raised if the job can't be submitted or times out.
+
+    `query`, `scan` and `query_to_*` return the results directly and raise
+    `bauplan.exceptions.BauplanQueryError` if the query fails.
 
     #### Logging
 
@@ -192,7 +193,7 @@ class Client:
 
     As a general rule, you should try to avoid eagerly evaluating them, as the lists can be very large.
 
-    ```
+    ```python
     #! client = bauplan.Client()
     # Don't do this!
     branches = list(client.get_branches())
@@ -209,7 +210,7 @@ class Client:
 
     Parameters:
         profile: The Bauplan config profile name to use to determine api_key.
-        api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) .bauplan/config.yml
+        api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) ~/.bauplan/config.yaml
         client_timeout: The client timeout in seconds for all the requests.
         config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
     """
@@ -1346,7 +1347,7 @@ class Client:
             namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
             continue_on_error: Do not fail the import even if 1 data import fails.
             import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
-            best_effort: Don't fail if schema of table does not match.
+            best_effort: Ignore source columns that are not in the table schema instead of failing the import.
             preview: Whether to enable or disable preview mode for the import.
             args: dict of arbitrary args to pass to the backend.
             priority: Optional job priority (1-10, where 10 is highest priority).
