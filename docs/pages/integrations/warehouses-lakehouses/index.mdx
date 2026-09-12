@@ -18,9 +18,11 @@ bucket with their own cloud credentials.
 
 ## Integration options
 
-:::warning Outbound connectors to pull external tables into a Bauplan pipeline from
-Snowflake or BigQuery are not yet supported by Bauplan's new pipeline DSL introduced in
-`bauplan~=0.3.0`.
+:::warning Outbound connectors unsupported in bauplan v0.3
+  An outbound connector allows a Bauplan pipeline to pull external tables (from Snowflake
+  or BigQuery) into the pipeline. Beginning with the `v0.3.0` CLI/SDK release
+  (`bauplan~=0.3.0`), Bauplan's new pipeline DSL does not support outbound connectors.
+:::
 
 - **External catalog:** plug-and-play, auto-discovery, recommended whenever supported.
 - **External tables:** manual, per-table setup, fallback for engines without catalog support.
