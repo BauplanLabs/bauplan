@@ -408,6 +408,42 @@ fn handle_list_tables(
     Ok(())
 }
 
+/// Condense documentation into a single cell, cut at the first newline or at a fixed character
+/// count, whichever comes first. Anything dropped is marked with `...`; the full text is available
+/// from `--output json`.
+fn doc_summary(doc: Option<&str>) -> (bool, String) {
+    let Some(doc) = clean_doc(doc) else {
+        return (false, "-".to_string());
+    };
+
+    // Tabs are expanded because the tab writer reads them as cell separators.
+    // Expand to 2 spaces to concisely distinguish from other spaces.
+    let (first_line, remaining_lines) = doc.split_once('\n').unwrap_or((doc, ""));
+    let first_line = first_line.trim_end().replace('\t', "  ");
+
+    // For consistency, this matches query's truncation width, but `query` does not return doc, so
+    // it's sensible that we may widen this column in the future.
+    const TRUNCATE_WIDTH: usize = 32;
+
+    // The cell holds the whole doc only if nothing follows the first line and
+    // that line fits.
+    if remaining_lines.is_empty() && first_line.chars().count() <= TRUNCATE_WIDTH {
+        return (false, first_line);
+    }
+
+    // Otherwise return the first line truncated
+    let truncated_doc = format!(
+        "{}...",
+        first_line
+            .chars()
+            .take(TRUNCATE_WIDTH - 3)
+            .collect::<String>()
+            .trim_end()
+    );
+
+    (true, truncated_doc)
+}
+
 fn handle_get_table(
     cli: &Cli,
     TableGetArgs { table_name, r#ref }: TableGetArgs,
@@ -428,20 +464,34 @@ fn handle_get_table(
             println!();
         }
         Output::Tty => {
-            let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAME\tREQUIRED\tTYPE")?;
+            if let Some(comment) = resp.comment() {
+                println!("Table Documentation:\n{comment}\n");
+            }
 
+            let mut tw = TabWriter::new(stdout());
+            writeln!(&mut tw, "COLUMN\tTYPE\tNULLABLE\tDOC")?;
+
+            let mut is_truncated = false;
             for TableField {
                 name,
-                required,
                 r#type,
+                required,
+                doc,
                 ..
             } in resp.fields
             {
-                writeln!(&mut tw, "{name}\t{required}\t{type}")?;
+                let (is_doc_truncated, field_doc) = doc_summary(doc.as_deref());
+                is_truncated = is_truncated || is_doc_truncated;
+                writeln!(&mut tw, "{name}\t{type}\t{}\t{field_doc}", !required)?;
             }
 
             tw.flush()?;
+
+            if is_truncated {
+                eprintln!(
+                    "\nNote: some documentation was truncated. Use `-O json` to see it in full."
+                );
+            }
         }
     }
 
@@ -961,4 +1011,19 @@ fn handle_revert_table(cli: &Cli, args: TableRevertArgs) -> anyhow::Result<()> {
     eprintln!("Reverted table {table_name:?} to {source_ref:?} in {into_branch:?}");
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Tabs from a model are expanded before the catalog stores them, so we
+    /// unit test the behavior.
+    #[test]
+    fn doc_summary_expands_tabs() {
+        assert_eq!(
+            doc_summary(Some("Fare\tbefore tax.")),
+            (false, "Fare  before tax.".to_string())
+        );
+    }
 }

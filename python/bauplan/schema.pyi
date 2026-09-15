@@ -383,6 +383,11 @@ class Table:
         """
         The fully qualified name: `namespace.name`.
         """
+    @property
+    def comment(self, /) -> str | None:
+        """
+        The table documentation, carried as the `comment` table property.
+        """
     def is_managed(self, /) -> bool:
         """
         Whether this is a managed table.
@@ -469,6 +474,11 @@ class TableField:
     A field in a table schema.
     """
     def __repr__(self, /) -> str: ...
+    @property
+    def doc(self, /) -> str | None:
+        """
+        The field documentation.
+        """
     @property
     def id(self, /) -> int:
         """

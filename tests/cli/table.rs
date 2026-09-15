@@ -1,4 +1,5 @@
 use crate::cli::{bauplan, test_branch};
+use crate::lines;
 use predicates::prelude::PredicateBooleanExt as _;
 use predicates::str::contains;
 
@@ -79,6 +80,51 @@ fn get_json_output() {
         .success()
         .stdout(contains(r#""name":"taxi_fhvhv","#))
         .stdout(contains(r#""namespace":"bauplan","#));
+}
+
+#[test]
+fn get_column_documentation() {
+    let branch = test_branch("cli_table_get_docs");
+
+    bauplan()
+        .args([
+            "run",
+            "--ref",
+            &branch.name,
+            "--no-cache",
+            "-p",
+            "tests/fixtures/simple_taxi_dag",
+        ])
+        .assert()
+        .success();
+
+    // We expect to cover the following cases:
+    // - doc string fits neatly (short single-line)
+    // - doc string has a newline (short multi-line)
+    // - doc string has a multi-byte character (character counting)
+    //   - The `trip_miles` doc string is 40 characters but 41 bytes, `è` covers
+    //     bytes 20 and 21, so counting bytes would truncate at `espress...`
+    //     instead of `espressa...`.
+    // - doc string truncation occurs after whitespace (long multi-line)
+    // - doc string contains a tab (tab expansion in a DAG)
+    // - empty doc (`None`)
+    bauplan()
+        .args(["table", "get", "--ref", &branch.name, "normalize_data"])
+        .assert()
+        .success()
+        .stdout(contains(
+            "The trip columns normalize_data reads from query_model and passes through.",
+        ))
+        .stdout(lines(&[
+            "COLUMN               TYPE         NULLABLE  DOC",
+            "trip_time            long         true      Trip duration, in seconds.",
+            "pickup_datetime      timestamptz  true      Pickup time....",
+            "trip_miles           double       true      Distanza percorsa: è espressa...",
+            "dropoff_datetime     timestamptz  true      The time the passengers left...",
+            "base_passenger_fare  double       true      Fare    before tolls and tax.",
+            "tolls                double       true      -",
+        ]))
+        .stderr(contains("some documentation was truncated"));
 }
 
 #[test]

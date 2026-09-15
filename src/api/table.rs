@@ -31,6 +31,8 @@ pub struct TableField {
     pub required: bool,
     /// The field type.
     pub r#type: String,
+    /// The field documentation.
+    pub doc: Option<String>,
 }
 
 /// A partition field on a table.
@@ -116,10 +118,32 @@ pub struct Table {
     pub properties: BTreeMap<String, String>,
 }
 
+/// Trims `doc_str` and downgrades to `None` if whitespace-only
+pub fn clean_doc(doc_str: Option<&str>) -> Option<&str> {
+    match doc_str {
+        None => None,
+        Some(doc_str) => {
+            let cleaned_doc = doc_str.trim();
+
+            // whitespace-only documentation is downgraded to `None`
+            if cleaned_doc.is_empty() {
+                None
+            } else {
+                Some(cleaned_doc)
+            }
+        }
+    }
+}
+
 impl Table {
     /// Returns the fully qualified name: `namespace.name`.
     pub fn fqn(&self) -> String {
         format!("{}.{}", self.namespace, self.name)
+    }
+
+    /// The table documentation, carried as the `comment` table property.
+    pub fn comment(&self) -> Option<&str> {
+        clean_doc(self.properties.get("comment").map(String::as_str))
     }
 }
 
@@ -130,6 +154,12 @@ impl Table {
     #[getter(fqn)]
     fn py_fqn(&self) -> String {
         self.fqn()
+    }
+
+    /// The table documentation, carried as the `comment` table property.
+    #[getter(comment)]
+    fn py_comment(&self) -> Option<&str> {
+        self.comment()
     }
 
     /// Whether this is a managed table.
@@ -198,11 +228,7 @@ impl ApiRequest for GetTable<'_> {
     type Response = Table;
 
     fn path(&self) -> PathArgs {
-        urlformat!(
-            "/catalog/v0/refs/{}/tables/{}",
-            self.at_ref,
-            self.name,
-        )
+        urlformat!("/catalog/v0/refs/{}/tables/{}", self.at_ref, self.name,)
     }
 
     fn query(&self) -> Option<impl Serialize> {
@@ -288,11 +314,7 @@ impl ApiRequest for DeleteTable<'_> {
     }
 
     fn path(&self) -> PathArgs {
-        urlformat!(
-            "/catalog/v0/branches/{}/tables/{}",
-            self.branch,
-            self.name,
-        )
+        urlformat!("/catalog/v0/branches/{}/tables/{}", self.branch, self.name,)
     }
 
     fn query(&self) -> Option<impl Serialize> {
