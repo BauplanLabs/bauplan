@@ -11,21 +11,22 @@ The agent works on an isolated data branch, validates its changes with [expectat
 Write-Audit-Publish pattern, and merges into the `main` branch only when the checks pass.
 Nothing reaches production data until it has been reviewed and merged by you.
 
-There are three ways to connect an assistant.
-They are not mutually exclusive: an assistant can use the MCP server for live access,
-run Skills for structured workflows, and read the documentation as context, all in the same session.
+There are three ways to use Bauplan with an assistant.
+They are not mutually exclusive: an assistant can run Skills for structured workflows, use the MCP server for live access,
+and read the documentation and a `CLAUDE.md` as context, all in the same session.
 
 ## Prerequisites
 
-- [Bauplan CLI installed](/tutorial/installation) with a configured API key;
-- Any AI coding tool that supports skills.
+- A Bauplan [API key](/tutorial/installation#obtain-your-api-key);
+- The [Bauplan CLI installed](/tutorial/installation) and configured with your key (unless you use the MCP server);
+- An AI assistant. Skills need one that supports plugins, such as Claude Code, Codex, or Cursor. The MCP server needs one that supports MCP.
 
 ## Skills
 
 Bauplan Skills are reusable, declarative workflow templates that guide an LLM through multi-step data
 engineering tasks using Bauplan. Each skill encodes the intent, constraints, and expected sequence of a
 workflow that is otherwise easy to get wrong, while still operating on the same Bauplan
-primitives: branches, runs, validation, and publish.
+primitives: branches, runs, validation, and merges.
 
 Skills are available at [github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills) and can be used in
 Claude Code, Codex, Cursor, and all major harnesses and IDEs. We recommend installing them from this repository so you can easily
@@ -110,13 +111,27 @@ The code behind the Bauplan MCP server is public and available at [https://githu
 
 Using an MCP server is a good way to let non-technical stakeholders interact with the data without intermediaries. We have addressed such a scenario in a [dedicated blog post](https://www.bauplanlabs.com/post/how-data-teams-use-bauplan-and-claude-to-answer-stakeholder-requests-without-losing-governance) where we show how one can integrate the Bauplan MCP server with Linear and Claude Code to query data and file requests to the data team.
 
-## Without MCP or Skills
+## Docs and repository context
 
-Bauplan can be used with any LLM or IDE assistant without installing an MCP server or a plugin. Because the whole platform is code-first (a [CLI](/reference/cli) and a [Python SDK](/reference/bauplan)) and the documentation is published in LLM-friendly formats, the assistant can read the docs. This is often the simplest starting point.
+The third way needs no plugin or server, and it works with any assistant.
+Bauplan is largely self-documenting: an assistant can run `bauplan --help` to find CLI commands and read the SDK's type signatures to call it correctly.
+However, it's sometimes useful to provide explicit guidelines beyond the API contract of the SDK/CLI. For that, give the assistant two things:
+
+- **The documentation in Markdown**: all our docs are in markdown so the agent can read them with ease and use the best practices we recommend.
+- **`CLAUDE.md`**: on top of the official docs, you might want to enforce additional rules and best practices. We [provide one](https://www.github.com/BauplanLabs/bauplan-skills/blob/main/CLAUDE.md) to get you started, but feel free to modify it based on your taste and conventions.
+
+### Feeding documentation to LLMs
+
+Bauplan's documentation is published in formats meant to be read by models, not just people:
+
+- **[llms.txt](/llms.txt)** is a single-page index of the documentation following the [llms.txt convention](https://llmstxt.org/), small enough to fit in a single context window.
+- **Markdown version of any page**: append `.md` to any documentation URL to get a plain Markdown version. For example, `/concepts/tables` becomes `/concepts/tables.md`. This is useful for pasting a specific page into an assistant as context.
+- **`Accept: text/markdown`**: an agent that sends this header gets the Markdown version of a page back from its normal URL, without knowing the `.md` convention.
+- **The full CLI and SDK reference as Markdown**: the entire API reference is available as two self-contained Markdown files, [`reference/cli.md`](https://docs.bauplanlabs.com/reference/cli.md) and [`reference/bauplan.md`](https://docs.bauplanlabs.com/reference/bauplan.md). Feeding these two files to an agent gives it the complete, authoritative syntax of every command and SDK method in one shot, which sharply reduces hallucinated flags and arguments when it generates code.
 
 ### Repository context
 
-A `CLAUDE.md` file at your project root tells the assistant how to work with Bauplan before it writes any code: how to authenticate, the branch-based workflow, CLI and SDK conventions, and the safety rules to follow. Drop the maintained version into your project with:
+A `CLAUDE.md` file at your project root tells the assistant how to work with Bauplan before it writes any code: how to authenticate, the branch-based workflow, CLI and SDK conventions, and the safety rules to follow. We maintain one to start from, which you can edit to match your team's conventions. Add it to your project with:
 
 ```sh
 curl -o CLAUDE.md https://raw.githubusercontent.com/BauplanLabs/bauplan-skills/main/CLAUDE.md
@@ -129,20 +144,17 @@ curl -o CLAUDE.md https://raw.githubusercontent.com/BauplanLabs/bauplan-skills/m
   file is required!
 </Note>
 
-### Feeding documentation to LLMs
-
-Bauplan's documentation is published in formats meant to be read by models, not just people:
-
-- **[llms.txt](/llms.txt)** is a single-page index of the documentation following the [llms.txt convention](https://llmstxt.org/), small enough to fit in a single context window.
-- **Markdown version of any page**: append `.md` to any documentation URL to get a plain Markdown version. For example, `/concepts/tables` becomes `/concepts/tables.md`. This is useful for pasting a specific page into an assistant as context.
-- **`Accept: text/markdown`**: an agent that sends this header gets the Markdown version of a page back from its normal URL, without knowing the `.md` convention.
-- **The full CLI and SDK reference as Markdown**: the entire API reference is available as two self-contained Markdown files, [`reference/cli.md`](https://docs.bauplanlabs.com/reference/cli.md) and [`reference/bauplan.md`](https://docs.bauplanlabs.com/reference/bauplan.md). Feeding these two files to an agent gives it the complete, authoritative syntax of every command and SDK method in one shot, which sharply reduces hallucinated flags and arguments when it generates code.
-
 ## Next steps
 
 Your agent is connected. Hand it the quick start and watch it work:
 
 > Create a data branch, scaffold a Bauplan project, run the pipeline against the titanic table, and show me the results.
+
+<Note>
+  The `titanic` table is one of the [sample datasets](/datasets) in the Bauplan
+  sandbox. If your lakehouse doesn't have it, name one of your own tables in the
+  prompt instead.
+</Note>
 
 The [Quick start](/tutorial/quick-start) walks through the same steps command by command, if you want to see what your agent did.
 
