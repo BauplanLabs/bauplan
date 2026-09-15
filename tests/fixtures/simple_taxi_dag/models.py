@@ -32,15 +32,44 @@ class NormalizedTripsSchema(TableSchema):
     """The trip columns normalize_data reads from query_model and passes through."""
 
     trip_time: Annotated[
-        Int64 | None, TableField(lineage=QueryModelSchema["trip_time"])
+        Int64 | None,
+        TableField(
+            lineage=QueryModelSchema["trip_time"],
+            doc="Trip duration, in seconds.",
+        ),
     ]
     pickup_datetime: Annotated[
         TimestampMicroUTC | None,
-        TableField(lineage=QueryModelSchema["pickup_datetime"]),
+        TableField(
+            lineage=QueryModelSchema["pickup_datetime"],
+            doc="Pickup time.\nAlways in UTC.",
+        ),
     ]
     trip_miles: Annotated[
-        Float64 | None, TableField(lineage=QueryModelSchema["trip_miles"])
+        Float64 | None,
+        TableField(
+            lineage=QueryModelSchema["trip_miles"],
+            doc="Distanza percorsa: è espressa in miglia.",
+        ),
     ]
+    dropoff_datetime: Annotated[
+        TimestampMicroUTC | None,
+        TableField(
+            lineage=QueryModelSchema["dropoff_datetime"],
+            doc=(
+                "The time the passengers left the vehicle.\n"
+                "Recorded in UTC by the vendor."
+            ),
+        ),
+    ]
+    base_passenger_fare: Annotated[
+        Float64 | None,
+        TableField(
+            lineage=QueryModelSchema["base_passenger_fare"],
+            doc="Fare\tbefore tolls and tax.",
+        ),
+    ]
+    tolls: Annotated[Float64 | None, TableField(lineage=QueryModelSchema["tolls"])]
 
 
 @bauplan.model(materialization_strategy="REPLACE")
