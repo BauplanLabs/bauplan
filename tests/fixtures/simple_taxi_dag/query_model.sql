@@ -1,4 +1,4 @@
--- bauplan: materialization_strategy = NONE
+-- bauplan: materialization_strategy = REPLACE
 -- bauplan: output_schema = QueryModelSchema
 SELECT
     pickup_datetime,

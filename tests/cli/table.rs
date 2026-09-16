@@ -112,9 +112,14 @@ fn get_column_documentation() {
         .args(["table", "get", "--ref", &branch.name, "normalize_data"])
         .assert()
         .success()
-        .stdout(contains(
-            "The trip columns normalize_data reads from query_model and passes through.",
-        ))
+        .stdout(lines(&[
+            "A \"no-op\" normalization of taxi data from `bauplan.query_model` that doesn't do",
+            "anything and materializes the data as-is into `bauplan.normalize_data` (results",
+            "should be identical to `bauplan.query_model`).",
+            "",
+            "The output schema, `NormalizedTripsSchema`, is also used as a projection schema on",
+            "`query_model`.",
+        ]))
         .stdout(lines(&[
             "COLUMN               TYPE         NULLABLE  DOC",
             "trip_time            long         true      Trip duration, in seconds.",
@@ -123,6 +128,33 @@ fn get_column_documentation() {
             "dropoff_datetime     timestamptz  true      The time the passengers left...",
             "base_passenger_fare  double       true      Fare    before tolls and tax.",
             "tolls                double       true      -",
+        ]))
+        .stderr(contains("some documentation was truncated"));
+
+    // We also check that SQL models have documentation persisted.
+    bauplan()
+        .args(["table", "get", "--ref", &branch.name, "query_model"])
+        .assert()
+        .success()
+        .stdout(lines(&[
+            "Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.",
+            "",
+            "+ ---------- +   QueryModelSchema    + ----------- +",
+            "| taxi_fhvhv | --------------------> | query_model |",
+            "+ ---------- +                       + ----------- +",
+        ]))
+        .stdout(lines(&[
+            "COLUMN               TYPE         NULLABLE  DOC",
+            "pickup_datetime      timestamptz  true      Pickup time, UTC timezone, fi...",
+            "dropoff_datetime     timestamptz  true      -",
+            "PULocationID         long         true      -",
+            "DOLocationID         long         true      -",
+            "trip_miles           double       true      -",
+            "trip_time            long         true      -",
+            "base_passenger_fare  double       true      -",
+            "tolls                double       true      -",
+            "sales_tax            double       true      -",
+            "tips                 double       true      -",
         ]))
         .stderr(contains("some documentation was truncated"));
 }
