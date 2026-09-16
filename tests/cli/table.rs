@@ -83,7 +83,7 @@ fn get_json_output() {
 }
 
 #[test]
-fn get_column_documentation() {
+fn get_documentation() {
     let branch = test_branch("cli_table_get_docs");
 
     bauplan()
@@ -132,6 +132,71 @@ fn get_column_documentation() {
         .stderr(contains("some documentation was truncated"));
 
     // We also check that SQL models have documentation persisted.
+    bauplan()
+        .args(["table", "get", "--ref", &branch.name, "query_model"])
+        .assert()
+        .success()
+        .stdout(lines(&[
+            "Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.",
+            "",
+            "+ ---------- +   QueryModelSchema    + ----------- +",
+            "| taxi_fhvhv | --------------------> | query_model |",
+            "+ ---------- +                       + ----------- +",
+        ]))
+        .stdout(lines(&[
+            "COLUMN               TYPE         NULLABLE  DOC",
+            "pickup_datetime      timestamptz  true      Pickup time, UTC timezone, fi...",
+            "dropoff_datetime     timestamptz  true      -",
+            "PULocationID         long         true      -",
+            "DOLocationID         long         true      -",
+            "trip_miles           double       true      -",
+            "trip_time            long         true      -",
+            "base_passenger_fare  double       true      -",
+            "tolls                double       true      -",
+            "sales_tax            double       true      -",
+            "tips                 double       true      -",
+        ]))
+        .stderr(contains("some documentation was truncated"));
+
+    // Run the same fixture but with some documentation removed
+    bauplan()
+        .args([
+            "run",
+            "--ref",
+            &branch.name,
+            "--no-cache",
+            "-p",
+            "tests/fixtures/simple_taxi_dag_cleardocs",
+        ])
+        .assert()
+        .success();
+
+    // We check that the updated python model writes new documentation.
+    bauplan()
+        .args(["table", "get", "--ref", &branch.name, "normalize_data"])
+        .assert()
+        .success()
+        .stdout(lines(&[
+            "A projection schema applied to `bauplan.query_model` but also representing the output",
+            "schema of the model `normalize_data`.",
+            "",
+            "",
+            "+ ----------- +   NormalizedTripsSchema    + -------------- +",
+            "| query_model | -------------------------> | normalize_data |",
+            "+ ----------- +                            + -------------- +",
+        ]))
+        .stdout(lines(&[
+            "COLUMN               TYPE         NULLABLE  DOC",
+            "trip_time            long         true      -",
+            "pickup_datetime      timestamptz  true      -",
+            "trip_miles           double       true      -",
+            "dropoff_datetime     timestamptz  true      -",
+            "base_passenger_fare  double       true      -",
+            "tolls                double       true      -",
+        ]))
+        .stderr(contains("some documentation was truncated").not());
+
+    // We check that the SQL model documentation is not overwritten if it no longer materializes.
     bauplan()
         .args(["table", "get", "--ref", &branch.name, "query_model"])
         .assert()
