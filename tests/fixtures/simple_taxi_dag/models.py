@@ -14,9 +14,23 @@ from bauplan import (
 
 
 class QueryModelSchema(TableSchema):
-    """The columns query_model selects from taxi_fhvhv."""
+    """
+    Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.
 
-    pickup_datetime: TimestampMicroUTC | None
+    + ---------- +   QueryModelSchema    + ----------- +
+    | taxi_fhvhv | --------------------> | query_model |
+    + ---------- +                       + ----------- +
+    """
+
+    pickup_datetime: Annotated[
+        TimestampMicroUTC | None,
+        TableField(
+            doc=(
+                "Pickup time, UTC timezone, filtered in the range:\n"
+                "\t[2023-01-01T11:00:00-05:00, 2023-01-02T11:10:00-05:00)"
+            )
+        ),
+    ]
     dropoff_datetime: TimestampMicroUTC | None
     PULocationID: Int64 | None
     DOLocationID: Int64 | None
@@ -29,7 +43,15 @@ class QueryModelSchema(TableSchema):
 
 
 class NormalizedTripsSchema(TableSchema):
-    """The trip columns normalize_data reads from query_model and passes through."""
+    """
+    A projection schema applied to `bauplan.query_model` but also representing the output
+    schema of the model `normalize_data`.
+
+
+    + ----------- +   NormalizedTripsSchema    + -------------- +
+    | query_model | -------------------------> | normalize_data |
+    + ----------- +                            + -------------- +
+    """
 
     trip_time: Annotated[
         Int64 | None,
@@ -80,6 +102,15 @@ def normalize_data(
         Model("query_model", projection_schema=NormalizedTripsSchema),
     ],
 ) -> Annotated[pyarrow.Table, NormalizedTripsSchema]:
+    """
+    A "no-op" normalization of taxi data from `bauplan.query_model` that doesn't do
+    anything and materializes the data as-is into `bauplan.normalize_data` (results
+    should be identical to `bauplan.query_model`).
+
+    The output schema, `NormalizedTripsSchema`, is also used as a projection schema on
+    `query_model`.
+    """
+
     print("===> Normalizing model <===")
     print("num_rows=", data.num_rows)
     return data
