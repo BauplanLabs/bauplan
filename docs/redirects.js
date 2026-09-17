@@ -36,27 +36,35 @@ const redirects = [
   // Legacy nested warehouse paths
   {
     from: "/integrations/warehouses_lakehouses/snowflake/snowflake_inbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-inbound",
+    to: "/integrations/warehouses-lakehouses/snowflake",
   },
   {
-    from: "/integrations/warehouses_lakehouses/snowflake/snowflake_outbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-outbound",
-  },
-  {
-    from: "/integrations/warehouses_lakehouses/big_query/big_query_inbound",
-    to: "/integrations/warehouses-lakehouses/big-query-inbound",
-  },
-  {
-    from: "/integrations/warehouses_lakehouses/big_query/big_query_outbound",
-    to: "/integrations/warehouses-lakehouses/big-query-outbound",
+    from: "/integrations/warehouses-lakehouses/snowflake-inbound",
+    to: "/integrations/warehouses-lakehouses/snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/snowflake",
-    to: "/integrations/warehouses-lakehouses/snowflake-inbound",
+    to: "/integrations/warehouses-lakehouses/snowflake",
+  },
+  {
+    from: "/integrations/warehouses_lakehouses/big_query/big_query_inbound",
+    to: "/integrations/warehouses-lakehouses/big-query",
+  },
+  {
+    from: "/integrations/warehouses-lakehouses/big-query-inbound",
+    to: "/integrations/warehouses-lakehouses/big-query",
   },
   {
     from: "/integrations/warehouses_lakehouses/big_query",
-    to: "/integrations/warehouses-lakehouses/big-query-inbound",
+    to: "/integrations/warehouses-lakehouses/big-query",
+  },
+  {
+    from: "/integrations/warehouses_lakehouses/snowflake_inbound",
+    to: "/integrations/warehouses-lakehouses/snowflake",
+  },
+  {
+    from: "/integrations/warehouses_lakehouses/big_query_inbound",
+    to: "/integrations/warehouses-lakehouses/big-query",
   },
 
   // Legacy tutorial paths
@@ -93,22 +101,6 @@ const redirects = [
   {
     from: "/integrations/warehouses_lakehouses",
     to: "/integrations/warehouses-lakehouses",
-  },
-  {
-    from: "/integrations/warehouses_lakehouses/snowflake_inbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-inbound",
-  },
-  {
-    from: "/integrations/warehouses_lakehouses/snowflake_outbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-outbound",
-  },
-  {
-    from: "/integrations/warehouses_lakehouses/big_query_inbound",
-    to: "/integrations/warehouses-lakehouses/big-query-inbound",
-  },
-  {
-    from: "/integrations/warehouses_lakehouses/big_query_outbound",
-    to: "/integrations/warehouses-lakehouses/big-query-outbound",
   },
   {
     from: "/integrations/warehouses_lakehouses/gcs",

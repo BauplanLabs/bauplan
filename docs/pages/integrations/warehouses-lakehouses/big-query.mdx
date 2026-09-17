@@ -1,12 +1,7 @@
 ---
-title: "BigQuery (Inbound)"
+title: "BigQuery"
 description: "Query Bauplan-managed Iceberg tables from BigQuery. Register them as external tables over S3 via a cross-cloud connection, with no data copy."
 ---
-
-<Warning>
-  {" "}
-  Deprecated in 0.3: contact us for the new upcoming connectors
-</Warning>
 
 Connect BigQuery to Bauplan by creating external Iceberg tables in BigQuery that point to your Bauplan tables and S3 storage. This lets you query Bauplan-managed data from BigQuery without copying it.
 
@@ -31,7 +26,7 @@ BigQuery uses a cross-cloud connection to read objects in your S3 bucket, and th
 ## Prerequisites
 
 - An S3 bucket that stores your Bauplan table data and Iceberg metadata.
-- AWS account with permissions to create IAM policies and roles on the Bauplan bucket.
+- An account with permissions to create policies and roles on the Bauplan bucket.
 - BigQuery role with privileges to create external connections.
 
 ## Step 1. create the AWS connection

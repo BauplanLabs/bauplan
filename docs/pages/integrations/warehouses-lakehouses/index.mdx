@@ -7,10 +7,11 @@ import DocCardList from "@theme/DocCardList";
 import snowflakeIcon from "@site/static/img/logos/snowflake.png";
 import bigqueryIcon from "@site/static/img/logos/bigquery.png";
 import gcsIcon from "@site/static/img/logos/gcs.png";
+import cloudflareIcon from "@site/static/img/logos/cloudflare.png";
 import bauplanIcon from "@site/static/img/logos/bauplan.png";
 
-This section explains how to connect Bauplan‑managed Iceberg tables in your object storage to other
-platforms your teams already use, such as Databricks Unity Catalog, AWS Glue and Athena.
+This section explains how to connect Bauplan‑managed Iceberg tables to other
+platforms your teams already use, such as Snowflake, BigQuery, Databricks Unity Catalog, AWS Glue and Athena.
 
 Bauplan writes tables in Apache Iceberg format and exposes a standards-compliant Iceberg REST
 catalog. External engines discover tables through that catalog and read files directly from your
@@ -18,10 +19,9 @@ bucket with their own cloud credentials.
 
 ## Integration options
 
-:::warning Outbound connectors unsupported in bauplan v0.3
-  An outbound connector allows a Bauplan pipeline to pull external tables (from Snowflake
-  or BigQuery) into the pipeline. Beginning with the `v0.3.0` CLI/SDK release
-  (`bauplan~=0.3.0`), Bauplan's new pipeline DSL does not support outbound connectors.
+:::warning Caution
+  An outbound connector allows a Bauplan pipeline to pull external tables (for instance from Snowflake
+  or BigQuery) into the pipeline. Beginning with the `v0.3.0` CLI/SDK release, Bauplan's new pipeline DSL does not support outbound connectors.
 :::
 
 - **External catalog:** plug-and-play, auto-discovery, recommended whenever supported.
@@ -35,10 +35,10 @@ Bauplan ensures that whichever route you take, your tables remain in open format
 
 Most modern engines now support the **Iceberg REST catalog**. This lets them attach directly to Bauplan and see all namespaces and tables, with no manual refresh required.
 
-- **Bauplan catalog endpoint:** `https://api.use1.aprod.bauplanlabs.com/iceberg`
-- **Auth:** `Bearer <token>` with a read-only Bauplan user
+- **Bauplan catalog endpoint:** `https://api.use1.aprod.bauplanlabs.com/iceberg`.
+- **Auth:** `Bearer <token>` with a read-only Bauplan user.
 {/* vale Google.Parens = NO */}
-- **Storage:** Your object store (usually Amazon S3). Engines authenticate with their own IAM/service accounts.
+- **Storage:** Your object store. Engines authenticate with their own IAM/service accounts.
 {/* vale Google.Parens = YES */}
 - **Engines supported:** Snowflake Open Catalog, Databricks Unity Catalog, BigQuery, Trino, Athena, Spark, DuckDB, and others with native Iceberg connectors.
 
@@ -60,7 +60,7 @@ This approach works everywhere, but requires more operational overhead than cata
   items={[
     {
       type: "link",
-      href: "/integrations/warehouses-lakehouses/snowflake-inbound",
+      href: "/integrations/warehouses-lakehouses/snowflake",
       label: "Bauplan → Snowflake",
       icon: bauplanIcon,
       description:
@@ -68,7 +68,7 @@ This approach works everywhere, but requires more operational overhead than cata
     },
     {
       type: "link",
-      href: "/integrations/warehouses-lakehouses/big-query-inbound",
+      href: "/integrations/warehouses-lakehouses/big-query",
       label: "Bauplan → BigQuery",
       icon: bauplanIcon,
       description:
@@ -80,6 +80,13 @@ This approach works everywhere, but requires more operational overhead than cata
       label: "Google Cloud Storage",
       icon: gcsIcon,
       description: "Sync GCS buckets with Bauplan via AWS DataSync",
+    },
+    {
+      type: "link",
+      href: "/integrations/warehouses-lakehouses/r2-cloudflare-object-storage",
+      label: "R2 - Cloudflare object storage",
+      icon: cloudflareIcon,
+      description: "Connect your Cloudflare R2 bucket to Bauplan",
     },
   ]}
 />
