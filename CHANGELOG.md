@@ -1,4 +1,10 @@
 
+## [0.3.2] - 2026-09-17
+
+### New Features
+
+- Extend `table get` CLI command (fa5f66e8bd1737a5439e325d15c2325e712452fd)
+
 ## [0.3.1] - 2026-09-10
 
 ### Bugfixes
