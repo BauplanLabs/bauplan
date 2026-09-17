@@ -8,7 +8,7 @@ import TabItem from "@theme/TabItem";
 
 In Bauplan, **models** are the core unit of data manipulation. They are
 declarative functions written in Python or SQL that transform one or
-more input tables into a single output table. Models are designed to
+more input tables into a **single** output table. Models are designed to
 provide a straightforward way to express data transformations without
 dealing with containerization, data movement and runtime configuration.
 
@@ -18,8 +18,8 @@ models depend on the outputs of upstream ones.
 
 ## Anatomy of a Bauplan Model
 
-A typical Python model consists of two decorators `@bauplan.model()` and
-`@bauplan.python()` and a function.
+A typical Python model consists of two decorators, `@bauplan.model()` and
+`@bauplan.python()`, and a function.
 
 ```python
 from typing import Annotated
@@ -51,7 +51,7 @@ def my_model(
 
 Bauplan Models are **fully declarative**, allowing for explicit column
 selection and filter pushdown. In practice, this means your code only
-requires the name of the inputs and, optionally, the desired columns and
+requires the name of the inputs with the desired columns and, optionally,
 filters.
 
 For example, you don't need to specify whether `input_table` is an Iceberg Table, PyArrow
@@ -60,26 +60,42 @@ portable, easier to reproduce across environments, and simpler to maintain.
 
 :::note Filters only apply to models from the lakehouse catalog
 
-`filter` only works on an input that reads from the catalog. Filtering an input that is
-another model in the same pipeline is not supported, and the planner rejects it.
+`filter` can only be applied to an input that is read directly from the catalog.
+If the input is another model in the same pipeline, the DAG is rejected.
 
-For example, `my_model` applies a filter on `timestamp` on
-`bauplan.Model('input_table')`. This is valid because `input_table` is not defined in the
-pipeline and must come from the catalog. It is not supported for a new model,
-`other_model`, to take `my_model` as an input and apply a filter to it.
+In `my_model` the filter is valid: `input_table` is not defined anywhere in the
+pipeline, so it must be a table in the catalog.
 
 ```python type:ignore
 @bauplan.model()
-@bauplan.python('3.11')
+@bauplan.python('3.12')
+def my_model(
+    data: Annotated[
+        pyarrow.Table,
+        bauplan.Model('input_table', filter="timestamp <= '2022-12-16'")
+    ]
+) -> pyarrow.Table:
+    return data
+```
+
+In `other_model` it is not: `my_model` is a node of the same DAG, not a catalog
+table.
+
+```python type:ignore
+@bauplan.model()
+@bauplan.python('3.12')
 def other_model(
     data: Annotated[
         pyarrow.Table,
-        # filters can only be applied to models from the catalog
-        bauplan.Model("my_model", filter="timestamp <= '2022-12-16'")
+        # rejected: my_model is a pipeline node, not a catalog table
+        bauplan.Model('my_model', filter="timestamp <= '2022-12-16'")
     ]
-) -> Annotated[pyarrow.Table, SelectedInputColumns]:
+) -> pyarrow.Table:
     return data
 ```
+
+To get the same result, filter inside the body of `my_model` before returing it, or filter `data`
+at the top of `other_model`.
 
 :::
 
@@ -90,12 +106,12 @@ cloud as its own isolated environment (similar to Function-as-a-Service
 frameworks, like AWS Lambda). To isolate environments, Bauplan uses a
 optimized version of Docker containers.
 
-Each model in Bauplan runs in its own isolated Python environment -
-defined by the interpreter version and uv dependencies you declare in
+Each model in Bauplan runs in its own isolated Python environment 
+defined by the interpreter version and dependencies you declare in
 code. They are expressed entirely in code using the decorator
 `@bauplan.python()`. This decorator specifies the Python interpreter
 version (for example, `3.11` or `3.12`) and any additional libraries and their
-versions using uv.
+versions.
 
 ```python
 #! from typing import Annotated
@@ -104,9 +120,9 @@ class ColOne(bauplan.TableSchema):
 
     col_1: bauplan.String
 
-@bauplan.model()
-# specify the package and version - in this case Pandas 2.2.0
+# specify the package and version, in this case Pandas 2.2.0
 @bauplan.python('3.11', pip={'pandas': '2.2.0'})
+@bauplan.model()
 def my_model(
     data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
 ) -> Annotated[pyarrow.Table, ColOne]:
@@ -221,6 +237,7 @@ Requirements:
 - The filter supports `=`, `!=`, `<`, `>`, `<=`, `>=`, `AND`, `OR`, `IN`, and `NOT IN`
   with column references and literal values.
   Function calls (`YEAR()`, `CAST()`, `DATE_TRUNC()`, etc.) and `BETWEEN` are not supported.
+- The filter also supports the use of [parameters](/common-scenarios/parameterized-runs).
 
 ## Using SQL
 
@@ -228,14 +245,9 @@ Many transformations, especially filtering, joining, and basic
 aggregations, are easier in SQL than in Python.
 
 There are two ways to use SQL in a model. A **SQL model** lives in its own `.sql` file as
-a single, pure SQL query executed by a SQL engine of Bauplan's choice. Inside the Python
+a single, pure SQL query executed by the Bauplan query engine. Inside the Python
 function of a **Python model**, SQL can be executed using an embedded SQL engine of your
-choice such as DuckDB or DataFusion.
-
-In either approach, Bauplan treats the model's output the same - as an Arrow Table - so
-downstream models don't need to know which language produced it. This also gives you
-flexibility in handling the query results: a Python model can run SQL directly in its
-function body, you can pass a SQL model as an input to a separate Python model, or both.
+choice such as DuckDB.
 
 <Tabs>
   <TabItem value="sql" label="SQL file">
@@ -250,9 +262,8 @@ class CountByColOne(bauplan.TableSchema):
     count: bauplan.Int64
 ```
 
-The query lives in a `.sql` file. The optional `output_schema` header ties the query to
-that schema, the way the return annotation does in a Python model. If `output_schema` is
-not specified, then no extra type validation is asserted on the SQL results.
+The query lives in `my_model.sql`. The `output_schema` header ties the query to
+that schema, the way the return annotation does in a Python model.
 
 ```sql title="my_model.sql"
 -- bauplan: output_schema=CountByColOne
@@ -262,9 +273,9 @@ WHERE timestamp >= '2022-12-15T00:00:00-05:00'
 GROUP BY col_1
 ```
 
-Bauplan discovers `.sql` files in the project root and takes the model name from the
-filename, so this query is a model named `my_model`. Downstream models read it like any
-other node, with `bauplan.Model('my_model')`.
+By default, Bauplan discovers `.sql` files under the project root and derives the
+model name from the filename, so this query defines a model named `my_model`.
+Downstream models reference it like any other node, with `bauplan.Model('my_model')`.
 
 See [SQL files](/common-scenarios/sql-files) for the other header options
 and for including `.sql` files in subdirectories below the project root.
@@ -334,8 +345,8 @@ bauplan run --dry-run --preview head -p <path-to-project>
 1. **Model Inputs**
 
    For each model that reads from the lakehouse catalog:
-   - Define a projection schema to avoid reading unnecessary columns.
-   - Define a filter when appropriate to reduce reading unnecessary data.
+   - define a projection schema to avoid reading unnecessary columns.
+   - define a filter when appropriate to reduce reading unnecessary data.
 
 2. **Semantic Layer**
 
@@ -402,7 +413,7 @@ bauplan run --dry-run --preview head -p <path-to-project>
        )
    ```
 
-3. **Model environment Management**
+3. **Model Environment Management**
    - Include only minimal dependencies.
    - Pin specific dependency versions, using `==`, for consistency.
 
