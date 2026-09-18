@@ -22,16 +22,36 @@ const redirects = [
     to: "/common-scenarios/parameterized-runs#secrets",
   },
 
-  // LLMs -> Agents redirects
-  { from: "/llms", to: "/agents/overview" },
-  { from: "/llms/quick_start", to: "/agents/overview" },
-  { from: "/llms/explore_data", to: "/agents/overview" },
-  { from: "/llms/mcp_server", to: "/agents/mcp" },
-  { from: "/agents", to: "/agents/overview" },
-  { from: "/llms/tutorial", to: "/agents/skills" },
-  { from: "/llms/tutorial/create", to: "/agents/skills" },
-  { from: "/llms/tutorial/publish", to: "/agents/skills" },
-  { from: "/llms/tutorial/test", to: "/agents/skills" },
+  // The parallel /agents tree and its older /llms URLs both collapse into the
+  // single setup page. Each entry also produces the .md stub agents follow.
+  { from: "/llms", to: "/tutorial/connect-your-agent" },
+  { from: "/llms/quick_start", to: "/tutorial/connect-your-agent" },
+  {
+    from: "/llms/explore_data",
+    to: "/tutorial/connect-your-agent#available-skills",
+  },
+  {
+    from: "/llms/mcp_server",
+    to: "/tutorial/connect-your-agent#mcp-server",
+  },
+  { from: "/agents", to: "/tutorial/connect-your-agent" },
+  { from: "/llms/tutorial", to: "/tutorial/connect-your-agent#skills" },
+  {
+    from: "/llms/tutorial/create",
+    to: "/tutorial/connect-your-agent#skills",
+  },
+  {
+    from: "/llms/tutorial/publish",
+    to: "/tutorial/connect-your-agent#skills",
+  },
+  { from: "/llms/tutorial/test", to: "/tutorial/connect-your-agent#skills" },
+  { from: "/agents/overview", to: "/tutorial/connect-your-agent" },
+  { from: "/agents/skills", to: "/tutorial/connect-your-agent#skills" },
+  { from: "/agents/mcp", to: "/tutorial/connect-your-agent#mcp-server" },
+  {
+    from: "/agents/context",
+    to: "/tutorial/connect-your-agent#without-mcp-or-skills",
+  },
 
   // Legacy nested warehouse paths
   {

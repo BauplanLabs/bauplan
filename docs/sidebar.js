@@ -2,13 +2,14 @@ import sdkPages from "./pages/reference/_sidebar.json";
 
 export default {
   documentationSidebar: [
+    "tutorial/index",
     {
       type: "category",
       label: "Getting Started",
       collapsed: true,
       items: [
-        "tutorial/index",
         "tutorial/installation",
+        "tutorial/connect-your-agent",
         {
           type: "category",
           label: "Quick Start",
@@ -19,12 +20,6 @@ export default {
           items: ["tutorial/data-branches", "tutorial/import"],
         },
       ],
-    },
-    {
-      type: "category",
-      label: "Agents",
-      collapsed: true,
-      items: ["agents/overview", "agents/skills", "agents/mcp", "agents/context"],
     },
     {
       type: "category",

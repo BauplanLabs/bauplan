@@ -1,0 +1,165 @@
+---
+title: "Connect your agent"
+description: "Connect an AI agent to your Bauplan lakehouse: install Skills for Claude Code, Codex, and Cursor, point an assistant at the MCP server, or feed any LLM the docs and a CLAUDE.md."
+---
+
+Bauplan is driven entirely by code, which makes it a natural fit for AI agents. The whole lakehouse is
+programmable through a [CLI](/reference/cli) and a [Python SDK](/reference/bauplan).
+
+[Git-for-data branching](/concepts/git-for-data/) is what makes it safe to hand that control to an agent.
+The agent works on an isolated data branch, validates its changes with [expectations](/concepts/expectations) and the
+Write-Audit-Publish pattern, and merges into the `main` branch only when the checks pass.
+Nothing reaches production data until it has been reviewed and merged by you.
+
+There are three ways to use Bauplan with an assistant.
+They are not mutually exclusive: an assistant can run Skills for structured workflows, use the MCP server for live access,
+and read the documentation and a `CLAUDE.md` as context, all in the same session.
+
+## Prerequisites
+
+- A Bauplan [API key](/tutorial/installation#obtain-your-api-key);
+- The [Bauplan CLI installed](/tutorial/installation) and configured with your key (unless you use the MCP server);
+- An AI assistant. Skills need one that supports plugins, such as Claude Code, Codex, or Cursor. The MCP server needs one that supports MCP.
+
+## Skills
+
+Bauplan Skills are reusable, declarative workflow templates that guide an LLM through multi-step data
+engineering tasks using Bauplan. Each skill encodes the intent, constraints, and expected sequence of a
+workflow that is otherwise easy to get wrong, while still operating on the same Bauplan
+primitives: branches, runs, validation, and merges.
+
+Skills are available at [github.com/BauplanLabs/bauplan-skills](https://github.com/BauplanLabs/bauplan-skills) and can be used in
+Claude Code, Codex, Cursor, and all major harnesses and IDEs. We recommend installing them from this repository so you can easily
+update to the latest version.
+
+<YouTube
+  id="TD7gME7JnZw"
+  title="Installing Bauplan Skills for Different Agent Harnesses"
+/>
+
+### Claude Code
+
+Install Bauplan Skills in Claude Code by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=111), or by running:
+
+```sh
+claude plugin marketplace add BauplanLabs/bauplan-skills
+claude plugin install bauplan@bauplan-skills
+```
+
+To update to the latest version, run:
+
+```sh
+claude plugin update bauplan@bauplan-skills
+```
+
+### Codex
+
+Install Bauplan Skills in Codex by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=180), or by running:
+
+```sh
+codex plugin marketplace add BauplanLabs/bauplan-skills
+codex plugin add bauplan@bauplan-skills
+```
+
+To update to the latest version, run:
+
+```sh
+codex plugin marketplace upgrade bauplan-skills
+```
+
+### Cursor
+
+Install Bauplan Skills in Cursor by following the instructions in this [video](https://youtu.be/TD7gME7JnZw?t=248), or by going to **Settings > Customize > Plugins > Add > From GitHub Repository**, entering `https://github.com/BauplanLabs/bauplan-skills`, and clicking **Add**.
+
+To update to the latest version, click **Refresh**.
+
+### Available skills
+
+Once installed, the following skills are available as slash commands:
+
+| Skill                                                      | Description                                                                                                                                                                                          |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [**Data Pipeline**](https://youtu.be/Qt_jKxC0jZw)          | Create a new pipeline project from scratch with proper setup, model definitions, source validation, and execution on a development branch.                                                           |
+| [**Safe Ingestion**](https://youtu.be/YPEACHXYQOY)         | Ingest data from S3 using the Write-Audit-Publish pattern: the agent loads data on an isolated branch, validates it, and merges only after quality checks pass.                                      |
+| [**Explore Data**](https://youtu.be/Md4TFZxIZEM)           | Structured, read-only investigation of lakehouse data through schema inspection, sampling, profiling, and join discovery. Produces a `summary.md` report.                                            |
+| [**Data Assessment**](https://youtu.be/VMDIIp_gA6Q)        | Evaluate whether lakehouse data can answer a business question. Maps concepts to tables, profiles quality, and delivers a feasibility verdict.                                                       |
+| [**Data Quality Checks**](https://youtu.be/cVrjdTJ1jug)    | Generate quality check code as pipeline expectations with `@bauplan.expectation` and ingestion validation functions covering completeness, uniqueness, validity, freshness, consistency, and volume. |
+| [**Debug and Fix Pipeline**](https://youtu.be/tt7FN26dvhA) | Structured diagnostics for failed jobs: pins the failure, collects evidence, identifies root cause, and applies a minimal fix with checkpoint reports.                                               |
+| **Migrate to Typed SDK**                                   | Migrate existing Bauplan projects from the old SDK style (0.1.x or 0.2.x) to the typed SDK (0.3 and later).                                                                                          |
+
+## MCP server
+
+The Bauplan MCP Server is a [Model Context Protocol](https://modelcontextprotocol.io/docs/getting-started/intro) integration that gives AI assistants direct access to your Bauplan lakehouse. It works with any MCP-capable assistant, from chat apps like Claude Desktop and the ChatGPT app to coding agents like Claude Code, Cursor, and Codex.
+
+To connect to the Bauplan MCP server, point your assistant at Bauplan's hosted MCP endpoint `https://mcp.use1.aprod.bauplanlabs.com/mcp` and authenticate with your Bauplan API key.
+
+### What an assistant can do
+
+Through the MCP server, an assistant can:
+
+- Inspect tables and schemas, and run queries;
+- Manage branches, commits, namespaces, and tags;
+- Create, import, and revert tables;
+- Run Bauplan projects and pipelines;
+- Track, inspect, and cancel jobs.
+
+Watch our [demo](https://youtu.be/lUXP89i3TOc?t=98) to see an AI assistant debug a data pipeline.
+
+### Resources
+
+The code behind the Bauplan MCP server is public and available at [https://github.com/BauplanLabs/bauplan-mcp-server](https://github.com/BauplanLabs/bauplan-mcp-server).
+
+Using an MCP server is a good way to let non-technical stakeholders interact with the data without intermediaries. We have addressed such a scenario in a [dedicated blog post](https://www.bauplanlabs.com/post/how-data-teams-use-bauplan-and-claude-to-answer-stakeholder-requests-without-losing-governance) where we show how one can integrate the Bauplan MCP server with Linear and Claude Code to query data and file requests to the data team.
+
+## Docs and repository context
+
+The third way needs no plugin or server, and it works with any assistant.
+Bauplan is largely self-documenting: an assistant can run `bauplan --help` to find CLI commands and read the SDK's type signatures to call it correctly.
+However, it's sometimes useful to provide explicit guidelines beyond the API contract of the SDK/CLI. For that, give the assistant two things:
+
+- **The documentation in Markdown**: all our docs are in markdown so the agent can read them with ease and use the best practices we recommend.
+- **`CLAUDE.md`**: on top of the official docs, you might want to enforce additional rules and best practices. We [provide one](https://www.github.com/BauplanLabs/bauplan-skills/blob/main/CLAUDE.md) to get you started, but feel free to modify it based on your taste and conventions.
+
+### Feeding documentation to LLMs
+
+Bauplan's documentation is published in formats meant to be read by models, not just people:
+
+- **[llms.txt](/llms.txt)** is a single-page index of the documentation following the [llms.txt convention](https://llmstxt.org/), small enough to fit in a single context window.
+- **Markdown version of any page**: append `.md` to any documentation URL to get a plain Markdown version. For example, `/concepts/tables` becomes `/concepts/tables.md`. This is useful for pasting a specific page into an assistant as context.
+- **`Accept: text/markdown`**: an agent that sends this header gets the Markdown version of a page back from its normal URL, without knowing the `.md` convention.
+- **The full CLI and SDK reference as Markdown**: the entire API reference is available as two self-contained Markdown files, [`reference/cli.md`](https://docs.bauplanlabs.com/reference/cli.md) and [`reference/bauplan.md`](https://docs.bauplanlabs.com/reference/bauplan.md). Feeding these two files to an agent gives it the complete, authoritative syntax of every command and SDK method in one shot, which sharply reduces hallucinated flags and arguments when it generates code.
+
+### Repository context
+
+A `CLAUDE.md` file at your project root tells the assistant how to work with Bauplan before it writes any code: how to authenticate, the branch-based workflow, CLI and SDK conventions, and the safety rules to follow. We maintain one to start from, which you can edit to match your team's conventions. Add it to your project with:
+
+```sh
+curl -o CLAUDE.md https://raw.githubusercontent.com/BauplanLabs/bauplan-skills/main/CLAUDE.md
+```
+
+<Note>
+  Depending on the AI coding tool of your choice, this file might follow a
+  different naming convention. For instance, both Codex and Cursor adopt
+  `AGENTS.md` instead of `CLAUDE.md`. No modification other than renaming the
+  file is required!
+</Note>
+
+## Next steps
+
+Your agent is connected. Hand it the quick start and watch it work:
+
+> Create a data branch, scaffold a Bauplan project, run the pipeline against the titanic table, and show me the results.
+
+<Note>
+  The `titanic` table is one of the [sample datasets](/datasets) in the Bauplan
+  sandbox. If your lakehouse doesn't have it, name one of your own tables in the
+  prompt instead.
+</Note>
+
+The [Quick start](/tutorial/quick-start) walks through the same steps command by command, if you want to see what your agent did.
+
+## Learn more
+
+The [Bauplan blog](https://www.bauplanlabs.com/blog) covers running AI and agents safely on your data, alongside technical deep-dives on the platform. The team also publishes peer-reviewed research on the data systems behind Bauplan and their application to AI and agentic workflows. Find our latest results on [Google Scholar](https://scholar.google.com/scholar?hl=en&as_sdt=0%2C5&q=bauplan+lakehouse&btnG=).
+
+For long-form talks and demos, see [our YouTube channel](https://www.youtube.com/@bauplan_labs).
