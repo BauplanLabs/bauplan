@@ -1,7 +1,7 @@
 -- bauplan: materialization_strategy = NONE
 -- bauplan: output_schema = TaxiModelSchema
 SELECT
-    pickup_datetime,
+    pickup_datetime AS ".pickup datetime.",
     dropoff_datetime,
     PULocationID,
     DOLocationID,
