@@ -13,6 +13,7 @@ from bauplan import (
     String,
     Binary,
     TimestampMicroUTC,
+    TimestampNanoUTC,
 )
 
 
@@ -20,7 +21,8 @@ class TaxiModelSchema(bauplan.TableSchema):
     """Schema demonstrating all supported field types."""
 
     pickup_datetime: Annotated[
-        TimestampMicroUTC | None, TableField(doc="Pickup time for the ride")
+        TimestampMicroUTC | None,
+        TableField(name=".pickup datetime.", doc="Pickup time for the ride"),
     ]
     dropoff_datetime: Annotated[
         TimestampMicroUTC | None, TableField(doc="Dropoff time for the ride")
@@ -52,7 +54,10 @@ class TripsPushdown(bauplan.TableSchema):
     DOLocationID: Annotated[
         Int64 | None, TableField(doc="Identifier for dropoff location")
     ]
-    pickup_datetime: TimestampMicroUTC | None
+    pickup_datetime: Annotated[
+        TimestampMicroUTC | None,
+        TableField(name=".pickup datetime."),
+    ]
     trip_miles: Annotated[Float64 | None, TableField(doc="Miles traveled for a trip")]
     trip_time: Annotated[Int64 | None, TableField(doc="Trip duration (in seconds) ")]
 
@@ -71,7 +76,11 @@ class LocationsPushdown(bauplan.TableSchema):
 class FullTypesSchema(bauplan.TableSchema):
     """Schema demonstrating all supported field types."""
 
-    pickup_datetime: TimestampMicroUTC | None
+    # Widen from microseconds to nanoseconds to also test type conversion, otherwise its
+    # skipped if the types are the same.
+    pickup_datetime: Annotated[
+        TimestampNanoUTC | None, TableField(name=".pickup datetime.")
+    ]
     pickup_location: Annotated[
         Int64 | None, bauplan.TableField(doc="ID of a trip's pickup location")
     ]
@@ -89,8 +98,8 @@ class SecondSchema(bauplan.TableSchema):
     trip_time: Int64 | None
 
 
-@bauplan.model(materialization_strategy="NONE")
-@bauplan.python("3.12")
+@bauplan.model(materialization_strategy="REPLACE")
+@bauplan.python("3.12", pip={"bauplan-sdk-types": "0.2.1"})
 def multi_field_model(
     golden_ratio: Annotated[float, Parameter("golden_ratio")],
     start_datetime: Annotated[str, Parameter("start_datetime")],
@@ -114,7 +123,8 @@ def multi_field_model(
 
     return pyarrow.Table.from_arrays(
         [
-            trips.slice(0, 3).column(2),
+            # By name, not position, so the input table must carry the stored name
+            trips.slice(0, 3).column(".pickup datetime."),
             trips.slice(0, 3).column(0),
             trips.slice(0, 3).column(1),
             trips.slice(0, 3).column(3),
@@ -125,7 +135,7 @@ def multi_field_model(
         ],
         schema=pyarrow.schema(
             [
-                pyarrow.field("pickup_datetime", pyarrow.timestamp("us", tz="UTC")),
+                pyarrow.field(".pickup datetime.", pyarrow.timestamp("us", tz="UTC")),
                 pyarrow.field("pickup_location", pyarrow.int64()),
                 pyarrow.field("dropoff_location", pyarrow.int64()),
                 pyarrow.field("trip_miles", pyarrow.float64()),

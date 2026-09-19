@@ -68,7 +68,9 @@ class BareTypesSchema(TableSchema):
 
 
 class AnnotatedTypesSchema(TableSchema):
-    annotated_bool: Annotated[Bool | None, TableField(doc="bool docstring")]
+    annotated_bool: Annotated[
+        Bool | None, TableField(name="annotated bool", doc="bool docstring")
+    ]
     annotated_int: Annotated[Int32 | None, TableField(doc="int32 docstring")]
     annotated_long: Annotated[Int64 | None, TableField()]
     annotated_float: Annotated[Float64, TableField()]
@@ -141,7 +143,7 @@ def model_all_options(
         Model(
             "bare_source",
             projection_schema=AnnotatedTypesSchema,
-            filter="annotated_bool = True",
+            filter='"annotated bool" = True',
         ),
     ],
 ) -> Annotated[pyarrow.Table, AnnotatedTypesSchema]:
