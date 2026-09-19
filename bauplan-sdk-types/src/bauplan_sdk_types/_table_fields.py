@@ -99,17 +99,49 @@ class Any(FieldType):
 
 
 class TableField:
-    """A schema field that contains metadata for a table column."""
+    """
+    A schema field that contains metadata and is used to annotate a table column.
+
+    The primary use case for a `TableField` is as annotation on an attribute of a
+    `TableSchema`:
+
+    ```python
+    from typing import Annotated
+    import bauplan_sdk_types
+
+    class SampleSchema(bauplan_sdk_types.TableSchema):
+        col_a: Annotated[
+            bauplan_sdk_types.Any,
+            bauplan_sdk_types.TableField()
+        ]
+    ```
+
+    In the above example, `col_a` is an attribute on the class `SampleSchema` and
+    represents a table column. Using the special type, `typing.Annotated`, and this
+    class, `TableField`, it is possible to annotate the represented table column with
+    metadata and constraints.
+
+    The attribute name, `col_a`, corresponds to the name of the represented table column.
+    If the table column's name cannot be used as the attribute name, then the `name`
+    parameter can be specified. For example, if the actual column name is stored with a
+    space: `name='col a'`.
+
+    Lineage references another `TableField` by attribute name (python identifier) and not
+    by column name. This means that `col_a` would be referenced as
+    `SampleSchema['col_a']` and not as `SampleSchema['col a']`.
+    """
 
     # TODO: make all parameters keyword args only with `*` arg marker
     def __init__(
         self,
+        name: Optional[str] = None,
         doc: Optional[str] = None,
         lineage: Optional[FieldType | str] = None,
     ):
         """
-        `doc`: Documentation for the TableField.
-        `lineage`: A reference to a `TableField` to "inherit" data and metadata from.
+        `name`: Name of the annotated table column.
+        `doc`: Documentation describing the table column.
+        `lineage`: A reference to another `TableField` to "inherit" data and metadata from.
         """
 
         super().__init__()
