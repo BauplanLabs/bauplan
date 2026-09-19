@@ -1,4 +1,10 @@
 
+## [0.3.3] - 2026-09-19
+
+### Bugfixes
+
+- Always send the parameters defined in the project file (6af8e707d8cb31b30f2298e72bc86941231accfb)
+
 ## [0.3.2] - 2026-09-17
 
 ### New Features
