@@ -13,6 +13,7 @@ from bauplan_sdk_types._table_fields import (
     Int32,
     Int64,
     Float64,
+    Decimal128,
     Binary,
     String,
     Date32,
@@ -22,6 +23,7 @@ from bauplan_sdk_types._table_fields import (
     TimestampMicroUTC,
     TimestampNanoUTC,
     TableField,
+    ColumnLineage,
 )
 from bauplan_sdk_types._table_schema import TableSchema
 
@@ -37,6 +39,7 @@ __all__ = [
     "Int32",
     "Int64",
     "Float64",
+    "Decimal128",
     "Date32",
     "Date64",
     "TimestampMicro",
@@ -45,6 +48,7 @@ __all__ = [
     "TimestampNanoUTC",
     "String",
     "Binary",
+    "ColumnLineage",
     # variables
     "ModelCacheStrategy",
     "ModelMaterializationStrategy",
