@@ -37,6 +37,12 @@ class Float64(FieldType):
     ...
 
 
+class Decimal128(FieldType):
+    """Numerical data type corresponding to the Arrow data type `Decimal128`."""
+
+    ...
+
+
 class String(FieldType):
     """String data type corresponding to the Arrow data type `String`."""
 
@@ -155,11 +161,19 @@ class TableField:
         name: Optional[str] = None,
         doc: Optional[str] = None,
         lineage: Optional[FieldType | str] = None,
+        precision: Optional[int] = None,
+        scale: Optional[int] = None,
     ):
         """
         `name`: Name of the annotated table column.
         `doc`: Documentation describing the table column.
-        `lineage`: A reference to another `TableField` to "inherit" data and metadata from.
+        `lineage`: Reference to another `TableField` to "inherit" data and metadata from.
+        `precision`: Integer in the range [1, 38]; only valid if annotated `FieldType` is `Decimal128`.
+        `scale`: Integer value; only valid if annotated `FieldType` is `Decimal128`.
+
+        Both `precision` and `scale` are only valid if the annotated `FieldType` is
+        `Decimal128`. Precision is required for a Decimal128 and scale defaults to `0` if
+        not provided.
         """
 
         super().__init__()
