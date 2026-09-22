@@ -254,7 +254,7 @@ impl ApiError {
                 message: raw.message,
             },
             Err(e) => {
-                tracing::warn!("Failed to parse API error kind: {e}");
+                tracing::debug!("Failed to parse API error kind: {e}");
                 ApiError::Other {
                     status,
                     kind: Some(raw.r#type),
