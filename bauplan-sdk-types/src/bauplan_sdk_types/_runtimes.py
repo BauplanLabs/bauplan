@@ -4,8 +4,7 @@ from typing import Optional, Callable
 
 
 def python(
-    # TODO(colin): make this required.
-    version: Optional[str] = None,
+    version: str,
     pip: Optional[dict[str, str]] = None,
 ) -> Callable:
     """
@@ -14,7 +13,7 @@ def python(
     should run on and which Python packages should be available.
 
     Parameters:
-        version: The python interpreter version (e.g. `'3.11'`).
+        version: The python interpreter version (e.g. `'3.14'`).
         pip: A dictionary containing python packages and their versions required by the
              function, for example: `{'requests': '2.26.0'}`.
     """
