@@ -20,64 +20,46 @@ behind the scenes:
   environment. This enables full reproducibility, auditability, and
   rollback.
 
+<div style={{maxWidth: '600px', margin: '0 auto'}}>
+
 ```mermaid
+%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 16, 'bottom': 16}}}}%%
 graph TB
+    classDef title fill:none,stroke:none
+    classDef code text-align:left
+
     subgraph local["<b>Your Local Code</b>"]
-        direction LR
-        subgraph ab[" "]
-            K[" "]
-            direction TB
-            A["@bauplan.model()<br/>def get_data():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import pandas<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]
-            B["@bauplan.model()<br/>def predictions():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import torch<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]
-            A --> B
-        end
-        C["<b>SQL Query</b><br/>SELECT col,COUNT(*) FROM ..."]
+        getData["@bauplan.model()<br/>def get_data():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import pandas<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]:::code
+        predictions["@bauplan.model()<br/>def predictions():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import torch<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]:::code
+        sqlQuery["<b>SQL Query</b><br/>SELECT col,COUNT(*)<br/>FROM ..."]
+        getData --> predictions
     end
 
-    spacerTop1[" "]
-
+    %% The two lower boxes use a text node as their title, so arrows don't cross it.
     subgraph bauplan[" "]
-        direction LR
-        bauplanTitle["<b>Bauplan (Managed)</b>"]
-        D["Python packages +<br/>Dockerized function"]
-        E["Python packages +<br/>Dockerized function"]
-        F["<b>DataFusion</b> (ephemeral)"]
-        G["<b>Active Branch</b><br/>(Iceberg tables tracked by<br/>Bauplan catalog)"]
+        bauplanTitle["<b>Bauplan (Managed)</b>"]:::title
+        pythonRuntime1["Python packages +<br/>Dockerized function"]
+        pythonRuntime2["Python packages +<br/>Dockerized function"]
+        dataFusion["<b>DataFusion</b><br/>(ephemeral)"]
+        activeBranch["<b>Active Branch</b><br/>(Iceberg tables tracked by<br/>Bauplan catalog)"]
     end
-
-    spacerTop2[" "]
 
     subgraph storage[" "]
-        direction LR
-        storageTitle["<b>Your Object Store</b>"]
-        spacerS["<br/><br/>"]
-        J[" "]
-        K[" "]
-        H["Parquet / CSV / JSON files"]
-        I["Parquet / CSV / JSON files"]
-        J[" "]
-        K[" "]
-        Z[" "]
+        storageTitle["<b>Your Object Store</b>"]:::title
+        files1["Parquet / CSV / JSON files"]
+        files2["Parquet / CSV / JSON files"]
     end
 
-    A <--> D
-    B <--> E
-    C <--> F
-    D --> G
-    E --> G
-    F --> G
-    G <--> H
-    G <--> I
+    getData <--> pythonRuntime1
+    predictions <--> pythonRuntime2
+    sqlQuery <--> dataFusion
 
-    style storageTitle fill:none,stroke:none
-    style bauplanTitle fill:none,stroke:none
-    style A text-align:left
-    style B text-align:left
-    style spacerS fill:none,stroke:none
-    style ab fill:none,stroke:none
-    style spacerTop1 fill:none,stroke:none
-    style spacerTop2 fill:none,stroke:none
-    style J fill:none,stroke:none
-    style K fill:none,stroke:none
-    style Z fill:none,stroke:none
+    pythonRuntime1 --> activeBranch
+    pythonRuntime2 --> activeBranch
+    dataFusion --> activeBranch
+
+    activeBranch <--> files1
+    activeBranch <--> files2
 ```
+
+</div>

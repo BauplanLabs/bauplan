@@ -10,6 +10,8 @@ Bauplan offers two secure deployment options tailored to your needs.
 In this model, Bauplan manages a dedicated cloud environment for you,
 linked to your own object storage:
 
+<div style={{maxWidth: '600px', margin: '0 auto'}}>
+
 ```mermaid
 flowchart TB
     A["Your Local Environment<br/>(IDE / CLI / SDK)"]
@@ -29,6 +31,8 @@ flowchart TB
     style BTitle fill:none,stroke:none
 ```
 
+</div>
+
 Key Benefits:
 
 - Fully isolated, SOC2-compliant managed environment.
@@ -39,6 +43,8 @@ Key Benefits:
 
 In the BYOC model, the entire Bauplan runtime is deployed within your
 existing VPC, under your control:
+
+<div style={{maxWidth: '560px', margin: '0 auto'}}>
 
 ```mermaid
 flowchart TB
@@ -58,12 +64,12 @@ flowchart TB
 
     B <--> F
 
-    F["<b>Bauplan APIs</br>(Control Plane)</b>
-    <hr class='mermaid' /><ul style='margin:0px; text-align:left;'>
-    <li style="white-space: nowrap;">Catalog</br>(Iceberg + Git-for-data)</li><li>Auth, scheduling, observability</li><li>Multi-tenant, managed by Bauplan</li></ul>"]
+    F["<b>Bauplan APIs</br>(Control Plane)</b><hr class='mermaid' /><ul style='margin:0px; text-align:left;'><li style="white-space: nowrap;">Catalog</br>(Iceberg + Git-for-data)</li><li>Auth, scheduling, observability</li><li>Multi-tenant, managed by Bauplan</li></ul>"]
 
     style BTitle fill:none,stroke:none
 ```
+
+</div>
 
 Key Benefits:
 
