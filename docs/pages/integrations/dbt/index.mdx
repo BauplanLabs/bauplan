@@ -1,12 +1,159 @@
 ---
 title: "dbt Core"
-description: "The Bauplan dbt Core integration is in active development. Contact us for early access and a preview of running dbt models on your Iceberg lakehouse."
+description: "Map a dbt Core project to a Bauplan project."
 ---
 
-## Work in progress
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
 
-We're currently developing our dbt Core integration to bring the best of both worlds together.
+:::info Private alpha
 
-Interested in getting early access or a preview? We'd love to hear from you.
+dbt migration support is in private alpha. [Contact us](https://www.bauplanlabs.com/contact) to request preview access.
 
-[**Contact us**](https://www.bauplanlabs.com/contact) to learn more about the dbt integration and get involved in the preview program.
+:::
+
+A dbt Core project maps almost one to one to a Bauplan project. SQL models stay SQL models, the DAG is still inferred from the queries, and the YAML tests become typed schemas and expectations that Bauplan runs automatically.
+
+## Side by side
+
+The example below has two models: `titanic_passengers` selects from a raw table, and `survival_by_class` reads from `titanic_passengers`.
+
+<Tabs>
+  <TabItem value="dbt" label="dbt">
+
+```sql title="models/titanic_passengers.sql"
+select
+    passengerid as passenger_id,
+    pclass as passenger_class,
+    survived
+from raw.titanic
+```
+
+```sql title="models/survival_by_class.sql"
+select
+    passenger_class,
+    count(*) as passenger_count,
+    avg(cast(survived as float)) as survival_rate
+from {{ ref('titanic_passengers') }}
+group by passenger_class
+```
+
+```yaml title="models/schema.yml"
+models:
+  - name: titanic_passengers
+    columns:
+      - name: passenger_id
+        data_tests:
+          - unique
+      - name: passenger_class
+        data_tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3]
+```
+
+```sh
+dbt run
+dbt test
+```
+
+  </TabItem>
+  <TabItem value="bauplan" label="Bauplan">
+
+```sql title="titanic_passengers.sql"
+-- bauplan: output_schema=PassengerSchema
+select
+    passengerid as passenger_id,
+    pclass as passenger_class,
+    survived
+from raw.titanic
+```
+
+```sql title="survival_by_class.sql"
+-- bauplan: output_schema=SurvivalSchema
+select
+    passenger_class,
+    count(*) as passenger_count,
+    avg(cast(survived as float)) as survival_rate
+from titanic_passengers
+group by passenger_class
+```
+
+```python title="schemas.py"
+from typing import Annotated
+
+import bauplan
+from bauplan import TableField
+
+
+class PassengerSchema(bauplan.TableSchema):
+    """One row per Titanic passenger."""
+
+    passenger_id: bauplan.Int64
+    # No `| None`: the column is required and may not contain nulls
+    passenger_class: Annotated[
+        bauplan.Int64,
+        TableField(doc="Class of the Titanic passenger"),
+    ]
+    survived: bauplan.Int64 | None
+
+
+class SurvivalSchema(bauplan.TableSchema):
+    """Survival rate aggregated by passenger class."""
+
+    passenger_class: bauplan.Int64
+    passenger_count: bauplan.Int64
+    survival_rate: bauplan.Float64 | None
+```
+
+```python title="expectations.py"
+from typing import Annotated
+
+import pyarrow
+
+import bauplan
+from bauplan.standard_expectations import (
+    expect_column_accepted_values,
+    expect_column_all_unique,
+)
+
+
+class PassengerKeys(bauplan.TableSchema):
+    """Columns checked by the passenger expectations."""
+
+    passenger_id: bauplan.Int64
+    passenger_class: bauplan.Int64
+
+
+@bauplan.expectation()
+@bauplan.python("3.11")
+def test_titanic_passengers(
+    data: Annotated[
+        pyarrow.Table,
+        bauplan.Model("titanic_passengers", projection_schema=PassengerKeys),
+    ],
+) -> bool:
+    """Passenger ids are unique and passenger classes are 1, 2 or 3."""
+    return expect_column_all_unique(data, "passenger_id") and expect_column_accepted_values(
+        data, "passenger_class", accepted_values=[1, 2, 3]
+    )
+```
+
+```sh
+bauplan run
+```
+
+  </TabItem>
+</Tabs>
+
+## What changes
+
+| | dbt | Bauplan |
+| --- | --- | --- |
+| Model code | SQL with Jinja `ref()` macros | Plain SQL, upstream models referenced by name |
+| Contracts and tests | YAML, run by `dbt test` as separate queries | Typed Python schemas and expectations, checked by `bauplan run` |
+| Failure handling | Tests run after data is materialized | A failing run stays on its [data branch](/concepts/git-for-data) and never reaches `main` |
+
+## Migrating
+
+Most of the conversion is mechanical: strip `ref()` macros, move YAML nullability tests into `TableSchema` classes, move the remaining YAML tests into expectations, and add the `output_schema` header to each SQL file. This is well suited to a coding agent. We can provide skills to migrate an existing dbt project to a SQL-based Bauplan project.
