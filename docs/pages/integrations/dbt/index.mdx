@@ -12,7 +12,13 @@ dbt migration support is in private alpha. [Contact us](https://www.bauplanlabs.
 
 :::
 
-A dbt Core project maps almost one to one to a Bauplan project. SQL models stay SQL models, the DAG is still inferred from the queries, and the YAML tests become typed schemas and expectations that Bauplan runs automatically.
+If your transformations live in dbt Core today, you can bring them to Bauplan with only a few minor changes.
+
+Bauplan does not run dbt projects natively, but the gap is small as they are built on the same primitives: SQL models chained into a DAG, with contracts and tests on their outputs. 
+
+Converting a project is mostly mechanical, and we provide agent skills that do it for you. You can then build, test, and publish the result with a single `bauplan run` command on an isolated data branch.
+
+This page shows what a dbt project looks like after the conversion, what changes, and how to migrate yours.
 
 ## Side by side
 
@@ -153,7 +159,3 @@ bauplan run
 | Model code | SQL with Jinja `ref()` macros | Plain SQL, upstream models referenced by name |
 | Contracts and tests | YAML, run by `dbt test` as separate queries | Typed Python schemas and expectations, checked by `bauplan run` |
 | Failure handling | Tests run after data is materialized | A failing run stays on its [data branch](/concepts/git-for-data) and never reaches `main` |
-
-## Migrating
-
-Most of the conversion is mechanical: strip `ref()` macros, move YAML nullability tests into `TableSchema` classes, move the remaining YAML tests into expectations, and add the `output_schema` header to each SQL file. This is well suited to a coding agent. We can provide skills to migrate an existing dbt project to a SQL-based Bauplan project.
