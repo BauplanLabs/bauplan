@@ -62,7 +62,7 @@ def run_bauplan_step(project_dir: str, bauplan_branch_suffix: str,
         RuntimeError if the job did not finish with status 'success'.
     """
     client = bauplan.Client() # build client inside the step (I/O)
-    username = client.info().user.username # get username # type:ignore
+    username = client.info().user.username # get username
     branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
 
     client.create_branch(branch, from_ref="main", if_not_exists=True)
@@ -212,7 +212,7 @@ def run_with_parameters_step(
     parameters: Dict[str, Any],
 ) -> Dict[str, Any]:
     client = bauplan.Client() # build client inside the step
-    username = client.info().user.username # type:ignore
+    username = client.info().user.username
     branch = f"{username}.{bauplan_branch_suffix}"
 
     client.create_branch(branch, from_ref="main", if_not_exists=True)

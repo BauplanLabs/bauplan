@@ -105,7 +105,7 @@ metadata_location_string = get_metadata_location(
 
 # Instantiate Bauplan client
 client = bauplan.Client()
-bauplan_user = client.info().user.username # type:ignore
+bauplan_user = client.info().user.username
 
 # Create a non-main branch for safe testing
 branch_name = f"{bauplan_user}.fivetran_integration"

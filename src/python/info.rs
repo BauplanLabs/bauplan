@@ -80,17 +80,10 @@ impl PyUserInfo {
 #[pymethods]
 impl PyInfoState {
     fn __repr__(&self) -> String {
-        let user = self
-            .user
-            .as_ref()
-            .map(|u| u.username.as_str())
-            .unwrap_or_default();
-        let org = self
-            .organization
-            .as_ref()
-            .map(|o| o.name.as_str())
-            .unwrap_or_default();
-        format!("InfoState(user={user:?}, organization={org:?})")
+        format!(
+            "InfoState(user={:?}, organization={:?})",
+            self.user.username, self.organization.name,
+        )
     }
 }
 
@@ -100,29 +93,37 @@ pub(crate) struct PyInfoState {
     #[pyo3(get)]
     client_version: String,
     #[pyo3(get)]
-    organization: Option<PyOrganizationInfo>,
+    organization: PyOrganizationInfo,
     #[pyo3(get)]
-    user: Option<PyUserInfo>,
+    user: PyUserInfo,
     #[pyo3(get)]
     runners: Vec<PyRunnerNodeInfo>,
 }
 
-impl From<GetBauplanInfoResponse> for PyInfoState {
-    fn from(resp: GetBauplanInfoResponse) -> Self {
-        let organization = resp.organization_info.map(|org| PyOrganizationInfo {
+impl TryFrom<GetBauplanInfoResponse> for PyInfoState {
+    type Error = PyErr;
+
+    fn try_from(resp: GetBauplanInfoResponse) -> PyResult<Self> {
+        let Some(org) = resp.organization_info else {
+            return Err(BauplanError::new_err("no organization info in response"));
+        };
+        let organization = PyOrganizationInfo {
             id: org.id,
             name: org.name,
             slug: org.slug,
             default_parameter_secret_key: org.default_parameter_secret_key,
             default_parameter_secret_public_key: org.default_parameter_secret_public_key,
-        });
+        };
 
-        let user = resp.user_info.map(|u| PyUserInfo {
+        let Some(u) = resp.user_info else {
+            return Err(BauplanError::new_err("no user info in response"));
+        };
+        let user = PyUserInfo {
             id: u.id,
             username: u.username,
             first_name: u.first_name,
             last_name: u.last_name,
-        });
+        };
 
         let runners: Vec<PyRunnerNodeInfo> = resp
             .runners
@@ -132,12 +133,12 @@ impl From<GetBauplanInfoResponse> for PyInfoState {
             })
             .collect();
 
-        Self {
+        Ok(Self {
             client_version: resp.client_version,
             organization,
             user,
             runners,
-        }
+        })
     }
 }
 
@@ -150,10 +151,8 @@ impl Client {
     /// client = bauplan.Client()
     ///
     /// info = client.info()
-    /// if info.user:
-    ///     print(info.user.username)
-    /// if info.organization:
-    ///     print(info.organization.name)
+    /// print(info.user.username)
+    /// print(info.organization.name)
     /// ```
     ///
     /// Parameters:
@@ -173,6 +172,6 @@ impl Client {
         let info = detach(py, self.grpc.clone().get_bauplan_info(request))
             .map_err(|e| BauplanError::new_err(e.to_string()))?;
 
-        Ok(info.into_inner().into())
+        info.into_inner().try_into()
     }
 }

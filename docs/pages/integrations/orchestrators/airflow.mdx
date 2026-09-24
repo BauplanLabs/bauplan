@@ -50,7 +50,7 @@ def run_pipeline(
     """
     client = bauplan.Client() # build client inside the task
 
-    username = client.info().user.username # get username # type:ignore
+    username = client.info().user.username # get username
     branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
 
     client.create_branch(branch, from_ref="main", if_not_exists=True)

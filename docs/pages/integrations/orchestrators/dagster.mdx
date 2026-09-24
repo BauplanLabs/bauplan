@@ -47,7 +47,7 @@ def run_pipeline(context) -> dict:
         dg.Failure if the job did not finish with status 'success'.
     """
     client = bauplan.Client() # build client inside the op
-    username = client.info().user.username # type:ignore
+    username = client.info().user.username
     cfg = context.op_config
     branch = f"{username}.{cfg['bauplan_branch_suffix']}" # construct branch name
 
@@ -199,7 +199,7 @@ import bauplan
 )
 def run_with_parameters(context) -> dict:
     client = bauplan.Client() # build client inside the op
-    username = client.info().user.username # type:ignore
+    username = client.info().user.username
     cfg = context.op_config
     branch = f"{username}.{cfg['bauplan_branch_suffix']}"
 

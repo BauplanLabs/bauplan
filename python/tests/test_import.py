@@ -16,9 +16,7 @@ def client() -> bauplan.Client:
 
 @pytest.fixture
 def username(client: bauplan.Client):
-    user = client.info().user
-    assert user is not None
-    return user.username
+    return client.info().user.username
 
 
 @pytest.fixture

@@ -322,9 +322,7 @@ class Client:
         import bauplan
 
         client = bauplan.Client()
-        user = client.info().user
-        assert user is not None
-        username = user.username
+        username = client.info().user.username
 
         branch = client.create_branch(
             branch = username+'.feature_branch',
@@ -1371,10 +1369,8 @@ class Client:
         client = bauplan.Client()
 
         info = client.info()
-        if info.user:
-            print(info.user.username)
-        if info.organization:
-            print(info.organization.name)
+        print(info.user.username)
+        print(info.organization.name)
         ```
 
         Parameters:
@@ -1960,11 +1956,11 @@ class InfoState:
     @property
     def client_version(self, /) -> str: ...
     @property
-    def organization(self, /) -> OrganizationInfo | None: ...
+    def organization(self, /) -> OrganizationInfo: ...
     @property
     def runners(self, /) -> list[RunnerNodeInfo]: ...
     @property
-    def user(self, /) -> UserInfo | None: ...
+    def user(self, /) -> UserInfo: ...
 
 @final
 class OrganizationInfo:

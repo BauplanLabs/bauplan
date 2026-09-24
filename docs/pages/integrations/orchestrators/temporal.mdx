@@ -108,7 +108,7 @@ def run_bauplan_activity(project_dir: str, bauplan_branch_suffix: str) -> dict:
         raise RuntimeError(f"Project path does not exist: {project_path}")
 
     client = bauplan.Client() # credentials: BAUPLAN_API_KEY / BAUPLAN_PROFILE / ~/.bauplan/config.yml
-    username = client.info().user.username # type:ignore
+    username = client.info().user.username
     branch = f"{username}.{bauplan_branch_suffix}"
 
     client.create_branch(branch, from_ref="main", if_not_exists=True)
@@ -246,7 +246,7 @@ def run_with_parameters_activity(
     import bauplan
 
     client = bauplan.Client()
-    username = client.info().user.username # type:ignore
+    username = client.info().user.username
     branch = f"{username}.{bauplan_branch_suffix}"
 
     client.create_branch(branch, from_ref="main", if_not_exists=True)
