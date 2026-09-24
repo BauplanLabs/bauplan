@@ -144,6 +144,7 @@ pub enum Error {
     Read(#[from] iroh::endpoint::ReadError),
     #[error("Write failed")]
     Write(#[from] iroh::endpoint::WriteError),
+    #[cfg(not(target_arch = "wasm32"))]
     #[error("Arrow decode error")]
     Arrow(#[from] arrow::error::ArrowError),
     #[error("Invalid key data")]
@@ -174,6 +175,9 @@ mod client;
 
 #[cfg(feature = "client")]
 pub use client::*;
+
+#[cfg(all(target_arch = "wasm32", feature = "client"))]
+pub mod wasm;
 
 #[cfg(test)]
 mod tests {

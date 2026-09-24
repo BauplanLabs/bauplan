@@ -1,5 +1,9 @@
+#[cfg(not(target_arch = "wasm32"))]
 use arrow::{array::RecordBatch, buffer::Buffer, datatypes::SchemaRef, ipc::reader::StreamDecoder};
+#[cfg(not(target_arch = "wasm32"))]
 use bytes::Buf;
+use bytes::Bytes;
+#[cfg(not(target_arch = "wasm32"))]
 use futures::stream::{self, Stream};
 use iroh::{
     Endpoint, EndpointAddr,
@@ -81,31 +85,27 @@ pub async fn attach_task(endpoint: &Endpoint, server: EndpointAddr) -> Result<At
     })
 }
 
-struct ArrowStreamState<C, S> {
-    stream: S,
+type H3Client = h3::client::SendRequest<iroh_h3::OpenStreams, Bytes>;
+type H3Stream = h3::client::RequestStream<iroh_h3::BidiStream<Bytes>, Bytes>;
+
+#[cfg(not(target_arch = "wasm32"))]
+struct ArrowStreamState {
+    stream: H3Stream,
     decoder: StreamDecoder,
     remaining: Buffer,
     batch: Option<RecordBatch>,
 
-    _client: C,
+    _client: H3Client,
 }
 
-/// Connect to an endpoint with the intention to download query results.
-///
-/// Returns the stream schema and a stream of record batches.
-pub async fn fetch_query_results(
+/// Opens an h3 connection over iroh to the runner, and reads an artifact.
+pub(crate) async fn read_runner_artifact(
     endpoint: &Endpoint,
     addr: EndpointAddr,
     artifact_id: &str,
     auth_token: &str,
     limit: Option<u64>,
-) -> Result<
-    (
-        SchemaRef,
-        impl Stream<Item = Result<RecordBatch, Error>> + Unpin + use<>,
-    ),
-    Error,
-> {
+) -> Result<(H3Client, H3Stream), Error> {
     let conn = endpoint
         .connect_with_opts(addr, b"h3", Default::default())
         .await
@@ -117,7 +117,7 @@ pub async fn fetch_query_results(
     let (mut driver, mut client) = h3::client::new(h3_conn).await?;
 
     // Drive the h3 connection in the background.
-    tokio::spawn(async move {
+    n0_future::task::spawn(async move {
         let err = driver.wait_idle().await;
         debug!(%err, "h3 connection closed");
     });
@@ -141,6 +141,29 @@ pub async fn fetch_query_results(
     if !resp.status().is_success() {
         return Err(Error::UnexpectedStatus(resp.status()));
     }
+
+    Ok((client, stream))
+}
+
+/// Connect to a runner endpoint with the intention to download query results.
+///
+/// Returns the artifact schema and a stream of record batches.
+#[cfg(not(target_arch = "wasm32"))]
+pub async fn fetch_query_results(
+    endpoint: &Endpoint,
+    addr: EndpointAddr,
+    artifact_id: &str,
+    auth_token: &str,
+    limit: Option<u64>,
+) -> Result<
+    (
+        SchemaRef,
+        impl Stream<Item = Result<RecordBatch, Error>> + Unpin + use<>,
+    ),
+    Error,
+> {
+    let (client, mut stream) =
+        read_runner_artifact(endpoint, addr, artifact_id, auth_token, limit).await?;
 
     // Read the schema first.
     let mut first_batch = None;
