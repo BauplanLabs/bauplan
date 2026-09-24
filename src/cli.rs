@@ -1,5 +1,6 @@
 mod branch;
 mod checkout;
+mod claude;
 mod color;
 mod commit;
 mod config;
@@ -154,6 +155,9 @@ pub(crate) enum Command {
     Checkout(checkout::CheckoutArgs),
     /// Initialize a new bauplan project
     Init(init::InitArgs),
+    /// Launch OTEL collector for Claude Code
+    //Claude(claude::ClaudeArgs),
+    Claude,
 }
 
 pub(crate) struct Cli {
@@ -230,6 +234,8 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Command::Query(args) => with_rt(query::handle(&cli, args)),
         Command::Job(args) => with_rt(job::handle(&cli, args)),
         Command::Checkout(args) => checkout::handle(&cli, args),
+        Command::Claude => with_rt(claude::handle(&cli)),
+        //Command::Claude(args) => claude::handle(&cli, args),
     }
 }
 
