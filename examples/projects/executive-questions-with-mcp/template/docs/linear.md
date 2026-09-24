@@ -38,7 +38,7 @@ The issue's creation is the whole handoff. Do not edit it afterward, and do not 
 
 ## 3. Implementation instructions to append
 
-Paste this block at the end of the issue body. It is the brief for the agent that picks the issue up. It reads the repository, so it also has `CLAUDE.md`, `docs/lakehouse.md`, and `docs/semantics.md`. This block makes the non-negotiable points explicit.
+Paste this block at the end of the issue body. It is the brief for the agent that picks the issue up. It reads the repository, so it also has `AGENTS.md`, `docs/lakehouse.md`, and `docs/semantics.md`. This block makes the non-negotiable points explicit.
 
 > Reimplement the source query above as a proper, reviewable pipeline whose gold output matches the result above. Do not ship the query as a one-off.
 >
