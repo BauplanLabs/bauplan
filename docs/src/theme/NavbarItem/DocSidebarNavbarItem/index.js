@@ -155,6 +155,10 @@ export default function DocSidebarNavbarItem({
         }
         // Direct doc items like "faq", "reference/cli", "mcp/index", etc.
         const docId = typeof item === 'string' ? item : item?.id;
+        // Skip top-level */index docs, i.e. the home page (re-added as "Home" below)
+        if (shouldSkipIndexPages && docId?.endsWith('/index')) {
+          return null;
+        }
         return {
           label: getDocLabel(docId),
           to: getDocPath(docId),
