@@ -14,7 +14,7 @@ dbt migration support is in private alpha. [Contact us](https://www.bauplanlabs.
 
 If your transformations live in dbt Core today, you can bring them to Bauplan with only a few minor changes.
 
-Bauplan does not run dbt projects natively, but the gap is small as they are built on the same primitives: SQL models chained into a DAG, with contracts and tests on their outputs. 
+Bauplan does not run dbt projects natively, but the gap is small as they are built on the same primitives--SQL models chained into a DAG, with contracts and tests on their outputs.
 
 Converting a project is mostly mechanical, and we provide agent skills that do it for you. You can then build, test, and publish the result with a single `bauplan run` command on an isolated data branch.
 
