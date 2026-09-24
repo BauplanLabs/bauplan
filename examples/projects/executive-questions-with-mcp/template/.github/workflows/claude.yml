@@ -79,7 +79,7 @@ jobs:
             A new data pipeline has been requested through the GitHub issue below.
             Implement it on the current branch.
 
-            First read the repository conventions: CLAUDE.md, docs/linear.md,
+            First read the repository conventions: AGENTS.md, docs/linear.md,
             docs/lakehouse.md, docs/semantics.md. Then reimplement the request as a
             proper medallion pipeline following those rules: silver and gold models
             written in Python with Polars (never pandas), the gold model with

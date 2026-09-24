@@ -15,7 +15,7 @@
 
 This project removes the manual step between an executive asking a data question and an engineer building a pipeline to answer it.
 
-This project connects a GitHub repository to a chat interface like Claude Desktop and let the user ask questions and retrieve answers using Bauplan's MCP server. 
+This project connects a GitHub repository to a chat interface like Claude Desktop and let the user ask questions and retrieve answers using Bauplan's MCP server.
 
 The repository acts as the knowledge base: it contains the lakehouse architecture, the semantic layer describing what the data means, and the Python code for existing pipelines. A non-technical executive connects their chat client to this repository once. From then on:
 
@@ -49,7 +49,7 @@ From that point on, the same question hits path A: the table exists, and the age
 
 ```
 template/
-    CLAUDE.md               operational rules for agents in this repo
+    AGENTS.md               operational rules for agents in this repo
     .github/
         workflows/
             claude.yml      github action to trigger Claude Code on github runner
@@ -67,7 +67,7 @@ template/
     pyproject.toml
 ```
 
-The `template/` directory is a ready-to-use starting point. `CLAUDE.md` is the file to point a Claude Code agent's project instructions at when it processes Linear issues in the GitHub Action. `docs/answering.md` is the file to point the executive-facing chat assistant at.
+The `template/` directory is a ready-to-use starting point. `AGENTS.md` is the file to point a Claude Code agent's project instructions at when it processes Linear issues in the GitHub Action. `docs/answering.md` is the file to point the executive-facing chat assistant at.
 
 ## Adapting the template
 
@@ -78,7 +78,7 @@ The template ships with TPC-H as the example dataset. To use it with a real lake
 3. Replace or extend the pipeline code in `src/pipelines/` with your existing silver and gold models.
 4. Update `docs/linear.md` with the correct Linear project, team, and assignee for your organization.
 
-The workflow logic in `docs/workflow.md` and `CLAUDE.md` does not need to change unless you are replacing Linear or Bauplan with different tools.
+The workflow logic in `docs/workflow.md` and `AGENTS.md` does not need to change unless you are replacing Linear or Bauplan with different tools.
 
 ## Setting up the workflow
 
@@ -100,7 +100,7 @@ docs are the source of truth; read them before answering.
 Start with docs/answering.md, which governs how you respond.
 How an answer gets produced is in docs/workflow.md.
 Use docs/semantics.md to map a question to what the data means, and
-docs/lakehouse.md for how tables are layered. Operational rules are in CLAUDE.md.
+docs/lakehouse.md for how tables are layered. Operational rules are in AGENTS.md.
 ```
 
 Then add the repository via `File > + > GitHub`.
@@ -121,7 +121,7 @@ You need no GitHub configuration beyond the Linear integration above. The `claud
 
 Add the following secrets under `Settings > Secrets and variables > Actions`:
 
-| Secret | Description |
-|--------|-------------|
-| `ANTHROPIC_API_KEY` | Anthropic API key used to run Claude Code. Must have API credits. |
-| `BAUPLAN_API_KEY` | Bauplan API key used by Claude to interact with the data lakehouse. |
+| Secret              | Description                                                         |
+| ------------------- | ------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY` | Anthropic API key used to run Claude Code. Must have API credits.   |
+| `BAUPLAN_API_KEY`   | Bauplan API key used by Claude to interact with the data lakehouse. |

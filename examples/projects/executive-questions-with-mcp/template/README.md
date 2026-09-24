@@ -13,12 +13,12 @@ The second path is what keeps answers consistent across executives over time: on
 
 `workflow.md` is the spine. The others are references you reach for while following it.
 
-| Document | When to read it |
-|----------|-----------------|
-| [docs/workflow.md](docs/workflow.md) | First. The end-to-end flow from a question to an answer: the query-versus-build decision, and how human review gates each new table. |
-| [docs/answering.md](docs/answering.md) | How to talk to the executive: answer directly, prefer charts, never invent an answer the data does not support. This is the doc to point a chat assistant's project instructions at. |
-| [docs/linear.md](docs/linear.md) | How to file the handoff Linear issue when no table answers a question: what the issue must contain and the instructions it carries to the implementing agent. |
+| Document                               | When to read it                                                                                                                                                                                   |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [docs/workflow.md](docs/workflow.md)   | First. The end-to-end flow from a question to an answer: the query-versus-build decision, and how human review gates each new table.                                                              |
+| [docs/answering.md](docs/answering.md) | How to talk to the executive: answer directly, prefer charts, never invent an answer the data does not support. This is the doc to point a chat assistant's project instructions at.              |
+| [docs/linear.md](docs/linear.md)       | How to file the handoff Linear issue when no table answers a question: what the issue must contain and the instructions it carries to the implementing agent.                                     |
 | [docs/semantics.md](docs/semantics.md) | What the data means: the benchmark's business concepts, the metrics that matter, and the vocabulary to agree on before writing a query. Consult it whenever a question needs mapping to the data. |
-| [docs/lakehouse.md](docs/lakehouse.md) | Where a new table belongs: the medallion architecture, bronze, silver, and gold layers, naming conventions, and the rules a pipeline must follow when you build one. |
+| [docs/lakehouse.md](docs/lakehouse.md) | Where a new table belongs: the medallion architecture, bronze, silver, and gold layers, naming conventions, and the rules a pipeline must follow when you build one.                              |
 
-Operational rules for agents working in this repository (git workflow, Bauplan safety rules, `uv` usage, CLI versus SDK) live in [CLAUDE.md](CLAUDE.md).
+Operational rules for agents working in this repository (git workflow, Bauplan safety rules, `uv` usage, CLI versus SDK) live in [AGENTS.md](AGENTS.md).

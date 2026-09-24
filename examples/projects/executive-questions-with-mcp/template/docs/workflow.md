@@ -43,4 +43,4 @@ The Linear issue is that promotion request. Downstream, the agent converts the q
 
 ## Boundaries
 
-This workflow sits on top of the Bauplan safety rules in [../CLAUDE.md](../CLAUDE.md), which always win. In particular: never write or materialize directly on `main`, and publish data only by running on a Bauplan branch and merging. From the chat environment you have the Bauplan and Linear tools but no git: a downstream agent writes, validates, and materializes the pipeline, then opens a pull request for a human to review and merge.
+This workflow sits on top of the Bauplan safety rules in [../AGENTS.md](../AGENTS.md), which always win. In particular: never write or materialize directly on `main`, and publish data only by running on a Bauplan branch and merging. From the chat environment you have the Bauplan and Linear tools but no git: a downstream agent writes, validates, and materializes the pipeline, then opens a pull request for a human to review and merge.
