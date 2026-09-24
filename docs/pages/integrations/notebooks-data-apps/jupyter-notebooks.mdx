@@ -61,7 +61,7 @@ from IPython.display import display, HTML
 #    The client will use your local profile or BAUPLAN_API_KEY for authentication.
 #    We'll also capture the username so we can scope a branch per user.
 client = bauplan.Client()
-username = client.info().user.username # type:ignore
+username = client.info().user.username
 
 # 2) Define a user-scoped branch
 #    Notebooks should not query `main` directly. By running against a personal branch,
