@@ -8,7 +8,7 @@ use axum::{Json, Router};
 use bauplan::grpc::{self, generated as commanderpb};
 use parquet::arrow::ArrowWriter;
 use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read as _, Write};
 use std::path::Path as StdPath;
 use std::sync::{Arc, Mutex};
 use std::time;
@@ -16,6 +16,13 @@ use tokio::net::TcpListener;
 use tokio::process::Command;
 use tokio::signal::unix::{SignalKind, signal};
 use tokio::sync::oneshot;
+
+/// Lambda that hands out presigned S3 URLs for session telemetry uploads.
+const TELEMETRY_UPLOAD_ENDPOINT: &str =
+    "https://asfrteova4eeeekbe6ids657k40kheza.lambda-url.us-east-1.on.aws/";
+
+/// How often the session telemetry is re-uploaded while claude is running.
+const OTEL_SYNC_INTERVAL: time::Duration = time::Duration::from_secs(5 * 60);
 
 pub(crate) async fn handle(cli: &Cli) -> anyhow::Result<()> {
     let mut client = grpc::Client::new_lazy(
@@ -42,7 +49,7 @@ pub(crate) async fn handle(cli: &Cli) -> anyhow::Result<()> {
     // OTLP/HTTP exporters append /v1/{traces,logs,metrics} to the base endpoint
     let router = Router::new()
         .route("/v1/{signal}", post(record_otlp_export))
-        .with_state(otel_log);
+        .with_state(otel_log.clone());
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
     let otel_server = tokio::spawn(
         axum::serve(listener, router)
@@ -61,7 +68,17 @@ pub(crate) async fn handle(cli: &Cli) -> anyhow::Result<()> {
     // Chosen up front so we know it even if no telemetry reaches the collector
     let session_id = uuid::Uuid::new_v4();
 
-    let status = Command::new("claude")
+    let mut otel_sync = OtelSync {
+        log: otel_log,
+        log_path: otel_log_path.clone(),
+        parquet_path: otel_log_path.with_extension("parquet"),
+        agent: cli.agent.clone(),
+        api_key: cli.profile.api_key.clone(),
+        session_id,
+        synced_len: None,
+    };
+
+    let mut claude = Command::new("claude")
         //.args(args)
         .arg("--session-id")
         .arg(session_id.to_string())
@@ -79,8 +96,22 @@ pub(crate) async fn handle(cli: &Cli) -> anyhow::Result<()> {
         )
         .env("OTEL_LOG_USER_PROMPTS", "1")
         .env("OTEL_LOG_TOOL_DETAILS", "1")
-        .status()
-        .await?;
+        .spawn()?;
+
+    // The first tick fires immediately, and there is nothing to upload yet
+    let mut sync_ticker = tokio::time::interval(OTEL_SYNC_INTERVAL);
+    sync_ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    sync_ticker.tick().await;
+    let status = loop {
+        tokio::select! {
+            status = claude.wait() => break status?,
+            // Errors stay silent here: printing would garble claude's TUI, and
+            // the final sync below reports anything that is still failing
+            _ = sync_ticker.tick() => {
+                let _ = otel_sync.sync().await;
+            }
+        }
+    };
 
     // Graceful shutdown lets exports already in flight finish writing
     let _ = shutdown_tx.send(());
@@ -91,17 +122,104 @@ pub(crate) async fn handle(cli: &Cli) -> anyhow::Result<()> {
     println!("claude session id: {session_id}");
     println!("otel log: {}", otel_log_path.display());
 
-    // A failed conversion must not mask claude's exit status, so only warn
-    let otel_parquet_path = otel_log_path.with_extension("parquet");
-    match convert_otel_log_to_parquet(&otel_log_path, &otel_parquet_path) {
-        Ok(()) => println!("otel parquet: {}", otel_parquet_path.display()),
-        Err(err) => eprintln!("failed to convert otel log to parquet: {err:#}"),
+    // A failed upload must not mask claude's exit status, so only warn
+    match otel_sync.sync().await {
+        Ok(_) => {
+            println!("otel parquet: {}", otel_sync.parquet_path.display());
+            println!("otel parquet uploaded");
+        }
+        Err(err) => eprintln!("failed to sync otel parquet: {err:#}"),
     }
 
     if !status.success() {
         std::process::exit(status.code().unwrap_or(1));
     }
 
+    Ok(())
+}
+
+/// Mirrors the session JSONL to a single parquet file, re-uploaded as a whole
+/// on every sync so the session's object in S3 is overwritten, not multiplied.
+struct OtelSync {
+    log: Arc<Mutex<File>>,
+    log_path: std::path::PathBuf,
+    parquet_path: std::path::PathBuf,
+    agent: ureq::Agent,
+    api_key: Option<String>,
+    session_id: uuid::Uuid,
+    /// Log length at the last successful upload, to skip no-op uploads.
+    synced_len: Option<u64>,
+}
+
+impl OtelSync {
+    /// Converts everything logged so far and uploads it. Returns false when
+    /// nothing was logged since the last successful upload.
+    async fn sync(&mut self) -> anyhow::Result<bool> {
+        // Writers append whole lines under this lock, so the length read under
+        // it never cuts a line in half
+        let len = {
+            let file = self.log.lock().unwrap_or_else(|e| e.into_inner());
+            file.metadata()?.len()
+        };
+        if self.synced_len == Some(len) {
+            return Ok(false);
+        }
+
+        let log_path = self.log_path.clone();
+        let parquet_path = self.parquet_path.clone();
+        let agent = self.agent.clone();
+        let api_key = self.api_key.clone();
+        let session_id = self.session_id;
+        tokio::task::spawn_blocking(move || {
+            convert_otel_log_to_parquet(&log_path, len, &parquet_path)
+                .context("failed to convert otel log to parquet")?;
+            upload_otel_parquet(&agent, api_key.as_deref(), session_id, &parquet_path)
+        })
+        .await??;
+
+        self.synced_len = Some(len);
+        Ok(true)
+    }
+}
+
+/// Presigned upload response from the telemetry lambda.
+#[derive(serde::Deserialize)]
+struct PresignedUpload {
+    url: String,
+}
+
+/// Asks the telemetry lambda for a presigned S3 URL for this session and PUTs
+/// the parquet file to it.
+fn upload_otel_parquet(
+    agent: &ureq::Agent,
+    api_key: Option<&str>,
+    session_id: uuid::Uuid,
+    parquet_path: &StdPath,
+) -> anyhow::Result<()> {
+    let api_key = api_key.context("no API key configured")?;
+    let body = serde_json::json!({ "session_id": session_id.to_string() }).to_string();
+    // The agent doesn't treat HTTP errors as errors, so check status ourselves
+    let mut resp = agent
+        .post(TELEMETRY_UPLOAD_ENDPOINT)
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Content-Type", "application/json")
+        .send(body)?;
+    let status = resp.status();
+    let text = resp.body_mut().read_to_string()?;
+    if !status.is_success() {
+        anyhow::bail!("presign request failed with {status}: {text}");
+    }
+    let presigned: PresignedUpload =
+        serde_json::from_str(&text).context("invalid presign response")?;
+
+    // Raw bytes so ureq adds no Content-Type the presigned signature didn't cover
+    let data = std::fs::read(parquet_path)?;
+    let mut resp = agent.put(&presigned.url).send(&data[..])?;
+    let status = resp.status();
+    if !status.is_success() {
+        let text = resp.body_mut().read_to_string().unwrap_or_default();
+        anyhow::bail!("S3 upload failed with {status}: {text}");
+    }
     Ok(())
 }
 
@@ -121,12 +239,17 @@ async fn record_otlp_export(
     Json(serde_json::json!({}))
 }
 
-/// Rewrites the session JSONL as a parquet file with two string columns,
-/// `signal` and `payload`, keeping each OTLP export as raw JSON.
-fn convert_otel_log_to_parquet(jsonl_path: &StdPath, parquet_path: &StdPath) -> anyhow::Result<()> {
+/// Rewrites the first `len` bytes of the session JSONL as a parquet file with
+/// two string columns, `signal` and `payload`, keeping each OTLP export as raw
+/// JSON. The parquet file is replaced, not appended to.
+fn convert_otel_log_to_parquet(
+    jsonl_path: &StdPath,
+    len: u64,
+    parquet_path: &StdPath,
+) -> anyhow::Result<()> {
     let mut signals = StringBuilder::new();
     let mut payloads = StringBuilder::new();
-    for line in BufReader::new(File::open(jsonl_path)?).lines() {
+    for line in BufReader::new(File::open(jsonl_path)?.take(len)).lines() {
         let mut record: serde_json::Value = serde_json::from_str(&line?)?;
         let signal = record["signal"]
             .as_str()
