@@ -39,7 +39,9 @@ pub async fn fetch_query_results(
     let endpoint = Endpoint::bind(preset).await.map_err(Error::from)?;
     let guard = EndpointGuard(endpoint.clone());
 
+    let artifact_id = uuid::Uuid::try_parse(artifact_id)?;
     let limit = limit.map(|x| x as u64);
+
     let (client, stream) =
         crate::client::read_runner_artifact(&endpoint, addr, artifact_id, auth_token, limit)
             .await?;
