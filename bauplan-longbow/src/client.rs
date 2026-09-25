@@ -11,6 +11,7 @@ use iroh::{
 };
 use n0_error::StdResultExt;
 use tracing::debug;
+use uuid::Uuid;
 
 use crate::{ALPN, Error, StreamToken};
 
@@ -102,7 +103,7 @@ struct ArrowStreamState {
 pub(crate) async fn read_runner_artifact(
     endpoint: &Endpoint,
     addr: EndpointAddr,
-    artifact_id: &str,
+    artifact_id: Uuid,
     auth_token: &str,
     limit: Option<u64>,
 ) -> Result<(H3Client, H3Stream), Error> {
@@ -122,7 +123,10 @@ pub(crate) async fn read_runner_artifact(
         debug!(%err, "h3 connection closed");
     });
 
-    let mut uri = format!("https://longbow/artifacts/{artifact_id}?arrow=true");
+    let mut uri = format!(
+        "https://longbow/artifacts/{}?arrow=true",
+        artifact_id.simple()
+    );
     if let Some(limit) = limit {
         uri = format!("{}&head={}", uri, limit);
     }
@@ -162,6 +166,7 @@ pub async fn fetch_query_results(
     ),
     Error,
 > {
+    let artifact_id = Uuid::parse_str(artifact_id).map_err(|_| Error::InvalidArtifactId)?;
     let (client, mut stream) =
         read_runner_artifact(endpoint, addr, artifact_id, auth_token, limit).await?;
 
