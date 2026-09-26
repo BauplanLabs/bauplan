@@ -1,4 +1,12 @@
 
+## [0.3.3] - 2026-09-26
+
+### Bugfixes
+
+- Always send the parameters defined in the project file (6af8e707d8cb31b30f2298e72bc86941231accfb)
+- [cli] Don't WARN on unrecognized error types (b9f782ff3e5558f94a275b2a6e1be9811deaa123)
+- [pysdk] Make `InfoState.organization` and `user` non-optional (2cff86caf53961575f16be4978c5c9fc1e39f316)
+
 ## [0.3.2] - 2026-09-17
 
 ### New Features
