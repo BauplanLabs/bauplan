@@ -2,7 +2,6 @@ from bauplan_sdk_types._models import Model
 from bauplan_sdk_types._function_types import (
     expectation,
     model,
-    ModelCacheStrategy,
     ModelMaterializationStrategy,
 )
 from bauplan_sdk_types._parameters import Parameter
@@ -46,7 +45,6 @@ __all__ = [
     "String",
     "Binary",
     # variables
-    "ModelCacheStrategy",
     "ModelMaterializationStrategy",
     # decorators
     "expectation",

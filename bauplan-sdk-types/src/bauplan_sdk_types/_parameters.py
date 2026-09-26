@@ -14,4 +14,4 @@ class Parameter:
         `proj_param: Annotated[float, Parameter('interest_rate')]`
     """
 
-    param_name: str
+    name: str
