@@ -1,0 +1,41 @@
+/* Section switcher, styled like the desktop navbar tabs */
+.sections {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 0 8px !important;
+  overflow-x: auto;
+  border-bottom: 1px solid #67748a1f;
+}
+
+.sections > li {
+  margin: 0 !important;
+}
+
+.sections :global(.menu__link) {
+  padding: 8px 0 !important;
+  border-left: none !important;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: none !important;
+}
+
+.sections :global(.menu__link--active) {
+  border-bottom-color: #00B0FF;
+}
+
+/* Keep all three tabs on one line on the narrowest phones */
+@media (max-width: 359px) {
+  .sections {
+    gap: 4px;
+    padding: 0 4px !important;
+  }
+
+  .sections :global(.menu__link) {
+    font-size: 0.8125rem;
+  }
+}
