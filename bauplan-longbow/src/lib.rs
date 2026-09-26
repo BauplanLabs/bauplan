@@ -149,6 +149,8 @@ pub enum Error {
     Arrow(#[from] arrow::error::ArrowError),
     #[error("Invalid key data")]
     InvalidKey,
+    #[error("Invalid artifact ID")]
+    InvalidArtifactId,
     #[error("Invalid stream token")]
     InvalidStreamToken,
     #[error("Stream closed")]
