@@ -39,3 +39,11 @@
     font-size: 0.8125rem;
   }
 }
+
+/* Tabs that switch the sidebar are buttons, not links */
+.tab {
+  border-top: none;
+  border-right: none;
+  font-family: inherit;
+  cursor: pointer;
+}
