@@ -6,8 +6,10 @@ from bauplan_sdk_types import (
     # Field types
     Any,
     Bool,
+    ColumnLineage,
     Date32,
     Date64,
+    Decimal128,
     Float64,
     Int32,
     Int64,
