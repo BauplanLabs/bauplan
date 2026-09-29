@@ -143,10 +143,7 @@ def delete_branch_if_exists(transaction: Transaction) -> None:
 
 def _generate_branch_name(bauplan_client: bauplan.Client) -> str:
     """Generate a unique ingestion branch name from the authenticated username."""
-    user = bauplan_client.info().user
-    if user is None:
-        raise RuntimeError("Bauplan user information is unavailable")
-    username = user.username
+    username = bauplan_client.info().user.username
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     return f"{username}.ingestion_{timestamp}"
 

@@ -152,10 +152,7 @@ def main(
     """
     client = bauplan.Client(profile=profile)
 
-    user = client.info().user
-    if user is None:
-        raise RuntimeError("Bauplan user information is unavailable")
-    username = user.username
+    username = client.info().user.username
 
     # Use a "fake" main branch to avoid polluting main
     example_main_branch = f"{username}.main"

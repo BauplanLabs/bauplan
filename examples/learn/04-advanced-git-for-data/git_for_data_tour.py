@@ -41,11 +41,8 @@ def _ok(msg: str):
 def main(file_path: str):
     client = bauplan.Client()
     user = client.info().user
-    if user is None:
-        raise RuntimeError("Bauplan user information is unavailable")
     username = user.username
     full_name = user.full_name
-    assert full_name is not None and username is not None
 
     source_branch_name = "main"
     my_branch_name = f"{username}.commit_flow"

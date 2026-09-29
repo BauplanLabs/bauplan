@@ -40,10 +40,7 @@ def main(
     """
     client = bauplan.Client(profile=profile)
 
-    user = client.info().user
-    if user is None:
-        raise RuntimeError("Bauplan user information is unavailable")
-    username = user.username
+    username = client.info().user.username
     branch = f"{username}.schema_conflict"
 
     # Start from fresh branch so previous runs don't interfere

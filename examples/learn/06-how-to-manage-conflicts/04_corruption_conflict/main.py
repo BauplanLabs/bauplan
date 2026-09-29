@@ -95,10 +95,7 @@ def main(
     """
     client = bauplan.Client(profile=profile)
 
-    user = client.info().user
-    if user is None:
-        raise RuntimeError("Bauplan user information is unavailable")
-    username = user.username
+    username = client.info().user.username
 
     # Set up branches
     main_branch = f"{username}.reprocessing_race_main"

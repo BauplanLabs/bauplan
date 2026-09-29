@@ -56,10 +56,7 @@ class BauplanResource(dg.ConfigurableResource):
 
     @cached_property
     def username(self) -> str:
-        user = self.client.info().user
-        if user is None:
-            raise ValueError("Bauplan client returned no user info; check API key")
-        return user.username
+        return self.client.info().user.username
 
 
 def build_ingestion_asset(table: str, dt_partition_column: str) -> dg.AssetsDefinition:
