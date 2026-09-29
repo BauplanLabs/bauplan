@@ -35,6 +35,43 @@ pub struct TableField {
     pub doc: Option<String>,
 }
 
+/// The documentation attached to a single column.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(
+        name = "ColumnDoc",
+        module = "bauplan.schema",
+        from_py_object,
+        get_all
+    )
+)]
+pub struct ColumnDoc {
+    /// The column name.
+    pub name: String,
+    /// The column documentation, if it has any.
+    pub doc: Option<String>,
+}
+
+/// The documentation on a table and its columns, read straight from the Iceberg
+/// catalog rather than the Bauplan catalog service.
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[cfg_attr(
+    feature = "python",
+    pyo3::pyclass(
+        name = "TableDocs",
+        module = "bauplan.schema",
+        from_py_object,
+        get_all
+    )
+)]
+pub struct TableDocs {
+    /// The table documentation, carried as the `comment` table property.
+    pub comment: Option<String>,
+    /// Every column in the current schema, documented or not.
+    pub columns: Vec<ColumnDoc>,
+}
+
 /// A partition field on a table.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[cfg_attr(
@@ -198,6 +235,26 @@ impl PartitionField {
         format!(
             "PartitionField(name={:?}, transform={:?})",
             self.name, self.transform,
+        )
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl ColumnDoc {
+    fn __repr__(&self) -> String {
+        format!("ColumnDoc(name={:?}, doc={:?})", self.name, self.doc)
+    }
+}
+
+#[cfg(feature = "python")]
+#[pyo3::pymethods]
+impl TableDocs {
+    fn __repr__(&self) -> String {
+        format!(
+            "TableDocs(comment={:?}, columns={})",
+            self.comment,
+            self.columns.len(),
         )
     }
 }
