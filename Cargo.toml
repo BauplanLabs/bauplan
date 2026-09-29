@@ -74,6 +74,7 @@ futures.workspace = true
 gethostname = "1"
 http = "1"
 humantime = "2"
+iceberg = "0.10"
 iceberg-catalog-rest = "0.10"
 indicatif = "0.18"
 log = { version = "0.4", optional = true }

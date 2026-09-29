@@ -671,6 +671,7 @@ dependencies = [
  "http",
  "http-body-util",
  "humantime",
+ "iceberg",
  "iceberg-catalog-rest",
  "ignore",
  "indicatif",
