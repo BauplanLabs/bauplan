@@ -3,6 +3,8 @@ import remarkHiddenLines from "./src/plugins/remark-hidden-lines.js";
 import redirects from "./redirects.js";
 
 const siteUrl = process.env.DOCS_URL || "https://docs.bauplanlabs.com";
+const posthogApiKey =
+  process.env.DOCS_ENV === "prod" ? process.env.POSTHOG_API_KEY : undefined;
 
 export default {
   clientModules: [
@@ -189,7 +191,15 @@ export default {
   plugins: [
     require.resolve("./src/plugins/tailwind-config.js"),
     ["@docusaurus/plugin-client-redirects", { redirects }],
-  ],
+    posthogApiKey && [
+      "posthog-docusaurus",
+      {
+        apiKey: posthogApiKey,
+        appUrl: "https://us.i.posthog.com",
+        enableInDevelopment: false,
+      },
+    ],
+  ].filter(Boolean),
 
   future: {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
