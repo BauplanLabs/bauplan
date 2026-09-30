@@ -8,7 +8,6 @@ from typing import (
 )
 
 
-ModelCacheStrategy = Literal["NONE", "DEFAULT"]
 ModelMaterializationStrategy = Literal[
     "NONE", "REPLACE", "APPEND", "OVERWRITE_PARTITIONS"
 ]
@@ -18,9 +17,7 @@ def model(
     name: Optional[str] = None,
     partitioned_by: Optional[Union[str, list[str], tuple[str, ...]]] = None,
     materialization_strategy: Optional[ModelMaterializationStrategy] = None,
-    cache_strategy: Optional[ModelCacheStrategy] = None,
     overwrite_filter: Optional[str] = None,
-    internet_access: Optional[bool] = None,
 ) -> Callable:
     """
     Decorator that specifies a Bauplan model.
