@@ -18,11 +18,12 @@ lint:
         docs/pages examples python src
 
     # These are technically tests, but they just check the source.
+    just docs/generate-reference
     cargo test --test snippets
 
     # Lint CI/CD.
     zizmor . --persona pedantic
 
-test: lint
+test:
     cargo test --features _integration-tests -- --test-threads=4
     uv run pytest -v
