@@ -107,7 +107,7 @@ export default function DocSidebarNavbarItem({
       return null;
     };
 
-    // For documentationSidebar, skip index pages. For others (examples, integrations), use them.
+    // For documentationSidebar, skip index pages. For others (reference), use them.
     const shouldSkipIndexPages = sidebarId === 'documentationSidebar';
 
     // Convert sidebar categories to dropdown items
@@ -133,18 +133,9 @@ export default function DocSidebarNavbarItem({
               // For documentationSidebar, skip index pages
               docId = findFirstNonIndexItem(item.items);
             } else {
-              // For other sidebars, infer index page from first item
-              let firstItem = item.items[0];
-              let firstDocId = typeof firstItem === 'string' ? firstItem : firstItem?.id;
-
-              if (firstDocId) {
-                const pathParts = firstDocId.split('/');
-                if (pathParts.length > 1) {
-                  docId = pathParts[0] + '/index';
-                } else {
-                  docId = firstDocId;
-                }
-              }
+              // For other sidebars, link to the first item
+              const firstItem = item.items[0];
+              docId = typeof firstItem === 'string' ? firstItem : firstItem?.id;
             }
           }
 
