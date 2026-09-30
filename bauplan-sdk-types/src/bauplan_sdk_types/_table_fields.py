@@ -1,5 +1,6 @@
 """Bauplan pySDK stubs for typing table fields (columns)."""
 
+from dataclasses import dataclass
 from typing import Optional, TypeVar, Generic
 
 
@@ -32,6 +33,12 @@ class Int64(FieldType):
 
 class Float64(FieldType):
     """Floating point data type corresponding to the Arrow data type `Float64`."""
+
+    ...
+
+
+class Decimal128(FieldType):
+    """Numerical data type corresponding to the Arrow data type `Decimal128`."""
 
     ...
 
@@ -98,6 +105,20 @@ class Any(FieldType):
     ...
 
 
+@dataclass
+class ColumnLineage(FieldType):
+    """
+    Reference to an upstream table column to inherit data and metadata from.
+
+    The reference has two required parameters:
+    1. `table_name` expects a fully qualified table name including namespace.
+    2. `col_name` expects the column name as stored in the lakehouse catalog.
+    """
+
+    table_name: str
+    col_name: str
+
+
 class TableField:
     """
     A schema field that contains metadata and is used to annotate a table column.
@@ -112,7 +133,7 @@ class TableField:
     class SampleSchema(bauplan_sdk_types.TableSchema):
         col_a: Annotated[
             bauplan_sdk_types.Any,
-            bauplan_sdk_types.TableField()
+            bauplan_sdk_types.TableField(name='.col a.')
         ]
     ```
 
@@ -122,13 +143,16 @@ class TableField:
     metadata and constraints.
 
     The attribute name, `col_a`, corresponds to the name of the represented table column.
-    If the table column's name cannot be used as the attribute name, then the `name`
-    parameter can be specified. For example, if the actual column name is stored with a
-    space: `name='col a'`.
+    If the table column's name cannot be used as the attribute name then the `name`
+    parameter can be specified, for example: `name='.col a.'`.
 
-    Lineage references another `TableField` by attribute name (python identifier) and not
-    by column name. This means that `col_a` would be referenced as
-    `SampleSchema['col_a']` and not as `SampleSchema['col a']`.
+    Lineage references another `TableField` to "inherit" or "receive" data and metadata
+    from. This is an explicit property that represents dataflow. Lineage can be specified
+    in one of two ways:
+    1. directly reference an attribute (the python identifier) in a `TableSchema`:
+    `SampleSchema['col_a']`.
+    2. define a `ColumnLineage` object using the table identifier and column name:
+    `ColumnLineage('namespace.table', '.col a.')`.
     """
 
     # TODO: make all parameters keyword args only with `*` arg marker
@@ -137,11 +161,19 @@ class TableField:
         name: Optional[str] = None,
         doc: Optional[str] = None,
         lineage: Optional[FieldType | str] = None,
+        precision: Optional[int] = None,
+        scale: Optional[int] = None,
     ):
         """
         `name`: Name of the annotated table column.
         `doc`: Documentation describing the table column.
-        `lineage`: A reference to another `TableField` to "inherit" data and metadata from.
+        `lineage`: Reference to another `TableField` to "inherit" data and metadata from.
+        `precision`: Integer in the range [1, 38]; only valid if annotated `FieldType` is `Decimal128`.
+        `scale`: Integer value; only valid if annotated `FieldType` is `Decimal128`.
+
+        Both `precision` and `scale` are only valid if the annotated `FieldType` is
+        `Decimal128`. Precision is required for a Decimal128 and scale defaults to `0` if
+        not provided.
         """
 
         super().__init__()
