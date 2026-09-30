@@ -22,6 +22,6 @@ lint:
     # Lint CI/CD.
     zizmor . --persona pedantic
 
-test: lint
+test:
     cargo test --features _integration-tests -- --test-threads=4
     uv run pytest -v

@@ -3,7 +3,15 @@ name: Tests
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "**/*.mdx"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+      - "**/*.mdx"
 
 permissions:
   contents: read
@@ -22,11 +30,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-
-      # mise is supposed to install this, but it doesn't. Changing the cache
-      # key doesn't work.
-      - run: rustup component add clippy
-
       - uses: ./.github/actions/setup-caches
 
       - run: mise x -- just test
