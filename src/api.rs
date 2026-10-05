@@ -33,9 +33,17 @@ fn encode_segment(s: &str) -> PercentEncode<'_> {
     // WHATWG path percent-encode set (https://url.spec.whatwg.org/#path-percent-encode-set)
     // extended with `/` and `%` to treat the input as a single segment.
     const SEGMENT: &AsciiSet = &CONTROLS
-        .add(b' ').add(b'"').add(b'<').add(b'>').add(b'`')
-        .add(b'#').add(b'?').add(b'{').add(b'}')
-        .add(b'/').add(b'%');
+        .add(b' ')
+        .add(b'"')
+        .add(b'<')
+        .add(b'>')
+        .add(b'`')
+        .add(b'#')
+        .add(b'?')
+        .add(b'{')
+        .add(b'}')
+        .add(b'/')
+        .add(b'%');
     utf8_percent_encode(s, SEGMENT)
 }
 
