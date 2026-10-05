@@ -96,3 +96,49 @@ html[data-theme-choice='light'] [class*='darkToggleIcon'],
 html[data-theme-choice='dark'] [class*='lightToggleIcon'] {
   display: initial;
 }
+
+/* Mobile drawer header: logo left, theme toggle grouped with the close button */
+.navbar-sidebar__brand .navbar__brand {
+  margin-right: auto;
+}
+
+.navbar-sidebar__close {
+  margin-left: 0;
+
+  /* Match the hamburger and theme toggle icons; the default X is thin and gray */
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  g {
+    stroke: var(--ifm-navbar-link-color);
+    stroke-width: 2;
+  }
+}
+
+/* The section tabs replace "Back to main menu" in the mobile drawer */
+.navbar-sidebar__back {
+  display: none;
+}
+
+/* Section tabs above the docs sidebar in the mobile drawer */
+.mobile-section-tabs {
+  display: flex;
+  gap: 16px;
+  margin: -0.5rem -0.5rem 0.75rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid #67748a1f;
+
+  .navbar__item {
+    display: block; /* Infima hides navbar items below 996px */
+    margin-right: 0;
+  }
+
+  .navbar__link {
+    padding-top: 12px;
+    padding-bottom: 10px;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+}
