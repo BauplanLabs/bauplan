@@ -115,7 +115,12 @@ impl Client {
         namespace: "str | Namespace",
         r#ref: "str | Ref",
     ) -> "Namespace")]
-    fn get_namespace(&self, py: Python<'_>, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<Namespace> {
+    fn get_namespace(
+        &self,
+        py: Python<'_>,
+        namespace: NamespaceArg,
+        r#ref: RefArg,
+    ) -> PyResult<Namespace> {
         let req = GetNamespace {
             name: &namespace.0,
             at_ref: &r#ref.0,
@@ -168,7 +173,8 @@ impl Client {
         if_not_exists: "bool" = false,
     ) -> "Namespace")]
     fn create_namespace(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         namespace: NamespaceArg,
         branch: BranchArg,
         commit_body: Option<&str>,
@@ -250,7 +256,8 @@ impl Client {
         commit_properties: "dict[str, str] | None" = None,
     ) -> "Branch")]
     fn delete_namespace(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         namespace: NamespaceArg,
         branch: BranchArg,
         if_exists: bool,
@@ -318,7 +325,12 @@ impl Client {
         namespace: "str | Namespace",
         r#ref: "str | Ref",
     ) -> "bool")]
-    fn has_namespace(&self, py: Python<'_>, namespace: NamespaceArg, r#ref: RefArg) -> PyResult<bool> {
+    fn has_namespace(
+        &self,
+        py: Python<'_>,
+        namespace: NamespaceArg,
+        r#ref: RefArg,
+    ) -> PyResult<bool> {
         let req = GetNamespace {
             name: &namespace.0,
             at_ref: &r#ref.0,
