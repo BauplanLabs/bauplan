@@ -163,7 +163,10 @@ fn collect_command(
         .map(OptionDoc::try_from)
         .collect::<Result<Vec<_>>>()?;
 
-    let command_aliases = cmd.get_all_aliases().map(str::to_string).collect::<Vec<_>>();
+    let command_aliases = cmd
+        .get_all_aliases()
+        .map(str::to_string)
+        .collect::<Vec<_>>();
 
     out.push(CommandDoc {
         id: path.join("-"),
