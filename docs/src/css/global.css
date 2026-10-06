@@ -241,6 +241,11 @@ footer {
   border-top: 0.5px solid var(--ifm-table-border-color);
 }
 
+.footer-terms-link {
+  color: inherit;
+  text-decoration: underline;
+}
+
 .text--truncate {
   white-space: wrap !important;
 }

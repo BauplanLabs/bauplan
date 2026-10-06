@@ -164,7 +164,7 @@ export default {
         srcDark: "img/bauplan_logo.png",
         href: "https://bauplanlabs.com",
       },
-      copyright: `Copyright © ${new Date().getFullYear()} Bauplan Inc.<br/> All rights reserved.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Bauplan Inc.<br/> All rights reserved · <a href="https://bauplanlabs.com/website-terms-conditions" class="footer-terms-link">Terms & Conditions</a>`,
     },
     algolia: {
       appId: "X4Z23JL83Y",
