@@ -354,6 +354,12 @@ pub struct RevertTable<'a> {
     pub commit: CommitOptions<'a>,
 }
 
+#[derive(Serialize)]
+struct RevertTableQuery<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    namespace: Option<&'a str>,
+}
+
 #[derive(Debug, Clone, Serialize)]
 struct RevertTableBody<'a> {
     replace: bool,
@@ -375,6 +381,12 @@ impl ApiRequest for RevertTable<'_> {
             self.name,
             self.into_branch,
         )
+    }
+
+    fn query(&self) -> Option<impl Serialize> {
+        Some(RevertTableQuery {
+            namespace: self.namespace,
+        })
     }
 
     fn body(&self) -> Option<impl Serialize> {
