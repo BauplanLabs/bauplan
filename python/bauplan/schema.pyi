@@ -166,11 +166,6 @@ class Job:
         The type of job (query, run, import, etc.).
         """
     @property
-    def runner(self, /) -> str:
-        """
-        The runner instance assigned to execute this job.
-        """
-    @property
     def started_at(self, /) -> datetime | None:
         """
         When the job started executing.

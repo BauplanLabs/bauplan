@@ -68,7 +68,6 @@ __all__ = [
     "JobState",
     "OrganizationInfo",
     "RefType",
-    "RunnerNodeInfo",
     "UserInfo",
     # Decorators and model definitions.
     "expectation",
@@ -1958,8 +1957,6 @@ class InfoState:
     @property
     def organization(self, /) -> OrganizationInfo: ...
     @property
-    def runners(self, /) -> list[RunnerNodeInfo]: ...
-    @property
     def user(self, /) -> UserInfo: ...
 
 @final
@@ -1975,12 +1972,6 @@ class OrganizationInfo:
     def name(self, /) -> str: ...
     @property
     def slug(self, /) -> str: ...
-
-@final
-class RunnerNodeInfo:
-    def __repr__(self, /) -> str: ...
-    @property
-    def hostname(self, /) -> str: ...
 
 @final
 class UserInfo:

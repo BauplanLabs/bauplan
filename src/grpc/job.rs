@@ -225,8 +225,6 @@ pub struct Job {
     pub started_at: Option<DateTime<Utc>>,
     /// When the job finished (successfully or not).
     pub finished_at: Option<DateTime<Utc>>,
-    /// The runner instance assigned to execute this job.
-    pub runner: String,
     /// Error message for failed jobs, when available.
     pub error_message: Option<String>,
 }
@@ -257,7 +255,6 @@ impl From<commanderpb::JobInfo> for Job {
             created_at: info.created_at.and_then(pb_to_chrono),
             started_at: info.started_at.and_then(pb_to_chrono),
             finished_at: info.finished_at.and_then(pb_to_chrono),
-            runner: info.runner,
             error_message: info.error_message,
         }
     }
