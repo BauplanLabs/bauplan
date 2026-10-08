@@ -203,6 +203,6 @@ export default {
 
   future: {
     v4: true, // Improve compatibility with the upcoming Docusaurus v4
-    experimental_faster: true, // Use rust
+    faster: true, // Use rust
   },
 };
