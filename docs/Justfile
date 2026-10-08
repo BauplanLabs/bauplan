@@ -1,5 +1,5 @@
 install:
-    bun install
+    bun install --frozen-lockfile
 
 generate:
     uv sync --reinstall-package bauplan
