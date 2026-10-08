@@ -38,3 +38,19 @@ updates:
       all-dependencies:
         patterns:
           - "*"
+  - package-ecosystem: bun
+    directory: /docs
+    schedule:
+      interval: daily
+      time: "09:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 0
+    commit-message:
+      prefix: "chore(docs)"
+    cooldown:
+      default-days: 7
+    groups:
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - "*"
