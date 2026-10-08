@@ -7,16 +7,16 @@ on:
     paths:
       - .github/workflows/docs.yaml
       - docs/**
+      - mise.toml
       - "!**/README.md"
-      - "!**/Justfile"
   push:
     branches:
       - main
     paths:
       - .github/workflows/docs.yaml
       - docs/**
+      - mise.toml
       - "!**/README.md"
-      - "!**/Justfile"
   workflow_call:
     inputs:
       environment:
@@ -50,8 +50,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-        with:
-          working_directory: ./docs
 
       - uses: ./.github/actions/setup-caches
       - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
