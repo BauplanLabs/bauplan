@@ -182,6 +182,12 @@ export default {
         dark: "dark",
       },
       options: {
+        layout: "dagre",
+        look: "classic",
+        flowchart: {
+          wrappingWidth: 200,
+          minNodeWidth: 0,
+        },
         themeVariables: {
           fontFamily: "IBMPlexMono, monospace",
         },
