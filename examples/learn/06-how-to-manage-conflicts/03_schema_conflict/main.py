@@ -60,7 +60,7 @@ def main(
     )
 
     if str(run_state.job_status).lower() != "success":
-        raise Exception(
+        raise RuntimeError(
             f"Old pipeline failed unexpectedly: {run_state.job_status} - {run_state.error}"
         )
     print("Old pipeline succeeded; expectation passed (fares fit decimal(4, 2))")
