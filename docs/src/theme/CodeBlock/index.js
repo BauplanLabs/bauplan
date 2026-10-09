@@ -27,7 +27,11 @@ function codeBlockLanguage({ language, className }) {
 export default function CodeBlockWrapper(props) {
   const language = codeBlockLanguage(props);
   if (!TERMINAL_LANGUAGES.has(language)) {
-    return <CodeBlock {...props} />;
+    return (
+      <CodeBlockLanguageContext.Provider value={language}>
+        <CodeBlock {...props} />
+      </CodeBlockLanguageContext.Provider>
+    );
   }
   // A fence title (```sh title="...") arrives inside the metastring, so it is
   // moved from there into the window bar instead of the default title strip
