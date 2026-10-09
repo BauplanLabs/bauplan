@@ -154,7 +154,7 @@ def training_dataset(
 @bauplan.model(materialization_strategy="REPLACE")
 @bauplan.python(
     "3.11",
-    pip={"prophet": "1.1.4", "numpy": "1.26.4", "cmdstanpy": "1.2.5", "pandas": "2"},
+    pip={"prophet": "1.5.0", "numpy": "2.4.6", "cmdstanpy": "1.3.0", "pandas": "3.0.6"},
 )
 def predict_trips(
     data: Annotated[
@@ -178,6 +178,7 @@ def predict_trips(
     future = m.make_future_dataframe(periods=20)
     forecast = m.predict(future)
     final_forecast = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]]
+    final_forecast["ds"] = final_forecast["ds"].astype("datetime64[ns]")
     print("Preview for output:\n", final_forecast.head())
     print("Total predictions: {}\n".format(len(final_forecast)))
 
