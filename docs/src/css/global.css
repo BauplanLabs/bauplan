@@ -331,6 +331,9 @@ hr.mermaid {
 /* sidebar */
 @import './sidebar.css';
 
+/* terminal window around shell code blocks */
+@import './terminal.css';
+
 /* Tabs - faint bottom line on hover */
 .tabs__item {
   border-radius: 0;
