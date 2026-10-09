@@ -49,7 +49,6 @@ from bauplan_sdk_types import (
     # Runtime decorators
     python,
     # Options
-    ModelCacheStrategy,
     ModelMaterializationStrategy,
 )
 
@@ -73,7 +72,6 @@ __all__ = [
     "expectation",
     "model",
     "python",
-    "ModelCacheStrategy",
     "ModelMaterializationStrategy",
     # Entity types
     "Model",
