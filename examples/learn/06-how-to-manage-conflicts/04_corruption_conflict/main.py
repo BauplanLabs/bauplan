@@ -15,7 +15,7 @@ def run_pipeline(
     run_state = client.run(project_dir=pipeline_path, ref=branch, parameters=parameters)
 
     if str(run_state.job_status).lower() != "success":
-        raise Exception(
+        raise RuntimeError(
             f"{run_state.job_id} failed: {run_state.job_status} - {run_state.error}."
         )
 

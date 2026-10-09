@@ -40,7 +40,7 @@ def run_pipeline(
     )
 
     if str(run_state.job_status).lower() != "success":
-        raise Exception(
+        raise RuntimeError(
             f"{run_state.job_id} failed: {run_state.job_status} - {run_state.error}."
         )
     else:
