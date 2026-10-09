@@ -12,11 +12,10 @@ cases below pin down what those kernels do at the edges: nulls, empty columns, a
 columns whose aggregate is itself null.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 import pyarrow as pa
 import pytest
-
 from bauplan.standard_expectations import (
     _calculate_string_concatenation,
     expect_column_accepted_values,

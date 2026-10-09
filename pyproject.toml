@@ -100,10 +100,13 @@ include = [
 exclude = [
     "docs/gen_sdk_reference.py",
     "examples",
+    # This file gets prepended to `python/bauplan/__init__.pyi`, so there is no point checking it twice.
+    "gen-stubs/src/__init__.pyi",
 ]
+force-exclude = true
 
 [tool.ruff.lint]
-select = [
+extend-select = [
     "ANN001", # Missing type annotation for function argument
 ]
 
