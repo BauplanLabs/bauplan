@@ -1,0 +1,92 @@
+/* Terminal window around shell code blocks. The body keeps the site's dark
+   code theme, so it looks the same in both color modes */
+.terminal-window {
+  --terminal-background: #1e1e1e;
+  margin-bottom: var(--ifm-leading);
+  border-radius: var(--ifm-code-border-radius);
+  overflow: hidden;
+  background: var(--terminal-background);
+  box-shadow: var(--ifm-global-shadow-lw);
+}
+
+[data-theme='dark'] .terminal-window {
+  box-shadow: 0 0 0 1px #333333;
+}
+
+.terminal-window__bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1rem;
+  background: #3f3f46;
+}
+
+.terminal-window__dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.terminal-window__dot--red {
+  background: #FF4C61;
+}
+
+.terminal-window__dot--blue {
+  background: #00B0FF;
+}
+
+.terminal-window__dot--yellow {
+  background: #FFD600;
+}
+
+.terminal-window__title {
+  margin-left: 0.5rem;
+  color: #a1a1aa;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+}
+
+/* The inner code block loses its own frame: the window is the frame */
+.terminal-window div[class*='codeBlockContainer'] {
+  margin-bottom: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.terminal-window pre[class*='language-'] {
+  border-radius: 0;
+}
+
+/* A prompt marks each command. It is drawn by CSS, so copying leaves it out */
+.terminal-window__command::before {
+  content: "$ ";
+  color: #71717a;
+  user-select: none;
+}
+
+/* Force cmds to be the same color. Only comments and quoted strings stand out */
+.terminal-window .token {
+  color: #e4e4e7 !important;
+}
+
+.terminal-window .token.comment {
+  color: #8d949e !important;
+  font-style: italic;
+}
+
+.terminal-window .token.string {
+  color: #ffd600 !important;
+}
+
+/* Make the copy button visible */
+.terminal-window div[class*='buttonGroup'] button {
+  opacity: 0.7 !important;
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.terminal-window div[class*='buttonGroup'] button:hover {
+  opacity: 1 !important;
+}
