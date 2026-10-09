@@ -80,7 +80,7 @@ html {
   scroll-padding-top: 65px; /* Match navbar's height */
 }
 
-/* Ensure anchors clear the fixed navbar on cross-page navigation */
+/* Anchor scroll offset below the fixed navbar */
 [id].anchor,
 h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   scroll-margin-top: 65px;
@@ -330,6 +330,9 @@ hr.mermaid {
 
 /* sidebar */
 @import './sidebar.css';
+
+/* terminal window around shell code blocks */
+@import './terminal.css';
 
 /* Tabs - faint bottom line on hover */
 .tabs__item {
