@@ -49,10 +49,17 @@
   background-color: transparent !important;
 }
 
-/* Category headers that are NOT the current page — no border */
+/* Category headers that are the current page keep their text in place under the
+   3px border */
+.menu__list-item-collapsible .menu__link--active[aria-current="page"] {
+  padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px) !important;
+}
+
+/* Category headers that are NOT the current page — no border. Same padding as
+   when unselected, so the label doesn't shift while one of its pages is open */
 .menu__list-item-collapsible .menu__link--active:not([aria-current="page"]) {
   border-left: none !important;
-  padding-left: 16px !important;
+  padding-left: var(--ifm-menu-link-padding-horizontal) !important;
 }
 
 /* Remove the full-width background on active category-with-link (e.g. "Git for Data") */
@@ -70,6 +77,18 @@
   font-size: 13px;
   color: var(--ifm-menu-color, #4B5563);
   transition: background-color 0.3s, border-left 0.3s, padding-left 0.3s;
+}
+
+/* A page next to subcategories (e.g. Projects beside Git for Data) is their peer,
+   so it lines up with their labels instead of looking like a child of one. The
+   active rule subtracts the 3px border so the text doesn't move */
+.menu__list:has(> .theme-doc-sidebar-item-category) > .theme-doc-sidebar-item-link > .menu__link {
+  margin-left: 0;
+  padding-left: var(--ifm-menu-link-padding-horizontal);
+}
+
+.menu__list:has(> .theme-doc-sidebar-item-category) > .theme-doc-sidebar-item-link > .menu__link--active {
+  padding-left: calc(var(--ifm-menu-link-padding-horizontal) - 3px) !important;
 }
 
 /* Sidebar chevrons — thinner, smaller */
@@ -99,6 +118,6 @@
   font-weight: 600;
   text-transform: none;
   letter-spacing: 0.2px;
-  padding-left: 16px !important;
+  padding-left: var(--ifm-menu-link-padding-horizontal) !important;
   margin-left: 0 !important;
 }
