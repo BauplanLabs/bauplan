@@ -7,7 +7,6 @@ class Actor:
     """
     An actor (author or committer) in a commit.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def email(self, /) -> str | None:
         """
@@ -30,11 +29,9 @@ class Commit:
     """
     A commit in the catalog.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def author(self, /) -> Actor | None:
         """The first author of the commit."""
-        ...
     @property
     def authored_date(self, /) -> datetime:
         """
@@ -48,7 +45,6 @@ class Commit:
     @property
     def body(self, /) -> str | None:
         """The body of the commit message. `None` if the message has no body."""
-        ...
     @property
     def committed_date(self, /) -> datetime:
         """
@@ -72,7 +68,6 @@ class Commit:
     @property
     def parent_merge_ref(self, /) -> Branch | None:
         """For merge commits, the branch that was merged in (second parent). `None` for regular commits."""
-        ...
     @property
     def parent_ref(self, /) -> Ref:
         """
@@ -96,7 +91,6 @@ class Commit:
     @property
     def subject(self, /) -> str | None:
         """The subject line of the commit message."""
-        ...
 
 @final
 class DAGEdge:
@@ -122,11 +116,9 @@ class DAGNode:
     @property
     def id(self, /) -> str:
         """The unique identifier for this node (model)."""
-        ...
     @property
     def name(self, /) -> str:
         """The model name."""
-        ...
 
 @final
 class DetachedRef(Ref):
@@ -139,7 +131,6 @@ class Job:
     """
     The record of running a pipeline, query, or an import (see `bauplan.schema.JobKind` for all job kinds).
     """
-    def __repr__(self, /) -> str: ...
     @property
     def created_at(self, /) -> datetime | None:
         """
@@ -237,15 +228,12 @@ class JobKind:
     def __eq__(self, /, other: object) -> bool: ...
     def __int__(self, /) -> int: ...
     def __ne__(self, /, other: object) -> bool: ...
-    def __repr__(self, /) -> str: ...
-    def __str__(self, /) -> str: ...
 
 @final
 class JobLogEvent:
     """
     A single log message from a job execution. When you output logs within a Python model, they are persisted as `JobLogEvent`s.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def level(self, /) -> JobLogLevel:
         """
@@ -276,7 +264,6 @@ class JobLogLevel:
     def __eq__(self, /, other: object) -> bool: ...
     def __int__(self, /) -> int: ...
     def __ne__(self, /, other: object) -> bool: ...
-    def __repr__(self, /) -> str: ...
 
 @final
 class JobLogStream:
@@ -289,7 +276,6 @@ class JobLogStream:
     def __eq__(self, /, other: object) -> bool: ...
     def __int__(self, /) -> int: ...
     def __ne__(self, /, other: object) -> bool: ...
-    def __repr__(self, /) -> str: ...
 
 @final
 class JobState:
@@ -307,15 +293,12 @@ class JobState:
     def __eq__(self, /, other: object) -> bool: ...
     def __int__(self, /) -> int: ...
     def __ne__(self, /, other: object) -> bool: ...
-    def __repr__(self, /) -> str: ...
-    def __str__(self, /) -> str: ...
 
 @final
 class Namespace:
     """
     A container for organizing tables.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def name(self, /) -> str:
         """
@@ -327,7 +310,6 @@ class PartitionField:
     """
     A partition field on a table.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def name(self, /) -> str:
         """
@@ -343,20 +325,15 @@ class Ref:
     """
     A reference to a branch, tag, or commit, as returned by API operations.
     """
-    def __repr__(self, /) -> str: ...
-    def __str__(self, /) -> str: ...
     @property
     def hash(self, /) -> str:
         """The hash of the branch or tag."""
-        ...
     @property
     def name(self, /) -> str:
         """The name of the branch or tag."""
-        ...
     @property
     def type(self, /) -> RefType:
         """The type of the ref, either 'BRANCH', 'TAG', or 'DETACHED'."""
-        ...
 
 @final
 class RefType:
@@ -370,8 +347,6 @@ class RefType:
     def __eq__(self, /, other: object) -> bool: ...
     def __int__(self, /) -> int: ...
     def __ne__(self, /, other: object) -> bool: ...
-    def __repr__(self, /) -> str: ...
-    def __str__(self, /) -> str: ...
 
 @final
 class Table:
@@ -396,7 +371,6 @@ class Table:
         """
         Whether this is an external table.
         """
-    def __repr__(self, /) -> str: ...
     @property
     def current_schema_id(self, /) -> int | None:
         """
@@ -473,7 +447,6 @@ class TableField:
     """
     A field in a table schema.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def doc(self, /) -> str | None:
         """
@@ -517,7 +490,6 @@ class TableKind:
     def __eq__(self, /, other: object) -> bool: ...
     def __int__(self, /) -> int: ...
     def __ne__(self, /, other: object) -> bool: ...
-    def __repr__(self, /) -> str: ...
 
 @final
 class Tag(Ref):

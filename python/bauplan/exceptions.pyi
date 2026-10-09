@@ -1,6 +1,7 @@
+from typing import Final, Self, final
+
 from bauplan.schema import Ref
 from bauplan.state import TableCreatePlanApplyState, TableCreatePlanState
-from typing import Final, final
 
 class ApiErrorKind:
     """
@@ -277,7 +278,7 @@ class BauplanError(Exception):
     """
     Base class for all bauplan SDK exceptions.
     """
-    def __new__(cls, /, *_args) -> BauplanError: ...
+    def __new__(cls, /, *_args) -> Self: ...
 
 class BauplanHTTPError(BauplanError):
     """
@@ -285,7 +286,7 @@ class BauplanHTTPError(BauplanError):
     """
     def __new__(
         cls, /, code: int, type: str, message: str, kind: ApiErrorKind | None = None
-    ) -> BauplanHTTPError: ...
+    ) -> Self: ...
     @property
     def code(self, /) -> int: ...
     @property
@@ -312,7 +313,7 @@ class TableCreatePlanError(BauplanError):
     """
     Base class for errors raised during a table-create plan workflow.
     """
-    def __new__(cls, /) -> TableCreatePlanError: ...
+    def __new__(cls, /) -> Self: ...
 
 @final
 class TableCreatePlanStatusError(TableCreatePlanError):

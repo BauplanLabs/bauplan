@@ -1,7 +1,7 @@
 """Tests for query operations."""
 
-import pytest
 import bauplan
+import pytest
 
 
 @pytest.fixture

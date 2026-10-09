@@ -2,7 +2,6 @@ from typing import Annotated
 
 import bauplan
 import pyarrow
-
 from bauplan import (
     Int64,
     Model,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import LiteralString, Optional
+from typing import LiteralString
 
 from bauplan_sdk_types._table_schema import TableSchema
 
@@ -80,5 +80,5 @@ class Model:
     """
 
     name: str
-    projection_schema: Optional[type[TableSchema]] = None
-    filter: Optional[LiteralString] = None
+    projection_schema: type[TableSchema] | None = None
+    filter: LiteralString | None = None

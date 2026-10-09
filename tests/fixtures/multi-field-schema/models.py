@@ -1,17 +1,16 @@
 from typing import Annotated
 
-import pyarrow
 import bauplan
-
+import pyarrow
 from bauplan import (
-    TableField,
-    Model,
-    Bool,
-    Parameter,
-    Int64,
-    Float64,
-    String,
     Binary,
+    Bool,
+    Float64,
+    Int64,
+    Model,
+    Parameter,
+    String,
+    TableField,
     TimestampMicroUTC,
     TimestampNanoUTC,
 )

@@ -1,8 +1,9 @@
 """Tests for exception types, hierarchy, and typed context fields."""
 
 import uuid
-import pytest
+
 import bauplan
+import pytest
 from bauplan import exceptions
 
 
