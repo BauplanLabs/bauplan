@@ -1,4 +1,10 @@
 
+## [0.3.4] - 2026-10-09
+
+### Bugfixes
+
+- [pysdk] Send the `namespace` of `revert_table` in the request (5dd5ede09a2c7d37889ea858e7dacdebc6fd8c7c)
+
 ## [0.3.3] - 2026-09-26
 
 ### Bugfixes
