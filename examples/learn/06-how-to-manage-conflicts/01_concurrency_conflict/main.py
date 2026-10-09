@@ -10,7 +10,7 @@ def run_pipeline(client: bauplan.Client, branch: str) -> None:
     """Run the pipeline on `branch` and raise if the job does not succeed."""
     run_state = client.run(project_dir=PIPELINE_PATH, ref=branch)
     if str(run_state.job_status).lower() != "success":
-        raise Exception(
+        raise RuntimeError(
             f"{run_state.job_id} failed: {run_state.job_status} - {run_state.error}."
         )
 
