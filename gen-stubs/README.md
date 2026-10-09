@@ -36,7 +36,8 @@ This outputs the auto-generated stubs to stdout, with `# filename`
 headers separating each file. The module has submodules (`schema`, `state`,
 `exceptions`), so the output includes stubs for each.
 
-Use `uv run ruff format` to format the generated output. Tackle one file at a time.
+Use `uv run ruff check --fix` and `uv run ruff format` to clean up the generated
+output. Tackle one file at a time.
 
 ### Refining types
 

@@ -3,7 +3,6 @@ from typing import Annotated
 
 import bauplan
 import pyarrow
-
 from bauplan import (
     Float64,
     Int64,

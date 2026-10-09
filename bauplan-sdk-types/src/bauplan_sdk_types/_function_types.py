@@ -1,12 +1,8 @@
 import types
-
+from collections.abc import Callable
 from typing import (
-    Callable,
     Literal,
-    Optional,
-    Union,
 )
-
 
 ModelCacheStrategy = Literal["NONE", "DEFAULT"]
 ModelMaterializationStrategy = Literal[
@@ -15,12 +11,12 @@ ModelMaterializationStrategy = Literal[
 
 
 def model(
-    name: Optional[str] = None,
-    partitioned_by: Optional[Union[str, list[str], tuple[str, ...]]] = None,
-    materialization_strategy: Optional[ModelMaterializationStrategy] = None,
-    cache_strategy: Optional[ModelCacheStrategy] = None,
-    overwrite_filter: Optional[str] = None,
-    internet_access: Optional[bool] = None,
+    name: str | None = None,
+    partitioned_by: str | list[str] | tuple[str, ...] | None = None,
+    materialization_strategy: ModelMaterializationStrategy | None = None,
+    cache_strategy: ModelCacheStrategy | None = None,
+    overwrite_filter: str | None = None,
+    internet_access: bool | None = None,
 ) -> Callable:
     """
     Decorator that specifies a Bauplan model.

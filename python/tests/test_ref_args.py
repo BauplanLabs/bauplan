@@ -8,8 +8,9 @@ the equivalent string.
 """
 
 import uuid
-import pytest
+
 import bauplan
+import pytest
 
 
 @pytest.fixture
