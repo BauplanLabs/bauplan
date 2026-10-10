@@ -29,7 +29,6 @@ class ExternalTableCreateState:
     """
     The state of a completed external table creation job.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def ctx(self, /) -> ExternalTableCreateContext:
         """
@@ -57,7 +56,6 @@ class RunExecutionContext:
     The execution context for a run, capturing the parameters that were
     used to launch it.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def cache(self, /) -> bool:
         """
@@ -127,7 +125,6 @@ class RunState:
     The state of a completed (or failed) run, including logs, timing, and
     per-task lifecycle events.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def ctx(self, /) -> RunExecutionContext:
         """
@@ -190,7 +187,6 @@ class TableCreatePlanApplyState:
     The state of a completed `Client.apply_table_creation_plan` job, which
     materializes a previously produced `bauplan.state.TableCreatePlanState` plan.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def error(self, /) -> str | None:
         """
@@ -269,7 +265,6 @@ class TableCreatePlanState:
     modified_plan = yaml.dump(plan)
     ```
     """
-    def __repr__(self, /) -> str: ...
     @property
     def can_auto_apply(self, /) -> bool:
         """
@@ -369,7 +364,6 @@ class TableDataImportState:
     """
     The state of a completed data import job.
     """
-    def __repr__(self, /) -> str: ...
     @property
     def ctx(self, /) -> TableDataImportContext:
         """

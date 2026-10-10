@@ -3,8 +3,8 @@
 import time
 import uuid
 
-import pytest
 import bauplan
+import pytest
 
 SEARCH_URI = "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*"
 

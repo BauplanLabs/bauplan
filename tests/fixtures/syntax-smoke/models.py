@@ -5,42 +5,32 @@ This fixture implements no logic, it just attempts to use every stub; thus, it i
 "smoke test".
 """
 
-import pyarrow
 from typing import Annotated
 
-# decorators
-from bauplan import (
-    model,
-    python,
-)
-
-# Field related types
+import pyarrow
 from bauplan import (
     Any,
-    Bool,
-    Int32,
-    Int64,
-    Float64,
-    String,
     Binary,
+    Bool,
     Date32,
     Date64,
-    TimestampMicro,
-    TimestampNano,
-    TimestampMicroUTC,
-    TimestampNanoUTC,
-    TableField,
-)
-
-# Primary entities
-from bauplan import (
-    TableSchema,
+    Float64,
+    Int32,
+    Int64,
     Model,
     ModelCacheStrategy,
     ModelMaterializationStrategy,
     Parameter,
+    String,
+    TableField,
+    TableSchema,
+    TimestampMicro,
+    TimestampMicroUTC,
+    TimestampNano,
+    TimestampNanoUTC,
+    model,
+    python,
 )
-
 
 # Strategy values can be passed as literals (see the decorators below) or as named
 # values typed by the exported aliases

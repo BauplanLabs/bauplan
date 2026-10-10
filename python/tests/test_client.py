@@ -1,7 +1,7 @@
 """Tests for Client construction."""
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import pathlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import bauplan
 

@@ -1,12 +1,12 @@
 """Bauplan decorators that specify runtime options."""
 
-from typing import Optional, Callable
+from collections.abc import Callable
 
 
 def python(
     # TODO(colin): make this required.
-    version: Optional[str] = None,
-    pip: Optional[dict[str, str]] = None,
+    version: str | None = None,
+    pip: dict[str, str] | None = None,
 ) -> Callable:
     """
     Decorator that defines a Python environment for a Bauplan function (e.g. a model or

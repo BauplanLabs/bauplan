@@ -3,7 +3,6 @@ from typing import Annotated
 
 import bauplan
 import pyarrow
-
 from bauplan import (
     Model,
     Parameter,
@@ -47,7 +46,7 @@ def parallel_child_1(
         time.sleep(1.5)
 
     if child_1_should_fail:
-        raise Exception("child_1 threw exception")
+        raise RuntimeError("child_1 threw exception")
 
     return table_in
 
@@ -65,7 +64,7 @@ def parallel_child_2(
         time.sleep(1.5)
 
     if child_2_should_fail:
-        raise Exception("child_2 threw exception")
+        raise RuntimeError("child_2 threw exception")
 
     return table_in
 
@@ -83,7 +82,7 @@ def parallel_child_3(
         time.sleep(1.5)
 
     if child_3_should_fail:
-        raise Exception("child_3 threw exception")
+        raise RuntimeError("child_3 threw exception")
 
     return table_in
 
@@ -103,7 +102,7 @@ def parallel_grand_child_1(
         time.sleep(1.5)
 
     if grand_child_1_should_fail:
-        raise Exception("grand_child_1 threw exception")
+        raise RuntimeError("grand_child_1 threw exception")
 
     return table_in
 

@@ -393,7 +393,7 @@ impl Client {
     ///     namespace='my_namespace',
     /// )
     /// if plan_state.error:
-    ///     raise Exception(f"Planning failed: {plan_state.error}")
+    ///     raise RuntimeError(f"Planning failed: {plan_state.error}")
     ///
     /// if plan_state.can_auto_apply:
     ///     # No schema conflicts - table was already created automatically.
@@ -408,7 +408,7 @@ impl Client {
     ///         client_timeout=30,
     ///     )
     ///     if apply_state.error:
-    ///         raise Exception(f"Apply failed: {apply_state.error}")
+    ///         raise RuntimeError(f"Apply failed: {apply_state.error}")
     ///     print(f"Table created after conflict resolution: {apply_state.job_status}")
     /// ```
     ///

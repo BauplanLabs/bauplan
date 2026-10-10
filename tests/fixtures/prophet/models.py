@@ -2,7 +2,6 @@ from typing import Annotated
 
 import bauplan
 import pyarrow
-
 from bauplan import (
     Date32,
     Float64,
@@ -166,21 +165,20 @@ def predict_trips(
     We take the arg to be the parent dataframe,
     and run a time-series model on the "group by" by date.
     """
-    import pandas as pd
     from prophet import Prophet  # ty: ignore[unresolved-import]
 
     print("===> Prediction model <===")
     m = Prophet()
     df = data.to_pandas()
     print("Preview for features:\n", df.head())
-    print("\nTotal number of training weeks {}\n".format(len(df)))
+    print(f"\nTotal number of training weeks {len(df)}\n")
     m.fit(df)
     future = m.make_future_dataframe(periods=20)
     forecast = m.predict(future)
     final_forecast = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]]
     final_forecast["ds"] = final_forecast["ds"].astype("datetime64[ns]")
     print("Preview for output:\n", final_forecast.head())
-    print("Total predictions: {}\n".format(len(final_forecast)))
+    print(f"Total predictions: {len(final_forecast)}\n")
 
     # Return a pyarrow.Table with a schema matching the return annotation
     return pyarrow.Table.from_pandas(final_forecast, preserve_index=False)

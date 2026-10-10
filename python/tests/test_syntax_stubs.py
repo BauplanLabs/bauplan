@@ -4,7 +4,6 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-
 from bauplan import TableSchema
 
 fixture_rootdir = Path(__file__).parents[2] / "tests" / "fixtures"
