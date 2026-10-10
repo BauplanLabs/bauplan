@@ -10,7 +10,13 @@ fn import_create_table_and_query() {
     let branch = test_branch("e2e_create_table");
 
     bauplan()
-        .args(["namespace", "create", "--branch", &branch.name, NAMESPACE_NAME])
+        .args([
+            "namespace",
+            "create",
+            "--branch",
+            &branch.name,
+            NAMESPACE_NAME,
+        ])
         .assert()
         .success();
 

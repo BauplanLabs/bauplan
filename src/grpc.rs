@@ -89,7 +89,7 @@ impl Client {
             .into_inner();
 
         let Some(user_info) = resp.user_info else {
-            return Err(tonic::Status::not_found("no user info in response"))
+            return Err(tonic::Status::not_found("no user info in response"));
         };
 
         Ok(user_info.username)
