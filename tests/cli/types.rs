@@ -48,7 +48,7 @@ fn missing_schema() {
         .assert()
         .code(1)
         .stderr(contains("while parsing your code"))
-        .stderr(contains(r#"returns unknown schema "TestSchemaMisnamed""#));
+        .stderr(contains(r#"- Model "bauplan.typed_params_model" returns unknown `TableSchema` "TestSchemaMisnamed""#));
 }
 
 #[test]
@@ -66,5 +66,5 @@ fn schema_wrong_base() {
         .assert()
         .code(1)
         .stderr(contains("while parsing your code"))
-        .stderr(contains(r#"returns unknown schema "BadBaseSchema""#));
+        .stderr(contains(r#"- Model "bauplan.wrong_base_model" returns unknown `TableSchema` "BadBaseSchema""#));
 }
