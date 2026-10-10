@@ -5,7 +5,6 @@ from bauplan._internal import (
     Client,
     InfoState,
     OrganizationInfo,
-    RunnerNodeInfo,
     UserInfo,
 )
 
@@ -58,7 +57,6 @@ __all__ = [
     "JobState",
     "OrganizationInfo",
     "RefType",
-    "RunnerNodeInfo",
     "UserInfo",
     # Decorators and model definitions.
     "expectation",
