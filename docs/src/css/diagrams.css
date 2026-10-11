@@ -57,3 +57,85 @@
   justify-content: center;
   margin-bottom: var(--ifm-leading);
 }
+
+/* Legend row under a diagram (DiagramLegend). */
+.diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  margin: -8px 0 var(--ifm-leading);
+  font-size: 13px;
+  color: var(--diagram-text-muted);
+}
+
+/* One legend entry: a button holding a swatch and its label. */
+.diagram-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Hovered or selected entries use full-strength text. */
+.diagram-legend__item:hover,
+.diagram-legend__item[aria-pressed='true'] {
+  color: var(--diagram-text);
+}
+
+/* Selected entry: outline. */
+.diagram-legend__item[aria-pressed='true'] {
+  border-color: var(--diagram-node-border);
+}
+
+/* Swatch for plain boxes: the same fill and border as a diagram box. */
+.diagram-legend__swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--diagram-node-border);
+  background: var(--diagram-node-bg);
+}
+
+/* Swatch for accent boxes (managed by Bauplan). */
+.diagram-legend__swatch--accent {
+  border: 1.5px solid var(--diagram-accent);
+  background: var(--diagram-accent-bg);
+}
+
+/* Swatch for external boxes (your storage): dashed border. */
+.diagram-legend__swatch--external {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* Fades parts of a diagram in and out when they are dimmed. */
+.docusaurus-mermaid-container g.node,
+.docusaurus-mermaid-container g.cluster,
+.docusaurus-mermaid-container .edgePaths,
+.docusaurus-mermaid-container .edgeLabels span.edgeLabel {
+  transition: opacity 0.15s ease;
+}
+
+/* Legend highlight: dims everything but the chosen kind of box. A group
+   stays bright only when every box in it matches (DiagramLegend marks it
+   .is-highlighted). Plain boxes (including code) have no role class. */
+.docusaurus-mermaid-container[data-highlight] g.cluster:not(.is-highlighted),
+.docusaurus-mermaid-container[data-highlight] .edgePaths,
+.docusaurus-mermaid-container[data-highlight] g.node.title:not(.is-highlighted),
+.docusaurus-mermaid-container[data-highlight='default'] g.node:is(.accent, .external),
+.docusaurus-mermaid-container[data-highlight='accent'] g.node:not(.accent, .is-highlighted),
+.docusaurus-mermaid-container[data-highlight='external'] g.node:not(.external, .is-highlighted) {
+  opacity: 0.25;
+}
+
+/* Dimmed arrow labels: faded text on an opaque background. */
+.docusaurus-mermaid-container[data-highlight] .edgeLabels span.edgeLabel {
+  opacity: 0.25 !important;
+}

@@ -56,3 +56,6 @@ If that pushes the group off-centre, add a `:::spacer` node with the same
 text in `<b>`, so it matches the title's width.
 
 Branches in a `gitGraph` take the logo colours in order: blue, yellow, red.
+
+Put `<DiagramLegend />` under a diagram that uses `:::accent` or `:::external`.
+Pointing at a legend entry highlights the matching boxes.
