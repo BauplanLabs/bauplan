@@ -20,34 +20,29 @@ behind the scenes:
   environment. This enables full reproducibility, auditability, and
   rollback.
 
-<div style={{maxWidth: '600px', margin: '0 auto'}}>
-
 ```mermaid
-%%{init: {'flowchart': {'subGraphTitleMargin': {'top': 16, 'bottom': 16}}}}%%
-graph TB
-    classDef title fill:none,stroke:none
-    classDef code text-align:left
-
-    subgraph local["<b>Your Local Code</b>"]
-        getData["@bauplan.model()<br/>def get_data():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import pandas<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]:::code
-        predictions["@bauplan.model()<br/>def predictions():<br/>&nbsp;&nbsp;&nbsp;&nbsp;import torch<br/>&nbsp;&nbsp;&nbsp;&nbsp;...<br/>&nbsp;&nbsp;&nbsp;&nbsp;return table"]:::code
-        sqlQuery["<b>SQL Query</b><br/>SELECT col,COUNT(*)<br/>FROM ..."]
+flowchart TB
+    subgraph local["Your Local Code"]
+        getData["<b>Python model</b><br/>@bauplan.model()<br/>def get_data():<br/>    import pandas<br/>    ...<br/>    return table"]:::code
+        predictions["<b>Python model</b><br/>@bauplan.model()<br/>def predictions():<br/>    import torch<br/>    ...<br/>    return table"]:::code
+        sqlQuery["<b>SQL query</b><br/>SELECT col, COUNT(*)<br/>FROM ..."]:::code
         getData --> predictions
     end
 
-    %% The two lower boxes use a text node as their title, so arrows don't cross it.
+    %% A title node lands bottom-left, clear of the arrows entering from above.
     subgraph bauplan[" "]
-        bauplanTitle["<b>Bauplan (Managed)</b>"]:::title
-        pythonRuntime1["Python packages +<br/>Dockerized function"]
-        pythonRuntime2["Python packages +<br/>Dockerized function"]
-        dataFusion["<b>DataFusion</b><br/>(ephemeral)"]
-        activeBranch["<b>Active Branch</b><br/>(Iceberg tables tracked by<br/>Bauplan catalog)"]
+        bauplanTitle["Bauplan (Managed)"]:::title
+        pythonRuntime1["<b>Python runtime</b><br/>(packages + Dockerized function)"]:::accent
+        pythonRuntime2["<b>Python runtime</b><br/>(packages + Dockerized function)"]:::accent
+        dataFusion["<b>DataFusion</b><br/>(ephemeral)"]:::accent
+        activeBranch["<b>Active Branch</b><br/>(Iceberg tables tracked by<br/>Bauplan catalog)"]:::accent
+        %% Same width as the title, so Active Branch stays centred in the group.
+        bauplanSpacer["<b>Bauplan (Managed)</b>"]:::spacer
     end
 
-    subgraph storage[" "]
-        storageTitle["<b>Your Object Store</b>"]:::title
-        files1["Parquet / CSV / JSON files"]
-        files2["Parquet / CSV / JSON files"]
+    subgraph storage["Your Object Store"]
+        files1["<b>Files</b><br/>(Parquet / CSV / JSON)"]:::external
+        files2["<b>Files</b><br/>(Parquet / CSV / JSON)"]:::external
     end
 
     getData <--> pythonRuntime1
@@ -61,5 +56,3 @@ graph TB
     activeBranch <--> files1
     activeBranch <--> files2
 ```
-
-</div>
