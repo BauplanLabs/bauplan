@@ -10,28 +10,20 @@ Bauplan offers two secure deployment options tailored to your needs.
 In this model, Bauplan manages a dedicated cloud environment for you,
 linked to your own object storage:
 
-<div style={{maxWidth: '600px', margin: '0 auto'}}>
-
 ```mermaid
 flowchart TB
-    A["Your Local Environment<br/>(IDE / CLI / SDK)"]
+    A["<b>Your Local Environment</b><br/>(IDE / CLI / SDK)"]
 
     A -->|"auth + data streaming<br/>(private link)"| B
 
-    subgraph B[" "]
+    subgraph B["Bauplan Managed Cloud"]
         direction TB
-        BTitle["<b>Bauplan Managed Cloud</b>"]
-        C["Bauplan APIs<br/>Data Catalog"]
-        D["EC2 Runner<br/>(compute runtime)"]
-
+        C["<b>Bauplan APIs</b><br/>(Data Catalog)"]:::accent
+        D["<b>EC2 Runner</b><br/>(compute runtime)"]:::accent
     end
 
-    B --> E["Your S3 Bucket<br/>(in your cloud account)"]
-
-    style BTitle fill:none,stroke:none
+    B --> E["<b>Your S3 Bucket</b><br/>(in your cloud account)"]:::external
 ```
-
-</div>
 
 Key Benefits:
 
@@ -44,32 +36,25 @@ Key Benefits:
 In the BYOC model, the entire Bauplan runtime is deployed within your
 existing VPC, under your control:
 
-<div style={{maxWidth: '560px', margin: '0 auto'}}>
-
 ```mermaid
 flowchart TB
-    A["Your Local Environment<br/>(IDE / CLI / SDK)"]
+    A["<b>Your Local Environment</b><br/>(IDE / CLI / SDK)"]
 
     A -->|"auth + data streaming"| B
 
-    subgraph B[" "]
+    subgraph B["Your Cloud (BYOC - VPC)<br/>(compute runs here only)"]
         direction TB
-        BTitle["<b>Your Cloud (BYOC - VPC)<br/>(compute runs here only)</b>"]
-        C["EC2 Runner (primary)"]
-        D["EC2 Runner (backup)"]
-        E["Object Storage<br/>(Your S3)"]
+        C["<b>EC2 Runner</b><br/>(primary)"]
+        D["<b>EC2 Runner</b><br/>(backup)"]
+        E["<b>Object Storage</b><br/>(Your S3)"]:::external
         C --> E
         D --> E
     end
 
     B <--> F
 
-    F["<b>Bauplan APIs</br>(Control Plane)</b><hr class='mermaid' /><ul style='margin:0px; text-align:left;'><li style="white-space: nowrap;">Catalog</br>(Iceberg + Git-for-data)</li><li>Auth, scheduling, observability</li><li>Multi-tenant, managed by Bauplan</li></ul>"]
-
-    style BTitle fill:none,stroke:none
+    F["<b>Bauplan APIs</b><br/>(Control Plane)<hr/><ul><li>Catalog (Iceberg + Git-for-data)</li><li>Auth, scheduling, observability</li><li>Multi-tenant, managed by Bauplan</li></ul>"]:::accent
 ```
-
-</div>
 
 Key Benefits:
 

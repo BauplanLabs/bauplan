@@ -321,19 +321,6 @@ footer {
   white-space: wrap !important;
 }
 
-/* mermaid */
-hr.mermaid {
-  margin: 0;
-}
-
-.docusaurus-mermaid-container{
-  justify-content: center;
-  display: flex !important;
-}
-
-.edgeLabel > p {
-  margin: 0px;
-}
 
 /* Dark theme */
 [data-theme='dark'] {
