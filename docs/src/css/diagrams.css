@@ -1,0 +1,59 @@
+/*
+ * Diagram tokens, read by the themeCSS in src/mermaid/theme.js.
+ *
+ * Text pairs: 4.5:1 contrast. Borders, arrows and branch lines: 3:1 against
+ * the page, group and node backgrounds.
+ */
+
+/* Light theme colours. */
+:root {
+  --diagram-text: #1c1c1c;
+  --diagram-text-muted: #59606e;
+  --diagram-node-bg: #ffffff;
+  --diagram-node-border: #82878f;
+  --diagram-group-bg: #efefef;
+  --diagram-group-border: #82878f;
+  --diagram-line: #6b7280;
+  --diagram-label-bg: #f7f7f7;
+  --diagram-accent: #0081ba;
+  --diagram-accent-bg: #e6f7ff;
+  --diagram-accent-text: #00577e;
+  --diagram-code-text: #1c1c1c;
+
+  /* Git branch colours: darkened brand blue, brand yellow with a dark-gold
+     edge on its dots and lines, brand red */
+  --diagram-git0: #0095d9;
+  --diagram-git1: #ffd600;
+  --diagram-git2: #ff3950;
+  --diagram-git1-edge: #8f6a00;
+  --diagram-git-label: #151616;
+}
+
+/* Dark theme colours. */
+[data-theme='dark'] {
+  --diagram-text: #ececec;
+  --diagram-text-muted: #b0b0b8;
+  --diagram-node-bg: #262626;
+  --diagram-node-border: #77777f;
+  --diagram-group-bg: #1e1f1f;
+  --diagram-group-border: #6b6b73;
+  --diagram-line: #8f8f96;
+  --diagram-label-bg: #151616;
+  --diagram-accent: #ffd600;
+  --diagram-accent-bg: rgba(255, 214, 0, 0.12);
+  --diagram-accent-text: #ffe666;
+  --diagram-code-text: #000000;
+
+  --diagram-git0: #00b0ff;
+  --diagram-git1: #ffd600;
+  --diagram-git2: #ff3950;
+  --diagram-git1-edge: transparent;
+  --diagram-git-label: #151616;
+}
+
+/* Centres each diagram on the page. */
+.docusaurus-mermaid-container {
+  display: flex !important;
+  justify-content: center;
+  margin-bottom: var(--ifm-leading);
+}
