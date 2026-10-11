@@ -58,7 +58,7 @@ For example, you don't need to specify whether `input_table` is an Iceberg Table
 Table, Pandas dataframe, or Polars dataframe. This approach makes the code fully
 portable, easier to reproduce across environments, and simpler to maintain.
 
-:::note Filters only apply to models from the lakehouse catalog
+:::note[Filters only apply to models from the lakehouse catalog]
 
 `filter` only works on an input that reads from the catalog. Filtering an input that is
 another model in the same pipeline is not supported, and the planner rejects it.
