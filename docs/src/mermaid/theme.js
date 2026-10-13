@@ -99,12 +99,14 @@ const themeCSS = `
 
   /* white-space: pre lets snippets indent with plain spaces. */
   g.node.code .nodeLabel {
+    color: var(--diagram-snippet-text);
     font-family: 'IBMPlexMono', monospace;
     font-size: 13px;
     text-align: left;
     white-space: pre;
   }
   g.node.code .nodeLabel b {
+    color: var(--diagram-text);
     font-family: 'Satoshi', sans-serif;
     font-size: 14px;
   }

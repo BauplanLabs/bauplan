@@ -19,6 +19,7 @@
   --diagram-accent-bg: #e6f7ff;
   --diagram-accent-text: #00577e;
   --diagram-code-text: #1c1c1c;
+  --diagram-snippet-text: var(--diagram-text);
 
   /* Git branch colours: darkened brand blue, brand yellow with a dark-gold
      edge on its dots and lines, brand red */
@@ -42,7 +43,9 @@
   --diagram-accent: #ffd600;
   --diagram-accent-bg: rgba(255, 214, 0, 0.12);
   --diagram-accent-text: #ffe666;
-  --diagram-code-text: #000000;
+  --diagram-code-text: #ffe666;
+  /* Code box text: muted, under a full-strength title */
+  --diagram-snippet-text: var(--diagram-text-muted);
 
   --diagram-git0: #00b0ff;
   --diagram-git1: #ffd600;
