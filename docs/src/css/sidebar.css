@@ -121,3 +121,10 @@
   padding-left: var(--ifm-menu-link-padding-horizontal) !important;
   margin-left: 0 !important;
 }
+
+/* The sidebar's scroll container clips anything drawn outside a link, so the
+   focus ring goes inside the edge */
+.menu__link:focus-visible,
+.menu__caret:focus-visible {
+  outline-offset: -2px;
+}
