@@ -20,6 +20,7 @@
   --diagram-accent-bg: #e6f7ff;
   --diagram-accent-text: #00577e;
   --diagram-code-text: #1c1c1c;
+  --diagram-snippet-text: var(--diagram-text);
 
   /* The logo colours, darkened until they hold 3:1 on the light page. */
   --diagram-git0: #0074a8;
@@ -41,7 +42,10 @@
   --diagram-accent: #ffd600;
   --diagram-accent-bg: rgba(255, 214, 0, 0.12);
   --diagram-accent-text: #ffe666;
-  --diagram-code-text: #000000;
+  --diagram-code-text: #ffe666;
+  /* Light text on dark makes bold titles look thinner and monospace heavier,
+     so a code box's title only stands out if the code is dimmer */
+  --diagram-snippet-text: var(--diagram-text-muted);
 
   --diagram-git0: #00b0ff;
   --diagram-git1: #ffd600;
