@@ -36,6 +36,49 @@
   border-bottom-color: #00B0FF;
 }
 
+/* Links fill the navbar's height and have no side padding, so an outline is cut
+   off at the top of the window and hugs the text. Draw the ring around the
+   label instead */
+.navbar__link {
+  position: relative;
+}
+
+.navbar__link:focus-visible {
+  outline: none;
+}
+
+.navbar__link:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 16px -6px 10px;
+  border: 2px solid var(--focus-ring-color);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* "Skip to main content": only shows on keyboard focus, over the logo */
+[class*='skipToContent'] {
+  top: 12px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+  background-color: var(--ifm-card-background-color);
+}
+
+[class*='skipToContent']:focus {
+  left: 16px;
+  text-decoration: none;
+}
+
+/* The skip link and page changes focus these containers; ringing the whole page
+   reads as an error */
+main:focus-visible,
+#__docusaurus_skipToContent_fallback:focus-visible,
+[role='region']:focus-visible {
+  outline: none;
+}
+
 /* sidebar */
 .menu__link.menu__link--active {
   color: #00B0FF;
