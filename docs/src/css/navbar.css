@@ -60,6 +60,69 @@
   justify-content: center;
 }
 
+.DocSearch-Modal {
+  --docsearch-text-color: #262626;
+  --docsearch-hit-color: #262626;
+}
+
+[data-theme='dark'] .DocSearch-Modal {
+  --docsearch-text-color: #f7f7f7;
+  --docsearch-hit-color: #f7f7f7;
+}
+
+.DocSearch-Clear {
+  font-weight: 500;
+}
+
+/* DocSearch focus */
+.DocSearch-Hit a:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+  outline-offset: -2px;
+}
+
+.DocSearch-Button:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+  outline-offset: 2px;
+}
+
+/* Room around the search field so its focus ring clears the icons */
+.DocSearch-Input {
+  margin-inline: 8px;
+  padding-inline: 8px;
+  border-radius: 6px;
+}
+
+.DocSearch-Input:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+  outline-offset: 2px;
+}
+
+/* Star and remove buttons */
+.DocSearch-Hit .DocSearch-Hit-action-button:hover,
+.DocSearch-Hit .DocSearch-Hit-action-button:focus {
+  background: rgba(38, 38, 38, 0.1);
+}
+
+[data-theme='dark'] .DocSearch-Hit .DocSearch-Hit-action-button:hover,
+[data-theme='dark'] .DocSearch-Hit .DocSearch-Hit-action-button:focus {
+  background: rgba(247, 247, 247, 0.1);
+}
+
+/* Keyboard focus on these ^ */
+.DocSearch-Hit .DocSearch-Hit-action-button:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+}
+
+.DocSearch-Screen-Icon svg {
+  stroke: currentColor;
+}
+
+/* Match share the text colour in light mode */
+.DocSearch-Hit mark {
+  font-weight: 600;
+  text-decoration-color: var(--docsearch-primary-color);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .DocSearch-Container {
