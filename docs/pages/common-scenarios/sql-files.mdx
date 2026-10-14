@@ -74,14 +74,14 @@ def my_second_model(
 
 Bauplan can also resolve a model from an included `.sql` file. Consider a project with the following structure:
 
-```
+```tree
 my_pipeline/
-├── bauplan_project.yaml
-├── models.py
-├── my_file.sql
-├── pyproject.toml
-└── views/
-    └── my_view.sql
+  bauplan_project.yaml
+  models.py
+  my_file.sql
+  pyproject.toml
+  views/
+    my_view.sql
 ```
 
 By default, Bauplan discovers `.sql` files placed directly in the project root; in this case, `my_file.sql`. Files in subdirectories (such as `views/`), however, are not auto-discovered. To include them, add an `include_paths` field to `bauplan_project.yaml` with a list of glob patterns:

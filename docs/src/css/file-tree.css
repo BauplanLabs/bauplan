@@ -1,0 +1,120 @@
+/* File trees (```tree fences). A project layout is config, not code you run,
+   so it sits on the same light card as YAML. Folders stay neutral so they do
+   not clash with the SQL file color */
+.file-tree {
+  --file-tree-background: #ffffff;
+  --file-tree-border: #e5e7eb;
+  --file-tree-text: #393a34;
+  --file-tree-muted: #6a737d;
+  --file-tree-guide: #e5e7eb;
+  --file-tree-hover: rgba(0, 0, 0, 0.04);
+  --file-tree-folder: #5c5c5c;
+  /* Bauplan yellow, blue and red, darkened just enough to read on white */
+  --file-tree-python: #8a7400;
+  --file-tree-sql: #007db5;
+  --file-tree-yaml: #ed001c;
+  --file-tree-docs: #5c5c5c;
+  --file-tree-config: #6a737d;
+  /* Indent per nesting level: the margin, padding and guide line below */
+  --file-tree-level: calc(1.6rem + 1px);
+  margin-bottom: var(--ifm-leading);
+  padding: 0.75rem;
+  border: 1px solid var(--file-tree-border);
+  border-radius: var(--ifm-code-border-radius);
+  overflow-x: auto;
+  color: var(--file-tree-text);
+  background: var(--file-tree-background);
+}
+
+[data-theme='dark'] .file-tree {
+  --file-tree-background: #282a36;
+  --file-tree-border: #3a3c4e;
+  --file-tree-text: #f8f8f2;
+  --file-tree-muted: #8592c4;
+  --file-tree-guide: #3a3c4e;
+  --file-tree-hover: rgba(255, 255, 255, 0.06);
+  --file-tree-folder: #bec3c9;
+  --file-tree-python: #ffd600;
+  --file-tree-sql: #00b0ff;
+  --file-tree-yaml: #ff5468;
+  --file-tree-docs: #bec3c9;
+  --file-tree-config: #8d949e;
+}
+
+.file-tree__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Nested levels hang off a guide line aligned with the parent folder icon */
+.file-tree__list .file-tree__list {
+  margin-left: 1rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--file-tree-guide);
+}
+
+.file-tree__item {
+  margin: 0;
+}
+
+.file-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+  padding: 0 0.5rem;
+  border-radius: 0.4rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+/* Folders with children are buttons that collapse them */
+.file-tree__row--toggle {
+  width: 100%;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* The highlight ties a comment to its file */
+.file-tree__row:hover {
+  background: var(--file-tree-hover);
+}
+
+.file-tree__row--ellipsis {
+  color: var(--file-tree-muted);
+}
+
+.file-tree__icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.file-tree__icon--folder { color: var(--file-tree-folder); }
+.file-tree__icon--python { color: var(--file-tree-python); }
+.file-tree__icon--sql { color: var(--file-tree-sql); }
+.file-tree__icon--yaml { color: var(--file-tree-yaml); }
+.file-tree__icon--docs { color: var(--file-tree-docs); }
+.file-tree__icon--config,
+.file-tree__icon--other { color: var(--file-tree-config); }
+
+.file-tree__name--folder {
+  font-weight: 600;
+}
+
+/* Styled like a code comment, the way it is written in the fence. FileTree.js
+   sets each margin so comments line up just past the longest commented name */
+.file-tree__comment {
+  padding-left: 2ch;
+  color: var(--file-tree-muted);
+}
+
+.file-tree__comment::before {
+  content: "# ";
+}
