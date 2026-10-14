@@ -109,7 +109,7 @@ class PurchaseEvents(bauplan.TableSchema):
 
 
 @bauplan.model()
-@bauplan.python('3.11', pip={'polars': '1.15.0'})
+@bauplan.python('3.11', pip={'polars': '2.0.0'})
 def purchase_events(
     raw: Annotated[
         pyarrow.Table,
@@ -175,7 +175,7 @@ class SegmentedPurchases(bauplan.TableSchema):
 
 
 @bauplan.model()
-@bauplan.python('3.11', pip={'polars': '1.15.0'})
+@bauplan.python('3.11', pip={'polars': '2.0.0'})
 def purchases_by_segment(
     purchases: Annotated[
         pyarrow.Table,
@@ -243,7 +243,7 @@ class DailySegmentStats(bauplan.TableSchema):
 
 
 @bauplan.model(materialization_strategy='REPLACE')
-@bauplan.python('3.11', pip={'polars': '1.15.0'})
+@bauplan.python('3.11', pip={'polars': '2.0.0'})
 def daily_segment_stats(
     data: Annotated[
         pyarrow.Table,

@@ -28,7 +28,7 @@ class AverageFareSchema(TableSchema):
     ]
 
 
-@bauplan.python("3.12", pip={"polars": "1.37"})
+@bauplan.python("3.12", pip={"polars": "2.0.0"})
 @bauplan.model(materialization_strategy="REPLACE")
 def workshop_average_fares(
     data: Annotated[pa.Table, Model("titanic", projection_schema=PassengerFare)],

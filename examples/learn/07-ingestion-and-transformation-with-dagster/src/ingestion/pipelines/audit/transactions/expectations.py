@@ -85,7 +85,7 @@ class Amount(TableSchema):
 
 
 @bauplan.expectation()
-@bauplan.python("3.13", pip={"polars": "1.42.1"})
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
 def test_transactions_amount_positive(
     data: Annotated[pa.Table, Model("transactions", projection_schema=Amount)],
 ) -> bool:

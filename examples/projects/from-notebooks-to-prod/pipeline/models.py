@@ -51,7 +51,7 @@ class TripsAndZonesSchema(TableSchema):
 
 
 @bauplan.model()
-@bauplan.python("3.11", pip={"polars": "1.38.1", "marimo": "0.20.4"})
+@bauplan.python("3.11", pip={"polars": "2.0.0", "marimo": "0.25.1"})
 def trips_and_zones(
     trips: Annotated[
         pa.Table,
@@ -94,7 +94,7 @@ class StatsByTaxiZoneSchema(TableSchema):
 
 
 @bauplan.model(materialization_strategy="REPLACE")
-@bauplan.python("3.11", pip={"polars": "1.38.1", "marimo": "0.20.4"})
+@bauplan.python("3.11", pip={"polars": "2.0.0", "marimo": "0.25.1"})
 def stats_by_taxi_zones(
     data: Annotated[pa.Table, Model("trips_and_zones")],
 ) -> Annotated[pa.Table, StatsByTaxiZoneSchema]:

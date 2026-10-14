@@ -105,8 +105,8 @@ class ColOne(bauplan.TableSchema):
     col_1: bauplan.String
 
 @bauplan.model()
-# specify the package and version - in this case Pandas 2.2.0
-@bauplan.python('3.11', pip={'pandas': '2.2.0'})
+# specify the package and version - in this case Pandas 3.0.6
+@bauplan.python('3.11', pip={'pandas': '3.0.6'})
 def my_model(
     data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
 ) -> Annotated[pyarrow.Table, ColOne]:
@@ -146,7 +146,7 @@ class StepOutput(bauplan.TableSchema):
     col: bauplan.Int64
 
 @bauplan.model()
-@bauplan.python('3.11', pip={'pandas': '2.2.0'})
+@bauplan.python('3.11', pip={'pandas': '3.0.6'})
 def step_1(
     data: Annotated[pyarrow.Table, bauplan.Model('input_table')],
 ) -> Annotated[pyarrow.Table, StepOutput]:
@@ -159,7 +159,7 @@ def step_1(
     return pyarrow.table(df[['col']])
 
 @bauplan.model()
-@bauplan.python('3.11', pip={'pandas': '1.5.3'})
+@bauplan.python('3.11', pip={'pandas': '2.3.3'})
 def step_2(
     data: Annotated[pyarrow.Table, bauplan.Model('step_1')],
 ) -> Annotated[pyarrow.Table, StepOutput]:

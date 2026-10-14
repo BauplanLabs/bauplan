@@ -135,7 +135,7 @@ class SignalSummarySchema(TableSchema):
 
 
 @bauplan.model(materialization_strategy="REPLACE")
-@bauplan.python("3.11", pip={"polars": "1.38.1"})
+@bauplan.python("3.11", pip={"polars": "2.0.0"})
 def signal_summary(
     data: Annotated[
         pa.Table,
