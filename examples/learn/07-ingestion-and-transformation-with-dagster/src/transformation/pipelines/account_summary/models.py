@@ -38,7 +38,7 @@ class SettledTransactionsSchema(TableSchema):
     date: Annotated[Date32, TableField(doc="Calendar day of txn_ts.")]
 
 
-@bauplan.python("3.13", pip={"polars": "1.42.1"})
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
 @bauplan.model()
 def settled_transactions(
     data: Annotated[
@@ -70,7 +70,7 @@ class DailyAccountSpendSchema(TableSchema):
     avg_amount: Annotated[Float64, TableField(doc="Mean settled amount.")]
 
 
-@bauplan.python("3.13", pip={"polars": "1.42.1"})
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
 @bauplan.model()
 def daily_account_spend(
     data: Annotated[pa.Table, Model("settled_transactions")],
@@ -119,7 +119,7 @@ class AccountActivitySummarySchema(TableSchema):
     ]
 
 
-@bauplan.python("3.13", pip={"polars": "1.42.1"})
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
 @bauplan.model(
     materialization_strategy="OVERWRITE_PARTITIONS",
     partitioned_by=["date"],

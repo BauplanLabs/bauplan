@@ -58,7 +58,7 @@ def plot_trips_by_zone(df: pl.DataFrame) -> None:
         showlegend=False,
         margin=dict(l=20, r=20, t=40, b=20),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def plot_trip_miles_distribution(df: pl.DataFrame) -> None:
@@ -73,7 +73,7 @@ def plot_trip_miles_distribution(df: pl.DataFrame) -> None:
         labels={"log_trip_miles": "log₁₀(trip miles)"},
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def plot_fare_vs_miles(df: pl.DataFrame) -> None:
@@ -90,7 +90,7 @@ def plot_fare_vs_miles(df: pl.DataFrame) -> None:
         opacity=0.4,
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def main():
@@ -154,7 +154,7 @@ def main():
         st.metric("Total trips", f"{len(df):,}")
 
         if st.checkbox("Show raw data"):
-            st.dataframe(df.head(100), use_container_width=True)
+            st.dataframe(df.head(100), width="stretch")
 
         tab1, tab2, tab3 = st.tabs(
             [

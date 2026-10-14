@@ -40,7 +40,7 @@ def plot_avg_over_time(df: pl.DataFrame) -> None:
         height=500,
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def plot_sensor_stats(df: pl.DataFrame) -> None:
@@ -56,7 +56,7 @@ def plot_sensor_stats(df: pl.DataFrame) -> None:
         .sort("signal")
     )
 
-    st.dataframe(stats, use_container_width=True)
+    st.dataframe(stats, width="stretch")
 
     fig = px.bar(
         stats,
@@ -69,7 +69,7 @@ def plot_sensor_stats(df: pl.DataFrame) -> None:
         height=450,
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def plot_reading_volume(df: pl.DataFrame) -> None:
@@ -84,7 +84,7 @@ def plot_reading_volume(df: pl.DataFrame) -> None:
         height=450,
     )
     fig.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def main():
@@ -114,7 +114,7 @@ def main():
         )
 
         if st.checkbox("Show raw data"):
-            st.dataframe(df.head(200), use_container_width=True)
+            st.dataframe(df.head(200), width="stretch")
 
         tab1, tab2, tab3 = st.tabs(
             ["Avg Readings Over Time", "Per-Sensor Stats", "Reading Volume"]

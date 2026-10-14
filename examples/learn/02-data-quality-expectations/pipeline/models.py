@@ -55,7 +55,7 @@ class NormalizedTaxiTripsSchema(TableSchema):
 
 
 @bauplan.model()
-@bauplan.python("3.12", pip={"polars": "1.38.1"})
+@bauplan.python("3.12", pip={"polars": "2.0.0"})
 def normalized_taxi_trips(
     trips: Annotated[
         pa.Table,
@@ -102,7 +102,7 @@ class TaxiTripWaitingTimesSchema(TableSchema):
 
 
 @bauplan.model()
-@bauplan.python("3.12", pip={"polars": "1.38.1"})
+@bauplan.python("3.12", pip={"polars": "2.0.0"})
 def taxi_trip_waiting_times(
     data: Annotated[pa.Table, Model("normalized_taxi_trips")],
 ) -> Annotated[pa.Table, TaxiTripWaitingTimesSchema]:
@@ -134,7 +134,7 @@ class ZoneAvgWaitingTimesSchema(TableSchema):
 
 
 @bauplan.model(materialization_strategy="REPLACE")
-@bauplan.python("3.12", pip={"polars": "1.38.1"})
+@bauplan.python("3.12", pip={"polars": "2.0.0"})
 def zone_avg_waiting_times(
     taxi_trip_waiting_times: Annotated[pa.Table, Model("taxi_trip_waiting_times")],
 ) -> Annotated[pa.Table, ZoneAvgWaitingTimesSchema]:

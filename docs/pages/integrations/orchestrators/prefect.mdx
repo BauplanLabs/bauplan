@@ -154,7 +154,7 @@ class PickupTimes(bauplan.TableSchema):
     pickup_datetime: bauplan.TimestampMicroUTC
 
 @bauplan.model(materialization_strategy='REPLACE')
-@bauplan.python('3.11', pip={'pandas': '2.2.0'})
+@bauplan.python('3.11', pip={'pandas': '3.0.6'})
 def filtered_taxi_rides_parameters(
         taxi_table: Annotated[
             pyarrow.Table,

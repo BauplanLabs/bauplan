@@ -30,7 +30,7 @@ class FareTableSchema(TableSchema):
     ]
 
 
-@bauplan.python("3.12", pip={"polars": "1.37"})
+@bauplan.python("3.12", pip={"polars": "2.0.0"})
 @bauplan.model(materialization_strategy="REPLACE")
 def workshop_fare_table(
     workshop_passengers_fare: Annotated[

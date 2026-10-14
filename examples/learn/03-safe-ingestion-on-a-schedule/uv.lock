@@ -14,7 +14,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "bauplan", specifier = "~=0.3.3" },
-    { name = "prefect", specifier = ">=3.6.28.dev2" },
+    { name = "prefect", specifier = "~=3.6.29" },
 ]
 
 [[package]]
@@ -940,7 +940,7 @@ wheels = [
 
 [[package]]
 name = "prefect"
-version = "3.6.28.dev2"
+version = "3.6.29"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -999,9 +999,9 @@ dependencies = [
     { name = "websockets" },
     { name = "whenever" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/02/98/2baab1701e276b0e78068ddb77be4f14f108a29d1542b990f108cb3590ff/prefect-3.6.28.dev2.tar.gz", hash = "sha256:b1e9fbbbfaec483b39d10fea8ace2a6d994d325e02fa1135f3a5f352bbf273fb", size = 11112779, upload-time = "2026-04-21T08:46:05.391Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/90/11/df2cd0c702d4180b2c3d44b7bf3fdebfdc67f108926ba8f5f90c9a2ad88f/prefect-3.6.29.tar.gz", hash = "sha256:0c90479367ce31dc41b37d1e2fdb61e4f0e253456306ceec3fbb534d543b0be0", size = 11115533, upload-time = "2026-05-01T21:49:46.169Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/9f/39f5654b7d29cecd41fc56c6d1589634693efa2e0d5b411a252d8fad3228/prefect-3.6.28.dev2-py3-none-any.whl", hash = "sha256:6e7bbb610c4d5eeceded7a2734eabaae2a30fd4192b302120832667323f6dd22", size = 12043575, upload-time = "2026-04-21T08:46:01.628Z" },
+    { url = "https://files.pythonhosted.org/packages/13/35/d61322b6b24d95346d6a3ad924403581ff6c4c0f22b8fa29287d59710d40/prefect-3.6.29-py3-none-any.whl", hash = "sha256:1d53728cd5646d70b4158dc2517d5d3d4037a2fc2116edbb5b531fe56f2689e5", size = 11917034, upload-time = "2026-05-01T21:49:42.848Z" },
 ]
 
 [[package]]

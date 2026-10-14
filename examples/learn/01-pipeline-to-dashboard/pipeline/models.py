@@ -80,7 +80,7 @@ class TripsAndZonesSchema(TableSchema):
 # independent environment and may:
 # - be run by a different version of the Python interpreter (e.g. "3.12" vs "3.14").
 # - use different packages (e.g. polars vs pandas).
-# - use different package versions (e.g. "polars": "1.43.2" vs "polars": "1.36.0b2").
+# - use different package versions (e.g. "polars": "2.0.0" vs "polars": "1.43.2").
 @bauplan.python("3.12")
 def trips_and_zones(
     trips: Annotated[
@@ -141,7 +141,7 @@ class NormalizedTaxiTripsSchema(TableSchema):
 
 # Polars is recommended for working with Arrow
 # tables - it reads Arrow natively with zero-copy.
-@bauplan.python("3.12", pip={"polars": "1.38.1"})
+@bauplan.python("3.12", pip={"polars": "2.0.0"})
 @bauplan.model(materialization_strategy="REPLACE")
 def normalized_taxi_trips(
     # Bauplan models are referenced by name to form a DAG.
