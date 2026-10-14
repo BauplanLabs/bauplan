@@ -27,12 +27,12 @@
 }
 
 .navbar__link--active {
-  color: #00B0FF;
+  color: var(--nav-active-text);
   border-bottom-color: #00B0FF;
 }
 
 .navbar__link:hover {
-  color: #00B0FF;
+  color: var(--nav-active-text);
   border-bottom-color: #00B0FF;
 }
 
@@ -81,16 +81,32 @@ main:focus-visible,
 
 /* sidebar */
 .menu__link.menu__link--active {
-  color: #00B0FF;
+  color: var(--nav-active-text);
 }
 
 /* table of contents */
 .table-of-contents__link.toc-highlight.table-of-contents__link--active {
-  color: #00B0FF;
+  color: var(--nav-active-text);
+  font-weight: 600;
+}
+
+/* Positions the active-entry marker against the TOC's left line */
+.table-of-contents {
+  position: relative;
+}
+
+/* Draws a brand-blue marker on the TOC line next to the active entry */
+.table-of-contents__link--active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  width: 2px;
+  height: 1.4em;
+  background: var(--ifm-color-primary);
 }
 
 .table-of-contents__link.toc-highlight.table-of-contents__link:hover {
-  color: #00B0FF;
+  color: var(--accent-text);
 }
 
 /* searchbar */

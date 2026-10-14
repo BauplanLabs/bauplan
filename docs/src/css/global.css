@@ -88,16 +88,22 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 :root {
   --ifm-color-primary: #00B0FF;
+  /* Light mode: links and selected nav items are brand black */
+  --accent-text: var(--ifm-font-color-base);
+  --nav-active-text: var(--ifm-font-color-base);
+  --ifm-link-color: var(--accent-text);
+  --ifm-menu-color-active: var(--nav-active-text);
+  --ifm-tabs-color-active: var(--nav-active-text);
   --ifm-tag-color-border: #008ECC;
   --ifm-pagination-nav-color-hover: #00B0FF;
-  --ifm-hover-link-color: #00B0FF;
-  --ifm-link-hover-color: #00B0FF;
+  --ifm-hover-link-color: var(--accent-text);
+  --ifm-link-hover-color: var(--accent-text);
   --ifm-hover-overlay: rgba(0, 176, 255, 0.1);
   --ifm-breadcrumb-color-active: var(--docsearch-text-color);
-  --ifm-color-secondary-contrast-background: transarent;
-  --ifm-color-success-contrast-background: transarent;
-  --ifm-color-warning-contrast-background: transarent;
-  --ifm-color-danger-contrast-background: transarent;
+  --ifm-color-secondary-contrast-background: transparent;
+  --ifm-color-success-contrast-background: transparent;
+  --ifm-color-warning-contrast-background: transparent;
+  --ifm-color-danger-contrast-background: transparent;
 
   --ifm-code-background: #E3F2FD;
   --ifm-background-surface-color: #f7f7f7;
@@ -106,6 +112,7 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
   --ifm-card-background-color: #ffffff;
 
   --focus-ring-color: #262626;
+  --breadcrumb-link-color: #5c5c5c;
 }
 
 /* Keyboard focus ring for every link and control */
@@ -282,7 +289,7 @@ pre[class*="language-yaml"] .token.comment {
 /* end */
 
 a:hover {
-  color: #00B0FF;
+  color: var(--accent-text);
 }
 
 a:has(> code):hover {
@@ -290,28 +297,35 @@ a:has(> code):hover {
 }
 
 a > code {
-  color: #0074a8;
+  color: var(--accent-text);
 }
 
 a:has(> code):hover code {
   background: #f0f8ff;
 }
 
-[data-theme='dark'] a[href] > code {
-  color: #00B0FF;
+/* Links in text: surrounding text colour, brand-blue underline. Admonition
+   links excluded */
+.markdown :is(p, li, td, th, blockquote):not(.theme-admonition *) a:not(.hash-link):not(:has(> code)) {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--ifm-color-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
 }
 
-[data-theme='light'] .markdown a[href]:hover > code {
-  background: #f0f8ff;
+.markdown :is(p, li, td, th, blockquote):not(.theme-admonition *) a:not(.hash-link):not(:has(> code)):hover {
+  color: var(--ifm-color-primary);
+}
+
+/* Linked code: inline code with a brand-blue bottom border */
+.markdown a[href] > code {
+  border-bottom: 2px solid var(--ifm-color-primary);
 }
 
 /* Code in table-of-contents entries: the entry's colour */
 .table-of-contents a[href] > code {
   color: inherit;
-}
-
-[data-theme='dark'] a:has(> code):hover code {
-  background: rgba(255, 214, 0, 0.2);
 }
 
 /* Admonitions accent in brand colors*/
@@ -350,6 +364,28 @@ footer {
   white-space: wrap !important;
 }
 
+/* Breadcrumbs - parents are muted links, the current page is plain text */
+.breadcrumbs {
+  --ifm-breadcrumb-padding-horizontal: 0;
+  --ifm-breadcrumb-spacing: 0.75rem;
+  --ifm-breadcrumb-item-background-active: transparent;
+}
+
+.breadcrumbs__link {
+  color: var(--breadcrumb-link-color);
+  font-weight: 500;
+}
+
+.breadcrumbs__link:hover {
+  color: var(--accent-text);
+  background: none;
+}
+
+.breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--ifm-font-color-base);
+  font-weight: 600;
+}
+
 
 /* Dark theme */
 [data-theme='dark'] {
@@ -361,6 +397,9 @@ footer {
   --ifm-footer-background-color: #151616;
   --ifm-card-background-color: #262626;
   --focus-ring-color: #00B0FF;
+  --accent-text: #00B0FF;
+  --nav-active-text: #00B0FF;
+  --breadcrumb-link-color: #9b9b9b;
 
   /* DocSearch – dark theme */
   --docsearch-primary-color: #00B0FF;
@@ -397,6 +436,15 @@ footer {
 [data-theme='dark'] :not(pre) > code {
   color: #ffe666;
   border-color: rgba(255, 214, 0, 0.25);
+}
+
+/* Dark mode linked code: yellow, like other inline code */
+[data-theme='dark'] a[href] > code {
+  color: #ffe666;
+}
+
+[data-theme='dark'] a:has(> code):hover code {
+  background: rgba(255, 214, 0, 0.2);
 }
 
 /* Admonitions */
@@ -438,7 +486,7 @@ footer {
 
 .tabs__item--active,
 .tabs__item--active:hover {
-  border-bottom: 2px solid var(--ifm-tabs-color-active);
+  border-bottom: 2px solid var(--ifm-color-primary);
 }
 
 /* CLI reference tables - wider Flag column */
@@ -446,30 +494,4 @@ table th:first-child,
 table td:first-child {
   min-width: 180px;
   white-space: nowrap;
-}
-
-/* Breadcrumbs - parents are muted links, the current page is plain text */
-.breadcrumbs {
-  --ifm-breadcrumb-padding-horizontal: 0;
-  --ifm-breadcrumb-spacing: 0.75rem;
-  --ifm-breadcrumb-item-background-active: transparent;
-}
-
-.breadcrumbs__link {
-  color: #5c5c5c;
-  font-weight: 500;
-}
-
-[data-theme='dark'] .breadcrumbs__link {
-  color: #9b9b9b;
-}
-
-.breadcrumbs__link:hover {
-  color: var(--ifm-color-primary);
-  background: none;
-}
-
-.breadcrumbs__item--active .breadcrumbs__link {
-  color: var(--ifm-font-color-base);
-  font-weight: 600;
 }
