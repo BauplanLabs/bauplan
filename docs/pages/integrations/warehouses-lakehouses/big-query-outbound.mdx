@@ -4,8 +4,12 @@ description: "Read BigQuery tables inside Bauplan pipelines as Apache Arrow. Run
 ---
 
 :::warning[Outbound connectors unsupported in bauplan v0.3]
-  Beginning with the `v0.3.0` CLI/SDK release (`bauplan~=0.3.0`), Bauplan's new pipeline
-  DSL does not support outbound connectors.
+  Beginning with the `v0.3.0` CLI/SDK release (`bauplan~=0.3.0`), Bauplan's new pipeline DSL does
+  not support outbound connectors.
+
+  Support for this and other external systems will be reintroduced using the new pipeline DSL,
+  with more generic connector semantics. Contact us if you are interested in helping us to
+  design them.
 :::
 
 Connect Bauplan to Google BigQuery to read from BigQuery tables in your Bauplan pipelines. This lets you run arbitrary Python-based analytics on your tables, or even just write them wholesale to Iceberg for more flexibility.
