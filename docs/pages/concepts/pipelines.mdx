@@ -91,18 +91,18 @@ To keep your project organized and make it easy to run, test, and
 inspect individual pipelines, we recommend the following structure. See
 [Projects](/concepts/projects) for more details.
 
-```text
+```tree
 my_project/
-└── pipelines/
-    ├── sales_reporting/
-    │   ├── models.py
-    │   └── bauplan_project.yml
-    ├── customer_segmentation/
-    │   ├── models.py
-    │   └── bauplan_project.yml
-    └── churn_prediction/
-        ├── models.py
-        └── bauplan_project.yml
+  pipelines/
+    sales_reporting/
+      models.py
+      bauplan_project.yml
+    customer_segmentation/
+      models.py
+      bauplan_project.yml
+    churn_prediction/
+      models.py
+      bauplan_project.yml
 ```
 
 - Group models that form a logical pipeline into a single file:

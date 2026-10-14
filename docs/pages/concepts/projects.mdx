@@ -13,23 +13,23 @@ collaboration.
 To promote clarity and modularity, consider structuring your Bauplan
 projects as follows:
 
-```text
+```tree
 my_bauplan_project/
-├── pipelines/
-│   ├── pipeline_one/
-│   │   ├── models.py
-│   │   ├── expectations.py
-│   │   └── bauplan_project.yml
-│   ├── pipeline_two/
-│   │   ├── models.py
-│   │   ├── expectations.py
-│   │   ├── utils.py
-│   │   └── constants.py
-│   └── ...
-├── data/
-│   └── raw/
-│       ├── utils.py
-└── README.md
+  pipelines/
+    pipeline_one/
+      models.py
+      expectations.py
+      bauplan_project.yml
+    pipeline_two/
+      models.py
+      expectations.py
+      utils.py
+      constants.py
+    ...
+  data/
+    raw/
+      utils.py
+  README.md
 ```
 
 ### Explanation
@@ -105,25 +105,25 @@ Some pipelines benefit from interactive or external components:
 
 The recommended project structure is:
 
-```text
+```tree
 my_bauplan_project/
-├── pipelines/
-│   ├── customer_segmentation/
-│   │   ├── models.py
-│   │   ├── bauplan_project.yml
-│   │   └── expectations.py
-│   ├── airflow/
-│   │   └── flow.py            # Orchestration flow and scheduling
-│   ├── notebooks/
-│   │   ├── analysis.ipynb     # Exploratory analysis or visualizations
-│   │   └── test_output.ipynb
-│   ├── app/
-│   │   └── app.py             # Data appas, e.g. Streamlit
-│   └── README.md
-├── data/
-│   └── raw/
-│       └── utils.py
-└── README.md
+  pipelines/
+    customer_segmentation/
+      models.py
+      bauplan_project.yml
+      expectations.py
+    airflow/
+      flow.py  # Orchestration flow and scheduling
+    notebooks/
+      analysis.ipynb  # Exploratory analysis or visualizations
+      test_output.ipynb
+    app/
+      app.py  # Data apps, e.g. Streamlit
+    README.md
+  data/
+    raw/
+      utils.py
+  README.md
 ```
 
 #### Notebooks and the SDK

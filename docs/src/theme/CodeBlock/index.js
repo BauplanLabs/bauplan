@@ -3,6 +3,7 @@ import {
   CodeBlockLanguageContext,
   TERMINAL_LANGUAGES,
 } from "@site/src/theme/CodeBlock/languageContext";
+import FileTree from "@site/src/theme/components/FileTree";
 
 function codeBlockLanguage({ language, className }) {
   if (language) {
@@ -14,10 +15,14 @@ function codeBlockLanguage({ language, className }) {
 
 /**
  * Wraps shell code blocks in a terminal window frame with the Bauplan
- * traffic-light dots. Other languages render as standard code blocks.
+ * traffic-light dots and renders `tree` blocks as a file explorer. Other
+ * languages render as standard code blocks.
  */
 export default function CodeBlockWrapper(props) {
   const language = codeBlockLanguage(props);
+  if (language === "tree") {
+    return <FileTree source={String(props.children)} />;
+  }
   if (!TERMINAL_LANGUAGES.has(language)) {
     return (
       <CodeBlockLanguageContext.Provider value={language}>
