@@ -476,6 +476,9 @@ footer {
 /* terminal window around shell code blocks */
 @import './terminal.css';
 
+/* file explorer card for ```tree fences */
+@import './file-tree.css';
+
 /* Tabs - faint bottom line on hover */
 .tabs__item {
   border-radius: 0;

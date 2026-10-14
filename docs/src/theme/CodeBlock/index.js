@@ -1,5 +1,6 @@
 import CodeBlock from "@theme-original/CodeBlock";
 import { CodeBlockLanguageContext } from "@site/src/theme/CodeBlock/languageContext";
+import FileTree from "@site/src/theme/components/FileTree";
 
 // Only commands the reader types get the terminal window, so project code
 // (Python, SQL, YAML) stays visually distinct from what you run in a shell
@@ -22,10 +23,14 @@ function codeBlockLanguage({ language, className }) {
 
 /**
  * Wraps shell code blocks in a terminal window frame with the Bauplan
- * traffic-light dots. Other languages render as standard code blocks.
+ * traffic-light dots and renders `tree` blocks as a file explorer. Other
+ * languages render as standard code blocks.
  */
 export default function CodeBlockWrapper(props) {
   const language = codeBlockLanguage(props);
+  if (language === "tree") {
+    return <FileTree source={String(props.children)} />;
+  }
   if (!TERMINAL_LANGUAGES.has(language)) {
     return (
       <CodeBlockLanguageContext.Provider value={language}>
