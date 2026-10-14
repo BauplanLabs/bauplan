@@ -28,6 +28,62 @@
   flex-shrink: 0;
 }
 
+button.terminal-window__dot {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+/* Like macOS, the glyph only shows while the pointer is over the dots */
+.terminal-window__dot svg {
+  width: 100%;
+  height: 100%;
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.terminal-window__bar:hover .terminal-window__dot svg,
+.terminal-window__dot:focus-visible svg {
+  opacity: 1;
+}
+
+.terminal-window__dot:focus-visible {
+  outline: 2px solid #e4e4e7;
+  outline-offset: 2px;
+}
+
+/* Animating the grid row from 1fr to 0fr collapses the body without knowing its height */
+.terminal-window__body {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  transition: grid-template-rows 200ms ease;
+}
+
+.terminal-window[data-minimized] .terminal-window__body {
+  grid-template-rows: minmax(0, 0fr);
+}
+
+.terminal-window__body-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-window__body {
+    transition: none;
+  }
+}
+
+.terminal-window__dot .terminal-window__glyph-fill {
+  fill: rgba(0, 0, 0, 0.6);
+  stroke: none;
+}
+
 .terminal-window__dot--red {
   background: #FF4C61;
 }
@@ -89,4 +145,155 @@
 
 .terminal-window div[class*='buttonGroup'] button:hover {
   opacity: 1 !important;
+}
+
+/* What's left after the red dot closes a terminal */
+.terminal-window-closed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: var(--ifm-leading);
+  padding: 0.65rem 1rem;
+  border: 1px dashed var(--ifm-color-emphasis-400);
+  border-radius: var(--ifm-code-border-radius);
+  color: var(--ifm-color-emphasis-700);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+}
+
+.terminal-window-closed__restore {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+  font: inherit;
+  cursor: pointer;
+}
+
+.terminal-window-closed__restore:hover {
+  border-color: #00B0FF;
+}
+
+/* Keeps the window's spot in the page while it is full screen */
+.terminal-window-placeholder {
+  margin-bottom: var(--ifm-leading);
+}
+
+/* Full screen: the yellow dot lifts the window into a modal dialog */
+.terminal-window-dialog {
+  position: fixed;
+  inset: calc(env(safe-area-inset-top, 0px) + 2rem) 2rem
+    calc(env(safe-area-inset-bottom, 0px) + 2rem);
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  animation: terminal-window-grow 180ms ease-out;
+}
+
+.terminal-window-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+  cursor: zoom-out;
+  animation: terminal-window-fade 180ms ease-out;
+}
+
+/* Locks page scroll; the gutter keeps the hidden scrollbar's space so text doesn't reflow */
+:root:has(.terminal-window-dialog[open]) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
+}
+
+.terminal-window[data-maximized] {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin: 0;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5);
+}
+
+.terminal-window[data-maximized] .terminal-window__body {
+  flex: 1;
+}
+
+.terminal-window[data-maximized] .terminal-window__body-inner {
+  overflow: auto;
+}
+
+.terminal-window[data-maximized] pre code {
+  font-size: 1.15rem;
+}
+
+.terminal-window__exit {
+  margin-left: auto;
+  padding: 0.2rem 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.terminal-window__exit:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+@keyframes terminal-window-grow {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+
+@keyframes terminal-window-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .terminal-window-dialog {
+    inset: calc(env(safe-area-inset-top, 0px) + 0.75rem) 0.75rem
+      calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+}
+
+/* Touch screens: no hover to reveal the glyphs, and fingers need a bigger
+   target than the 12px dot, so each dot gets an invisible 24px hit area */
+@media (pointer: coarse) {
+  .terminal-window__bar {
+    gap: 0.75rem;
+  }
+
+  button.terminal-window__dot {
+    position: relative;
+  }
+
+  button.terminal-window__dot::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+  }
+}
+
+@media (hover: none) {
+  .terminal-window__dot svg {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-window-dialog,
+  .terminal-window-dialog::backdrop {
+    animation: none;
+  }
 }
