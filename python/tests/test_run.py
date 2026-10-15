@@ -3,8 +3,8 @@
 import time
 from typing import Any
 
-import pytest
 import bauplan
+import pytest
 
 
 @pytest.fixture
