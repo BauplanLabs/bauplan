@@ -1,18 +1,17 @@
-/* File trees (```tree fences). A project layout is config, not code you run,
-   so it sits on the same light card as YAML. Folders stay neutral so they do
-   not clash with the SQL file color */
+/* File trees (```tree fences) sit on the same background as code blocks.
+   Folders stay neutral so they do not clash with the SQL file color */
 .file-tree {
-  --file-tree-background: #ffffff;
-  --file-tree-border: #e5e7eb;
-  --file-tree-text: #393a34;
+  --file-tree-background: var(--code-background);
+  --file-tree-border: var(--code-border);
+  --file-tree-text: #1f2328;
   --file-tree-muted: #6a737d;
   --file-tree-guide: #e5e7eb;
   --file-tree-hover: rgba(0, 0, 0, 0.04);
   --file-tree-folder: #5c5c5c;
   /* Bauplan yellow, blue and red, darkened just enough to read on white */
-  --file-tree-python: #8a7400;
-  --file-tree-sql: #007db5;
-  --file-tree-yaml: #ed001c;
+  --file-tree-python: #735f00;
+  --file-tree-sql: #006a9a;
+  --file-tree-yaml: #c8001a;
   --file-tree-docs: #5c5c5c;
   --file-tree-config: #6a737d;
   /* Indent per nesting level: the margin, padding and guide line below */
@@ -24,21 +23,6 @@
   overflow-x: auto;
   color: var(--file-tree-text);
   background: var(--file-tree-background);
-}
-
-[data-theme='dark'] .file-tree {
-  --file-tree-background: #282a36;
-  --file-tree-border: #3a3c4e;
-  --file-tree-text: #f8f8f2;
-  --file-tree-muted: #8592c4;
-  --file-tree-guide: #3a3c4e;
-  --file-tree-hover: rgba(255, 255, 255, 0.06);
-  --file-tree-folder: #bec3c9;
-  --file-tree-python: #ffd600;
-  --file-tree-sql: #00b0ff;
-  --file-tree-yaml: #ff5468;
-  --file-tree-docs: #bec3c9;
-  --file-tree-config: #8d949e;
 }
 
 .file-tree__list {
@@ -117,4 +101,18 @@
 
 .file-tree__comment::before {
   content: "# ";
+}
+
+/* Dark theme */
+[data-theme='dark'] .file-tree {
+  --file-tree-text: #e4e4e7;
+  --file-tree-muted: #8d949e;
+  --file-tree-guide: #333333;
+  --file-tree-hover: rgba(255, 255, 255, 0.06);
+  --file-tree-folder: #bec3c9;
+  --file-tree-python: #ffd600;
+  --file-tree-sql: #00b0ff;
+  --file-tree-yaml: #ff5468;
+  --file-tree-docs: #bec3c9;
+  --file-tree-config: #8d949e;
 }
