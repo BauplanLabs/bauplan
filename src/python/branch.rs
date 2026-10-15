@@ -173,7 +173,8 @@ impl Client {
         if_not_exists: "bool" = false,
     ) -> "Branch")]
     fn create_branch(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         branch: BranchArg,
         from_ref: RefArg,
         if_not_exists: bool,
@@ -237,7 +238,12 @@ impl Client {
         branch: "str | Branch",
         new_branch: "str | Branch",
     ) -> "Branch")]
-    fn rename_branch(&self, py: Python<'_>, branch: BranchArg, new_branch: BranchArg) -> PyResult<Branch> {
+    fn rename_branch(
+        &self,
+        py: Python<'_>,
+        branch: BranchArg,
+        new_branch: BranchArg,
+    ) -> PyResult<Branch> {
         let req = RenameBranch {
             name: &branch.0,
             new_name: &new_branch.0,
@@ -289,7 +295,8 @@ impl Client {
         commit_properties: "dict[str, str] | None" = None,
     ) -> "Branch")]
     fn merge_branch(
-        &self, py: Python<'_>,
+        &self,
+        py: Python<'_>,
         source_ref: RefArg,
         into_branch: BranchArg,
         commit_message: Option<&str>,

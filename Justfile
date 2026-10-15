@@ -3,6 +3,7 @@ lint:
     uv run ruff format --diff
     uv run ty check python/
     buf lint
+    cargo fmt --all -- --check
     cargo clippy -- -Dwarnings
 
     # Prose linting.

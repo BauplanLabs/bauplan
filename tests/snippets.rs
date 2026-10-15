@@ -15,7 +15,16 @@ const MD_CODE_BLOCKS: &str = "(fenced_code_block (info_string) @info (code_fence
 
 // Whitelist the code snippet languages, so that snippets like ```pyfon or
 // ```bash don't sneak by.
-const ALLOWED_LANGUAGES: &[&str] = &["python", "sh", "sql", "json", "yaml", "mermaid", "text", "shell-session"];
+const ALLOWED_LANGUAGES: &[&str] = &[
+    "python",
+    "sh",
+    "sql",
+    "json",
+    "yaml",
+    "mermaid",
+    "text",
+    "shell-session",
+];
 
 struct Snippet {
     code: String,
@@ -112,7 +121,11 @@ fn extract_md_snippets(lang: &str, src: &str, path: &Path) -> anyhow::Result<Vec
     Ok(snippets)
 }
 
-fn extract_docstring_snippets(path: &Path, src: &str, snippets: &mut Vec<Snippet>) -> anyhow::Result<()> {
+fn extract_docstring_snippets(
+    path: &Path,
+    src: &str,
+    snippets: &mut Vec<Snippet>,
+) -> anyhow::Result<()> {
     let py_lang = tree_sitter_python::LANGUAGE.into();
 
     let mut py_parser = Parser::new();
