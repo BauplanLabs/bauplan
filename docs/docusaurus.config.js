@@ -175,7 +175,8 @@ export default {
     },
     prism: {
       additionalLanguages: ["bash", "shell-session"],
-      theme: prismThemes.vsDark,
+      theme: prismThemes.vsLight,
+      darkTheme: prismThemes.vsDark,
     },
     mermaid: {
       theme: {
