@@ -1,6 +1,7 @@
 import { themes as prismThemes } from "prism-react-renderer";
 import remarkHiddenLines from "./src/plugins/remark-hidden-lines.js";
 import redirects from "./redirects.js";
+import { themeCSS } from "./src/mermaid/theme.js";
 
 const siteUrl = process.env.DOCS_URL || "https://docs.bauplanlabs.com";
 const posthogApiKey =
@@ -73,7 +74,7 @@ export default {
           sidebarPath: require.resolve("./sidebar.js"),
         },
         theme: {
-          customCss: ["./src/css/global.css"],
+          customCss: ["./src/css/global.css", "./src/css/diagrams.css"],
         },
         blog: false,
         sitemap: {
@@ -174,12 +175,13 @@ export default {
     },
     prism: {
       additionalLanguages: ["bash", "shell-session"],
-      theme: prismThemes.vsDark,
+      theme: prismThemes.vsLight,
+      darkTheme: prismThemes.vsDark,
     },
     mermaid: {
       theme: {
         light: "base",
-        dark: "dark",
+        dark: "base",
       },
       options: {
         layout: "dagre",
@@ -187,10 +189,14 @@ export default {
         flowchart: {
           wrappingWidth: 200,
           minNodeWidth: 0,
+          padding: 12,
+          subGraphTitleMargin: { top: 10, bottom: 12 },
         },
         themeVariables: {
-          fontFamily: "IBMPlexMono, monospace",
+          fontFamily: "Satoshi, sans-serif",
+          fontSize: "14px",
         },
+        themeCSS,
       },
     },
   },

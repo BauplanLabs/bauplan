@@ -27,27 +27,86 @@
 }
 
 .navbar__link--active {
-  color: #00B0FF;
+  color: var(--nav-active-text);
   border-bottom-color: #00B0FF;
 }
 
 .navbar__link:hover {
-  color: #00B0FF;
+  color: var(--nav-active-text);
   border-bottom-color: #00B0FF;
+}
+
+/* Links fill the navbar's height and have no side padding, so an outline is cut
+   off at the top of the window and hugs the text. Draw the ring around the
+   label instead */
+.navbar__link {
+  position: relative;
+}
+
+.navbar__link:focus-visible {
+  outline: none;
+}
+
+.navbar__link:focus-visible::after {
+  content: "";
+  position: absolute;
+  inset: 16px -6px 10px;
+  border: 2px solid var(--focus-ring-color);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* "Skip to main content": only shows on keyboard focus, over the logo */
+[class*='skipToContent'] {
+  top: 12px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+  background-color: var(--ifm-card-background-color);
+}
+
+[class*='skipToContent']:focus {
+  left: 16px;
+  text-decoration: none;
+}
+
+/* The skip link and page changes focus these containers; ringing the whole page
+   reads as an error */
+main:focus-visible,
+#__docusaurus_skipToContent_fallback:focus-visible,
+[role='region']:focus-visible {
+  outline: none;
 }
 
 /* sidebar */
 .menu__link.menu__link--active {
-  color: #00B0FF;
+  color: var(--nav-active-text);
 }
 
 /* table of contents */
 .table-of-contents__link.toc-highlight.table-of-contents__link--active {
-  color: #00B0FF;
+  color: var(--nav-active-text);
+  font-weight: 600;
+}
+
+/* Positions the active-entry marker against the TOC's left line */
+.table-of-contents {
+  position: relative;
+}
+
+/* Draws a brand-blue marker on the TOC line next to the active entry */
+.table-of-contents__link--active::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  width: 2px;
+  height: 1.4em;
+  background: var(--ifm-color-primary);
 }
 
 .table-of-contents__link.toc-highlight.table-of-contents__link:hover {
-  color: #00B0FF;
+  color: var(--accent-text);
 }
 
 /* searchbar */
@@ -58,6 +117,69 @@
 
 .DocSearch-Footer {
   justify-content: center;
+}
+
+.DocSearch-Modal {
+  --docsearch-text-color: #262626;
+  --docsearch-hit-color: #262626;
+}
+
+[data-theme='dark'] .DocSearch-Modal {
+  --docsearch-text-color: #f7f7f7;
+  --docsearch-hit-color: #f7f7f7;
+}
+
+.DocSearch-Clear {
+  font-weight: 500;
+}
+
+/* DocSearch focus */
+.DocSearch-Hit a:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+  outline-offset: -2px;
+}
+
+.DocSearch-Button:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+  outline-offset: 2px;
+}
+
+/* Room around the search field so its focus ring clears the icons */
+.DocSearch-Input {
+  margin-inline: 8px;
+  padding-inline: 8px;
+  border-radius: 6px;
+}
+
+.DocSearch-Input:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+  outline-offset: 2px;
+}
+
+/* Star and remove buttons */
+.DocSearch-Hit .DocSearch-Hit-action-button:hover,
+.DocSearch-Hit .DocSearch-Hit-action-button:focus {
+  background: rgba(38, 38, 38, 0.1);
+}
+
+[data-theme='dark'] .DocSearch-Hit .DocSearch-Hit-action-button:hover,
+[data-theme='dark'] .DocSearch-Hit .DocSearch-Hit-action-button:focus {
+  background: rgba(247, 247, 247, 0.1);
+}
+
+/* Keyboard focus on these ^ */
+.DocSearch-Hit .DocSearch-Hit-action-button:focus-visible {
+  outline: 2px solid var(--docsearch-focus-color);
+}
+
+.DocSearch-Screen-Icon svg {
+  stroke: currentColor;
+}
+
+/* Match share the text colour in light mode */
+.DocSearch-Hit mark {
+  font-weight: 600;
+  text-decoration-color: var(--docsearch-primary-color);
 }
 
 /* Mobile */

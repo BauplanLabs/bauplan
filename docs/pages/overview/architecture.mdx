@@ -58,36 +58,15 @@ you retain full control of your data.
 The diagram below illustrates the flow from local development to
 execution and data storage:
 
-<div style={{ display: 'flex', justifyContent: 'center' }}>
-
 ```mermaid
-flowchart TD
-    A["<b>Bauplan CLI / SDK</b></br>(Local)"]
-    B["
-        <b>Control Plane</b>
-        (Multi-tenant)
-        <hr class='mermaid' />
-        <div style='text-align:left;'> - DAG Planning
-        - Metadata Handling
-        </div>
-    "]
-    C["
-        <b>Data Plane</b>
-        (Single-tenant)
-        <hr class='mermaid' />
-        <div style='text-align:left; margin-top:0px;'> - Serverless Function Runtime
-        - Apache Arrow Data Streams
-        - Caching & Function Schedule
-        </div>
-    "]
-    D["<b>Iceberg Catalog</b> (Branches)"]
-    E["<b>Object Storage</b> (Parquet, CSV)"]
+flowchart TB
+    A["<b>Bauplan CLI / SDK</b><br/>(Local)"]
+    B["<b>Control Plane</b><br/>(Multi-tenant)<hr/><ul><li>DAG Planning</li><li>Metadata Handling</li></ul>"]:::accent
+    C["<b>Data Plane</b><br/>(Single-tenant)<hr/><ul><li>Serverless Function Runtime</li><li>Apache Arrow Data Streams</li><li>Caching & Function Schedule</li></ul>"]:::accent
+    D["<b>Iceberg Catalog</b><br/>(Branches)"]:::accent
+    E["<b>Object Storage</b><br/>(Parquet, CSV)"]:::external
 
     A --> B --> C --> D --> E
-
-    class C wide
-    classDef wide white-space:nowrap
-
 ```
 
-</div>
+<DiagramLegend />

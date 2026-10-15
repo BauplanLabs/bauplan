@@ -1,0 +1,145 @@
+/*
+ * Diagram tokens. Mermaid reads these through the themeCSS in
+ * src/mermaid/theme.js, so every diagram follows the site theme.
+ *
+ * Text pairs meet WCAG AA 4.5:1; borders, arrows and branch lines meet 3:1
+ * against every background they sit on (page, group, node).
+ */
+
+/* Light theme colours. */
+:root {
+  --diagram-text: #1c1c1c;
+  --diagram-text-muted: #59606e;
+  --diagram-node-bg: #ffffff;
+  --diagram-node-border: #82878f;
+  --diagram-group-bg: #efefef;
+  --diagram-group-border: #82878f;
+  --diagram-line: #6b7280;
+  --diagram-label-bg: #f7f7f7;
+  --diagram-accent: #0081ba;
+  --diagram-accent-bg: #e6f7ff;
+  --diagram-accent-text: #00577e;
+  --diagram-code-text: #1c1c1c;
+  --diagram-snippet-text: var(--diagram-text);
+
+  /* The logo colours, darkened until they hold 3:1 on the light page. */
+  --diagram-git0: #0074a8;
+  --diagram-git1: #8f6a00;
+  --diagram-git2: #c81d35;
+  --diagram-git-label: #ffffff;
+}
+
+/* Dark theme colours. */
+[data-theme='dark'] {
+  --diagram-text: #ececec;
+  --diagram-text-muted: #b0b0b8;
+  --diagram-node-bg: #262626;
+  --diagram-node-border: #77777f;
+  --diagram-group-bg: #1e1f1f;
+  --diagram-group-border: #6b6b73;
+  --diagram-line: #8f8f96;
+  --diagram-label-bg: #151616;
+  --diagram-accent: #ffd600;
+  --diagram-accent-bg: rgba(255, 214, 0, 0.12);
+  --diagram-accent-text: #ffe666;
+  --diagram-code-text: #ffe666;
+  /* Light text on dark makes bold titles look thinner and monospace heavier,
+     so a code box's title only stands out if the code is dimmer */
+  --diagram-snippet-text: var(--diagram-text-muted);
+
+  --diagram-git0: #00b0ff;
+  --diagram-git1: #ffd600;
+  --diagram-git2: #ff3950;
+  --diagram-git-label: #151616;
+}
+
+/* Centres each diagram on the page. */
+.docusaurus-mermaid-container {
+  display: flex !important;
+  justify-content: center;
+  margin-bottom: var(--ifm-leading);
+}
+
+/* Legend row under a diagram (DiagramLegend). */
+.diagram-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 20px;
+  margin: -8px 0 var(--ifm-leading);
+  font-size: 13px;
+  color: var(--diagram-text-muted);
+}
+
+/* One legend entry: a button holding a swatch and its label. */
+.diagram-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* Hovered or selected entries use full-strength text. */
+.diagram-legend__item:hover,
+.diagram-legend__item[aria-pressed='true'] {
+  color: var(--diagram-text);
+}
+
+/* A selected entry gets an outline so it reads as pinned. */
+.diagram-legend__item[aria-pressed='true'] {
+  border-color: var(--diagram-node-border);
+}
+
+/* Swatch for plain boxes: the same fill and border as a diagram box. */
+.diagram-legend__swatch {
+  width: 16px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--diagram-node-border);
+  background: var(--diagram-node-bg);
+}
+
+/* Swatch for accent boxes (managed by Bauplan). */
+.diagram-legend__swatch--accent {
+  border: 1.5px solid var(--diagram-accent);
+  background: var(--diagram-accent-bg);
+}
+
+/* Swatch for external boxes (your storage): dashed, like the boxes. */
+.diagram-legend__swatch--external {
+  border-style: dashed;
+  background: transparent;
+}
+
+/* Fades parts of a diagram in and out when they are dimmed. */
+.docusaurus-mermaid-container g.node,
+.docusaurus-mermaid-container g.cluster,
+.docusaurus-mermaid-container .edgePaths,
+.docusaurus-mermaid-container .edgeLabels span.edgeLabel {
+  transition: opacity 0.15s ease;
+}
+
+/* Legend highlight: dims everything but the chosen kind of box. A group
+   stays bright only when every box in it matches (DiagramLegend marks it
+   .is-highlighted). Plain boxes (including code) have no role class. */
+.docusaurus-mermaid-container[data-highlight] g.cluster:not(.is-highlighted),
+.docusaurus-mermaid-container[data-highlight] .edgePaths,
+.docusaurus-mermaid-container[data-highlight] g.node.title:not(.is-highlighted),
+.docusaurus-mermaid-container[data-highlight='default'] g.node:is(.accent, .external),
+.docusaurus-mermaid-container[data-highlight='accent'] g.node:not(.accent, .is-highlighted),
+.docusaurus-mermaid-container[data-highlight='external'] g.node:not(.external, .is-highlighted) {
+  opacity: 0.25;
+}
+
+/* Arrow labels dim their text, not their background, so the arrow doesn't
+   show through them. The themeCSS pins labels to full opacity with a
+   selector that out-ranks these, hence !important. */
+.docusaurus-mermaid-container[data-highlight] .edgeLabels span.edgeLabel {
+  opacity: 0.25 !important;
+}

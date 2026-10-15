@@ -43,26 +43,26 @@ html {
   --ifm-font-family-base: 'Satoshi', sans-serif;
   --ifm-font-family-monospace: 'IBMPlexMono', monospace;
 
-  /* DocSearch – aligned to site brand (#00B0FF) and palette */
+  /* DocSearch styles */
   --docsearch-primary-color: #00B0FF;
   --docsearch-soft-primary-color: rgba(0, 176, 255, 0.1);
-  --docsearch-highlight-color: #00B0FF;
-  --docsearch-focus-color: #008ECC;
+  --docsearch-highlight-color: #262626;
+  --docsearch-focus-color: var(--focus-ring-color);
   --docsearch-logo-color: #00B0FF;
   --docsearch-text-color: #000000;
-  --docsearch-secondary-text-color: #555555;
-  --docsearch-muted-color: #888888;
-  --docsearch-muted-color-darker: rgba(136, 136, 136, 0.25);
-  --docsearch-subtle-color: #d6d6e7;
-  --docsearch-icon-color: #555555;
+  --docsearch-secondary-text-color: #535353;
+  --docsearch-muted-color: #535353;
+  --docsearch-muted-color-darker: rgba(83, 83, 83, 0.25);
+  --docsearch-subtle-color: #f0efef;
+  --docsearch-icon-color: #535353;
   --docsearch-icon-stroke-width: 1.4;
-  --docsearch-key-color: #000000;
+  --docsearch-key-color: #262626;
   --docsearch-key-background: #f7f7f7;
-  --docsearch-key-pressed-shadow: inset 0 2px 4px rgba(136, 136, 136, 0.25);
-  --docsearch-error-color: #ef5350;
+  --docsearch-key-pressed-shadow: inset 0 2px 4px rgba(83, 83, 83, 0.25);
+  --docsearch-error-color: #e84054;
   --docsearch-success-color: #e8f5e9;
   --docsearch-background-color: #f7f7f7;
-  --docsearch-container-background: rgba(0, 0, 0, 0.5);
+  --docsearch-container-background: rgba(38, 38, 38, 0.5);
   --docsearch-modal-background: #f7f7f7;
   --docsearch-modal-shadow: rgba(0, 0, 0, 0.2) 0px 12px 28px 0px,
     rgba(0, 0, 0, 0.1) 0px 2px 4px 0px,
@@ -70,12 +70,12 @@ html {
   --docsearch-searchbox-background: rgba(255, 255, 255, 0.65);
   --docsearch-searchbox-focus-background: #ffffff;
   --docsearch-search-button-background: #ffffff;
-  --docsearch-search-button-text-color: #555555;
+  --docsearch-search-button-text-color: #535353;
   --docsearch-hit-color: #444950;
   --docsearch-hit-highlight-color: rgba(0, 176, 255, 0.1);
   --docsearch-hit-background: #ffffff;
-  --docsearch-footer-background: rgba(255, 255, 255, 0.65);
-  --docsearch-footer-shadow: 0 -1px 0 0 #e0e3e8, 0 -3px 6px 0 rgba(69, 98, 155, 0.12);
+  --docsearch-footer-background: #ffffff;
+  --docsearch-footer-shadow: 0 -1px 0 0 #f0efef;
 
   scroll-padding-top: 65px; /* Match navbar's height */
 }
@@ -88,22 +88,42 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
 :root {
   --ifm-color-primary: #00B0FF;
+  /* Light mode: links and selected nav items are brand black */
+  --accent-text: var(--ifm-font-color-base);
+  --nav-active-text: var(--ifm-font-color-base);
+  --ifm-link-color: var(--accent-text);
+  --ifm-menu-color-active: var(--nav-active-text);
+  --ifm-tabs-color-active: var(--nav-active-text);
   --ifm-tag-color-border: #008ECC;
   --ifm-pagination-nav-color-hover: #00B0FF;
-  --ifm-hover-link-color: #00B0FF;
-  --ifm-link-hover-color: #00B0FF;
+  --ifm-hover-link-color: var(--accent-text);
+  --ifm-link-hover-color: var(--accent-text);
   --ifm-hover-overlay: rgba(0, 176, 255, 0.1);
   --ifm-breadcrumb-color-active: var(--docsearch-text-color);
-  --ifm-color-secondary-contrast-background: transarent;
-  --ifm-color-success-contrast-background: transarent;
-  --ifm-color-warning-contrast-background: transarent;
-  --ifm-color-danger-contrast-background: transarent;
+  --ifm-color-secondary-contrast-background: transparent;
+  --ifm-color-success-contrast-background: transparent;
+  --ifm-color-warning-contrast-background: transparent;
+  --ifm-color-danger-contrast-background: transparent;
 
   --ifm-code-background: #E3F2FD;
   --ifm-background-surface-color: #f7f7f7;
   --ifm-footer-background-color: #f7f7f7;
   --ifm-background-color: #f7f7f7;
   --ifm-card-background-color: #ffffff;
+
+  --focus-ring-color: #262626;
+  --breadcrumb-link-color: #5c5c5c;
+
+  /* Code blocks, terminals and file trees */
+  --code-background: #ffffff;
+  --code-title-background: #f6f8fa;
+  --code-border: #e5e7eb;
+}
+
+/* Keyboard focus ring for every link and control */
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
 }
 
 /* Make code blocks wrap instead of scroll */
@@ -132,7 +152,7 @@ code[class*="language-"] {
 }
 
 :not(pre) > code:not(:has(a)) {
-  padding: 0.2em 0.4em;
+  padding: 0.1em 0.3em;
   border-radius: 4px;
 }
 
@@ -140,82 +160,111 @@ code[class*="language-"] {
   padding: 2em;
 }
 
-/* Make text/yaml/yml blocks visually distinct from sh/bash blocks */
-pre[class*="language-text"],
-pre[class*="language-yaml"] {
-  background: #e0e0e0 !important;
+
+/* Every code block sits on the same background. Their frames tell them apart:
+   the terminal bar, a filename title, the tree's icons, the output bar.
+   Prism sets its background inline, hence !important */
+div[class*="codeBlockContainer"] {
+  --prism-background-color: var(--code-background) !important;
+  background: var(--code-background) !important;
+  border: 1px solid var(--code-border);
+  box-shadow: none;
+}
+
+div[class*="codeBlockContainer"] div[class*="codeBlockTitle"] {
+  background: var(--code-title-background) !important;
+  color: var(--ifm-font-color-base) !important;
+  border-bottom: 1px solid var(--code-border);
+}
+
+/* Command output and plain listings get a grey bar on the left */
+div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) {
   border-left: 3px solid #888 !important;
+}
+
+pre[class*="language-text"] {
   border-radius: 0 !important;
 }
 
 pre[class*="language-text"] code,
-pre[class*="language-text"] code span,
-pre[class*="language-yaml"] code,
-pre[class*="language-yaml"] code span {
+pre[class*="language-text"] code span {
   color: #222 !important;
 }
 
-/* Style the title bar and container when it belongs to a text/yaml block */
-div[class*="codeBlockContainer"]:has(pre[class*="language-text"]),
-div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) {
-  border-left: 3px solid #888 !important;
+/* YAML keys, strings and literals use the Bauplan blue, red and yellow.
+   Prism sets token colors inline, hence !important */
+pre[class*="language-yaml"] {
+  --yaml-plain: #393a34;
+  /* Darkened just enough to read on white */
+  --yaml-key: #007db5;
+  --yaml-string: #ed001c;
+  --yaml-literal: #8a7400;
+  --yaml-comment: #6a737d;
 }
 
-div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) div[class*="codeBlockTitle"],
-div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) div[class*="codeBlockTitle"] {
-  background: #c8c8c8 !important;
-  color: #222 !important;
+pre[class*="language-yaml"] .token-line,
+pre[class*="language-yaml"] .token {
+  color: var(--yaml-plain) !important;
 }
 
-div[class*="codeBlockContainer"] pre[class*="language-text"],
-div[class*="codeBlockContainer"] pre[class*="language-yaml"] {
-  border-left: none !important;
+pre[class*="language-yaml"] .token.key {
+  color: var(--yaml-key) !important;
 }
 
-[data-theme='dark'] pre[class*="language-text"],
-[data-theme='dark'] pre[class*="language-yaml"] {
-  background: #1e1e1e !important;
-  border-left: 3px solid #555 !important;
+pre[class*="language-yaml"] .token.string {
+  color: var(--yaml-string) !important;
 }
 
-[data-theme='dark'] pre[class*="language-text"] code,
-[data-theme='dark'] pre[class*="language-text"] code span,
-[data-theme='dark'] pre[class*="language-yaml"] code,
-[data-theme='dark'] pre[class*="language-yaml"] code span {
-  color: #bbb !important;
+pre[class*="language-yaml"] .token.number,
+pre[class*="language-yaml"] .token.boolean,
+pre[class*="language-yaml"] .token.null {
+  color: var(--yaml-literal) !important;
 }
 
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]),
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) {
-  border-left: 3px solid #555 !important;
+pre[class*="language-yaml"] .token.comment {
+  color: var(--yaml-comment) !important;
+  font-style: italic;
 }
 
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) div[class*="codeBlockTitle"],
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) div[class*="codeBlockTitle"] {
-  background: #2a2a2a !important;
-  color: #bbb !important;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"] pre[class*="language-text"],
-[data-theme='dark'] div[class*="codeBlockContainer"] pre[class*="language-yaml"] {
-  border-left: none !important;
-}
 /* end */
 
 a:hover {
-  color: #00B0FF;
+  color: var(--accent-text);
 }
 
 a:has(> code):hover {
   text-decoration: none !important;
 }
 
+a > code {
+  color: var(--accent-text);
+}
+
 a:has(> code):hover code {
   background: #f0f8ff;
 }
 
-[data-theme='dark'] a:has(> code):hover code {
-  background: rgba(255, 252, 227, 1);
+/* Light mode: links in text get a brand-blue underline, linked code a
+   brand-blue border */
+[data-theme='light'] .markdown :is(p, li, td, th, blockquote) a:not(.hash-link):not(:has(> code)) {
+  text-decoration: underline;
+  text-decoration-color: var(--ifm-color-primary);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+[data-theme='light'] .markdown :is(p, li, td, th, blockquote) a:not(.hash-link):not(:has(> code)):hover {
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='light'] .markdown a[href] > code {
+  border-color: var(--ifm-color-primary);
+}
+
+/* Code in table-of-contents entries inherits the entry's colour, because every
+   entry is a link and the link blue would turn all of them blue */
+.table-of-contents a[href] > code {
+  color: inherit;
 }
 
 /* Admonitions accent in brand colors*/
@@ -227,6 +276,10 @@ a:has(> code):hover code {
 .alert--success {
   --ifm-alert-border-color: var(--ifm-color-primary);
   --contrast-foreground: #003B55;
+}
+
+.alert--danger {
+  --ifm-alert-border-color: #FF3950;
 }
 
 .theme-admonition :not(pre) > code {
@@ -250,63 +303,115 @@ footer {
   white-space: wrap !important;
 }
 
-/* mermaid */
-hr.mermaid {
-  margin: 0;
+/* Breadcrumbs - parents are muted links, the current page is plain text */
+.breadcrumbs {
+  --ifm-breadcrumb-padding-horizontal: 0;
+  --ifm-breadcrumb-spacing: 0.75rem;
+  --ifm-breadcrumb-item-background-active: transparent;
 }
 
-.docusaurus-mermaid-container{
-  justify-content: center;
-  display: flex !important;
+.breadcrumbs__link {
+  color: var(--breadcrumb-link-color);
+  font-weight: 500;
 }
 
-.edgeLabel > p {
-  margin: 0px;
+.breadcrumbs__link:hover {
+  color: var(--accent-text);
+  background: none;
 }
+
+.breadcrumbs__item--active .breadcrumbs__link {
+  color: var(--ifm-font-color-base);
+  font-weight: 600;
+}
+
 
 /* Dark theme */
 [data-theme='dark'] {
   --ifm-tag-color-border: #FFD600;
-  --ifm-code-background: rgba(255, 252, 227, 0.9);
+  /* A brand-yellow tint, as dark-mode diagrams use for accents: stands out
+     without outshining the text around it */
+  --ifm-code-background: rgba(255, 214, 0, 0.12);
   --ifm-background-color: #151616;
   --ifm-background-surface-color: #151616;
   --ifm-footer-background-color: #151616;
   --ifm-card-background-color: #262626;
+  --focus-ring-color: #00B0FF;
+  --accent-text: #00B0FF;
+  --nav-active-text: #00B0FF;
+  --breadcrumb-link-color: #9b9b9b;
+
+  /* Code blocks, terminals and file trees */
+  --code-background: #1e1e1e;
+  --code-title-background: #252526;
+  --code-border: #333333;
 
   /* DocSearch – dark theme */
+  --docsearch-primary-color: #00B0FF;
+  --docsearch-soft-primary-color: rgba(0, 176, 255, 0.1);
+  --docsearch-highlight-color: #00B0FF;
+  --docsearch-focus-color: var(--focus-ring-color);
   --docsearch-text-color: #e0e0e0;
-  --docsearch-secondary-text-color: #aaaaaa;
-  --docsearch-muted-color: #777777;
-  --docsearch-muted-color-darker: rgba(119, 119, 119, 0.25);
-  --docsearch-subtle-color: #444444;
-  --docsearch-icon-color: #aaaaaa;
-  --docsearch-key-color: #aaaaaa;
-  --docsearch-key-background: #333333;
+  --docsearch-secondary-text-color: #9b9b9b;
+  --docsearch-muted-color: #9b9b9b;
+  --docsearch-muted-color-darker: rgba(155, 155, 155, 0.25);
+  --docsearch-subtle-color: #2f2f2f;
+  --docsearch-icon-color: #9b9b9b;
+  --docsearch-key-color: #9b9b9b;
+  --docsearch-key-background: #2f2f2f;
   --docsearch-key-shadow: none;
   --docsearch-key-pressed-shadow: none;
-  --docsearch-background-color: #151616;
+  --docsearch-background-color: #2f2f2f;
   --docsearch-container-background: rgba(0, 0, 0, 0.7);
-  --docsearch-modal-background: #1e1e1e;
+  --docsearch-modal-background: #1a1a1a;
   --docsearch-modal-shadow: rgba(0, 0, 0, 0.4) 0px 12px 28px 0px,
     rgba(0, 0, 0, 0.3) 0px 2px 4px 0px,
     rgba(255, 255, 255, 0.05) 0px 0px 0px 1px inset;
   --docsearch-searchbox-background: #262626;
-  --docsearch-searchbox-focus-background: #333333;
+  --docsearch-searchbox-focus-background: #262626;
   --docsearch-search-button-background: #262626;
-  --docsearch-search-button-text-color: #aaaaaa;
+  --docsearch-search-button-text-color: #9b9b9b;
   --docsearch-hit-color: #e0e0e0;
-  --docsearch-hit-highlight-color: rgba(0, 176, 255, 0.15);
+  --docsearch-hit-highlight-color: rgba(0, 176, 255, 0.1);
   --docsearch-hit-background: #262626;
-  --docsearch-footer-background: #1e1e1e;
-  --docsearch-footer-shadow: 0 -1px 0 0 #333333, 0 -3px 6px 0 rgba(0, 0, 0, 0.3);
+  --docsearch-footer-background: #1a1a1a;
+  --docsearch-footer-shadow: 0 -1px 0 0 #2f2f2f;
 }
 
-[data-theme='dark'] code {
-  color: #000000;
+[data-theme='dark'] :not(pre) > code {
+  color: #ffe666;
+  border-color: rgba(255, 214, 0, 0.25);
 }
 
-[data-theme='dark'] code a {
-  color: #000000;
+[data-theme='dark'] a[href] > code {
+  color: var(--accent-text);
+}
+
+[data-theme='dark'] a:has(> code):hover code {
+  background: rgba(255, 214, 0, 0.2);
+}
+
+/* Dark mode: code in the table of contents stays yellow */
+[data-theme='dark'] .table-of-contents a[href] > code {
+  color: #ffe666;
+}
+
+/* Code blocks */
+[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) {
+  border-left-color: #555 !important;
+}
+
+[data-theme='dark'] pre[class*="language-text"] code,
+[data-theme='dark'] pre[class*="language-text"] code span {
+  color: #bbb !important;
+}
+
+[data-theme='dark'] pre[class*="language-yaml"] {
+  --yaml-plain: #e4e4e7;
+  --yaml-key: #00b0ff;
+  --yaml-string: #ff5468;
+  --yaml-literal: #ffd600;
+  --yaml-comment: #8d949e;
 }
 
 /* Admonitions */
@@ -320,9 +425,9 @@ hr.mermaid {
   --ifm-alert-foreground-color: #FFFDE6;
 }
 
-[data-theme='dark'] .theme-admonition :not(pre) > code {
-  background: rgb(255, 252, 227);
-  color: #000;
+[data-theme='dark'] .alert--danger {
+  --ifm-alert-border-color: #FF3950;
+  --ifm-alert-foreground-color: #FFE6E9;
 }
 
 /* navbar */
@@ -330,6 +435,12 @@ hr.mermaid {
 
 /* sidebar */
 @import './sidebar.css';
+
+/* terminal window around shell code blocks */
+@import './terminal.css';
+
+/* file explorer card for ```tree fences */
+@import './file-tree.css';
 
 /* Tabs - faint bottom line on hover */
 .tabs__item {
@@ -345,7 +456,7 @@ hr.mermaid {
 
 .tabs__item--active,
 .tabs__item--active:hover {
-  border-bottom: 2px solid var(--ifm-tabs-color-active);
+  border-bottom: 2px solid var(--ifm-color-primary);
 }
 
 /* CLI reference tables - wider Flag column */

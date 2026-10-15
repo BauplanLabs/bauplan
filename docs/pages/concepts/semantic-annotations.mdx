@@ -18,16 +18,12 @@ output is specified to have the schema `BaseResult`. This model receives its inp
 from the model `src_table`, whose schema is determined from the catalog directly.
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '12px', 'edgeLabelBackground': '#DB6672'}}}%%
 flowchart LR
-    A["</br>src_table</br>(Catalog)"]
-    B["</br>base_model</br>(Node 1)"]
-    OUT[" "]
+    A["src_table<br/>(Catalog)"]
+    B["base_model<br/>(Node 1)"]
+    OUT["Output"]
 
-    A --> B -- BaseResult --> OUT
-
-    classDef hidden fill:none,stroke:none
-    class OUT hidden
+    A --> B -- "<code>BaseResult</code>" --> OUT
 ```
 
 This one-node DAG is defined in Python (with descriptive comments) as:
@@ -180,17 +176,13 @@ are defined in Python, such as `QuerySchema` and `ProjSchema`, but they can be r
 from each model for cross-language guarantees.
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '12px', 'edgeLabelBackground': '#DB6672'}}}%%
 flowchart LR
-    A["</br>src_table</br>(Catalog)"]
-    B["</br>sql_query</br>(Node 1)"]
-    C["</br>py_model</br>(Node 2)"]
-    OUT[" "]
+    A["src_table<br/>(Catalog)"]
+    B["sql_query<br/>(Node 1)"]
+    C["py_model<br/>(Node 2)"]
+    OUT["Output"]
 
-    A --> B -- QuerySchema --> C -- ProjSchema --> OUT
-
-    classDef hidden fill:none,stroke:none
-    class OUT hidden
+    A --> B -- "<code>QuerySchema</code>" --> C -- "<code>ProjSchema</code>" --> OUT
 ```
 
 The data flow is linear from the catalog to the SQL model to the Python model, but
