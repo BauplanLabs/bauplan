@@ -1,16 +1,14 @@
-/* Terminal window around shell code blocks. The body keeps the site's dark
-   code theme, so it looks the same in both color modes */
+/* Terminal window around shell code blocks: window bar, code body, prompt */
 .terminal-window {
-  --terminal-background: #1e1e1e;
+  --terminal-bar: #eef0f3;
+  --terminal-text: #1f2328;
+  --terminal-muted: #57606a;
+  --terminal-prompt: #a0a4ab;
   margin-bottom: var(--ifm-leading);
+  border: 1px solid var(--code-border);
   border-radius: var(--ifm-code-border-radius);
   overflow: hidden;
-  background: var(--terminal-background);
-  box-shadow: var(--ifm-global-shadow-lw);
-}
-
-[data-theme='dark'] .terminal-window {
-  box-shadow: 0 0 0 1px #333333;
+  background: var(--code-background);
 }
 
 .terminal-window__bar {
@@ -18,7 +16,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.65rem 1rem;
-  background: #3f3f46;
+  border-bottom: 1px solid var(--code-border);
+  background: var(--terminal-bar);
 }
 
 .terminal-window__dot {
@@ -53,7 +52,7 @@ button.terminal-window__dot {
 }
 
 .terminal-window__dot:focus-visible {
-  outline: 2px solid #e4e4e7;
+  outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }
 
@@ -98,7 +97,7 @@ button.terminal-window__dot {
 
 .terminal-window__title {
   margin-left: 0.5rem;
-  color: #a1a1aa;
+  color: var(--terminal-muted);
   font-family: var(--ifm-font-family-monospace);
   font-size: 0.8rem;
 }
@@ -106,6 +105,7 @@ button.terminal-window__dot {
 /* The inner code block loses its own frame: the window is the frame */
 .terminal-window div[class*='codeBlockContainer'] {
   margin-bottom: 0;
+  border: none;
   border-radius: 0;
   box-shadow: none;
 }
@@ -117,30 +117,32 @@ button.terminal-window__dot {
 /* A prompt marks each command. It is drawn by CSS, so copying leaves it out */
 .terminal-window__command::before {
   content: "$ ";
-  color: #71717a;
+  color: var(--terminal-prompt);
   user-select: none;
 }
 
-/* Force cmds to be the same color. Only comments and quoted strings stand out */
-.terminal-window .token {
-  color: #e4e4e7 !important;
+/* Light mode: commands and keywords in darkened brand blue */
+[data-theme='light'] .terminal-window .token:is(.function, .keyword) {
+  color: #006a9a !important;
 }
 
+/* Operators and punctuation (<, >, |, ;): plain text colour */
+.terminal-window .token:is(.operator, .punctuation) {
+  color: inherit !important;
+}
+
+/* Comments: muted, italic */
 .terminal-window .token.comment {
-  color: #8d949e !important;
+  color: var(--terminal-muted) !important;
   font-style: italic;
 }
 
-.terminal-window .token.string {
-  color: #ffd600 !important;
-}
-
-/* Make the copy button visible */
+/* Copy button: always visible */
 .terminal-window div[class*='buttonGroup'] button {
   opacity: 0.7 !important;
-  color: #a1a1aa;
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--terminal-muted);
+  background: var(--code-background);
+  border-color: var(--code-border);
 }
 
 .terminal-window div[class*='buttonGroup'] button:hover {
@@ -234,17 +236,17 @@ button.terminal-window__dot {
 .terminal-window__exit {
   margin-left: auto;
   padding: 0.2rem 0.75rem;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--code-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #e4e4e7;
+  background: var(--code-background);
+  color: var(--terminal-text);
   font-family: var(--ifm-font-family-monospace);
   font-size: 0.8rem;
   cursor: pointer;
 }
 
 .terminal-window__exit:hover {
-  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--terminal-muted);
 }
 
 @keyframes terminal-window-grow {
@@ -295,4 +297,12 @@ button.terminal-window__dot {
   .terminal-window-dialog::backdrop {
     animation: none;
   }
+}
+
+/* Dark theme */
+[data-theme='dark'] .terminal-window {
+  --terminal-bar: #3f3f46;
+  --terminal-text: #e4e4e7;
+  --terminal-muted: #a1a1aa;
+  --terminal-prompt: #71717a;
 }

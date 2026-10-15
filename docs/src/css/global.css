@@ -113,6 +113,11 @@ h1[id], h2[id], h3[id], h4[id], h5[id], h6[id] {
 
   --focus-ring-color: #262626;
   --breadcrumb-link-color: #5c5c5c;
+
+  /* Code blocks, terminals and file trees */
+  --code-background: #ffffff;
+  --code-title-background: #f6f8fa;
+  --code-border: #e5e7eb;
 }
 
 /* Keyboard focus ring for every link and control */
@@ -155,138 +160,25 @@ code[class*="language-"] {
   padding: 2em;
 }
 
-/* Make text blocks (command output, plain listings) visually distinct from code */
-pre[class*="language-text"] {
-  background: #e0e0e0 !important;
-  border-left: 3px solid #888 !important;
-  border-radius: 0 !important;
+
+/* One background for every code block, terminal and file tree */
+div[class*="codeBlockContainer"] {
+  --prism-background-color: var(--code-background) !important;
+  background: var(--code-background) !important;
+  border: 1px solid var(--code-border);
+  box-shadow: none;
+}
+
+div[class*="codeBlockContainer"] div[class*="codeBlockTitle"] {
+  background: var(--code-title-background) !important;
+  color: var(--ifm-font-color-base) !important;
+  border-bottom: 1px solid var(--code-border);
 }
 
 pre[class*="language-text"] code,
 pre[class*="language-text"] code span {
   color: #222 !important;
 }
-
-/* Style the title bar and container when it belongs to a text block */
-div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) {
-  border-left: 3px solid #888 !important;
-}
-
-div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) div[class*="codeBlockTitle"] {
-  background: #c8c8c8 !important;
-  color: #222 !important;
-}
-
-div[class*="codeBlockContainer"] pre[class*="language-text"] {
-  border-left: none !important;
-}
-
-[data-theme='dark'] pre[class*="language-text"] {
-  background: #1e1e1e !important;
-  border-left: 3px solid #555 !important;
-}
-
-[data-theme='dark'] pre[class*="language-text"] code,
-[data-theme='dark'] pre[class*="language-text"] code span {
-  color: #bbb !important;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) {
-  border-left: 3px solid #555 !important;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-text"]) div[class*="codeBlockTitle"] {
-  background: #2a2a2a !important;
-  color: #bbb !important;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"] pre[class*="language-text"] {
-  border-left: none !important;
-}
-/* YAML is project config, not code you run, so it sits on a light card instead of
-   the dark code theme. Prism sets token colors inline, hence !important */
-pre[class*="language-yaml"] {
-  --yaml-plain: #393a34;
-  /* Bauplan blue, red and yellow, darkened just enough to read on white */
-  --yaml-key: #007db5;
-  --yaml-string: #ed001c;
-  --yaml-literal: #8a7400;
-  --yaml-comment: #6a737d;
-  background: #ffffff !important;
-  color: var(--yaml-plain) !important;
-}
-
-[data-theme='dark'] pre[class*="language-yaml"] {
-  --yaml-plain: #f8f8f2;
-  --yaml-key: #00b0ff;
-  --yaml-string: #ff5468;
-  --yaml-literal: #ffd600;
-  --yaml-comment: #8592c4;
-  background: #282a36 !important;
-}
-
-div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) {
-  --prism-background-color: #ffffff !important;
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb;
-  box-shadow: none;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) {
-  --prism-background-color: #282a36 !important;
-  background: #282a36 !important;
-  border-color: #3a3c4e;
-}
-
-div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) div[class*="codeBlockTitle"] {
-  background: #f6f8fa !important;
-  color: var(--ifm-font-color-base) !important;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) div[class*="codeBlockTitle"] {
-  background: #21222c !important;
-  border-bottom-color: #3a3c4e;
-}
-
-/* The copy button takes the dark code theme's colors by default */
-div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) button {
-  background: #ffffff;
-  color: var(--yaml-plain, #393a34);
-  border-color: #e5e7eb;
-}
-
-[data-theme='dark'] div[class*="codeBlockContainer"]:has(pre[class*="language-yaml"]) button {
-  background: #282a36;
-  color: #f8f8f2;
-  border-color: #3a3c4e;
-}
-
-pre[class*="language-yaml"] .token-line,
-pre[class*="language-yaml"] .token {
-  color: var(--yaml-plain) !important;
-}
-
-pre[class*="language-yaml"] .token.key {
-  color: var(--yaml-key) !important;
-}
-
-pre[class*="language-yaml"] .token.string {
-  color: var(--yaml-string) !important;
-}
-
-pre[class*="language-yaml"] .token.number,
-pre[class*="language-yaml"] .token.boolean,
-pre[class*="language-yaml"] .token.null {
-  color: var(--yaml-literal) !important;
-}
-
-pre[class*="language-yaml"] .token.comment {
-  color: var(--yaml-comment) !important;
-  font-style: italic;
-}
-
-/* end */
 
 a:hover {
   color: var(--accent-text);
@@ -401,6 +293,11 @@ footer {
   --nav-active-text: #00B0FF;
   --breadcrumb-link-color: #9b9b9b;
 
+  /* Code blocks, terminals and file trees */
+  --code-background: #1e1e1e;
+  --code-title-background: #252526;
+  --code-border: #333333;
+
   /* DocSearch – dark theme */
   --docsearch-primary-color: #00B0FF;
   --docsearch-soft-primary-color: rgba(0, 176, 255, 0.1);
@@ -445,6 +342,12 @@ footer {
 
 [data-theme='dark'] a:has(> code):hover code {
   background: rgba(255, 214, 0, 0.2);
+}
+
+/* Code blocks */
+[data-theme='dark'] pre[class*="language-text"] code,
+[data-theme='dark'] pre[class*="language-text"] code span {
+  color: #bbb !important;
 }
 
 /* Admonitions */

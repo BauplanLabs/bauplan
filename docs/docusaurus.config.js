@@ -1,7 +1,7 @@
-import { themes as prismThemes } from "prism-react-renderer";
 import remarkHiddenLines from "./src/plugins/remark-hidden-lines.js";
 import redirects from "./redirects.js";
 import { themeCSS } from "./src/mermaid/theme.js";
+import { darkTheme, lightTheme } from "./src/prism/theme.js";
 
 const siteUrl = process.env.DOCS_URL || "https://docs.bauplanlabs.com";
 const posthogApiKey =
@@ -175,7 +175,8 @@ export default {
     },
     prism: {
       additionalLanguages: ["bash", "shell-session"],
-      theme: prismThemes.vsDark,
+      theme: lightTheme,
+      darkTheme: darkTheme,
     },
     mermaid: {
       theme: {
