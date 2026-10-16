@@ -6,8 +6,10 @@ from bauplan_sdk_types import (
     # Field types
     Any,
     Bool,
+    ColumnLineage,
     Date32,
     Date64,
+    Decimal128,
     Float64,
     Int32,
     Int64,
@@ -87,6 +89,7 @@ __all__ = [
     "Int32",
     "Int64",
     "Float64",
+    "Decimal128",
     "Date32",
     "Date64",
     "TimestampMicro",
@@ -95,6 +98,7 @@ __all__ = [
     "TimestampNanoUTC",
     "String",
     "Binary",
+    "ColumnLineage",
 ]
 
 import pathlib

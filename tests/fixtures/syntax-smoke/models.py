@@ -6,7 +6,7 @@ This fixture implements no logic, it just attempts to use every stub; thus, it i
 """
 
 import pyarrow
-from typing import Annotated
+from typing import Annotated, Literal
 
 # decorators
 from bauplan import (
@@ -21,6 +21,7 @@ from bauplan import (
     Int32,
     Int64,
     Float64,
+    Decimal128,
     String,
     Binary,
     Date32,
@@ -30,6 +31,7 @@ from bauplan import (
     TimestampMicroUTC,
     TimestampNanoUTC,
     TableField,
+    ColumnLineage,
 )
 
 # Primary entities
@@ -56,7 +58,10 @@ class BareTypesSchema(TableSchema):
     bare_long: Int64 | None
     bare_float: Float64 | None
     # A parameterized type takes its parameters as type parameters
-    bare_decimal: Any
+    bare_decimal: Decimal128[Literal[38], Literal[10]] | None
+    bare_decimal_precision: Decimal128[Literal[18]]  # scale defaults to 0
+    # Bare int literals are accepted by the parser but rejected by type checkers
+    bare_decimal_int_literals: Decimal128[38, 10]  # ty: ignore[invalid-type-form]
     bare_str: String | None
     bare_binary: Binary | None
     bare_date32: Date32 | None
@@ -75,12 +80,17 @@ class AnnotatedTypesSchema(TableSchema):
     annotated_long: Annotated[Int64 | None, TableField()]
     annotated_float: Annotated[Float64, TableField()]
     annotated_decimal: Annotated[
-        Any,
+        Decimal128[Literal[38], Literal[10]] | None,
         TableField(
             doc="decimal docstring",
             lineage=BareTypesSchema["bare_decimal"],
         ),
     ]
+    annotated_decimal_precision: Annotated[
+        Decimal128[Literal[18]],
+        TableField(lineage="BareTypesSchema['bare_decimal_precision']"),
+    ]
+    annotated_any: Annotated[Any, TableField(doc="untyped column")]
     annotated_str: Annotated[
         String | None, TableField(lineage=BareTypesSchema["bare_str"])
     ]
@@ -107,14 +117,14 @@ class AnnotatedTypesSchema(TableSchema):
         TimestampMicroUTC | None,
         TableField(
             doc="TS micro UTC docstring",
-            lineage=BareTypesSchema["bare_ts_micro_utc"],
+            lineage=ColumnLineage("namespace.source", "bare_ts_micro_utc"),
         ),
     ]
     annotated_ts_nano_utc: Annotated[
         TimestampNanoUTC | None,
         TableField(
             doc="TS nano UTC docstring",
-            lineage="BareTypesSchema['bare_ts_nano_utc']",
+            lineage=ColumnLineage("source", "bare_ts_nano_utc"),
         ),
     ]
 
