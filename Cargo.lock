@@ -4482,6 +4482,7 @@ name = "pyo3-build-config"
 version = "0.28.2"
 source = "git+https://github.com/pyo3/pyo3?rev=f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d#f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d"
 dependencies = [
+ "python3-dll-a",
  "target-lexicon",
 ]
 
@@ -4525,6 +4526,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "python3-dll-a"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d80ba7540edb18890d444c5aa8e1f1f99b1bdf26fb26ae383135325f4a36042b"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
