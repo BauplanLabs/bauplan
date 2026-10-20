@@ -84,7 +84,7 @@ polyglot-sql = { version = "0.9", optional = true, default-features = false, fea
 prost = "0.14"
 prost-types = "0.14"
 percent-encoding = "2"
-pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
+pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "generate-import-lib", "multiple-pymethods"] }
 pyo3-arrow = { version = "0.17", optional = true }
 pyo3-log = { version = "0.13", optional = true }
 rand = "0.8"
