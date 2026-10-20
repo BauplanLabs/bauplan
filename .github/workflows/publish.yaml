@@ -73,9 +73,17 @@ jobs:
           key: ${{ runner.os }}-${{ runner.arch }}-cargo-${{ hashFiles('Cargo.lock') }}
 
       - name: Install Python versions
+        id: pythons
         env:
           PYTHONS: ${{ matrix.pythons }}
-        run: uv python install $PYTHONS
+        run: |
+          uv python install $PYTHONS
+          # On Windows maturin only sees the interpreters preinstalled on the image,
+          # so we pass it the paths of the ones uv installed.
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            PYTHONS=$(for p in $PYTHONS; do cygpath -m "$(uv python find --managed-python "${p#python}")"; done | tr '\n' ' ')
+          fi
+          echo "interpreters=$PYTHONS" >> "$GITHUB_OUTPUT"
 
       - name: Build CLI binary
         env:
@@ -90,7 +98,7 @@ jobs:
         with:
           args: >-
             --release --out dist
-            -i ${{ matrix.pythons }}
+            -i ${{ steps.pythons.outputs.interpreters }}
           docker-options: -v ~/.cargo:/root/.cargo
           before-script-linux: |
             ARCH=$(uname -m | sed 's/aarch64/aarch_64/')
