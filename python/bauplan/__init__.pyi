@@ -1856,7 +1856,6 @@ class Client:
         cache: "bool" = True,
         transaction: "bool" = True,
         dry_run: "bool | None" = None,
-        strict: "bool" = True,
         preview: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -1865,7 +1864,7 @@ class Client:
     ) -> "RunState":
         """
         Run a Bauplan project and return the state of the run. This is the equivalent of
-        running through the CLI the `bauplan run` command. Caching, transaction mode, and strict mode are enabled by default.
+        running through the CLI the `bauplan run` command.
 
         ## Examples
 
@@ -1890,7 +1889,6 @@ class Client:
             cache: Whether to enable caching for the run. Defaults to True. Set to False to disable caching.
             transaction: Whether to enable transaction mode for the run. Defaults to True. Set to False to disable transaction mode.
             dry_run: Whether to enable or disable dry-run mode for the run; models are not materialized.
-            strict: Whether runtime warnings, including failing expectations and invalid column outputs, fail the run. Defaults to True. Set to False to disable strict mode.
             preview: Whether to enable or disable preview mode for the run.
             args: Additional arguments (optional).
             priority: Optional job priority (1-10, where 10 is highest priority).

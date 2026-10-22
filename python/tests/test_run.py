@@ -26,28 +26,9 @@ def test_dry_run(client: bauplan.Client):
     assert state.ctx.dry_run is True
     assert state.ctx.cache is False
     assert state.ctx.transaction is True
-    assert state.ctx.strict is True
 
 
-@pytest.mark.parametrize(
-    "strict,expected_status", [(True, "FAILED"), (False, "SUCCESS")]
-)
-def test_strict_expectation(
-    client: bauplan.Client, strict: bool, expected_status: str
-) -> None:
-    """Check that strict mode controls whether a failing expectation fails the run."""
-    state = client.run(
-        project_dir="tests/fixtures/failing_expectation",
-        dry_run=True,
-        cache=False,
-        strict=strict,
-    )
-
-    assert state.ctx.strict is strict
-    assert state.job_status == expected_status
-
-
-@pytest.mark.parametrize("option", ["strict", "cache", "transaction"])
+@pytest.mark.parametrize("option", ["cache", "transaction"])
 @pytest.mark.parametrize("value", [None, "on", "off"])
 def test_run_rejects_non_boolean(
     client: bauplan.Client, option: str, value: Any

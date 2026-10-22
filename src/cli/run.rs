@@ -57,11 +57,8 @@ impl Display for Preview {
   # Dry run without materializing models
   bauplan run --dry-run
 
-  # Run with strict mode (the default) and preview
+  # Run and preview
   bauplan run --preview head
-
-  # Allow runtime warnings without failing the run
-  bauplan run --no-strict
 
   # Run on specific branch with parameters
   bauplan run --ref main --param env=prod
@@ -85,9 +82,6 @@ pub(crate) struct RunArgs {
     /// Set the preview mode.
     #[arg(long, default_value_t = Preview::default())]
     pub preview: Preview,
-    /// Disable strict mode.
-    #[arg(long)]
-    pub no_strict: bool,
     /// Disable transactional execution.
     #[arg(long)]
     pub no_transaction: bool,
@@ -287,7 +281,6 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         namespace,
         no_cache,
         preview,
-        no_strict,
         no_transaction,
         dry_run,
         param,
@@ -325,7 +318,7 @@ async fn handle_run(cli: &Cli, args: RunArgs) -> anyhow::Result<()> {
         namespace,
         dry_run,
         transaction: on_off(!no_transaction),
-        strict: on_off(!no_strict),
+        strict: "on".to_string(),
         cache: on_off(!no_cache),
         preview: preview.to_string(),
         project_id: project.project.id.as_hyphenated().to_string(),

@@ -224,11 +224,8 @@ def test_data_freshness(
     return check_data_recency(data, 'timestamp', hours=24)
 ```
 
-## Handling expectation failures
 
-By default, Bauplan enforces expectations: if any expectation fails, the pipeline halts immediately.
-
-When failures are not critical, you can log them and let the pipeline continue by disabling strict mode on the `run` command: pass `--no-strict` in the [CLI](/reference/cli#bauplan-run) or `strict=False` in the [Python SDK](/reference/bauplan#bauplan-client-run).
+Bauplan always runs expectations, and if any expectation fails, the pipeline halts immediately.
 
 ## Summary
 
