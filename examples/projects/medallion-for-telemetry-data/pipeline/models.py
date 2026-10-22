@@ -51,7 +51,7 @@ class SignalCleanSchema(TableSchema):
 
 
 @bauplan.model()
-@bauplan.python("3.11", pip={"duckdb": "1.1.3"})
+@bauplan.python("3.11", pip={"duckdb": "2.0.0"})
 def signal_clean(
     bronze_data: Annotated[
         pa.Table,
@@ -74,7 +74,7 @@ def signal_clean(
     con = duckdb.connect()
     con.register("bronze_raw", bronze_data)
 
-    result = con.execute(
+    result = con.sql(
         """
         WITH parsed AS (
             SELECT
@@ -104,7 +104,7 @@ def signal_clean(
         FROM ranked
         WHERE rn = 1
         """,
-    ).arrow()
+    ).to_arrow_table()
 
     return result
 
