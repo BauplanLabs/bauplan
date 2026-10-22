@@ -8,5 +8,5 @@ dependencies = [
     "bauplan~=0.3.3",
     "plotly~=6.6.0",
     "polars~=2.0.0",
-    "streamlit~=1.65.0",
+    "streamlit~=1.66.1",
 ]
