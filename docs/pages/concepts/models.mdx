@@ -286,7 +286,7 @@ class CountByColOne(bauplan.TableSchema):
     count: bauplan.Int64
 
 @bauplan.model()
-@bauplan.python("3.11", pip={'duckdb': '1.2.0'})
+@bauplan.python("3.11", pip={'duckdb': '2.0.0'})
 def my_model(
     data: Annotated[
         pyarrow.Table,
@@ -300,7 +300,8 @@ def my_model(
     import duckdb
 
     # DuckDB will convert the Arrow input into a SQL-accessible table
-    output_table = duckdb.sql("""
+    con = duckdb.connect()
+    output_table = con.sql("""
         SELECT col_1, COUNT(*) as count
         FROM data
         GROUP BY col_1

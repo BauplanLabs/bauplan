@@ -294,7 +294,7 @@ class DailySegmentStats(bauplan.TableSchema):
 
 
 @bauplan.model(materialization_strategy='REPLACE')
-@bauplan.python('3.11', pip={'duckdb': '1.0.0'})
+@bauplan.python('3.11', pip={'duckdb': '2.0.0'})
 def daily_segment_stats(
     data: Annotated[
         pyarrow.Table,
@@ -308,7 +308,7 @@ def daily_segment_stats(
 
     con = duckdb.connect()
     con.register('purchases', data)
-    return con.execute("""
+    return con.sql("""
         SELECT SUBSTRING(event_time, 1, 10) AS date,
                customer_segment,
                COUNT(*) AS total_purchases,
@@ -317,7 +317,7 @@ def daily_segment_stats(
         FROM purchases
         GROUP BY 1, 2
         ORDER BY 1, 2
-    """).fetch_arrow_table()
+    """).to_arrow_table()
 ```
 
   </TabItem>
