@@ -4,6 +4,7 @@ use std::{
     time,
 };
 
+use crate::cli::{Cli, color::*, format_grpc_status, with_rt, yaml};
 use anyhow::{Context as _, anyhow, bail};
 use bauplan::{
     grpc::{self, generated as commanderpb},
@@ -11,7 +12,6 @@ use bauplan::{
 };
 use resolve_path::PathResolveExt as _;
 use tabwriter::TabWriter;
-use crate::cli::{Cli, color::*, format_grpc_status, with_rt, yaml};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum ParameterTypeArg {
