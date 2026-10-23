@@ -109,12 +109,6 @@ class RunExecutionContext:
         URI locating the project snapshot that the server executed.
         """
     @property
-    def strict(self, /) -> bool:
-        """
-        Whether to enable or disable strict schema validation. When true, runtime warnings such as
-        failing expectations or invalid column outputs fail the run.
-        """
-    @property
     def transaction(self, /) -> bool:
         """
         Whether transaction mode was enabled. When true, all models are

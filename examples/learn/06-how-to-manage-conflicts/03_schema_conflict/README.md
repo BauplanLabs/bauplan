@@ -2,7 +2,7 @@
 
 Demonstrates how an expectation catches a precision assumption change when a pipeline broadens its input data.
 
-A first pipeline computes the mean Titanic fare per passenger class over standard fares only. The model casts `Fare` to `pl.Decimal(4, 2)`, while the output schema declares `Fare` as `bauplan.Any` because decimal types cannot currently be pinned by a Bauplan type contract. An expectation checks that the fares being averaged fit the model's decimal precision. A second pipeline broadens the analysis to every class, splits by `Sex`, and adds a passenger count. First class fares exceed the supported precision, so the expectation fails and strict mode halts the run.
+A first pipeline computes the mean Titanic fare per passenger class over standard fares only. The model casts `Fare` to `pl.Decimal(4, 2)`, while the output schema declares `Fare` as `bauplan.Any` because decimal types cannot currently be pinned by a Bauplan type contract. An expectation checks that the fares being averaged fit the model's decimal precision. A second pipeline broadens the analysis to every class, splits by `Sex`, and adds a passenger count. First class fares exceed the supported precision, so the expectation fails and halts the run.
 
 ## Scenario
 
@@ -83,5 +83,4 @@ in decimal precision.
 
 The expectation validates the assumption behind the `pl.Decimal(4, 2)` cast: the selected
 fares must stay under 99.99. That assumption changes when the filter changes, so it
-requires a value-level check. With `strict=True`, the current expectation failure stops
-the run before the branch can be merged.
+requires a value-level check.

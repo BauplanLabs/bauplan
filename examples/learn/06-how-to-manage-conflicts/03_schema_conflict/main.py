@@ -20,7 +20,7 @@ def main(
     new need. An output schema is defined to guarantee the shape of a model's outputs
     and an expectation is defined to catch data violations.
 
-    Both pipelines run sequentially on the same branch with strict mode enabled.
+    Both pipelines run sequentially on the same branch.
     In order:
       1. The old pipeline runs on the branch. It computes the mean Titanic fare per
          passenger class, over standard fares only, and publishes `Fare` as a
@@ -53,11 +53,7 @@ def main(
         "(mean standard fare per Pclass, Fare: decimal(4, 2)) ===\n"
     )
 
-    # Strict mode is enabled by default; setting it explicitly ensures failing
-    # expectations fail the run before tables that fail validation can be merged
-    run_state = client.run(
-        project_dir="pipelines/old_pipeline", ref=branch, strict=True
-    )
+    run_state = client.run(project_dir="pipelines/old_pipeline", ref=branch)
 
     if str(run_state.job_status).lower() != "success":
         raise Exception(
@@ -80,9 +76,7 @@ def main(
     )
 
     print("Running the new pipeline...")
-    run_state = client.run(
-        project_dir="pipelines/new_pipeline", ref=branch, strict=True
-    )
+    run_state = client.run(project_dir="pipelines/new_pipeline", ref=branch)
 
     if str(run_state.job_status).lower() == "success":
         # Should not happen given the drift above; keep the guard so a regression is loud.

@@ -84,7 +84,7 @@ jobs:
             proper medallion pipeline following those rules: silver and gold models
             written in Python with Polars (never pandas), the gold model with
             materialization_strategy='REPLACE', expectations added, validated with
-            `uv run bauplan run --dry-run --strict`. Never run on main; use a Bauplan
+            `uv run bauplan run --dry-run`. Never run on main; use a Bauplan
             data branch prefixed with your username.
 
             Do not commit; the workflow commits and pushes your changes for you.
