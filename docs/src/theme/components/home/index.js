@@ -49,24 +49,22 @@ export const HomePage = () => {
     <>
       <a
         href={agentsCard.href}
-        className="group block no-underline text-[var(--docsearch-text-color)]"
+        className="block no-underline text-[var(--docsearch-text-color)]"
       >
-        <div className="my-16 p-8 rounded-xl bg-[var(--ifm-card-background-color)] border border-[var(--ifm-border-color)] hover:scale-[1.01] hover:shadow-md transition-all duration-300 ease-in-out cursor-pointer flex items-center justify-between gap-8">
-          <div>
-            <div className="text-[var(--docsearch-text-color)]">
-              <div className="flex flex-row gap-4">
-                <img
-                  className="w-4 h-8"
-                  src={agentsCard.image}
-                  alt={agentsCard.title}
-                  style={{ transform: "rotate(35deg)" }}
-                />
-                <h3 className="text-xl font-bold mb-2">{agentsCard.title}</h3>
-              </div>
-              <p>{agentsCard.description}</p>
+        <div className="my-16 p-8 rounded-xl bg-[var(--ifm-card-background-color)] border border-[var(--ifm-border-color)] hover:scale-[1.01] hover:shadow-md transition-all duration-300 ease-in-out cursor-pointer">
+          <div className="text-[var(--docsearch-text-color)]">
+            <div className="flex flex-row gap-4">
+              <img
+                className="w-4 h-8"
+                src={agentsCard.image}
+                alt={agentsCard.title}
+                style={{ transform: "rotate(35deg)" }}
+              />
+              <h3 className="text-xl font-bold mb-2">{agentsCard.title}</h3>
             </div>
-            <span>{agentsCard.cta}</span>
+            <p>{agentsCard.description}</p>
           </div>
+          <span>{agentsCard.cta}</span>
         </div>
       </a>
       {sections.map((section) => (
