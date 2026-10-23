@@ -142,6 +142,45 @@ annotations. The `TableSchema` bridges column-level metadata and constraints wit
 (annotation on the return value) and their input tables (annotations on function
 parameters).
 
+### How schemas are enforced
+
+A `TableSchema` is a declaration, like the column list in a `CREATE TABLE` statement.
+Wherever it is attached, as a model's output or an input's `projection_schema`, Bauplan
+checks the table against it.
+
+If a column's type differs from the declared type, Bauplan casts it, as long as the
+table below allows that cast. The run fails if the table has:
+
+- a column whose type differs and can't be cast
+- null values in a required column
+- a column the schema doesn't declare
+- no column for a declared attribute
+
+Only a `projection_schema` on an input drops columns. Bauplan first selects the schema's
+columns from the input table, then applies the checks. A model's output is never
+projected. An input without a `projection_schema` is passed to the model unchecked.
+
+Bauplan only casts to a wider type, so no value is lost:
+
+| From | To |
+|------|----|
+| `Int32` | `Int64` |
+| `Int32`, `Int64` | `Float64` |
+| `Date32` | `Date64` |
+| `TimestampMicro` | `TimestampNano` |
+| `TimestampMicroUTC` | `TimestampNanoUTC` |
+| Any string type | `String`, `Binary` |
+| Any binary type | `Binary` |
+
+For example, `Int64` to `Int32` fails, and so does converting between timestamps with and
+without a timezone.
+
+This means you don't need to know which integer type an expression like `SELECT 1`
+produces. Declare the column as `Int64`.
+
+Two attributes in one schema can't name the same column. Bauplan rejects the schema
+before the run starts.
+
 ### Writing metadata to the lakehouse
 
 The metadata specified on `TableField` and `TableSchema` instances are persisted to the
@@ -258,8 +297,8 @@ def py_model(...) -> Annotated[pyarrow.Table, ProjSchema]:
 ```
 
 This associates the schema `ProjSchema` with the result table returned by `py_model`.
-This triggers validation that the result table schema matches the specified `ProjSchema`
-at execution time.
+At execution time, Bauplan checks the result table against `ProjSchema` (see [How
+schemas are enforced](#how-schemas-are-enforced)).
 
 For input models, annotations include proper data types and an annotation to identify the
 source model:
@@ -304,4 +343,5 @@ The definition of `QuerySchema` must exist in Python, but is referenced by a SQL
 that Bauplan can determine how to validate the result schema of `sql_query`. Attribute
 names in the `TableSchema` class are matched up against columns of the same name in the
 table results and validation will check both data types and specified constraints
-(nullable and lineage).
+(nullable and lineage), as described in [How schemas are
+enforced](#how-schemas-are-enforced).
