@@ -3,19 +3,19 @@
     {
       "title": "Get Started",
       "cards": [
-        { "icon": "Package", "href": "/tutorial/installation", "title": "Install Bauplan", "description": "CLI, SDK, and your API key" },
-        { "icon": "Zap", "href": "/tutorial/quick-start", "title": "Quick start", "description": "Your first branch and run" },
-        { "icon": "Layers", "href": "https://github.com/BauplanLabs/bauplan/tree/main/examples", "title": "Examples", "description": "Learn by example" },
-        { "icon": "Terminal", "href": "/reference/bauplan", "title": "Reference", "description": "CLI and SDK" }
+        { "icon": "Package", "href": "/tutorial/installation", "title": "Install Bauplan", "description": "Set up the CLI and Python SDK and connect your API key." },
+        { "icon": "Zap", "href": "/tutorial/quick-start", "title": "Quick start", "description": "Create a data branch, run a pipeline, and merge it to main." },
+        { "icon": "Layers", "href": "https://github.com/BauplanLabs/bauplan/tree/main/examples", "title": "Examples", "description": "End-to-end projects you can clone and run." },
+        { "icon": "Terminal", "href": "/reference/bauplan", "title": "Reference", "description": "Every CLI command and Python SDK method." }
       ]
     },
     {
       "title": "Go Deeper",
       "cards": [
-        { "icon": "GitBranch", "href": "/concepts/git-for-data", "title": "Git for Data", "description": "Branch, commit, roll back" },
-        { "icon": "BookOpen", "href": "/concepts/projects", "title": "Core Concepts", "description": "Models, tables, pipelines" },
-        { "icon": "Workflow", "href": "/common-scenarios/", "title": "Common Workflows", "description": "Real-world patterns" },
-        { "icon": "Blocks", "href": "/integrations/", "title": "Integrations", "description": "Connect your stack" }
+        { "icon": "GitBranch", "href": "/concepts/git-for-data", "title": "Git for Data", "description": "Branch, commit, and roll back your data like code." },
+        { "icon": "BookOpen", "href": "/concepts/projects", "title": "Core Concepts", "description": "Projects, models, pipelines, and Iceberg tables." },
+        { "icon": "Workflow", "href": "/common-scenarios/", "title": "Common Workflows", "description": "Patterns for scheduling, parameters, and conflicts." },
+        { "icon": "Blocks", "href": "/integrations/", "title": "Integrations", "description": "Use Bauplan with orchestrators, notebooks, and BI tools." }
       ]
     }
   ],
@@ -23,7 +23,7 @@
     "href": "/tutorial/connect-your-agent",
     "image": "/img/icons/rocket.png",
     "title": "AI Agents",
-    "description": "Use AI Agents to build pipelines, explore data, and manage your lakehouse with MCP Server and Skills.",
+    "description": "Use AI Agents to build pipelines, explore data, and manage your data with MCP Server and Skills.",
     "cta": "Learn more →"
   }
 }

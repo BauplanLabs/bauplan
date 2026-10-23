@@ -1,15 +1,23 @@
 ---
-title: "Bauplan - The Git-for-Data Lakehouse"
+title: "The Git-for-Data Platform"
 description: "Bauplan brings Git-style branching to data so agents can safely change production Iceberg tables, validate, publish to main atomically, and roll back on failure."
-sidebar_label: "Welcome"
+hide_table_of_contents: true
+pagination_next: what-bauplan-is-not
 slug: "/"
 ---
 
-import { HomePage } from "@site/src/theme/components/home/index";
+import Link from "@docusaurus/Link";
+import { HomePage, HeroIntro } from "@site/src/theme/components/home/index";
 
-Bauplan is a Git-for-data lakehouse that runs your Python and SQL pipelines directly on Apache Iceberg tables in your own object storage, with no servers or clusters to manage.
+<HeroIntro>
 
-Learn how Bauplan fits into your architecture [here](/overview/).
+Bauplan is a data platform built so agents and people can work on real data without breaking it, and without managing any infrastructure.
+
+Every change happens on a branch, every run is code you can review, and nothing reaches your production tables until you say so.
+
+<Link className="button button--primary !bg-transparent hover:!bg-[#00b0ff1a] hover:!border-[#00b0ff] !text-[var(--ifm-font-color-base)]" to="/what-bauplan-is-not">Start here →</Link>
+
+</HeroIntro>
 
 <HomePage />
 
