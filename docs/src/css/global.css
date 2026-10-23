@@ -401,3 +401,8 @@ table td:first-child {
   min-width: 180px;
   white-space: nowrap;
 }
+
+/* The docs home page gets more room above its title than other pages. */
+html.docs-doc-id-tutorial\/index article header {
+  margin-top: 3rem;
+}

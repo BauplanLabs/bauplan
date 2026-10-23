@@ -2,7 +2,7 @@ import sdkPages from "./pages/reference/_sidebar.json";
 
 export default {
   documentationSidebar: [
-    "tutorial/index",
+    "what-bauplan-is-not",
     {
       type: "category",
       label: "Getting Started",

@@ -1,0 +1,27 @@
+---
+title: "What Bauplan is (not)"
+description: "What Bauplan is, the principles it is built on, and what it deliberately does not do."
+---
+
+Bauplan is a data platform built on Apache Iceberg with Git-like semantics. It has two parts:
+
+1. **A Git-for-data catalog.** Branches, commits, merges and time travel over tables that live in your object storage.
+2. **A serverless engine.** Query and transform your data in Python or SQL. Each run executes in an ephemeral sandbox in the cloud.
+
+## Principles
+
+**Open formats, your storage.** [Iceberg Tables](/concepts/tables), stored in your bucket and exposed through the Iceberg REST protocol. Any engine that speaks Iceberg REST can read them, so your data is never locked in.
+
+**Everything is code.** Tables are [produced by code](/overview/execution-model), and each commit records the code that created it. Every change to the lake is a script you can review, version, and rerun.
+
+**Branches make changes safe.** A [data branch](/concepts/git-for-data/data-branches) is a zero-copy view of the whole lake, and creating one is cheap. You iterate on production data in a branch, and production changes only when you merge.
+
+**Agents first.** Everything in Bauplan is available through a Python SDK, a CLI and an MCP server, so [coding agents](/tutorial/connect-your-agent) can operate it as well as humans can.
+
+## What Bauplan does not do
+
+**Scheduling.** Triggers, retries and backfills belong to your [orchestrator](/integrations/orchestrators/), which calls Bauplan to create a branch, run, audit and merge.
+
+**Automatic refresh.** A table changes only when a run, an import or a merge changes it.
+
+**Ingestion from sources.** Bauplan imports files that are already in object storage. You can't upload a local file directly; copy it to object storage first, or land data there with a [data integration tool](/integrations/data-int-and-etl/).
