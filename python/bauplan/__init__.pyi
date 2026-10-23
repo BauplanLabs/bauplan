@@ -14,7 +14,6 @@ from bauplan_sdk_types import (
     # Entity types
     Model,
     # Options
-    ModelCacheStrategy,
     ModelMaterializationStrategy,
     Parameter,
     String,
@@ -74,7 +73,6 @@ __all__ = [
     "expectation",
     "model",
     "python",
-    "ModelCacheStrategy",
     "ModelMaterializationStrategy",
     # Entity types
     "Model",

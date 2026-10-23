@@ -36,7 +36,6 @@ from bauplan import (
 from bauplan import (
     TableSchema,
     Model,
-    ModelCacheStrategy,
     ModelMaterializationStrategy,
     Parameter,
 )
@@ -44,7 +43,6 @@ from bauplan import (
 
 # Strategy values can be passed as literals (see the decorators below) or as named
 # values typed by the exported aliases
-cache_off: ModelCacheStrategy = "NONE"
 materialize_append: ModelMaterializationStrategy = "APPEND"
 materialize_partitions: ModelMaterializationStrategy = "OVERWRITE_PARTITIONS"
 
@@ -122,9 +120,7 @@ class AnnotatedTypesSchema(TableSchema):
 @model(
     name="full_options_model",
     materialization_strategy="REPLACE",
-    cache_strategy="DEFAULT",
     partitioned_by=["year", "month"],
-    internet_access=True,
     overwrite_filter="year > 2020",
 )
 @python("3.11", pip={"polars": "1.37"})
@@ -170,9 +166,7 @@ def model_minimal(
 @model(
     name="append_model",
     materialization_strategy=materialize_append,
-    cache_strategy=cache_off,
     partitioned_by="year",
-    internet_access=False,
 )
 @python("3.12", pip={"pandas": "2.3", "numpy": "2.1"})
 def model_append(
