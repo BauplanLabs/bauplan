@@ -345,11 +345,6 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
         }
     }
 
-    writeln!(&mut out, "\n{HEADER}Runners{HEADER:#}")?;
-    for runner in resp.runners {
-        writeln!(&mut out, "╰ {}", runner.hostname)?;
-    }
-
     Ok(())
 }
 

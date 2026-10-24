@@ -67,7 +67,6 @@ __all__ = [
     "JobState",
     "OrganizationInfo",
     "RefType",
-    "RunnerNodeInfo",
     "UserInfo",
     # Decorators and model definitions.
     "expectation",

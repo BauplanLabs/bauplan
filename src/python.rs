@@ -290,8 +290,6 @@ mod _internal {
     #[pymodule_export]
     use super::info::PyOrganizationInfo as OrganizationInfo;
     #[pymodule_export]
-    use super::info::PyRunnerNodeInfo as RunnerNodeInfo;
-    #[pymodule_export]
     use super::info::PyUserInfo as UserInfo;
 
     // Register submodules in sys.modules so that
