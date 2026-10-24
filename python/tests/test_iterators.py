@@ -1,7 +1,7 @@
 """Tests for query_to_generator and PyPaginator functionality."""
 
-import pytest
 import bauplan
+import pytest
 
 
 @pytest.fixture

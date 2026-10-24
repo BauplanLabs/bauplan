@@ -1,11 +1,11 @@
-import pyarrow
-import bauplan
-
 from typing import Annotated
+
+import bauplan
+import pyarrow
 from bauplan import (
-    TableSchema,
-    Model,
     Float64,
+    Model,
+    TableSchema,
 )
 
 
