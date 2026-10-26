@@ -31,7 +31,7 @@ updates:
       timezone: Europe/Berlin
     open-pull-requests-limit: 0
     commit-message:
-      prefix: "chore(examples)"
+      prefix: "chore"
     cooldown:
       default-days: 7
     groups:
@@ -46,7 +46,7 @@ updates:
       timezone: Europe/Berlin
     open-pull-requests-limit: 0
     commit-message:
-      prefix: "chore(docs)"
+      prefix: "docs"
     cooldown:
       default-days: 7
     groups:
