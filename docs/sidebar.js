@@ -141,13 +141,16 @@ export default {
         },
         {
           type: "category",
-          label: "BI tools and Postgres client",
+          label: "BI tools",
           collapsed: true,
           link: {
             type: "doc",
-            id: "integrations/bi-tools-postgres/index",
+            id: "integrations/bi-tools/index",
           },
-          items: ["integrations/bi-tools-postgres/metabase"],
+          items: [
+            "integrations/bi-tools/metabase",
+            "integrations/bi-tools/textql",
+          ],
         },
         {
           type: "category",
