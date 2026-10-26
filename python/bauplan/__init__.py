@@ -25,6 +25,7 @@ from bauplan_sdk_types import (
     Int32,
     Int64,
     Float64,
+    Decimal128,
     Date32,
     Date64,
     TimestampMicro,
@@ -33,6 +34,7 @@ from bauplan_sdk_types import (
     TimestampNanoUTC,
     String,
     Binary,
+    ColumnLineage,
     # Node types
     expectation,
     model,
@@ -77,6 +79,7 @@ __all__ = [
     "Int32",
     "Int64",
     "Float64",
+    "Decimal128",
     "Date32",
     "Date64",
     "TimestampMicro",
@@ -85,4 +88,5 @@ __all__ = [
     "TimestampNanoUTC",
     "String",
     "Binary",
+    "ColumnLineage",
 ]

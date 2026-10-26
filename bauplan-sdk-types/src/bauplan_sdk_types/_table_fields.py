@@ -1,6 +1,7 @@
 """Bauplan pySDK stubs for typing table fields (columns)."""
 
-from typing import Optional, TypeVar, Generic
+from dataclasses import dataclass
+from typing import Optional, TypeVar, TypeVarTuple, Generic
 
 
 class FieldType:
@@ -32,6 +33,37 @@ class Int64(FieldType):
 
 class Float64(FieldType):
     """Floating point data type corresponding to the Arrow data type `Float64`."""
+
+    ...
+
+
+# A type variable for binding decimal precision
+PrecisionParam = TypeVar("PrecisionParam", bound=int)
+
+# NOTE: `TypeVar` gets a `default` parameter in python >= 3.13; but >=3.11 has no similar mechanism
+# A type variable for binding an optional decimal scale; if more than 1 value is provided, an error
+# will be thrown by the planner.
+ScaleParam = TypeVarTuple("ScaleParam")
+
+
+class Decimal128(FieldType, Generic[PrecisionParam, *ScaleParam]):
+    """
+    Numerical data type corresponding to the Arrow data type `Decimal128`.
+
+    Precision and scale are given as type parameters using brackets:
+    ```
+    class PriceSchema(TableSchema):
+        price: Decimal128[Literal[38], Literal[10]]
+    ```
+
+    A generic type is used because a function call is not a valid type expression and is reported
+    as an error by type checkers.
+
+    Additional accepted syntax includes:
+    - Providing a precision only (scale defaults to 0).
+    - Providing literal values without the `Literal[...]` type class wrapper (but this syntax is
+      flagged as an error by type checkers).
+    """
 
     ...
 
@@ -98,6 +130,21 @@ class Any(FieldType):
     ...
 
 
+@dataclass
+class ColumnLineage(FieldType):
+    """
+    Reference to an upstream table column to inherit data and metadata from.
+
+    The reference has two required parameters:
+    1. `table_name` the qualified (or bare) name of the table containing the referenced column. If
+       not qualified, the default namespace will be prepended.
+    2. `col_name` expects the column name as stored in the lakehouse catalog.
+    """
+
+    table_name: str
+    col_name: str
+
+
 class TableField:
     """
     A schema field that contains metadata and is used to annotate a table column.
@@ -112,7 +159,7 @@ class TableField:
     class SampleSchema(bauplan_sdk_types.TableSchema):
         col_a: Annotated[
             bauplan_sdk_types.Any,
-            bauplan_sdk_types.TableField()
+            bauplan_sdk_types.TableField(name='.col a.')
         ]
     ```
 
@@ -122,13 +169,16 @@ class TableField:
     metadata and constraints.
 
     The attribute name, `col_a`, corresponds to the name of the represented table column.
-    If the table column's name cannot be used as the attribute name, then the `name`
-    parameter can be specified. For example, if the actual column name is stored with a
-    space: `name='col a'`.
+    If the table column's name cannot be used as the attribute name then the `name`
+    parameter can be specified, for example: `name='.col a.'`.
 
-    Lineage references another `TableField` by attribute name (python identifier) and not
-    by column name. This means that `col_a` would be referenced as
-    `SampleSchema['col_a']` and not as `SampleSchema['col a']`.
+    Lineage references another `TableField` to "inherit" or "receive" data and metadata
+    from. This is an explicit property that represents dataflow. Lineage can be specified
+    in one of two ways:
+    1. directly reference an attribute (the python identifier) in a `TableSchema`:
+    `SampleSchema['col_a']`.
+    2. define a `ColumnLineage` object using the table identifier and column name:
+    `ColumnLineage('namespace.table', '.col a.')`.
     """
 
     # TODO: make all parameters keyword args only with `*` arg marker
@@ -141,7 +191,7 @@ class TableField:
         """
         `name`: Name of the annotated table column.
         `doc`: Documentation describing the table column.
-        `lineage`: A reference to another `TableField` to "inherit" data and metadata from.
+        `lineage`: Reference to another `TableField` to "inherit" data and metadata from.
         """
 
         super().__init__()

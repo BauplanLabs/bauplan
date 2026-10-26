@@ -1,15 +1,18 @@
-from typing import Annotated
+from typing import Annotated, Literal
 
 import pyarrow
+import pyarrow.compute
 import bauplan
 
 from bauplan import (
     TableField,
+    ColumnLineage,
     Model,
     Bool,
     Parameter,
     Int64,
     Float64,
+    Decimal128,
     String,
     Binary,
     TimestampMicroUTC,
@@ -60,6 +63,9 @@ class TripsPushdown(bauplan.TableSchema):
     ]
     trip_miles: Annotated[Float64 | None, TableField(doc="Miles traveled for a trip")]
     trip_time: Annotated[Int64 | None, TableField(doc="Trip duration (in seconds) ")]
+    base_passenger_fare: Annotated[
+        Float64 | None, TableField(doc="Base fare for a trip")
+    ]
 
 
 class LocationsPushdown(bauplan.TableSchema):
@@ -85,11 +91,18 @@ class FullTypesSchema(bauplan.TableSchema):
         Int64 | None, bauplan.TableField(doc="ID of a trip's pickup location")
     ]
     dropoff_location: Int64 | None
-    trip_miles: Float64 | None
-    trip_time: Int64 | None
+    trip_miles: Annotated[
+        Float64 | None, TableField(lineage=ColumnLineage("taxi_fhvhv", "trip_miles"))
+    ]
+    trip_time: Annotated[
+        Decimal128[19] | None,  # ty:ignore[invalid-type-form]
+        TableField(doc="bauplan.taxi_fhvhv.trip_time as a Decimal128"),
+    ]
     is_shared_ride: Bool | None
     driver_name: String | None
     raw_data: Binary | None
+    base_fare: Decimal128[Literal[10], Literal[2]] | None
+    trip_seconds: Decimal128[Literal[19]] | None
 
 
 class SecondSchema(bauplan.TableSchema):
@@ -119,19 +132,23 @@ def multi_field_model(
 
     print(f"Row count for query_model trips: {trips.num_rows}")
     print(f"Row count for query_model locations: {locations.num_rows}")
-    print(f"trip data preview: {trips.slice(0, 3)}")
+    preview = trips.slice(0, 3)
+    print(f"trip data preview: {preview}")
 
     return pyarrow.Table.from_arrays(
         [
             # By name, not position, so the input table must carry the stored name
-            trips.slice(0, 3).column(".pickup datetime."),
-            trips.slice(0, 3).column(0),
-            trips.slice(0, 3).column(1),
-            trips.slice(0, 3).column(3),
-            trips.slice(0, 3).column(4),
+            preview.column(".pickup datetime."),
+            preview.column(0),
+            preview.column(1),
+            preview.column(3),
+            preview.column("trip_time").cast(pyarrow.decimal128(19, 0)),
             pyarrow.array([False, False, False]),
             pyarrow.array(["driver1", "driver2", "driver3"]),
             pyarrow.array([b"bin1", b"bin2", b"bin3"]),
+            pyarrow.compute.round(preview.column("base_passenger_fare"), 2).cast(
+                pyarrow.decimal128(10, 2)
+            ),
         ],
         schema=pyarrow.schema(
             [
@@ -139,10 +156,11 @@ def multi_field_model(
                 pyarrow.field("pickup_location", pyarrow.int64()),
                 pyarrow.field("dropoff_location", pyarrow.int64()),
                 pyarrow.field("trip_miles", pyarrow.float64()),
-                pyarrow.field("trip_time", pyarrow.int64()),
+                pyarrow.field("trip_time", pyarrow.decimal128(19, 0)),
                 pyarrow.field("is_shared_ride", pyarrow.bool_()),
                 pyarrow.field("driver_name", pyarrow.string()),
                 pyarrow.field("raw_data", pyarrow.binary()),
+                pyarrow.field("base_fare", pyarrow.decimal128(10, 2)),
             ]
         ),
     )
