@@ -152,11 +152,19 @@ const redirects = [
   },
   {
     from: "/integrations/bi_tools_postgres",
-    to: "/integrations/bi-tools-postgres",
+    to: "/integrations/bi-tools",
+  },
+  {
+    from: "/integrations/bi-tools-postgres",
+    to: "/integrations/bi-tools",
   },
   {
     from: "/integrations/bi_tools_postgres/metabase",
-    to: "/integrations/bi-tools-postgres/metabase",
+    to: "/integrations/bi-tools/metabase",
+  },
+  {
+    from: "/integrations/bi-tools-postgres/metabase",
+    to: "/integrations/bi-tools/metabase",
   },
   {
     from: "/integrations/data_int_and_etl",
