@@ -6,12 +6,6 @@ message GetBauplanInfoRequest {
   string api_key = 1;
 }
 
-message RunnerNodeInfo {
-  string public_key = 1;
-  string hostname = 2;
-  reserved 3;
-}
-
 message OrganizationInfo {
   string id = 1;
   string name = 2;
@@ -28,7 +22,7 @@ message UserInfo {
 }
 
 message GetBauplanInfoResponse {
-  repeated RunnerNodeInfo runners = 1;
+  reserved 1;
   string user = 2;
   string client_version = 3;
   string server_version = 4;

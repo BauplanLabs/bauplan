@@ -13,8 +13,6 @@ fn info_runners_connects() {
         .stdout(contains("User"))
         .stdout(contains("Client Version"))
         .stdout(contains("Server Version"))
-        .stdout(contains("Runners"))
-        .stdout(contains("╰ bauplan"))
         .stdout(contains(username()));
 
     bauplan()
@@ -27,7 +25,5 @@ fn info_runners_connects() {
         .stdout(contains("User"))
         .stdout(contains("Client Version"))
         .stdout(contains("Server Version"))
-        .stdout(contains("Runners"))
-        .stdout(contains("╰ bauplan"))
         .stdout(contains(&username()));
 }

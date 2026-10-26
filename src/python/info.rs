@@ -12,13 +12,6 @@ use crate::{
 
 use super::Client;
 
-#[pyclass(name = "RunnerNodeInfo", module = "bauplan", skip_from_py_object)]
-#[derive(Debug, Clone)]
-pub(crate) struct PyRunnerNodeInfo {
-    #[pyo3(get)]
-    hostname: String,
-}
-
 #[pyclass(name = "OrganizationInfo", module = "bauplan", skip_from_py_object)]
 #[derive(Debug, Clone)]
 pub(crate) struct PyOrganizationInfo {
@@ -45,13 +38,6 @@ pub(crate) struct PyUserInfo {
     first_name: String,
     #[pyo3(get)]
     last_name: String,
-}
-
-#[pymethods]
-impl PyRunnerNodeInfo {
-    fn __repr__(&self) -> String {
-        format!("RunnerNodeInfo(hostname={:?})", self.hostname)
-    }
 }
 
 #[pymethods]
@@ -96,8 +82,6 @@ pub(crate) struct PyInfoState {
     organization: PyOrganizationInfo,
     #[pyo3(get)]
     user: PyUserInfo,
-    #[pyo3(get)]
-    runners: Vec<PyRunnerNodeInfo>,
 }
 
 impl TryFrom<GetBauplanInfoResponse> for PyInfoState {
@@ -125,19 +109,10 @@ impl TryFrom<GetBauplanInfoResponse> for PyInfoState {
             last_name: u.last_name,
         };
 
-        let runners: Vec<PyRunnerNodeInfo> = resp
-            .runners
-            .into_iter()
-            .map(|r| PyRunnerNodeInfo {
-                hostname: r.hostname,
-            })
-            .collect();
-
         Ok(Self {
             client_version: resp.client_version,
             organization,
             user,
-            runners,
         })
     }
 }
