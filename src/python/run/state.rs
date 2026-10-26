@@ -31,9 +31,6 @@ pub(crate) struct RunExecutionContext {
     /// Whether transaction mode was enabled. When true, all models are
     /// materialized on a temporary branch and merged atomically on success.
     pub transaction: bool,
-    /// Whether to run in strict mode. When true, runtime warnings such as
-    /// failing expectations or invalid column outputs fail the run.
-    pub strict: bool,
     /// Whether caching was enabled for the run.
     pub cache: bool,
     /// Preview mode used for the run (`"on"`, `"off"`, `"head"`, `"tail"`).
@@ -61,7 +58,6 @@ impl fmt::Debug for RunExecutionContext {
             .field("namespace", &self.namespace)
             .field("dry_run", &self.dry_run)
             .field("transaction", &self.transaction)
-            .field("strict", &self.strict)
             .field("cache", &self.cache)
             .field("preview", &self.preview)
             .finish()

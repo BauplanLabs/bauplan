@@ -126,7 +126,7 @@ and the pipeline still "works": the output table is there, row counts still
 look right. What changes is the contract with downstream consumers, and the
 break surfaces far from its source.
 
-[Expectations](/concepts/expectations) turn that implicit contract into executable code that lives next to the model. Strict mode is enabled by default, so a failed expectation fails the run. The example sets `strict=True` explicitly:
+[Expectations](/concepts/expectations) turn that implicit contract into executable code that lives next to the model.
 
 ```python
 #! import bauplan
@@ -134,7 +134,6 @@ break surfaces far from its source.
 run_state = client.run(
     project_dir="path/to/pipeline",
     ref="my_branch",
-    strict=True,
 )
 
 if (run_state.job_status or "").lower() != "success":
@@ -143,11 +142,7 @@ if (run_state.job_status or "").lower() != "success":
 
 ### Why this matters
 
-Because the expectation is part of the pipeline DAG and the run is `strict`,
-it fires automatically after the model materializes. A new version of the
-pipeline that violates the contract never reaches a mergeable state, so making
-the merge conditional on run success is enough to keep `main` clean. You need
-no explicit conflict handling because the bad branch simply never gets merged.
+Because the expectation is part of the pipeline DAG, it fires automatically after the model materializes. A new version of the pipeline that violates the contract never reaches a mergeable state, so making the merge conditional on run success is enough to keep `main` clean. You need no explicit conflict handling because the bad branch simply never gets merged.
 
 <Note>
   Specifying a model's output schema in the return annotation can complement

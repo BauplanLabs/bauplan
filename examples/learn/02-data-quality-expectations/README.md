@@ -73,28 +73,15 @@ def test_on_scene_not_before_request(
 
 ## Try it yourself
 
-Create a data branch and disable strict mode to observe a failed expectation without failing the run:
+Create a data branch and observe how a failed expectation impacts the run:
 
 ```sh
 bauplan checkout -b <YOUR_USERNAME>.expectations
 
-bauplan run --project-dir pipeline --no-strict
-```
-
-The expectation fails, but the downstream models continue:
-
-```text
-normalized_taxi_trips done
-test_on_scene_not_before_request [expectation] failed
-taxi_trip_waiting_times done
-zone_avg_waiting_times done
-```
-
-Strict mode is enabled by default. Run the pipeline without `--no-strict` to make the failed expectation block the run:
-
-```sh
 bauplan run --project-dir pipeline
 ```
+
+The expectation fails, preventing any of the downstream models from continuing.
 
 ## Fix the data issue
 
@@ -122,5 +109,3 @@ The expectation now passes because every pair of comparable timestamps is correc
 
 - Type contracts validate table shape, column types, and declared nullability.
 - Expectations validate data properties and relationships that types cannot express.
-- Strict mode is enabled by default and blocks the run when an expectation fails.
-- `--no-strict` reports failed expectations while allowing downstream models to run.

@@ -88,7 +88,7 @@ fn run_failing_expectation() {
 }
 
 #[test]
-fn run_failing_expectation_strict_on() {
+fn run_assert_in_expectation() {
     bauplan()
         .args([
             "run",
@@ -100,36 +100,6 @@ fn run_failing_expectation_strict_on() {
         .assert()
         .code(1)
         .stderr(contains("assert False"));
-}
-
-#[test]
-fn failing_expectation() {
-    bauplan()
-        .args([
-            "run",
-            "--dry-run",
-            "--no-cache",
-            "--no-strict",
-            "-p",
-            "tests/fixtures/failing_expectation",
-        ])
-        .assert()
-        .success();
-}
-
-#[test]
-fn run_assert_in_expectation() {
-    bauplan()
-        .args([
-            "run",
-            "--dry-run",
-            "--no-cache",
-            "--no-strict",
-            "-p",
-            "tests/fixtures/assert_in_expectation",
-        ])
-        .assert()
-        .success();
 }
 
 #[test]

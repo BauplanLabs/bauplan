@@ -229,7 +229,6 @@ impl Client {
     ///     cache: Whether to enable caching for the run. Defaults to True. Set to False to disable caching.
     ///     transaction: Whether to enable transaction mode for the run. Defaults to True. Set to False to disable transaction mode.
     ///     dry_run: Whether to enable or disable dry-run mode for the run; models are not materialized.
-    ///     strict: Whether failing expectations fail the run. Defaults to True. Set to False to disable strict mode.
     ///     preview: Whether to enable or disable preview mode for the run.
     ///     args: Additional arguments (optional).
     ///     priority: Optional job priority (1-10, where 10 is highest priority).
@@ -246,7 +245,6 @@ impl Client {
         cache: "bool" = true,
         transaction: "bool" = true,
         dry_run: "bool | None" = None,
-        strict: "bool" = true,
         preview: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -264,7 +262,6 @@ impl Client {
         cache: bool,
         transaction: bool,
         dry_run: Option<bool>,
-        strict: bool,
         preview: Option<&str>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
@@ -275,7 +272,7 @@ impl Client {
         let common = self.job_request_common(priority, args.unwrap_or_default())?;
         let cache = if cache { "on" } else { "off" };
         let transaction = if transaction { "on" } else { "off" };
-        let strict = if strict { "on" } else { "off" };
+        let strict = "on";
 
         let dry_run = match dry_run {
             Some(true) => commanderpb::JobRequestOptionalBool::True,
@@ -333,7 +330,6 @@ impl Client {
                 namespace: resp.namespace,
                 dry_run: resp.dry_run,
                 transaction: resp.transaction == "on",
-                strict: resp.strict == "on",
                 cache: resp.cache == "on",
                 preview: resp.preview,
                 debug: false,
