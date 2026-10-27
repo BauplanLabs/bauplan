@@ -159,6 +159,34 @@ ${[0, 1, 2]
     fill: none;
   }
 
+  /* Mermaid turns each word of a commit's label into a class, so a label
+     with "branch" in it would pick up the dotted branch-line style */
+  circle.commit {
+    stroke-dasharray: none;
+  }
+
+  /* A failed commit: a white cross on its branch's dot */
+  path.commit-reverse {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    stroke-dasharray: none;
+  }
+
+  /* A merge that didn't happen (see gitGraphLayout.js) */
+  path.arrow-failed {
+    fill: none;
+    stroke: var(--diagram-text-muted);
+    stroke-width: 2.5px;
+    stroke-dasharray: 6 4;
+  }
+  path.commit-failed-merge {
+    stroke: var(--diagram-text-muted);
+    stroke-width: 3px;
+    stroke-linecap: round;
+  }
+
   g.node.title rect {
     fill: none;
     stroke: none;

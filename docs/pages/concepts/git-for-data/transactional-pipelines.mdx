@@ -27,35 +27,25 @@ Bauplan enforces transactionality with **temporary execution branches**:
 This guarantees that **every change to your lakehouse is atomic,
 isolated, and versioned**.
 
-```text
-          ┌────────────┐
-          │  main/     │
-          │  active    │
-          │  branch    │
-          └─────┬──────┘
-                │
-      (run triggered from this branch)
-                │
-                ▼
-      ┌────────────────────┐
-      │  temporary branch  │
-      │   (isolated run)   │
-      └─────────┬──────────┘
-                │
-                ▼
-      ┌─────────────────────────────┐
-      │   pipeline succeeds?        │-─────────────────┐
-      └─────────────┬───────────────┘                  │
-                    │ yes                              │ no
-                    ▼                                  ▼
-        ┌────────────────────────┐           ┌───────────────────────────┐
-        │ Merge into working     │           │ Keep active branch clean  │
-        │ branch as new Ref      │           │ Keep temp branch for logs │
-        └───────────┬────────────┘           └─────────┬─────────────────┘
-                    │                                  │
-                    ▼                                  ▼
-        ┌──────────────────────┐             ┌─────────────────────────────┐
-        │ Active branch now    │             │ Inspect failed run metadata │
-        │ points to new Ref    │             │ Re-run or debug as needed   │
-        └──────────────────────┘             └─────────────────────────────┘
+The diagram shows two runs started from `main`. The first one succeeds and
+is merged; the second one fails and `main` is left unchanged.
+
+```mermaid
+gitGraph
+   commit id: "before runs"
+   branch run_1
+   checkout run_1
+   commit id: "run 1: table_a"
+   commit id: "run 1: table_b"
+   checkout main
+   merge run_1 id: "run 1 merged: main → new ref"
+   branch run_2
+   checkout run_2
+   commit id: "run 2: table_a"
+   commit id: "run 2: table_b fails, branch kept" type: REVERSE
+   checkout main
+   merge run_2 id: "no merge" type: REVERSE
 ```
+
+The failed `run_2` branch is kept, along with the tables it wrote before
+failing, so you can inspect them before re-running.
