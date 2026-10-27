@@ -52,35 +52,20 @@ output. Currently, `pyarrow.Table` is the only supported return type.
 
 ✅ This is a valid Bauplan DAG, every model has 1 output.
 
-```text
-┌────────────┐
-│  Model 1   │──────────────┐
-└────────────┘              │
-                            ▼
-┌────────────┐      ┌────────────┐      ┌────────────┐
-│  Model 2   │─────►│  Model 3   │─────►│  Model 4   │
-└────────────┘      └────────────┘      └────────────┘
-                            ▲
-┌────────────┐              │
-│ Iceberg    │──────────────┘
-│  Table     │
-└────────────┘
+```mermaid
+flowchart LR
+    M1["Model 1"] --> M3
+    M2["Model 2"] --> M3["Model 3"] --> M4["Model 4"]
+    T["Iceberg table"]:::external --> M3
 ```
 
 ❌ This is **NOT** a valid Bauplan DAG, Model 2 returns 2 tables.
 
-```text
-                                        ┌────────────┐
-                                    ┌──►│ Iceberg    │
-                                    │   │  Table A   │
-                                    │   └────────────┘
-┌────────────┐      ┌────────────┐  │
-│  Model 1   │─────►│  Model 2   │──┤
-└────────────┘      └────────────┘  │
-                                    │   ┌────────────┐
-                                    └──►│ Iceberg    │
-                                        │  Table B   │
-                                        └────────────┘
+```mermaid
+flowchart LR
+    M1["Model 1"] --> M2["Model 2"]
+    M2 --> A["Iceberg table A"]:::external
+    M2 --> B["Iceberg table B"]:::external
 ```
 
 Write two models instead. Both can read the same upstream model.
