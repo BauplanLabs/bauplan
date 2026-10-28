@@ -70,16 +70,3 @@ flowchart TB
 ```
 
 <DiagramLegend />
-
-## Supported clouds
-
-Bauplan runs on the following clouds, with the data plane in the same cloud as the bucket that holds your data:
-
-- **Amazon Web Services**, with data in Amazon S3 (`s3://` URIs).
-- **Google Cloud**, with data in Cloud Storage (`gs://` URIs).
-
-The control plane is managed by Bauplan and does not depend on your cloud. The same commands, SDK methods, and pipelines work on every supported cloud. See [deployment](/overview/deployment) for the managed and BYOC options.
-
-Cloudflare R2 is not a native storage option, but Parquet files in an R2 bucket can be registered as external tables through the [R2 integration](/integrations/warehouses-lakehouses/r2-cloudflare-object-storage), currently in preview.
-
-[Contact us](https://www.bauplanlabs.com/contact) if you need support for another cloud or object storage service.
