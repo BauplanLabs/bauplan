@@ -56,7 +56,7 @@ MCP
 Metabase
 MIT
 nada
-namespaces
+[Nn]amespaces
 Nullness
 NYC
 nyc.gov
@@ -95,6 +95,7 @@ TLC
 transactionality
 Trino
 TSO
+[Uu]npartitioned
 UTC
 UUID
 uv
