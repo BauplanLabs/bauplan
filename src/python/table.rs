@@ -47,7 +47,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
 
 #[pymethods]
 impl Client {
-    /// Create a table from an S3 location.
+    /// Create a table from an object storage location.
     ///
     /// This operation will attempt to create a table based on schemas of N
     /// parquet files found by a given search uri. This is a two step operation using
@@ -208,7 +208,7 @@ impl Client {
         Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
     }
 
-    /// Create a table import plan from an S3 location.
+    /// Create a table import plan from an object storage location.
     ///
     /// This operation will attempt to create a table based on schemas of N
     /// parquet files found by a given search uri. A YAML file containing the
@@ -514,7 +514,7 @@ impl Client {
     ///     branch: Branch in which to import the table.
     ///     namespace: Namespace of the table. If not specified, namespace will be inferred from table name or default settings.
     ///     continue_on_error: Do not fail the import even if 1 data import fails.
-    ///     import_duplicate_files: Ignore prevention of importing s3 files that were already imported.
+    ///     import_duplicate_files: Ignore prevention of importing files that were already imported.
     ///     best_effort: Ignore source columns that are not in the table schema instead of failing the import.
     ///     preview: Whether to enable or disable preview mode for the import.
     ///     args: dict of arbitrary args to pass to the backend.
@@ -619,7 +619,7 @@ impl Client {
         })
     }
 
-    /// Creates an external table from S3 files.
+    /// Creates an external table from files in your object storage.
     ///
     /// ```python
     /// import bauplan
@@ -1026,7 +1026,7 @@ impl Client {
     ///
     /// Parameters:
     ///     table: The name of the table to create.
-    ///     metadata_json_uri: The S3 URI pointing to the Iceberg table's metadata.json file.
+    ///     metadata_json_uri: The URI pointing to the Iceberg table's metadata.json file.
     ///     namespace: The namespace for the table (required).
     ///     branch: The branch name in which to create the table. Defaults to the active branch, or 'main'.
     ///     overwrite: Whether to overwrite an existing table with the same name (default: False).

@@ -1,45 +1,47 @@
 ---
 title: "BigQuery (Inbound)"
-description: "Query Bauplan-managed Iceberg tables from BigQuery. Register them as external tables over S3 via a cross-cloud connection, with no data copy."
+description: "Query Bauplan-managed Iceberg tables from BigQuery. Register them as external tables over Google Cloud Storage, with no data copy."
 ---
 
-Connect BigQuery to Bauplan by creating external Iceberg tables in BigQuery that point to your Bauplan tables and S3 storage. This lets you query Bauplan-managed data from BigQuery without copying it.
+Connect BigQuery to Bauplan by creating external Iceberg tables in BigQuery that point to your Bauplan tables in Google Cloud Storage (GCS). This lets you query Bauplan-managed data from BigQuery without copying it.
 
-BigQuery uses a cross-cloud connection to read objects in your S3 bucket, and the Iceberg table format to discover table metadata.
+BigQuery reads the objects in your GCS bucket through a Cloud resource connection, and uses the Iceberg metadata file of each table to discover its schema and data files.
 
 <Note>
-  In BigQuery, this pattern relies on a BigQuery
-  [connection](https://docs.cloud.google.com/bigquery/docs/connections-api-intro)
-  that allows BigQuery to read the contents of an S3 bucket, and a `CREATE
-  EXTERNAL TABLE` statement that creates a table in BigQuery by pointing to the
-  current Iceberg metadata file. See [BigQuery
-  Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection)
-  for the initial setup (AWS permissions and so on).
+  BigQuery cannot attach to an external Iceberg REST catalog such as Bauplan's,
+  so tables are registered one by one. This pattern relies on a BigQuery [Cloud
+  resource
+  connection](https://docs.cloud.google.com/bigquery/docs/create-cloud-resource-connection),
+  whose service account is granted read access to the bucket, and a `CREATE
+  EXTERNAL TABLE` statement that points to the current Iceberg metadata file of
+  the table. See the [BigQuery
+  documentation](https://docs.cloud.google.com/bigquery/docs/iceberg-external-tables)
+  for the details of Iceberg external tables.
 </Note>
 
 ## When to use this integration
 
-- You want BigQuery users to run SQL over Bauplan tables that live in object storage.
+- You want BigQuery users to run SQL over Bauplan tables that live in GCS.
 - You prefer read access from BigQuery without moving data.
 - You deploy and evolve tables in Bauplan, then surface them in BigQuery for analytics.
 
 ## Prerequisites
 
-- An S3 bucket that stores your Bauplan table data and Iceberg metadata.
-- AWS account with permissions to create IAM policies and roles on the Bauplan bucket.
-- BigQuery role with privileges to create external connections.
+- A GCS bucket that stores your Bauplan table data and Iceberg metadata.
+- A GCP account with permissions to grant IAM roles on that bucket.
+- A BigQuery role with privileges to create connections and external tables.
 
-## Step 1. create the AWS connection
+## Step 1. Create the dataset and the connection
 
-To create a (read-only) connection between BigQuery and your AWS bucket containing a Bauplan table, you need to configure an IAM role and policy so BigQuery can securely access the Iceberg tables in it. Follow the [BigQuery Documentation](https://docs.cloud.google.com/bigquery/docs/omni-aws-create-connection) for the exact steps.
+Create a BigQuery [dataset](https://docs.cloud.google.com/bigquery/docs/datasets) and a Cloud resource connection, both in the same location as your bucket. BigQuery creates a service account for the connection: grant it the Storage Object Viewer role (`roles/storage.objectViewer`) on the Bauplan bucket. BigQuery only reads from the bucket, so read access is enough. Follow the [BigQuery documentation](https://docs.cloud.google.com/bigquery/docs/create-cloud-resource-connection) for the exact steps.
 
-## Step 2. table registration
+## Step 2. Register the tables
 
 Bauplan-managed tables can be registered "zero-copy" into BigQuery by issuing the following SQL command, where:
 
-- `BQ_FULL_TABLE` is the fully qualified name (`dataset.table`) for the table you want to create.
-- `BQ_CONNECTION` is the name of the connection to S3 created above.
-- `metadata_uri` is the full S3 path of the JSON file corresponding to the metadata file of the Bauplan table you want to register.
+- `BQ_FULL_TABLE` is the fully qualified name (`project.dataset.table`) for the table you want to create.
+- `BQ_CONNECTION` is the fully qualified name (`project.location.connection`) of the connection created above.
+- `metadata_uri` is the full `gs://` path of the JSON metadata file of the Bauplan table you want to register.
 
 ```sql
 CREATE OR REPLACE EXTERNAL TABLE `{BQ_FULL_TABLE}`
@@ -50,7 +52,7 @@ OPTIONS (
 )
 ```
 
-Note that in production Bauplan allows you (through its [Git-for-data](/concepts/git-for-data/data-branches) abstractions) to have multiple versions of the same table in different branches; moreover, a pipeline that runs every day will naturally advance the snapshot of the relevant final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop / cron / orchestrator, the workflow would look like this:
+The registered table is pinned to the snapshot described by that metadata file. Bauplan (through its [Git-for-data](/concepts/git-for-data/data-branches) abstractions) can hold multiple versions of the same table in different branches, and a pipeline that runs every day naturally advances the snapshot of its final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop, cron, or orchestrator, the workflow looks like this:
 
 1. A Bauplan DAG is triggered on a job-related branch, replacing `my_table`.
 2. On success, the branch is merged and you now have a new version of `my_table`.
@@ -82,10 +84,7 @@ print("  BigQuery table registered.")
 ```
 
 <Note>
-  When a table is managed by an external catalog, BigQuery typically treats it
-  as read-only (in fact, the IAM role you created above should have no write
-  privileges on the S3 bucket). Writes remain managed by the external engine and
-  catalog, i.e. Bauplan. As Iceberg catalog federation and cross-engine
-  compatibility evolve quickly, reach out if you have further questions about
-  this setup.
+  BigQuery treats these tables as read-only: writes remain managed by Bauplan.
+  Retrieving `metadata_location` only needs read access, so the
+  registration step can run with the API key of a read-only Bauplan user.
 </Note>

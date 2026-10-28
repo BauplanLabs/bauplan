@@ -132,7 +132,11 @@ const redirects = [
   },
   {
     from: "/integrations/warehouses_lakehouses/gcs",
-    to: "/integrations/warehouses-lakehouses/gcs",
+    to: "/integrations/warehouses-lakehouses",
+  },
+  {
+    from: "/integrations/warehouses-lakehouses/gcs",
+    to: "/integrations/warehouses-lakehouses",
   },
   {
     from: "/integrations/notebooks_data_apps",

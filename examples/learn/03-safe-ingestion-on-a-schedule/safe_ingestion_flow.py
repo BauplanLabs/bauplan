@@ -100,7 +100,7 @@ def run_quality_checks(
     # can interact with the lakehouse in pure Python
     # and still get back an Arrow table (for this one
     # column) with a performant scan.
-    print("Perform a S3 columnar scan on the column {}".format(column_to_check))
+    print("Perform a columnar scan on the column {}".format(column_to_check))
     fq_name = f"{namespace}.{table_name}"
     ingestion_table = bauplan_client.scan(
         table=fq_name, ref=bauplan_ingestion_branch, columns=[column_to_check]

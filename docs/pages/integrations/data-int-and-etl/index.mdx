@@ -1,6 +1,6 @@
 ---
 title: "Data Integration and ELT"
-description: "Land data in S3 with your ELT tool, then turn it into safe, queryable Iceberg tables in Bauplan. Register external tables or materialize from Parquet files."
+description: "Land data in object storage with your ELT tool, then turn it into safe, queryable Iceberg tables in Bauplan. Register external tables or materialize from Parquet files."
 ---
 
 ## Overview
@@ -9,7 +9,7 @@ Use your ELT tool to land data in your bucket, use Bauplan to turn that landing 
 
 **Recommended pattern**
 
-- Land to S3 (ideally Iceberg-native; otherwise Parquet).
+- Land to your bucket (ideally Iceberg-native; otherwise Parquet).
 - Register in Bauplan: external table from `metadata.json` (native Iceberg) or materialize to managed Iceberg from files.
 - Work on a branch, run expectations, then merge (WAP).
 

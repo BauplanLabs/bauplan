@@ -1,6 +1,6 @@
 ---
 title: "Frequently Asked Questions"
-description: "Bauplan FAQ: how it integrates with Iceberg and S3, handles schema evolution and versioned data, supported file formats, why it avoids Spark, and orchestrator use."
+description: "Bauplan FAQ: how it integrates with Iceberg and object storage, handles schema evolution and versioned data, supported file formats, why it avoids Spark, and orchestrator use."
 sidebar_label: "FAQ"
 toc_min_heading_level: 3
 ---
@@ -45,11 +45,11 @@ can also send us a note at [support@bauplanlabs.com](mailto:support@bauplanlabs.
 
 ## How easy is it to integrate Bauplan with other tools?
 
-Pretty easy. Bauplan is built **for S3** on **Iceberg's open format**
-and a **Python-native runtime**, ensuring seamless integration with
-modern data stacks:
+Pretty easy. Bauplan works directly on **your object storage**, stores
+tables in **Iceberg's open format**, and runs your code in a
+**Python-native runtime**, so it fits into modern data stacks:
 
-- **Object storage native** - runs directly on your S3 so you don't
+- **Object storage native** - runs directly on your bucket so you don't
   really have to move data in Bauplan.
 - **Iceberg compatible** - Works with any engine and catalog that
   speaks Iceberg - Snowflake, Databricks, Athena, and Trino.
@@ -57,8 +57,8 @@ modern data stacks:
   avoiding vendor lock-in.
 
 We really don't believe in vendor lock-in so it is very easy to get out
-of Bauplan: your data remains in your S3 and your code is just pure
-Python.
+of Bauplan: your data remains in your bucket and your code is just pure
+Python or SQL.
 
 ## How does Bauplan handle schema evolution?
 
@@ -73,7 +73,7 @@ queries.
 Bauplan is designed to make lakehouse implementation as seamless as
 possible by eliminating complexity and reducing infrastructure overhead:
 
-- **Native object storage access (S3)** - Query data directly from
+- **Native object storage access** - Query data directly from
   your object storage
 - **SQL querying with ACID guarantees** - Leverages Iceberg for
   transactional consistency and schema evolution.
@@ -95,7 +95,7 @@ across updates, merges, and queries.
 
 ## What file formats does Bauplan support in ingestion?
 
-Bauplan supports **CSV, Parquet, and JSONL**, stored in S3. Bauplan tables are
+Bauplan supports **CSV, Parquet, JSONL and Avro**, stored in object storage. Bauplan tables are
 represented as Iceberg tables. We currently do not support Delta tables
 or Hudi tables.
 
@@ -160,7 +160,7 @@ We don't need a new one.
 ## Can I use the table I write with Bauplan somewhere else?
 
 Yes, every table produced by Bauplan is stored as an **Iceberg table**
-in your S3 bucket, making it accessible to any engine that supports
+in your bucket, making it accessible to any engine that supports
 **Apache Iceberg**, such as:
 
 - **Databricks**

@@ -19,10 +19,10 @@ flowchart TB
     subgraph B["Bauplan Managed Cloud"]
         direction TB
         C["<b>Bauplan APIs</b><br/>(Data Catalog)"]:::accent
-        D["<b>EC2 Runner</b><br/>(compute runtime)"]:::accent
+        D["<b>Data Plane</b><br/>(compute runtime)"]:::accent
     end
 
-    B --> E["<b>Your S3 Bucket</b><br/>(in your cloud account)"]:::external
+    B --> E["<b>Your Bucket</b><br/>(in your cloud account)"]:::external
 ```
 
 <DiagramLegend />
@@ -30,7 +30,7 @@ flowchart TB
 Key Benefits:
 
 - Fully isolated, SOC2-compliant managed environment.
-- Data stays in your cloud with no S3 egress costs.
+- Data stays in your cloud with no egress costs.
 - No infrastructure management required by your team.
 
 ## Bring your own cloud (BYOC) deployment
@@ -46,11 +46,9 @@ flowchart TB
 
     subgraph B["Your Cloud (BYOC - VPC)<br/>(compute runs here only)"]
         direction TB
-        C["<b>EC2 Runner</b><br/>(primary)"]
-        D["<b>EC2 Runner</b><br/>(backup)"]
-        E["<b>Object Storage</b><br/>(Your S3)"]:::external
+        C["<b>Data Plane</b><br/>(compute runtime)"]
+        E["<b>Object Storage</b><br/>(Your Bucket)"]:::external
         C --> E
-        D --> E
     end
 
     B <--> F

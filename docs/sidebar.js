@@ -135,7 +135,6 @@ export default {
             "integrations/warehouses-lakehouses/snowflake-outbound",
             "integrations/warehouses-lakehouses/big-query-inbound",
             "integrations/warehouses-lakehouses/big-query-outbound",
-            "integrations/warehouses-lakehouses/gcs",
             "integrations/warehouses-lakehouses/r2-cloudflare-object-storage",
           ],
         },

@@ -39,14 +39,14 @@ Tag a node with one of these classes when its role matters:
   flowchart TB
       cli["<b>Bauplan CLI</b>"]
       subgraph cloud["Bauplan Managed Cloud"]
-          runner["<b>EC2 Runner</b><br/>(compute runtime)"]:::accent
+          compute["<b>Data Plane</b><br/>(compute runtime)"]:::accent
       end
-      bucket["<b>Your S3 Bucket</b>"]:::external
+      bucket["<b>Your Bucket</b>"]:::external
       cli --> cloud --> bucket
   ```
 
 Label a box with its name in bold, then an optional detail line in brackets:
-`"<b>EC2 Runner</b><br/>(compute runtime)"`. A `:::code` box gets a bold name
+`"<b>Data Plane</b><br/>(compute runtime)"`. A `:::code` box gets a bold name
 too, above the code. Table and model names stay plain. Wrap a code name on an
 arrow in `<code>`, as in `A -- "<code>BaseResult</code>" --> B`.
 
