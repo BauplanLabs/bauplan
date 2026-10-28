@@ -40,24 +40,20 @@ export default {
       label: "Core Concepts",
       collapsed: true,
       items: [
+        "concepts/catalog-and-branches",
+        "concepts/tables",
+        "concepts/semantics",
+        "concepts/pipelines",
+        // Kept until the new content covers what these explain
         "concepts/projects",
         "concepts/models",
-        "concepts/pipelines",
-        "concepts/tables",
-        "concepts/namespaces",
         "concepts/expectations",
         "concepts/semantic-annotations",
         {
           type: "category",
           label: "Git for Data",
-          link: {
-            type: "doc",
-            id: "concepts/git-for-data/index",
-          },
           items: [
-            "concepts/git-for-data/transactional-pipelines",
             "concepts/git-for-data/commits-refs",
-            "concepts/git-for-data/tags",
             "concepts/git-for-data/data-branches",
           ],
         },
