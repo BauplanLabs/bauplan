@@ -59,16 +59,18 @@ The registered table is pinned to the snapshot described by that metadata file. 
 3. The `metadata_location` of the latest version of `my_table` (just merged into `main`) is retrieved, and the registration command is issued to keep BigQuery in sync.
 
 ```python
-#! bpln_client = bauplan.Client()
-#! BQ_FULL_TABLE = "project.dataset.my_table"
-#! BQ_CONNECTION = "project.region.my_connection"
 from google.cloud import bigquery
 import bauplan
 
+BQ_FULL_TABLE = "project.dataset.my_table"
+BQ_CONNECTION = "project.location.my_connection"
+branch = "my_user.my_branch"
+
+bpln_client = bauplan.Client()
 bq_client = bigquery.Client()
 
-# .... init clients, setup development branch etc. ....
-run_state = bpln_client.run('my_project/')
+# .... create the development branch etc. ....
+run_state = bpln_client.run('my_project/', ref=branch)
 # .... check if it is a successful run, merge the branch, etc. ....
 metadata_location = bpln_client.get_table('my_table', ref='main').metadata_location
 ddl = f"""
@@ -80,7 +82,7 @@ ddl = f"""
    )
 """
 bq_client.query(ddl).result()
-print("  BigQuery table registered.")
+print("BigQuery table registered.")
 ```
 
 <Note>
