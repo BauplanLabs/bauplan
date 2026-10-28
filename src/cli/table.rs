@@ -938,12 +938,8 @@ fn handle_create_external_from_metadata(
 
     // If this were None, we'd be in the other function.
     let metadata_uri = metadata_json_uri.unwrap();
-    let Ok(url) = url::Url::parse(&metadata_uri) else {
+    if url::Url::parse(&metadata_uri).is_err() {
         bail!("invalid metadata URI: {metadata_uri}");
-    };
-
-    if url.scheme() != "s3" {
-        bail!("metadata JSON URI must use s3:// scheme");
     }
 
     // Namespace is required for metadata mode, because it forms part of the
