@@ -1,9 +1,9 @@
 ---
 title: "Deployment"
-description: "An overview of Bauplan deployment options - a single-tenant Private Link managed cloud or Bring Your Own Cloud (BYOC) running the full runtime inside your own VPC."
+description: "Bauplan deployment options, single-tenant Private Link or Bring Your Own Cloud (BYOC), and the supported clouds."
 ---
 
-Bauplan offers two secure deployment options tailored to your needs.
+Bauplan offers two deployment options, on any of the [supported clouds](#supported-clouds).
 
 ## Single-tenant Private Link deployment
 
@@ -63,3 +63,16 @@ Key Benefits:
 - Maximum security and control within your infrastructure.
 - No external data traffic, fully private and compliant.
 - Efficient, with zero data transfer costs to external networks.
+
+## Supported clouds
+
+Bauplan runs on the following clouds, with the data plane in the same cloud as the bucket that holds your data:
+
+- **Amazon Web Services**, with data in Amazon S3 (`s3://` URIs).
+- **Google Cloud**, with data in Cloud Storage (`gs://` URIs).
+
+The control plane is managed by Bauplan and does not depend on your cloud. The same commands, SDK methods, and pipelines work on every supported cloud.
+
+Cloudflare R2 is not a native storage option, but Parquet files in an R2 bucket can be registered as external tables through the [R2 integration](/integrations/warehouses-lakehouses/r2-cloudflare-object-storage), currently in preview.
+
+[Contact us](https://www.bauplanlabs.com/contact) if you need support for another cloud or object storage service.
