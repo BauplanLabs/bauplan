@@ -1,14 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Generate LLM-friendly markdown files from .mdx source files.
- * Copies all .mdx files from pages/ to static/ with .md extension,
- * stripping numeric prefixes so URLs match Docusaurus routes
- * (e.g. 03-import.mdx → import.md, accessible at /tutorial/import.md).
- *
- * Every page is written at both `<route>.md` and its source path, so that
- * appending .md to any documentation URL resolves - including index pages
- * (/overview → overview.md) and pages that override their route with `slug:`.
+ * Writes a markdown copy of every page in pages/ to static/, so appending .md
+ * to any documentation URL returns the page as markdown.
  */
 
 const fs = require('fs');
@@ -22,6 +16,7 @@ const HOME_CARDS_FILE = path.join(__dirname, '..', 'src', 'theme', 'components',
 
 const AGENT_DIRECTIVE = '> The complete documentation index is at [llms.txt](/llms.txt).\n\n';
 
+/** Every .md/.mdx file under a directory, with its path relative to it. */
 function getAllMdxFiles(dir, baseDir = dir) {
   const files = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -39,175 +34,151 @@ function getAllMdxFiles(dir, baseDir = dir) {
   return files;
 }
 
+/** Remove the YAML frontmatter. */
 function stripFrontmatter(content) {
-  // Remove YAML frontmatter (content between --- markers at the start)
-  const frontmatterRegex = /^---\n[\s\S]*?\n---\n/;
-  return content.replace(frontmatterRegex, '');
+  return content.replace(/^---\n[\s\S]*?\n---\n/, '');
 }
 
+/** Remove ESM import statements. */
 function stripImports(content) {
-  // Only strip ESM imports (must contain `from '...'` or `from "..."`).
-  // Plain "import ..." at the start of a prose line must survive.
-  // Braced imports may span several lines, so match those first.
+  // Requiring `from '...'` keeps prose lines that start with "import".
   return content
     .replace(/^import\s*\{[^}]*\}\s*from\s+['"][^'"]*['"];?[ \t]*\n?/gm, '')
     .replace(/^import\s+.*\bfrom\s+['"].*$\n?/gm, '');
 }
 
-/** Parse JSX-style attributes from a tag body, handling both "quoted" and {expr} values. */
+const HTML_ENTITIES = { quot: '"', amp: '&', lt: '<', gt: '>', apos: "'" };
+
+/** Decode the HTML entities in SDK reference attribute values. */
+function decodeEntities(text) {
+  return text.replace(/&(#x[0-9a-f]+|#\d+|\w+);/gi, (match, entity) => {
+    if (entity[0] === '#') {
+      const code = entity[1].toLowerCase() === 'x' ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);
+      return String.fromCodePoint(code);
+    }
+    return HTML_ENTITIES[entity.toLowerCase()] ?? match;
+  });
+}
+
+/** Parse JSX attributes, both "quoted" and {expr} values. */
 function parseAttrs(attrString) {
   const attrs = {};
   const re = /(\w+)=(?:"([^"]*)"|[{]([^}]*)[}])/g;
   let m;
   while ((m = re.exec(attrString)) !== null) {
-    attrs[m[1]] = m[2] !== undefined ? m[2] : m[3];
+    attrs[m[1]] = decodeEntities(m[2] !== undefined ? m[2] : m[3]);
   }
   return attrs;
 }
 
-/** Extract all PyParameters blocks (there can be several, e.g. "Raises") as markdown. */
-function extractAllParameters(content, indent = '') {
-  let result = '';
-  const blocks = content.matchAll(/<PyParameters([^>]*)>([\s\S]*?)<\/PyParameters>/g);
-  for (const block of blocks) {
-    const blockAttrs = parseAttrs(block[1]);
-    const title = blockAttrs.title || 'Parameters';
-
-    let params = '';
-    const paramTags = block[2].matchAll(/<PyParameter\s+([^>]*?)\/>/g);
-    for (const tag of paramTags) {
-      const attrs = parseAttrs(tag[1]);
-      const name = attrs.name || '?';
-      const annotation = attrs.annotation || '';
-      const description = attrs.description || 'No description';
-      params += `${indent}- \`${name}\`${annotation ? ` (${annotation})` : ''}: ${description}\n`;
-    }
-    if (params) {
-      result += `\n${indent}**${title}:**\n${params}`;
-    }
-  }
-  return result;
+/** Wrap a name in backticks, unless it is a markdown link. */
+function codeName(name) {
+  return /^\[.*\]\(.*\)$/.test(name) ? name : `\`${name}\``;
 }
 
-/** Extract a PySignature block as a markdown code signature. */
-function extractSignature(content) {
-  const sigMatch = content.match(/<PySignature\s+([^>]*)>([\s\S]*?)<\/PySignature>/);
-  if (!sigMatch) return '';
-  const sigAttrs = parseAttrs(sigMatch[1]);
-  const name = sigAttrs.name || '';
+/** Replace markdown links with their text. */
+function stripLinks(text) {
+  return text.replace(/\[([^\[\]]*)\]\([^)]*\)/g, '$1');
+}
 
+/** Render a PySignature as a python code block. */
+function renderSignature(attrString, inner) {
+  const sigAttrs = parseAttrs(attrString);
   const params = [];
-  const paramTags = sigMatch[2].matchAll(/<PySignatureParam\s+([^>]*?)\/>/g);
-  for (const tag of paramTags) {
+  for (const tag of inner.matchAll(/<PySignatureParam\s+([^>]*?)\/>/g)) {
     const attrs = parseAttrs(tag[1]);
     if (attrs.separator !== undefined) {
       params.push(attrs.name || '*');
       continue;
     }
     let p = attrs.name || '';
-    if (attrs.annotation) p += `: ${attrs.annotation}`;
-    if (attrs.defaultValue && attrs.defaultValue !== 'None') p += ` = ${attrs.defaultValue}`;
+    if (attrs.annotation) p += `: ${stripLinks(attrs.annotation)}`;
+    if (attrs.defaultValue) p += ` = ${attrs.defaultValue}`;
     params.push(p);
   }
-
-  return `\`\`\`python\n${name}(${params.join(', ')})\n\`\`\`\n`;
+  const returns = sigAttrs.returns ? ` -> ${sigAttrs.returns}` : '';
+  return `\`\`\`python\n${sigAttrs.name || ''}(${params.join(', ')})${returns}\n\`\`\`\n`;
 }
 
-/** Extract a PyClassBase block as a markdown line. */
-function extractClassBase(content) {
-  // bases={[...]} - match a JSON array; links are /reference/... paths with no ]/> sequences.
-  const baseMatch = content.match(/<PyClassBase\s+bases=\{(\[[\s\S]*?\])\}\s*\/>/);
-  if (!baseMatch) return '';
+/** Render a PyParameters block (Parameters, Raises, ...) as a list. */
+function renderParameters(attrString, inner) {
+  const title = parseAttrs(attrString).title || 'Parameters';
+  let params = '';
+  for (const tag of inner.matchAll(/<PyParameter\s+([^>]*?)\/>/g)) {
+    const attrs = parseAttrs(tag[1]);
+    const annotation = attrs.annotation ? ` (${attrs.annotation})` : '';
+    params += `- ${codeName(attrs.name || '?')}${annotation}: ${attrs.description || 'No description'}\n`;
+  }
+  return params ? `\n**${title}:**\n${params}\n` : '';
+}
+
+/** Render a PyAttributesList block as a list. */
+function renderAttributes(attrString, inner) {
+  const title = parseAttrs(attrString).title || 'Attributes';
+  let attrs = '';
+  for (const tag of inner.matchAll(/<PyAttribute\s+([^>]*?)\/>/g)) {
+    const a = parseAttrs(tag[1]);
+    const type = a.type ? ` (${a.type})` : '';
+    const description = a.description ? `: ${a.description}` : '';
+    attrs += `- ${codeName(a.name || '?')}${type}${description}\n`;
+  }
+  return attrs ? `\n**${title}:**\n${attrs}\n` : '';
+}
+
+/** Render a PyClassBase tag as a "Bases:" line. */
+function renderClassBase(bases) {
   try {
-    const parsed = JSON.parse(baseMatch[1]);
-    const names = parsed.map(b => `\`${b.name}\``).join(', ');
-    return `Bases: ${names}\n`;
+    return `\nBases: ${JSON.parse(bases).map(b => codeName(b.name)).join(', ')}\n`;
   } catch {
     return '';
   }
 }
 
-/** Extract PyAttributesList blocks as markdown. */
-function extractAttributes(content) {
-  let result = '';
-  const blocks = content.matchAll(/<PyAttributesList([^>]*)>([\s\S]*?)<\/PyAttributesList>/g);
-  for (const block of blocks) {
-    const blockAttrs = parseAttrs(block[1]);
-    const title = blockAttrs.title || 'Attributes';
+/**
+ * Render a PyClass or PyFunction as a heading, signature and body.
+ * Components are converted where they stand, so prose after the parameters is kept.
+ */
+function renderMember(name, inner, level) {
+  let signature = '';
+  const body = inner
+    .replace(/<PySignature\s+([^>]*)>([\s\S]*?)<\/PySignature>/, (_m, attrs, params) => {
+      signature = renderSignature(attrs, params);
+      return '';
+    })
+    .replace(/<PyParameters([^>]*)>([\s\S]*?)<\/PyParameters>/g, (_m, attrs, params) => renderParameters(attrs, params))
+    .replace(/<PyAttributesList([^>]*)>([\s\S]*?)<\/PyAttributesList>/g, (_m, attrs, list) => renderAttributes(attrs, list))
+    .replace(/<PyClassBase\s+bases=\{(\[[\s\S]*?\])\}\s*\/>/g, (_m, bases) => renderClassBase(bases))
+    .replace(/<PyReturns\s+([^>]*?)\/>/g, (_m, attrs) => {
+      const { description } = parseAttrs(attrs);
+      return description ? `\n**Returns:** ${description}\n` : '';
+    });
 
-    let attrs = '';
-    const attrTags = block[2].matchAll(/<PyAttribute\s+([^>]*?)\/>/g);
-    for (const tag of attrTags) {
-      const a = parseAttrs(tag[1]);
-      const name = a.name || '?';
-      const type = a.type || '';
-      const description = a.description || '';
-      attrs += `- \`${name}\`${type ? ` (${type})` : ''}${description ? `: ${description}` : ''}\n`;
-    }
-    if (attrs) {
-      result += `\n**${title}:**\n${attrs}`;
-    }
-  }
-  return result;
+  return `${'#'.repeat(level)} ${name}\n\n${signature}\n${body.trim()}\n`;
 }
 
+/** Convert the SDK reference components to markdown. */
 function convertPyDocsToMarkdown(content) {
-  // Convert PyClass to markdown header with description, signature, bases, attributes, and methods
-  content = content.replace(/<PyClass\s+id="([^"]+)"\s+name="([^"]+)">\s*([\s\S]*?)<\/PyClass>/g, (_match, _id, name, inner) => {
-    // Split class-level content from method content
-    const firstMemberIdx = inner.indexOf('<PyClassMember>');
-    const classLevel = firstMemberIdx >= 0 ? inner.slice(0, firstMemberIdx) : inner;
-
-    const descMatch = classLevel.match(/^([\s\S]*?)(?:<PyParameters>|<PySignature|<PyClassBase|<PyAttributesList|$)/);
-    const description = descMatch ? descMatch[1].trim() : '';
-
-    const signature = extractSignature(classLevel);
-    const bases = extractClassBase(classLevel);
-    const attributes = extractAttributes(classLevel);
-    const classParams = extractAllParameters(classLevel);
-
-    let methods = '';
-    const methodMatches = inner.matchAll(/<PyFunction\s+id="([^"]+)"\s+name="([^"]+)">([\s\S]*?)<\/PyFunction>/g);
-    for (const m of methodMatches) {
-      const methodDescMatch = m[3].match(/^([\s\S]*?)(?:<PyParameters>|<PySignature|$)/);
-      const methodDesc = methodDescMatch ? methodDescMatch[1].trim() : '';
-      const methodSig = extractSignature(m[3]);
-      const methodParams = extractAllParameters(m[3], '  ');
-
-      methods += `\n### ${m[2]}\n\n`;
-      if (methodSig) methods += `${methodSig}\n`;
-      if (methodDesc) methods += `${methodDesc}\n`;
-      if (methodParams) methods += `${methodParams}`;
-    }
-
-    let result = `## ${name}\n\n`;
-    if (signature) result += `${signature}\n`;
-    if (bases) result += `${bases}\n`;
-    if (description) result += `${description}\n`;
-    if (attributes) result += `${attributes}`;
-    if (classParams) result += `${classParams}`;
-    result += methods;
-    return result;
+  content = content.replace(/<PyClass\s+([^>]*)>([\s\S]*?)<\/PyClass>/g, (_match, attrs, inner) => {
+    const withMethods = inner.replace(
+      /<PyFunction\s+([^>]*)>([\s\S]*?)<\/PyFunction>/g,
+      (_m, methodAttrs, methodInner) => renderMember(parseAttrs(methodAttrs).name, methodInner, 3),
+    );
+    return renderMember(parseAttrs(attrs).name, withMethods, 2);
   });
 
-  // Convert standalone PyFunction (not inside PyClass)
-  content = content.replace(/<PyFunction\s+id="([^"]+)"\s+name="([^"]+)">([\s\S]*?)<\/PyFunction>/g, (_match, _id, name, inner) => {
-    const descMatch = inner.match(/^([\s\S]*?)(?:<PyParameters>|<PySignature|$)/);
-    const description = descMatch ? descMatch[1].trim() : '';
-    const signature = extractSignature(inner);
-    const params = extractAllParameters(inner);
+  content = content.replace(/<PyFunction\s+([^>]*)>([\s\S]*?)<\/PyFunction>/g, (_match, attrs, inner) =>
+    renderMember(parseAttrs(attrs).name, inner, 2),
+  );
 
-    let result = `## ${name}\n\n`;
-    if (signature) result += `${signature}\n`;
-    if (description) result += `${description}\n`;
-    if (params) result += `${params}`;
-    return result;
+  content = content.replace(/<PyTypeAlias\s+([^>]*?)\/>/g, (_match, attrString) => {
+    const { name, annotation } = parseAttrs(attrString);
+    return `## ${name}\n\n\`\`\`python\n${name} = ${annotation}\n\`\`\`\n`;
   });
 
   return content;
 }
 
-/** Render the links inside react card components on landing page. */
+/** Render the home page cards as links. */
 function convertHomePage(content) {
   if (!content.includes('<HomePage')) return content;
 
@@ -223,7 +194,7 @@ function convertHomePage(content) {
   return content.replace(/<HomePage\s*\/>/g, markdown);
 }
 
-/** Turn <VideoCard /> grids into links to the videos, with their blurbs. */
+/** Turn VideoCard grids into video links. */
 function convertVideoCards(content) {
   return content.replace(/^[ \t]*<VideoCard\s+([\s\S]*?)\/>/gm, (_match, attrString) => {
     const attrs = parseAttrs(attrString);
@@ -234,14 +205,14 @@ function convertVideoCards(content) {
   });
 }
 
-/** Keep hand-written HTML headings as headings. */
+/** Turn HTML headings into markdown headings. */
 function convertHtmlHeadings(content) {
   return content.replace(/<h([1-6])[^>]*>([\s\S]*?)<\/h\1>/gi, (_match, level, inner) => {
     return `\n${'#'.repeat(Number(level))} ${inner.trim()}\n`;
   });
 }
 
-/** Turn a <DocCardList items={[...]} /> card grid into a plain markdown link list. */
+/** Turn a DocCardList grid into a list of links. */
 function convertDocCardLists(content) {
   return content.replace(/<DocCardList\s+items=\{\[([\s\S]*?)\]\}\s*\/>/g, (_match, items) => {
     let list = '';
@@ -258,26 +229,21 @@ function convertDocCardLists(content) {
   });
 }
 
+/** Convert or remove the JSX and HTML in a page. */
 function stripJsxComponents(content) {
-  // First, try to convert PyDocs components to markdown
   content = convertPyDocsToMarkdown(content);
-
-  // Turn card grids into plain links
   content = convertDocCardLists(content);
   content = convertHomePage(content);
   content = convertVideoCards(content);
   content = convertHtmlHeadings(content);
 
-  // Remove PyModuleMember and PyClassMember wrappers (keep content)
   content = content.replace(/<\/?Py(?:ModuleMember|ClassMember|Parameters|Parameter)[^>]*>/g, '');
 
-  // Remove JSX comments like {/* text */}
   content = content.replace(/\{\/\*[\s\S]*?\*\/\}/g, '');
 
-  // Remove export statements
   content = content.replace(/^export\s+const\s+.*$/gm, '');
 
-  // Turn video embeds into links, before the self-closing strip below discards them
+  // Must run before self-closing tags are stripped
   content = content.replace(/<YouTube\s+([^>]*?)\/>/g, (_match, attrs) => {
     const id = attrs.match(/\bid=["']([^"']+)["']/);
     if (!id) return '';
@@ -287,58 +253,58 @@ function stripJsxComponents(content) {
     return `[${title ? title[1] : 'Video'}](${url})\n`;
   });
 
-  // Remove self-closing tags like <Component /> and <br />
   content = content.replace(/<[a-zA-Z][a-zA-Z]*\s*[^>]*\/>/g, '');
 
-  // Convert admonition components to blockquotes, prefixing every line
   content = content.replace(/<(Note|Tip|Warning|Info|Callout)[^>]*>([\s\S]*?)<\/\1>/gi, (_match, _tag, inner) => {
     return inner.trim().split('\n').map(l => `> ${l}`).join('\n') + '\n';
   });
 
-  // Remove remaining JSX tags but keep content
   content = content.replace(/<\/?[A-Z][a-zA-Z]*[^>]*>/g, '');
 
-  // Remove remaining HTML tags but keep content
   content = content.replace(/<\/?[a-z][a-zA-Z]*[^>]*>/g, '');
 
   return content;
 }
 
+/** Turn an .mdx page into plain markdown. */
 function cleanMdxContent(content) {
-  let cleaned = content;
+  let cleaned = stripFrontmatter(content);
 
-  // Strip frontmatter (safe: only matches at the very start of the file)
-  cleaned = stripFrontmatter(cleaned);
-
-  // Protect fenced code blocks from import / tag stripping.
-  const codeBlocks = [];
-  cleaned = cleaned.replace(/```[\s\S]*?```/g, (block) => {
-    codeBlocks.push(block);
-    return `\x00CODEBLOCK${codeBlocks.length - 1}\x00`;
+  // Keep code out of the import and tag stripping, so `<placeholders>` survive
+  const code = [];
+  cleaned = cleaned.replace(/```[\s\S]*?```|``[^\n]+?``|`[^`\n]+`/g, (span) => {
+    code.push(span);
+    return `\x00CODE${code.length - 1}\x00`;
   });
 
   cleaned = stripImports(cleaned);
   cleaned = stripJsxComponents(cleaned);
 
-  // Strip decorative emoji-only navigation lines (e.g. "📚 [Learn more →](/overview/)")
+  // Decorative nav lines like "📚 [Learn more →](/overview/)"
   cleaned = cleaned.replace(/^[^\x00-\x7F]+\s*\[[^\]]+\]\([^)]+\)\s*$/gm, '');
 
-  // Restore code blocks
-  cleaned = cleaned.replace(/\x00CODEBLOCK(\d+)\x00/g, (_, i) => codeBlocks[i]);
+  cleaned = cleaned.replace(/^\s+$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
 
-  // Remove lines that are only whitespace
-  cleaned = cleaned.replace(/^\s+$/gm, '');
-
-  // Remove excessive blank lines (more than 2 consecutive)
-  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
-
-  // Trim leading/trailing whitespace
-  cleaned = cleaned.trim();
-
-  return cleaned;
+  return cleaned.replace(/\x00CODE(\d+)\x00/g, (_, i) => code[i]);
 }
 
-/** Read the `slug:` frontmatter value, which overrides a page's route. */
+/** Fail if an SDK reference page has a tag left unconverted or a class/function with no heading. */
+function checkSdkReferenceConverted(relativePath, source, markdown) {
+  const errors = [];
+  if (/<\/?Py[A-Z]/.test(markdown.replace(/```[\s\S]*?```/g, ''))) {
+    errors.push('unconverted <Py...> tag');
+  }
+  for (const [, attrs] of source.matchAll(/<Py(?:Class|Function|TypeAlias)\s([^>]*)>/g)) {
+    const { name } = parseAttrs(attrs);
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (!new RegExp(`^#{2,3} ${escaped}$`, 'm').test(markdown)) errors.push(`no heading for ${name}`);
+  }
+  if (errors.length > 0) {
+    throw new Error(`${relativePath}:\n  ${errors.join('\n  ')}`);
+  }
+}
+
+/** The `slug:` frontmatter value, which overrides a page's route. */
 function parseSlug(content) {
   const frontmatter = content.match(/^---\n([\s\S]*?)\n---/);
   if (!frontmatter) return null;
@@ -346,7 +312,7 @@ function parseSlug(content) {
   return slug ? slug[1] : null;
 }
 
-/** Strip leading numeric prefixes (e.g. "03-import" → "import") from each path segment. */
+/** Strip numeric prefixes ("03-import" → "import") from each path segment. */
 function stripNumberPrefixes(relativePath) {
   return relativePath
     .split(path.sep)
@@ -355,9 +321,8 @@ function stripNumberPrefixes(relativePath) {
 }
 
 /**
- * Where a page's markdown is written: its source path (e.g. tutorial/index.md,
- * which llms.txt links to) plus its route with .md appended (e.g. tutorial.md),
- * which is what agents ask for. `slug:` frontmatter wins over the file path.
+ * The paths a page's markdown is written to: its source path (tutorial/index.md),
+ * which llms.txt links to, and its route (tutorial.md), which agents ask for.
  */
 function outputPathsFor(relativePath, content) {
   const sourcePath = stripNumberPrefixes(relativePath).split(path.sep).join('/').replace(/\.mdx?$/, '');
@@ -370,7 +335,7 @@ function outputPathsFor(relativePath, content) {
   return [...new Set([`${sourcePath}.md`, route === '' ? 'index.md' : `${route}.md`])];
 }
 
-/** The anchor ids Docusaurus gives a page's headings, including explicit `{#id}` ones. */
+/** The anchor ids Docusaurus gives a page's headings. */
 function headingIds(content) {
   const slugger = createSlugger();
   const body = stripFrontmatter(content).replace(/```[\s\S]*?```/g, '');
@@ -387,6 +352,7 @@ function headingIds(content) {
   return ids;
 }
 
+/** Create a directory if it doesn't exist. */
 function ensureDir(dir) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -394,12 +360,9 @@ function ensureDir(dir) {
 }
 
 /**
- * Old URLs that only exist as HTML redirect pages get a markdown stub, so an
- * agent following a stale link with `Accept: text/markdown` is pointed at the
- * new page instead of hitting a 404.
- *
- * Fails when a redirect points at an anchor its target page doesn't have,
- * which Docusaurus's own broken-anchor check doesn't cover.
+ * Write a markdown stub at every old URL that redirects, so agents following a
+ * stale link find the new page. Fails on redirects to missing anchors, which
+ * Docusaurus doesn't check.
  */
 function writeRedirectStubs(pages) {
   const source = fs.readFileSync(REDIRECTS_FILE, 'utf8');
@@ -434,20 +397,20 @@ function writeRedirectStubs(pages) {
   return count;
 }
 
+/** Write the markdown copy of every page and the redirect stubs. */
 function main() {
   console.log('Generating LLM-friendly markdown files...');
 
   const mdxFiles = getAllMdxFiles(PAGES_DIR);
-  // Output path → the page that wrote it. Each page writes up to two files, so two
-  // pages can map to the same one (e.g. foo.mdx and foo/index.mdx both write foo.md);
-  // we fail instead of letting the second silently overwrite the first.
-  // writeRedirectStubs also uses it to find the page behind a redirect target.
+  // Output path → source page. foo.mdx and foo/index.mdx both write foo.md, so
+  // a second claim fails instead of overwriting.
   const written = new Map();
   let count = 0;
 
   for (const { fullPath, relativePath } of mdxFiles) {
     const content = fs.readFileSync(fullPath, 'utf8');
     const cleanedContent = cleanMdxContent(content);
+    checkSdkReferenceConverted(relativePath, content, cleanedContent);
 
     for (const outputRelativePath of outputPathsFor(relativePath, content)) {
       const claimedBy = written.get(outputRelativePath);
