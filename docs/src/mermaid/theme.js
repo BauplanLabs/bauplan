@@ -97,6 +97,23 @@ const themeCSS = `
     stroke-dasharray: 4 3;
   }
 
+  g.node.muted rect, g.node.muted polygon {
+    fill: transparent;
+    stroke: var(--diagram-text-muted);
+    stroke-dasharray: 4 3;
+  }
+  g.node.muted .nodeLabel {
+    color: var(--diagram-text-muted);
+  }
+
+  g.node.danger rect, g.node.danger polygon {
+    fill: var(--diagram-danger-bg);
+    stroke: var(--diagram-danger);
+  }
+  g.node.danger .nodeLabel {
+    color: var(--diagram-danger-text);
+  }
+
   /* white-space: pre lets snippets indent with plain spaces. */
   g.node.code .nodeLabel {
     color: var(--diagram-snippet-text);

@@ -20,6 +20,9 @@
   --diagram-accent-text: #00577e;
   --diagram-code-text: #1c1c1c;
   --diagram-snippet-text: var(--diagram-text);
+  --diagram-danger: #ff4c61;
+  --diagram-danger-bg: #ffe3e7;
+  --diagram-danger-text: #7a1020;
 
   /* Git branch colours: darkened brand blue, brand yellow with a dark-gold
      edge on its dots and lines, brand red */
@@ -46,6 +49,9 @@
   --diagram-code-text: #ffe666;
   /* Code box text: muted, under a full-strength title */
   --diagram-snippet-text: var(--diagram-text-muted);
+  --diagram-danger: #ff4c61;
+  --diagram-danger-bg: #3a1419;
+  --diagram-danger-text: #ffb3bd;
 
   --diagram-git0: #00b0ff;
   --diagram-git1: #ffd600;

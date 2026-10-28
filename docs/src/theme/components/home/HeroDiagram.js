@@ -116,7 +116,7 @@ export const HeroDiagram = () => {
 
   return (
     <Link
-      to="/concepts/git-for-data"
+      to="/concepts/catalog-and-branches"
       aria-label={`${SUMMARY} Learn how Git for Data works.`}
       className="group relative block hover:no-underline"
     >

@@ -1,0 +1,111 @@
+---
+title: "Catalog and branches"
+description: "The catalog, data branches and how they differ from Git branches, commits and tags, time travel, merges and merge conflicts, and transactional branches."
+---
+
+## The catalog
+
+Bauplan versions the state of your lake similarly to how Git versions code. For every branch, the catalog records its [namespaces](/concepts/tables#namespaces) (think of them as folders for now) and the [tables](/concepts/tables#tables) within them. Each branch has a *history*: the series of commits that produced its current state.
+
+## Data branches
+
+A data branch is a pointer to a commit of the *whole* lake, so creating a branch amounts to writing one pointer. No data or metadata files are copied, which makes branching cheap and fast *regardless* of the size of the lake. A new branch sees exactly the tables and namespaces of the commit it was created from.
+
+Writes to a branch create new data files, metadata files, and a commit on that branch only. Other branches keep pointing at their own state, so readers of any other branch, including `main`, don’t see those changes until they’re merged.
+
+```mermaid
+%%{init: {'gitGraph': {'showCommitLabel': false}}}%%
+gitGraph
+  commit id: "a"
+  commit id: "b"
+  branch dev
+  checkout dev
+  commit id: "update orders"
+  checkout main
+  commit id: "c"
+```
+
+:::note
+
+The diagrams on this page branch from and merge into `main`, but you can create a branch from any branch and merge any branch into any other.
+
+:::
+
+## Commits, tags and time travel
+
+Every *write* to the catalog is a **commit** on a branch. This includes operations you might not think of as writes, such as creating or deleting a namespace, or merging two branches. Each commit has a unique identifier, and together the commits make up the branch's history.
+
+A **tag** is a name for a fixed commit. It does not move when the branch it was created from receives new commits, and you cannot write to it. Tags are useful for naming states worth returning to, such as the data behind a published report.
+
+```mermaid
+%%{init: {'gitGraph': {'showCommitLabel': false}}}%%
+gitGraph
+  commit id: "a"
+  commit id: "b" tag: "q3-report"
+  commit id: "c"
+  commit id: "d"
+```
+
+*Reads* can target the head of a branch or any past state of the lake, identified by a commit, a tag or a point in time. A point in time resolves to the last commit on the branch at or before it.
+
+## Merges
+
+A merge takes every table and namespace that was added, changed or deleted on the source branch since the two branches diverged, and applies those changes to the destination branch. The result is a single commit on the destination branch. The merge is atomic: either all changes are applied or none are.
+
+```mermaid
+%%{init: {'gitGraph': {'showCommitLabel': false}}}%%
+gitGraph
+  commit id: "a"
+  branch dev
+  checkout dev
+  commit id: "update orders"
+  commit id: "update customers"
+  checkout main
+  merge dev id: "merge dev"
+```
+
+As in Git, merges can conflict. If a table was changed on both the source and destination branches since they diverged, Bauplan raises a merge conflict and rejects the merge.
+
+## Transactional branches
+
+Branches keep unmerged work isolated from production data, which typically lives on main. Bauplan also guarantees that a failing job never leaves a branch in an inconsistent state.
+
+Consider a pipeline that updates two tables and fails after writing the first. Without protection, the branch would be left half-updated. To prevent this, Bauplan runs every job that writes in an ephemeral **transactional branch**, whether it’s a pipeline, a data import, or a table creation.
+
+The job takes the latest commit on the branch it runs on, creates a transactional branch from it, performs all of its writes there, and merges back only if every step succeeds. On success, the transactional branch is deleted. On failure, the merge never happens and the target branch is left untouched. The transactional branch is kept with its partial writes so that you can inspect what went wrong.
+
+When every step succeeds, Bauplan merges the transactional branch, and all of its changes land on the target branch at once:
+
+```mermaid
+%%{init: {'gitGraph': {'showCommitLabel': false}}}%%
+gitGraph
+  commit id: "a"
+  branch transactional
+  checkout transactional
+  commit id: "write orders"
+  commit id: "write customers"
+  checkout main
+  merge transactional id: "merge"
+```
+
+When a step fails, nothing is merged and the target branch stays at its last commit:
+
+```mermaid
+%%{init: {'gitGraph': {'showCommitLabel': false}}}%%
+gitGraph
+  commit id: "a"
+  branch transactional
+  checkout transactional
+  commit id: "write orders"
+  commit id: "write customers" type: REVERSE
+```
+
+## Data branches vs Git branches
+
+Data branches look a lot like Git branches, but they differ in three ways:
+
+| | Git branches | Data branches |
+|---|---|---|
+| Unit of versioning and conflicts | Lines in a file | Whole tables |
+| Where branches live | Local clone and remote | Only in the cloud |
+| Deleting a branch | Unreachable commits are eventually garbage-collected | Removes the pointer only. No data is deleted and no storage is freed |

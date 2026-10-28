@@ -217,7 +217,9 @@ def my_model(
 Requirements:
 
 - `partitioned_by` must be set on the model decorator.
-- Every column referenced in `overwrite_filter` must be a declared partition column.
+- Filter on declared partition columns only. Bauplan accepts filters on other columns
+  today, but they are slow and will be rejected once a check for them ships. For rows
+  that don't line up with partitions, use `REPLACE`.
 - The filter supports `=`, `!=`, `<`, `>`, `<=`, `>=`, `AND`, `OR`, `IN`, and `NOT IN`
   with column references and literal values.
   Function calls (`YEAR()`, `CAST()`, `DATE_TRUNC()`, etc.) and `BETWEEN` are not supported.
