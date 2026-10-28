@@ -5,8 +5,8 @@ Git-for-data tour: a walkthrough of Bauplan's versioning primitives.
 Demonstrates branching, time travel, tagging, auditing, fault isolation,
 reverts, and multi-step transactions — all driven by the Bauplan Python SDK.
 
-The --file-path argument must point to a Parquet file in an S3 bucket that
-your Bauplan environment can reach. For example:
+The --file-path argument must point to a Parquet file in an object storage
+bucket that your Bauplan environment can reach. For example:
 
     uv run python git_for_data_tour.py \\
         --file-path s3://alpha-hello-bauplan/taxi-2024/yellow_tripdata_2021-01.parquet
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         "--file-path",
         type=str,
         required=True,
-        help="S3 URI to a Parquet file reachable by your Bauplan environment "
+        help="URI to a Parquet file reachable by your Bauplan environment "
         "(e.g. s3://my_bucket/yellow_tripdata_2021-01.parquet)",
     )
     args = parser.parse_args()

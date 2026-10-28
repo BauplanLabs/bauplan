@@ -150,7 +150,7 @@ pub(crate) struct TableCreateArgs {
     /// Namespace for the table
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// S3 URI pattern for parquet files to import (e.g. s3://bucket/path/*)
+    /// URI pattern for parquet files to import (e.g. s3://bucket/path/*)
     #[arg(long)]
     pub search_uri: url::Url,
     /// Partition the table by the given columns
@@ -184,7 +184,7 @@ pub(crate) struct TableCreatePlanArgs {
     /// Namespace for the table
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// S3 URI pattern for parquet files to import (e.g. s3://bucket/path/*)
+    /// URI pattern for parquet files to import (e.g. s3://bucket/path/*)
     #[arg(long)]
     pub search_uri: url::Url,
     /// Partition the table by the given columns

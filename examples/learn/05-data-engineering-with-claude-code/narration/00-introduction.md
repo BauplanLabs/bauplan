@@ -31,7 +31,7 @@ data appeared correct initially but new batches are showing degradations.
 
 Create python scripts for a Bauplan lakehouse workflow in `lakehouse_workflow/` to implement the
 data ingestion and transformation process. *Ingestion* refers to the whole process of *importing*
-raw data from external storage (for example, S3) into the data lakehouse then curating and transforming it
+raw data from an object storage into the data lakehouse then curating and transforming it
 into some desirable form. This includes a "staging branch" where work is materialized and
 conditionally published to production (the "main branch").
 

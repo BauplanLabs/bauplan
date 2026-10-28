@@ -4,6 +4,7 @@ Amprion
 ARN
 Atlas
 auditability
+Avro
 AWS
 backfills
 Bauplan

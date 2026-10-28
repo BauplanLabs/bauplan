@@ -11,14 +11,14 @@ This guide explains how to import data into bauplan's data catalog as Iceberg ta
 ## General requirements
 
 - Data must be in Parquet or CSV format
-- Data must be in S3 - local files cannot be imported directly
-- S3 bucket must have proper permissions configured:
+- Data must be in object storage on a [supported cloud](/overview/architecture#supported-clouds) - local files cannot be imported directly
+- The bucket must have proper permissions configured:
   - For bauplan's clients, this is a one-off operation done during onboarding when pairing your data with the system
   - For sandbox users, see sandbox requirements below
 
 ## Sandbox environment requirements
 
-When using the bauplan sandbox (beta environment), additional requirements apply:
+When using the bauplan sandbox (beta environment), data must be on S3 and additional requirements apply:
 
 - S3 bucket must be publicly readable
 - S3 bucket must have `ListObject` permission enabled
@@ -26,7 +26,7 @@ When using the bauplan sandbox (beta environment), additional requirements apply
 <Note>
   These additional requirements exist because the sandbox runs in an isolated
   EC2 instance that can only access public data. In a production environment,
-  the EC2 instance would be privately linked to your bucket through IAM.
+  Bauplan's compute is privately linked to your bucket through your cloud's IAM.
 </Note>
 
 ## Import process overview

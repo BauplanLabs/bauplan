@@ -6,7 +6,7 @@ This example is implemented using Prefect, for other orchestration tools (like A
 
 ## Overview
 
-A common need on S3-backed analytics systems is safely ingesting new data into tables available to downstream consumers. Due to their distributed nature, lakehouse ingestion is more delicate than the equivalent operation on a traditional database.
+A common need on analytics systems built on object storage is safely ingesting new data into tables available to downstream consumers. Due to their distributed nature, lakehouse ingestion is more delicate than the equivalent operation on a traditional database.
 
 ![Safe Ingestion](img/safe_ingestion.jpg)
 
@@ -59,7 +59,7 @@ Through the Prefect UI at [http://localhost:4200](http://localhost:4200), you ca
 ## Key takeaways
 
 - Bauplan branches act as a native isolation layer for the WAP pattern - data lands on a temporary branch, gets validated, and only reaches `main` if checks pass
-- The Bauplan SDK handles namespace creation, table creation, and S3 imports in pure Python
+- The Bauplan SDK handles namespace creation, table creation, and imports from object storage in pure Python
 - Quality checks run against Arrow tables via `bauplan_client.scan()`, so validation logic is plain Python
 - Prefect transactions with rollback and commit hooks keep branch cleanup automatic, whether the flow succeeds or fails
 - Unique branch names per run (`username.ingestion_timestamp`) make concurrent ingestions safe by default

@@ -6,7 +6,6 @@ description: "Connect Bauplan-managed Iceberg tables to Snowflake, BigQuery, Dat
 import DocCardList from "@theme/DocCardList";
 import snowflakeIcon from "@site/static/img/logos/snowflake.png";
 import bigqueryIcon from "@site/static/img/logos/bigquery.png";
-import gcsIcon from "@site/static/img/logos/gcs.png";
 import bauplanIcon from "@site/static/img/logos/bauplan.png";
 
 This section explains how to connect Bauplan‑managed Iceberg tables in your object storage to other
@@ -37,10 +36,8 @@ Most modern engines now support the **Iceberg REST catalog**. This lets them att
 
 - **Bauplan catalog endpoint:** `https://api.use1.aprod.bauplanlabs.com/iceberg`
 - **Auth:** `Bearer <token>` with a read-only Bauplan user
-{/* vale Google.Parens = NO */}
-- **Storage:** Your object store (usually Amazon S3). Engines authenticate with their own IAM/service accounts.
-{/* vale Google.Parens = YES */}
-- **Engines supported:** Snowflake Open Catalog, Databricks Unity Catalog, BigQuery, Trino, Athena, Spark, DuckDB, and others with native Iceberg connectors.
+- **Storage:** Your own bucket on a [supported cloud](/overview/architecture#supported-clouds). Engines authenticate with their own IAM/service accounts.
+- **Engines supported:** Snowflake Open Catalog, Databricks Unity Catalog, Trino, Athena, Spark, DuckDB, and others with native Iceberg connectors.
 
 {/* vale Google.Parens = NO */}
 ### Option 2: External tables (per-table)
@@ -73,13 +70,6 @@ This approach works everywhere, but requires more operational overhead than cata
       icon: bauplanIcon,
       description:
         "Register Bauplan data as an external Iceberg table in BigQuery",
-    },
-    {
-      type: "link",
-      href: "/integrations/warehouses-lakehouses/gcs",
-      label: "Google Cloud Storage",
-      icon: gcsIcon,
-      description: "Sync GCS buckets with Bauplan via AWS DataSync",
     },
   ]}
 />

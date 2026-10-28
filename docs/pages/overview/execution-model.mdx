@@ -1,6 +1,6 @@
 ---
 title: "Execution model"
-description: "Understand how Bauplan runs pipelines. Write code locally, execute in a serverless FaaS runtime, read and write your S3, and version every result as a ref."
+description: "Understand how Bauplan runs pipelines. Write code locally, execute in a serverless FaaS runtime, read and write your bucket, and version every result as a ref."
 ---
 
 When you run a function or a pipeline in Bauplan, here\'s what happens
@@ -13,7 +13,7 @@ behind the scenes:
   built on a fast, secure, and autoscaling Function-as-a-Service layer.
   All functions are ephemeral.
 - **Your data persists only in your cloud.** Bauplan reads and
-  writes directly from your S3. Bauplan doesn\'t copy or ingest your data.
+  writes directly from your bucket. Bauplan doesn\'t copy or ingest your data.
 - **Bauplan versions results and metadata.** Every operation that writes
   to the data catalog, such as a run, creates a new immutable
   ref that captures the code, inputs, outputs, and
