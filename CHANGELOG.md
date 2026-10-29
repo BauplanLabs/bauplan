@@ -1,4 +1,10 @@
 
+## [0.3.6] - 2026-10-29
+
+### Bugfixes
+
+- [cli] Accept any object storage scheme for external table metadata (9d065679497e7789e7a3a9d7b5d5df980749d0c4)
+
 ## [0.3.5] - 2026-10-20
 
 ## [0.3.4] - 2026-10-09
