@@ -11,12 +11,12 @@ const redirects = [
   },
   {
     from: "/concepts/semantic_annotations",
-    to: "/concepts/semantic-annotations",
+    to: "/concepts/semantics",
   },
   { from: "/guides/detached_runs", to: "/common-scenarios/detached-runs" },
   { from: "/guides/import_data", to: "/tutorial/import" },
   { from: "/guides/parameters", to: "/common-scenarios/parameterized-runs" },
-  { from: "/guides/partitioning", to: "/concepts/tables#partitioning" },
+  { from: "/guides/partitioning", to: "/concepts/tables#file-layout-and-partitioning" },
   {
     from: "/guides/secrets",
     to: "/common-scenarios/parameterized-runs#secrets",
@@ -85,7 +85,31 @@ const redirects = [
   { from: "/tutorial/pipelines", to: "/concepts/pipelines" },
 
   // Legacy git_for_data paths
-  { from: "/concepts/git_for_data/walkthrough", to: "/concepts/git-for-data" },
+  { from: "/concepts/git_for_data/walkthrough", to: "/concepts/catalog-and-branches" },
+
+  { from: "/concepts/namespaces", to: "/concepts/tables#namespaces" },
+
+  // Git for Data pages replaced by the Catalog and branches page
+  { from: "/concepts/git-for-data", to: "/concepts/catalog-and-branches" },
+  {
+    from: "/concepts/git-for-data/tags",
+    to: "/concepts/catalog-and-branches#commits-tags-and-time-travel",
+  },
+  {
+    from: "/concepts/git-for-data/transactional-pipelines",
+    to: "/concepts/catalog-and-branches#transactional-branches",
+  },
+  {
+    from: "/concepts/git-for-data/commits-refs",
+    to: "/concepts/catalog-and-branches#commits-tags-and-time-travel",
+  },
+  {
+    from: "/concepts/git-for-data/data-branches",
+    to: "/concepts/catalog-and-branches#data-branches",
+  },
+
+  // Semantic annotations page replaced by the Semantic layer page
+  { from: "/concepts/semantic-annotations", to: "/concepts/semantics" },
 
   // Underscore-to-dash redirects (old URLs -> new URLs)
   { from: "/tutorial/quick_start", to: "/tutorial/quick-start" },
@@ -96,20 +120,23 @@ const redirects = [
     from: "/concepts/schema_conflicts",
     to: "/common-scenarios/schema-conflicts",
   },
-  { from: "/concepts/git_for_data", to: "/concepts/git-for-data" },
+  { from: "/concepts/git_for_data", to: "/concepts/catalog-and-branches" },
   {
     from: "/concepts/git_for_data/transactional_pipelines",
-    to: "/concepts/git-for-data/transactional-pipelines",
+    to: "/concepts/catalog-and-branches#transactional-branches",
   },
   {
     from: "/concepts/git_for_data/commits_refs",
-    to: "/concepts/git-for-data/commits-refs",
+    to: "/concepts/catalog-and-branches#commits-tags-and-time-travel",
   },
   {
     from: "/concepts/git_for_data/data_branches",
-    to: "/concepts/git-for-data/data-branches",
+    to: "/concepts/catalog-and-branches#data-branches",
   },
-  { from: "/concepts/git_for_data/tags", to: "/concepts/git-for-data/tags" },
+  {
+    from: "/concepts/git_for_data/tags",
+    to: "/concepts/catalog-and-branches#commits-tags-and-time-travel",
+  },
   {
     from: "/integrations/warehouses_lakehouses",
     to: "/integrations/warehouses-lakehouses",

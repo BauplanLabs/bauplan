@@ -158,4 +158,4 @@ bauplan run
 | --- | --- | --- |
 | Model code | SQL with Jinja `ref()` macros | Plain SQL, upstream models referenced by name |
 | Contracts and tests | YAML, run by `dbt test` as separate queries | Typed Python schemas and expectations, checked by `bauplan run` |
-| Failure handling | Tests run after data is materialized | A failing run stays on its [data branch](/concepts/git-for-data) and never reaches `main` |
+| Failure handling | Tests run after data is materialized | A failing run stays on its [data branch](/concepts/catalog-and-branches#data-branches) and never reaches `main` |

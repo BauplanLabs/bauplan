@@ -6,7 +6,7 @@ description: "Connect an AI agent to your Bauplan lakehouse: install Skills for 
 Bauplan is driven entirely by code, which makes it a natural fit for AI agents. The whole lakehouse is
 programmable through a [CLI](/reference/cli) and a [Python SDK](/reference/bauplan).
 
-[Git-for-data branching](/concepts/git-for-data/) is what makes it safe to hand that control to an agent.
+[Git-for-data branching](/concepts/catalog-and-branches#data-branches) is what makes it safe to hand that control to an agent.
 The agent creates an isolated data branch then follows the Write-Audit-Publish pattern: it writes changes in the branch, validates those changes with [expectations](/concepts/expectations), and publishes those changes to a final branch when the checks pass.
 
 There are three ways to use Bauplan with an assistant:

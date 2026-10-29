@@ -62,11 +62,12 @@ Python or SQL.
 
 ## How does Bauplan handle schema evolution?
 
-Bauplan's **Iceberg tables** support schema evolution without breaking
-queries.
-
-- Add, rename, or drop columns.
-- Maintain backward compatibility.
+Bauplan tables can gain columns without rewriting existing data. When a
+model that writes with `APPEND` or `OVERWRITE_PARTITIONS` returns a new
+column, Bauplan adds it to the table, and existing rows read as null in it.
+Imports never change a table's columns. To rename or drop a column, recreate
+the table with `REPLACE`. See [Materialization
+strategies](/concepts/pipelines#materialization-strategies).
 
 ## How does Bauplan help with managing and querying data in a lakehouse architecture?
 
@@ -76,7 +77,7 @@ possible by eliminating complexity and reducing infrastructure overhead:
 - **Native object storage access** - Query data directly from
   your object storage
 - **SQL querying with ACID guarantees** - Leverages Iceberg for
-  transactional consistency and schema evolution.
+  transactional consistency.
 - **Flexible, serverless compute** - Run workloads efficiently
   without managing clusters or proprietary infrastructure.
 
@@ -88,7 +89,7 @@ Yes, Bauplan enables **versioning** in two ways:
   in time.
 - **Data branching**: isolate data changes safely, enabling
   experimentation without affecting production
-  ([docs](/concepts/git-for-data/data-branches)).
+  ([docs](/concepts/catalog-and-branches#data-branches)).
 
 All this, while ensuring **transactional consistency** and integrity
 across updates, merges, and queries.

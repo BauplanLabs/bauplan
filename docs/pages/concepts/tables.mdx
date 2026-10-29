@@ -1,146 +1,112 @@
 ---
-title: "Iceberg Tables"
-sidebar_label: "Tables"
-description: "Manage Apache Iceberg tables in Bauplan with ACID transactions, schema evolution, time travel, and declarative hidden partitioning over your object storage."
+title: "Tables and namespaces"
+description: "How managed and external tables differ, why file layout and partitioning drive query performance, and how namespaces group tables."
 ---
 
-## Overview
+## Tables
 
-Bauplan uses **Apache Iceberg tables** to bring transactional, SQL-ready
-structure to your object storage. This gives you the best of both
-worlds: the scalability and openness of data lakes, with the reliability
-and usability of a data warehouse.
+Every Bauplan table is an [Apache Iceberg](https://iceberg.apache.org/) table whose data is stored as Parquet files in object storage.
 
-Iceberg tables support:
+### Managed and external tables
 
-- **ACID transactions** over object storage
-- **Schema evolution** without downtime
-- **Efficient querying** via column pruning, partition filtering, and
-  file skipping
-- **Time travel** with snapshot-based versioning
+{/* vale Google.Slang = NO */}
+What separates the two kinds of table is who manages the data files. [TL;DR.](/concepts/tables#summary)
+{/* vale Google.Slang = YES */}
 
-In Bauplan, tables are first-class citizens - you create them, read from
-them, write to them, and revert them via simple code and commands. Every
-table lives inside a **branch**, can evolve independently, and is fully
-versioned.
+#### Managed tables
 
-## Partitioning
+**For a managed table, Bauplan manages the data files.** When you import source files, Bauplan reads them and writes new Parquet files. The originals are left untouched and the table no longer depends on them, so you can delete them after the import and the table stays readable. Managed tables are the only tables you can import into repeatedly, and the only tables pipelines should write to.
 
-Bauplan exposes Iceberg's powerful partitioning capabilities through a
-declarative interface. This approach leverages [Iceberg's hidden
-partitioning](https://iceberg.apache.org/docs/1.4.0/partitioning/#icebergs-hidden-partitioning)
-while abstracting away the complexity of partition management.
+Your queries read the Parquet files that Bauplan manages, not your originals. Later imports and pipeline runs add new files to the table:
 
-Supported partition types:
-
-- **Time-based**: `year(col)`, `day(col)`, `hour(col)`
-- **Bucket**: partition by any column, such as client ID
-
-<Note>
-  While partitioning can increase write times to object storage, it
-  significantly improves read performance when filtering by partitioned columns.
-</Note>
-
-### Partitioning during import
-
-Use the `partitioned_by` parameter when creating a table:
-
-```python
-import bauplan
-
-client = bauplan.Client()
-
-table = client.create_table(
-    table='my_partitioned_table',
-    search_uri='s3://your-bucket/data/*.parquet',
-    partitioned_by="hour(tpep_pickup_datetime), PULocationID",
-    branch='my_branch'
-)
+```mermaid
+flowchart TB
+  subgraph one["1"]
+    direction LR
+    S1["your files"] -- imported into --> P1["Parquet files<br/>managed by Bauplan"]
+  end
+  subgraph two["2"]
+    direction LR
+    R1["pipeline runs,<br/>imports"] -- write --> P2["Parquet files<br/>managed by Bauplan"] -- read by --> Q1["your query"]
+  end
+  one ~~~ two
 ```
 
-The equivalent CLI command is:
+**A managed table can gain columns without being rewritten.** When a model that writes with `APPEND` or `OVERWRITE_PARTITIONS` returns a column the table doesn't have, Bauplan adds it to the table's metadata. Existing files stay as they are, and their rows read as null in the new column. Imports never change a table's columns. To rename or drop a column, recreate the table with `REPLACE` (see [Materialization strategies](/concepts/pipelines#materialization-strategies)).
 
-```sh
-bauplan table create my_partitioned_table \
-    --partitioned-by "hour(tpep_pickup_datetime), PULocationID" \
-    --search-uri 's3://your-bucket/data/*.parquet'
+**A managed table costs one copy of the data.** In exchange, its files are laid out for fast reads (see [File layout and partitioning](/concepts/tables#file-layout-and-partitioning)) and survive whatever happens to the sources.
+
+#### External tables
+
+**For an external table, you manage the data files.** They stay in your object storage and Bauplan only reads them. External tables come in two kinds:
+
+- **From Parquet files:** Bauplan registers existing Parquet files as a table. It writes Iceberg metadata in the lakehouse and leaves the data files where they are.
+- **From Iceberg metadata:** Bauplan registers a table that another system already maintains by pointing at one of its metadata files. Bauplan writes no metadata of its own, and the table reflects that metadata file until you register it again.
+
+Both kinds are read-only, so you can't import into them.
+
+There is no copy: your queries read your files directly, so the files have to stay in place:
+
+```mermaid
+flowchart LR
+  S2["your files"] -- read by --> Q2["your query"]
 ```
 
-You can also add partitioning via an import plan:
+**An external table costs no extra storage, but it inherits everything about the source files**, including their layout, sizes, row groups and lifetime. Nothing tells Bauplan when a lifecycle rule, a script or a person changes or deletes those files. The table keeps pointing at them, and the next query that reads a missing file fails with an error naming the external table.
 
-```python
-import bauplan
-import yaml
+#### Summary
 
-client = bauplan.Client()
+| | Managed | External |
+|---|---|---|
+| Data files | Written and controlled by Bauplan | Stay in place, Bauplan only reads them |
+| Extra storage | One copy of the data | None |
+| Writable | Yes, by imports and pipelines | No, read-only |
+| File layout | Optimized by Bauplan ([details](/concepts/tables#file-layout-and-partitioning)) | Inherited from source files |
+| If source files are deleted | Table stays readable | Queries fail |
 
-plan_state = client.plan_table_creation(
-    table='my_partitioned_table',
-    search_uri='s3://your-data/*.parquet',
-    branch='my_branch'
-)
+### File layout and partitioning
 
-plan = yaml.safe_load(plan_state.plan)
-plan['schema_info']['partitions'] = [
-    {
-        'from_column_name': 'datetime_column',
-        'transform': {'name': 'year'}
-    }
-]
+Object storage is cheap and durable, but every read is a network request, far slower than the local NVMe disks that typically back a relational database. So in a lakehouse, the fastest read is the one you skip: a query is fast when the engine can avoid opening files it doesn't need. File layout and partitioning determine how many files it can skip.
 
-client.apply_table_creation_plan(plan)
+**Skipping relies on statistics.** Parquet stores the *minimum*, *maximum* and *null count* for every column in each row group, and Iceberg records the same statistics per file in its metadata. Given a filter such as `WHERE event_date = '2026-03-14'`, the engine discards every file whose `event_date` range cannot contain a match before fetching a single byte of it.
+
+The diagram shows that query against four files. Only one file's range contains March 14, so the engine reads that file and skips the other three:
+
+```mermaid
+flowchart TB
+  Q["WHERE event_date = '2026-03-14'"]
+  Q -. skip .-> F1["file 1<br/>Jan 01 - Feb 28"]
+  Q -. skip .-> F2["file 2<br/>Mar 01 - Mar 10"]
+  Q == read ==> F3["file 3<br/>Mar 11 - Mar 20"]
+  Q -. skip .-> F4["file 4<br/>Mar 21 - Apr 30"]
+  class F1,F2,F4 muted
 ```
 
-### Partitioning in pipelines
+Statistics only rule out files that cover a narrow range of values. If rows land in files in random order, every file spans the whole year and the engine has to read all of them.
 
-Use the `partitioned_by` parameter in the `@bauplan.model` decorator:
+**File size determines how well skipping works.** With too many small files, the engine spends its time on per-file overhead, since each file adds an entry to the metadata and a request to object storage. With files that are too large, each one covers such a wide range of values that the per-file statistics rule almost nothing out. Bauplan chooses the size of a managed table's files when it writes them. An external table keeps the sizes of its source files.
 
-```python
-from typing import Annotated
+**Partitioning lets the engine skip files in bulk.** A partitioned table writes rows with different values of the partition columns to separate files, so a filter on a partition column eliminates whole groups of files at once, without checking each file's statistics. Bauplan writes a managed table's files according to the partitioning you choose, whatever the layout of the source files. The cost is slower writes, because each write has to split its rows into separate files by partition value. A table can be partitioned by part of a column's value, such as the day of a timestamp. Queries filter on the timestamp itself and still skip whole partitions.
 
-import pyarrow
+For example, take a table that holds a year of events in 3,000 files, and a query for one day:
 
-import bauplan
+| Layout | Files whose statistics the engine checks | Files it reads |
+|---|---|---|
+| Unpartitioned, rows in random order | 3,000 | 3,000 |
+| Unpartitioned, rows in date order | 3,000 | about 8 |
+| Partitioned by day | about 8 | about 8 |
 
-class PartitionedTrips(bauplan.TableSchema):
-    """Trip columns kept in the partitioned table."""
+**Source file layout still matters for imports**, because object storage is slow to list. Finding the files that match a pattern takes time proportional to the number of objects under the prefix, and no amount of memory or compute speeds it up.
 
-    PULocationID: bauplan.Int64 | None
-    trip_miles: bauplan.Float64 | None
-    tips: bauplan.Float64 | None
-    pickup_datetime: bauplan.TimestampMicroUTC | None
+:::tip
 
-@bauplan.python('3.11')
-@bauplan.model(
-    partitioned_by=['day(pickup_datetime)', 'PULocationID'],
-    materialization_strategy='REPLACE'
-)
-def create_partitioned_table(
-    taxi_table: Annotated[
-        pyarrow.Table,
-        bauplan.Model(
-            'taxi_fhvhv',
-            projection_schema=PartitionedTrips,
-            filter="pickup_datetime >= '2022-12-23T00:00:00-05:00'"
-        )
-    ],
-) -> Annotated[pyarrow.Table, PartitionedTrips]:
-    """Creates a partitioned table from taxi data"""
-    return taxi_table
-```
+- Partition managed tables on the column your queries filter on most, typically a date.
+- Organize source files so that an import can target a narrow prefix, for example with Hive-style partitioning such as `date=2026-01-01/`.
 
-In SQL models, use comments:
+:::
 
-```sql
--- bauplan: materialization_strategy=REPLACE
--- bauplan: partitioned_by=day(pickup_datetime),PULocationID
+## Namespaces
 
-SELECT
-    PULocationID,
-    trip_miles,
-    tips,
-    pickup_datetime
-FROM taxi_fhvhv
-WHERE
-    pickup_datetime >= '2022-12-25T00:00:00-05:00'
-```
+A namespace is a named group of tables, the equivalent of a schema in a relational database. Tables are addressed by their *fully qualified name*, `namespace.table`. If you reference a table without a namespace, Bauplan assumes it’s in the default namespace, `bauplan`. Like tables, namespaces are versioned per branch, so creating a namespace is a commit on that branch.
+
+Use namespaces to organize tables that coexist in a branch. A common scheme is one namespace per source system for raw data and one per layer or domain for modeled data. With hundreds of tables a flat default namespace becomes hard to navigate. Separate namespaces also let tables with the same name coexist, for example when two source systems each produce an `orders` table.

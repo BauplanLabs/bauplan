@@ -4,17 +4,10 @@ sidebar_label: "Expectations"
 description: "Validate data with Bauplan expectations - inline quality checks that gate Write-Audit-Publish, block invalid data before it reaches production."
 ---
 
-Expectations are statistical and quality checks that validate the structure and values of your data. They ensure data meets defined standards before it flows through your system or reaches production.
+For what an expectation is and how it stops a run, see [Pipelines](/concepts/pipelines#expectations). This page covers how to write them.
 
-From a technical perspective, expectations are functions that take a tabular artifact (like a table or dataframe) as input and return a boolean value:
-
-- **True** if the data meets the expectation (test passes)
-- **False** if the data fails the expectation (compliance issue detected)
-
-Because Bauplan leverages vectorized [SIMD operations](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data),
-expectations run at production speed and can be applied to full tables or partitions, not just samples. Expectations are evaluated inline, as part of pipeline execution: they run as data is processed, and their result determines whether the run continues or fails.
-
-Expectations are typically attached to a node or materialization step and serve as gates in Write-Audit-Publish. Data is written to an isolated branch, audited via expectations, and published only if all checks pass. This makes expectations first-class parts of the pipeline contract: they block invalid data from being published, remove the need for separate validation jobs, scale with the dataset, and record results with the run, branch, and commit for full auditability.
+Because Bauplan uses vectorized [SIMD operations](https://en.wikipedia.org/wiki/Single_instruction,_multiple_data),
+expectations run at production speed on full tables or partitions, not just samples.
 
 ### How this differs from other common patterns
 

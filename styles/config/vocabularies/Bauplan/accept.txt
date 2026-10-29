@@ -95,6 +95,7 @@ TLC
 transactionality
 Trino
 TSO
+[Uu]npartitioned
 UTC
 UUID
 uv
