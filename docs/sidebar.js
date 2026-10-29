@@ -44,20 +44,14 @@ export default {
         "concepts/tables",
         "concepts/semantics",
         "concepts/pipelines",
-        // Kept until the new content covers what these explain
-        "concepts/projects",
-        "concepts/models",
-        "concepts/expectations",
-        "concepts/semantic-annotations",
-        {
-          type: "category",
-          label: "Git for Data",
-          items: [
-            "concepts/git-for-data/commits-refs",
-            "concepts/git-for-data/data-branches",
-          ],
-        },
       ],
+    },
+    {
+      type: "category",
+      label: "Building with Bauplan",
+      collapsed: true,
+      // Kept until the new pages cover what these explain
+      items: ["concepts/projects", "concepts/models", "concepts/expectations"],
     },
     {
       type: "category",

@@ -17,7 +17,7 @@ There are two recommended patterns for integrating work into production. Both ar
 
 ### How it works
 
-1. **Create a branch** - Developer creates a Bauplan [data branch](/concepts/git-for-data/data-branches) (similar to a Git branch, but for your tables).
+1. **Create a branch** - Developer creates a Bauplan [data branch](/concepts/catalog-and-branches#data-branches) (similar to a Git branch, but for your tables).
 2. **Run your pipeline** - Execute your code against the branch. The [pipeline](/concepts/pipelines) materializes new/updated tables in the branch.
 3. **Inspect the data** - Review outputs, run data [expectations/quality checks](/concepts/expectations), diff against production tables.
 4. **Merge to main** - When satisfied, merge. The merge operation is **instantaneous** - the already-materialized tables become production. No recompute required.

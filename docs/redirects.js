@@ -11,7 +11,7 @@ const redirects = [
   },
   {
     from: "/concepts/semantic_annotations",
-    to: "/concepts/semantic-annotations",
+    to: "/concepts/semantics",
   },
   { from: "/guides/detached_runs", to: "/common-scenarios/detached-runs" },
   { from: "/guides/import_data", to: "/tutorial/import" },
@@ -99,6 +99,17 @@ const redirects = [
     from: "/concepts/git-for-data/transactional-pipelines",
     to: "/concepts/catalog-and-branches#transactional-branches",
   },
+  {
+    from: "/concepts/git-for-data/commits-refs",
+    to: "/concepts/catalog-and-branches#commits-tags-and-time-travel",
+  },
+  {
+    from: "/concepts/git-for-data/data-branches",
+    to: "/concepts/catalog-and-branches#data-branches",
+  },
+
+  // Semantic annotations page replaced by the Semantic layer page
+  { from: "/concepts/semantic-annotations", to: "/concepts/semantics" },
 
   // Underscore-to-dash redirects (old URLs -> new URLs)
   { from: "/tutorial/quick_start", to: "/tutorial/quick-start" },
@@ -116,11 +127,11 @@ const redirects = [
   },
   {
     from: "/concepts/git_for_data/commits_refs",
-    to: "/concepts/git-for-data/commits-refs",
+    to: "/concepts/catalog-and-branches#commits-tags-and-time-travel",
   },
   {
     from: "/concepts/git_for_data/data_branches",
-    to: "/concepts/git-for-data/data-branches",
+    to: "/concepts/catalog-and-branches#data-branches",
   },
   {
     from: "/concepts/git_for_data/tags",

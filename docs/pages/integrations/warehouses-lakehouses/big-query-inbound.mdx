@@ -52,7 +52,7 @@ OPTIONS (
 )
 ```
 
-The registered table is pinned to the snapshot described by that metadata file. Bauplan (through its [Git-for-data](/concepts/git-for-data/data-branches) abstractions) can hold multiple versions of the same table in different branches, and a pipeline that runs every day naturally advances the snapshot of its final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop, cron, or orchestrator, the workflow looks like this:
+The registered table is pinned to the snapshot described by that metadata file. Bauplan (through its [Git-for-data](/concepts/catalog-and-branches#data-branches) abstractions) can hold multiple versions of the same table in different branches, and a pipeline that runs every day naturally advances the snapshot of its final tables. In practice, this means you should run the registration command every time the underlying snapshot changes. In your outer loop, cron, or orchestrator, the workflow looks like this:
 
 1. A Bauplan DAG is triggered on a job-related branch, replacing `my_table`.
 2. On success, the branch is merged and you now have a new version of `my_table`.
