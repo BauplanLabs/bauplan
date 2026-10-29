@@ -35,6 +35,24 @@ The diagrams on this page branch from and merge into `main`, but you can create 
 
 Every *write* to the catalog is a **commit** on a branch. This includes operations you might not think of as writes, such as creating or deleting a namespace, or merging two branches. Each commit has a unique identifier, and together the commits make up the branch's history.
 
+A commit also records its author, its parent commit (two parents for a merge), and the job, project and user that produced it. `bauplan commit` shows the history of the active branch:
+
+```text
+commit 4307792b4e2a325e4e42e3e0b595cf79c68016be6023314a5ac345c85833a9bc
+Author: John Doe <john.doe@bauplanlabs.com>
+Author Date: 2025-05-13T18:31:40.133920Z
+Commit Date: 2025-05-13T18:31:40.139839199Z
+Properties:
+    bpln_job_id = 7d3c81d7-a779-4754-8c72-2311cc905da7
+    bpln_project_id = 7a1878f8-d736-4079-bc1d-c23910948153
+    bpln_username = jdoe
+Parent Hashes:
+    300266b7781b59093649742c254f639d2f9085f629f9f1eaa9a0d732838b0e72
+    268bbd29de8113a0faf5478b85972fdd755c9503569124d21d72f32fef562810
+
+    Run job_id=7d3c81d7-a779-4754-8c72-2311cc905da7
+```
+
 A **tag** is a name for a fixed commit. It does not move when the branch it was created from receives new commits, and you cannot write to it. Tags are useful for naming states worth returning to, such as the data behind a published report.
 
 ```mermaid
@@ -47,6 +65,10 @@ gitGraph
 ```
 
 *Reads* can target the head of a branch or any past state of the lake, identified by a commit, a tag or a point in time. A point in time resolves to the last commit on the branch at or before it.
+
+The CLI and SDK take the state to read as a **ref**. A branch name such as `main` refers to the head of the branch, `main@<hash>` to a specific commit on `main`, and `@<hash>` to a commit without going through a branch. A ref that points to a commit or a tag is read-only: only branches take writes.
+
+Tags also take relative syntax. `v1.0^1` refers to the commit before the tagged one, and `v1.0*2025-05-19T06:11:33Z` to the last commit before that timestamp.
 
 ## Merges
 

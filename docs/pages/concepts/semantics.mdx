@@ -96,6 +96,10 @@ The table maps each Bauplan type to its Arrow and Iceberg types:
 
 `Any` is a catch-all for types that have no Bauplan name.
 
+`Date64` has no Iceberg type, so no catalog column reads back as `Date64`. Use `Date32` for dates you read from or write to the catalog.
+
+Iceberg stores the UTC timestamp types as UTC instants. It doesn't keep the timezone they were written from.
+
 ### How schemas are enforced
 
 A `TableSchema` is a declaration, like the column list in a `CREATE TABLE` statement.
@@ -131,3 +135,17 @@ without a timezone.
 
 Two attributes in one schema can't name the same column. Bauplan rejects the schema
 before the run starts.
+
+## Where the documentation is stored
+
+Every time a model writes its output table, Bauplan stores the documentation from the output schema in the table's Iceberg metadata, where any engine that reads Iceberg can find it:
+
+- Nullability is stored with the column type. `Float64 | None` becomes an optional column and `Float64` a required one.
+- A field's `doc` goes in the `doc` property of the column, as defined in the [Iceberg schema spec](https://iceberg.apache.org/spec/#schemas).
+- The table's documentation goes in the `comment` table property, one of Iceberg's [informational properties](https://iceberg.apache.org/docs/latest/configuration/#informational-properties).
+
+The table's documentation is the model's docstring. If a Python model has no docstring, Bauplan uses the docstring of its output schema. A SQL model always uses the docstring of its output schema, which it names in a comment:
+
+```sql
+-- bauplan: output_schema = Revenue
+```
