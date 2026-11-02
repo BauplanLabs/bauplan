@@ -377,7 +377,7 @@ fn decompress_snapshot(data: &[u8]) -> Option<HashMap<String, String>> {
 
         let mut contents = String::new();
         std::io::Read::read_to_string(&mut file, &mut contents).ok()?;
-        snapshot.insert(file.name().to_owned(), contents);
+        snapshot.insert(file.name().ok()?.into_owned(), contents);
     }
 
     Some(snapshot)
