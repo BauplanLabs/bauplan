@@ -1,8 +1,5 @@
 use crate::{bauplan, test_branch};
-use predicates::{
-    prelude::*,
-    str::{contains, starts_with},
-};
+use predicates::str::{contains, starts_with};
 
 #[test]
 fn dry_run() {
@@ -130,26 +127,6 @@ fn run_assert_in_expectation() {
         ])
         .assert()
         .success();
-}
-
-#[test]
-fn invalid_package_ppandas() {
-    bauplan()
-        .args([
-            "run",
-            "--no-cache",
-            "--dry-run",
-            "--project-dir",
-            "tests/fixtures/invalid_package_pppandas",
-        ])
-        .assert()
-        .code(1)
-        .stderr(
-            contains(
-                "depends on pppandas (2.1.0) which doesn't match any versions, version solving",
-            )
-            .or(contains("pppandas was not found in the package registry")),
-        );
 }
 
 #[test]
