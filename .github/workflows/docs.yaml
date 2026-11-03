@@ -88,6 +88,29 @@ jobs:
         env:
           DOCS_S3_BUCKET: ${{ vars.DOCS_S3_BUCKET }}
       - name: invalidate cloudfront
-        run: aws cloudfront create-invalidation --distribution-id "${DOCS_CLOUDFRONT_DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id"
+        id: invalidate
+        run: |
+          id=$(aws cloudfront create-invalidation --distribution-id "${DOCS_CLOUDFRONT_DISTRIBUTION_ID}" --paths "/*" --output text --query "Invalidation.Id")
+          echo "$id"
+          echo "id=$id" >> "$GITHUB_OUTPUT"
         env:
           DOCS_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.DOCS_CLOUDFRONT_DISTRIBUTION_ID }}
+
+      # The crawler would index cached pages if it ran before the invalidation finished.
+      - if: inputs.environment == 'prod'
+        name: wait for cloudfront invalidation
+        run: aws cloudfront wait invalidation-completed --distribution-id "${DOCS_CLOUDFRONT_DISTRIBUTION_ID}" --id "${INVALIDATION_ID}"
+        env:
+          DOCS_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.DOCS_CLOUDFRONT_DISTRIBUTION_ID }}
+          INVALIDATION_ID: ${{ steps.invalidate.outputs.id }}
+
+      - if: inputs.environment == 'prod'
+        name: reindex algolia
+        run: |
+          curl -fsS -X POST \
+            -u "${ALGOLIA_CRAWLER_USER_ID}:${ALGOLIA_CRAWLER_API_KEY}" \
+            "https://crawler.algolia.com/api/1/crawlers/${ALGOLIA_CRAWLER_ID}/reindex"
+        env:
+          ALGOLIA_CRAWLER_ID: ${{ vars.ALGOLIA_CRAWLER_ID }}
+          ALGOLIA_CRAWLER_USER_ID: ${{ secrets.ALGOLIA_CRAWLER_USER_ID }}
+          ALGOLIA_CRAWLER_API_KEY: ${{ secrets.ALGOLIA_CRAWLER_API_KEY }}
