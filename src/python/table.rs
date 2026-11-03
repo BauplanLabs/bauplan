@@ -28,7 +28,7 @@ use crate::python::run::state::{
     TableCreatePlanContext, TableCreatePlanState, TableDataImportContext, TableDataImportState,
 };
 
-/// Accepts a table name or Table object (from which the name is extracted).
+/// Accepts a table name or Table object (converted to `namespace.name`).
 pub(crate) struct TableArg(pub String);
 
 impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
@@ -38,7 +38,7 @@ impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
         if let Ok(s) = ob.extract::<String>() {
             Ok(TableArg(s))
         } else if let Ok(table) = ob.extract::<Table>() {
-            Ok(TableArg(table.name))
+            Ok(TableArg(table.fqn()))
         } else {
             Err(PyTypeError::new_err("expected str or Table"))
         }
