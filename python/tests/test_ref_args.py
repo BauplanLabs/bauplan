@@ -117,6 +117,17 @@ class TestRefArg:
         assert [t.name for t in tables_str] == [t.name for t in tables_obj]
 
 
+class TestTableArg:
+    def test_table_object_keeps_namespace(self, client: bauplan.Client):
+        table = client.get_table("titanic", "main", namespace="bauplan")
+
+        result = client.get_table(table, "main")
+
+        assert result.name == table.name
+        assert result.namespace == table.namespace
+        assert client.has_table(table, "main") is True
+
+
 class TestRefTypes:
     """Tests for ref type properties."""
 
