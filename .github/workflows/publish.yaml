@@ -35,24 +35,24 @@ jobs:
           - runner: blacksmith-16vcpu-ubuntu-2404
             os: linux
             arch: amd64
-            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
+            pythons: "python3.11 python3.12 python3.13 python3.14 python3.15"
           - runner: blacksmith-16vcpu-ubuntu-2404-arm
             os: linux
             arch: arm64
-            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
+            pythons: "python3.11 python3.12 python3.13 python3.14 python3.15"
           - runner: macos-latest
             os: macos
             arch: arm64
-            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
+            pythons: "python3.11 python3.12 python3.13 python3.14 python3.15"
           - runner: windows-latest
             os: windows
             arch: amd64
-            pythons: "python3.10 python3.11 python3.12 python3.13 python3.14"
+            pythons: "python3.11 python3.12 python3.13 python3.14 python3.15"
           - runner: windows-11-arm
             os: windows
             arch: arm64
             # python-build-standalone only publishes Windows ARM64 builds from 3.12 onwards.
-            pythons: "python3.12 python3.13 python3.14"
+            pythons: "python3.12 python3.13 python3.14 python3.15"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
