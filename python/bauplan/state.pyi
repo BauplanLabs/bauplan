@@ -3,6 +3,18 @@ from typing import final
 
 from bauplan.schema import JobLogEvent
 
+__all__ = [
+    "ExternalTableCreateContext",
+    "ExternalTableCreateState",
+    "RunExecutionContext",
+    "RunState",
+    "TableCreatePlanApplyState",
+    "TableCreatePlanContext",
+    "TableCreatePlanState",
+    "TableDataImportContext",
+    "TableDataImportState",
+]
+
 @final
 class ExternalTableCreateContext:
     """

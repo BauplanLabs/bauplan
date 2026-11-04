@@ -177,7 +177,7 @@ impl BauplanError {
 }
 
 /// An HTTP error from the API.
-#[pyclass(extends=BauplanError, module="bauplan.exceptions", subclass, skip_from_py_object)]
+#[pyclass(extends=BauplanError, module="bauplan.exceptions", subclass)]
 #[derive(Clone)]
 pub(crate) struct BauplanHTTPError {
     #[pyo3(get)]
@@ -199,16 +199,13 @@ impl BauplanHTTPError {
         r#type: String,
         message: String,
         kind: Option<ApiErrorKind>,
-    ) -> (Self, BauplanError) {
-        (
-            Self {
-                code,
-                r#type,
-                message,
-                kind,
-            },
-            BauplanError,
-        )
+    ) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(BauplanError).add_subclass(Self {
+            code,
+            r#type,
+            message,
+            kind,
+        })
     }
 }
 
@@ -675,8 +672,8 @@ pub(crate) struct TableCreatePlanError;
 #[pymethods]
 impl TableCreatePlanError {
     #[new]
-    fn new() -> (Self, BauplanError) {
-        (Self, BauplanError)
+    fn new() -> PyClassInitializer<Self> {
+        PyClassInitializer::from(BauplanError).add_subclass(Self)
     }
 }
 
@@ -723,7 +720,7 @@ impl TableCreatePlanApplyStatusError {
 #[pymethods]
 impl TableCreatePlanApplyStatusError {
     #[new]
-    fn new(message: String, state: TableCreatePlanApplyState) -> (Self, BauplanError) {
-        (Self { message, state }, BauplanError)
+    fn new(message: String, state: TableCreatePlanApplyState) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(BauplanError).add_subclass(Self { message, state })
     }
 }

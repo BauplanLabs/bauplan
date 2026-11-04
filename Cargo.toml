@@ -83,9 +83,9 @@ polyglot-sql = { version = "0.9", optional = true, default-features = false, fea
 prost = "0.14"
 prost-types = "0.14"
 percent-encoding = "2"
-pyo3 = { version = "0.28", optional = true, features = ["experimental-inspect", "generate-import-lib", "multiple-pymethods"] }
-pyo3-arrow = { version = "0.18", optional = true }
-pyo3-log = { version = "0.13", optional = true }
+pyo3 = { version = "0.30", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
+pyo3-arrow = { version = "0.20", optional = true }
+pyo3-log = { version = "0.13.5", optional = true }
 rand = "0.8"
 regex = "1"
 resolve-path = "0.1"
@@ -140,14 +140,6 @@ tree-sitter-md = "0.5"
 tree-sitter-python = "0.25"
 walkdir = "2.5.0"
 
-# TODO: replace this with >=0.28.3 (here and in gen-stubs) when it lands.
-# https://github.com/PyO3/pyo3/pull/5782
-[patch.crates-io]
-pyo3 = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
-pyo3-build-config = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
-pyo3-ffi = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
-pyo3-macros = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
-pyo3-macros-backend = { git = "https://github.com/pyo3/pyo3", rev = "f3396b31c4e1e4b4952e7c1ca9283a453c6dd91d" }
 
 [profile.release]
 strip = true

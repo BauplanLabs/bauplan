@@ -2,6 +2,32 @@ from datetime import datetime
 from typing import Final, final
 from uuid import UUID
 
+from typing_extensions import disjoint_base
+
+__all__ = [
+    "Actor",
+    "Branch",
+    "Commit",
+    "DAGEdge",
+    "DAGNode",
+    "DetachedRef",
+    "Job",
+    "JobContext",
+    "JobKind",
+    "JobLogEvent",
+    "JobLogLevel",
+    "JobLogStream",
+    "JobState",
+    "Namespace",
+    "PartitionField",
+    "Ref",
+    "RefType",
+    "Table",
+    "TableField",
+    "TableKind",
+    "Tag",
+]
+
 @final
 class Actor:
     """
@@ -225,9 +251,9 @@ class JobKind:
     TABLE_PLAN_CREATE: Final[JobKind]
     TABLE_PLAN_CREATE_APPLY: Final[JobKind]
     UNSPECIFIED: Final[JobKind]
-    def __eq__(self, /, other: object) -> bool: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __int__(self, /) -> int: ...
-    def __ne__(self, /, other: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 @final
 class JobLogEvent:
@@ -261,9 +287,9 @@ class JobLogLevel:
     INFO: Final[JobLogLevel]
     TRACE: Final[JobLogLevel]
     WARN: Final[JobLogLevel]
-    def __eq__(self, /, other: object) -> bool: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __int__(self, /) -> int: ...
-    def __ne__(self, /, other: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 @final
 class JobLogStream:
@@ -273,9 +299,9 @@ class JobLogStream:
 
     STDERR: Final[JobLogStream]
     STDOUT: Final[JobLogStream]
-    def __eq__(self, /, other: object) -> bool: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __int__(self, /) -> int: ...
-    def __ne__(self, /, other: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 @final
 class JobState:
@@ -290,9 +316,9 @@ class JobState:
     OTHER: Final[JobState]
     RUNNING: Final[JobState]
     UNSPECIFIED: Final[JobState]
-    def __eq__(self, /, other: object) -> bool: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __int__(self, /) -> int: ...
-    def __ne__(self, /, other: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 @final
 class Namespace:
@@ -321,6 +347,7 @@ class PartitionField:
         The partition transform (e.g. "day", "month", "identity").
         """
 
+@disjoint_base
 class Ref:
     """
     A reference to a branch, tag, or commit, as returned by API operations.
@@ -344,9 +371,9 @@ class RefType:
     BRANCH: Final[RefType]
     DETACHED: Final[RefType]
     TAG: Final[RefType]
-    def __eq__(self, /, other: object) -> bool: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __int__(self, /) -> int: ...
-    def __ne__(self, /, other: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 @final
 class Table:
@@ -487,9 +514,9 @@ class TableKind:
     """
     A managed table.
     """
-    def __eq__(self, /, other: object) -> bool: ...
+    def __eq__(self, value: object, /) -> bool: ...
     def __int__(self, /) -> int: ...
-    def __ne__(self, /, other: object) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
 
 @final
 class Tag(Ref):
