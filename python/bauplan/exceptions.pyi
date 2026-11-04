@@ -1,8 +1,11 @@
 from typing import Final, Self, final
 
+from typing_extensions import disjoint_base
+
 from bauplan.schema import Ref
 from bauplan.state import TableCreatePlanApplyState, TableCreatePlanState
 
+@disjoint_base
 class ApiErrorKind:
     """
     A typed API error kind, deserialized from the `type` and `context` fields
@@ -274,12 +277,14 @@ class ApiErrorKind:
         __match_args__: Final = ()
         def __new__(cls, /) -> ApiErrorKind.Unauthorized: ...
 
+@disjoint_base
 class BauplanError(Exception):
     """
     Base class for all bauplan SDK exceptions.
     """
     def __new__(cls, /, *_args) -> Self: ...
 
+@disjoint_base
 class BauplanHTTPError(BauplanError):
     """
     An HTTP error from the API.

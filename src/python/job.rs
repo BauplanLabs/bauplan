@@ -171,12 +171,7 @@ impl TryFrom<i32> for JobLogStream {
 
 /// The severity level of a log event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[pyclass(
-    name = "JobLogLevel",
-    module = "bauplan.schema",
-    skip_from_py_object,
-    eq
-)]
+#[pyclass(name = "JobLogLevel", module = "bauplan.schema", eq)]
 pub(crate) enum JobLogLevel {
     #[pyo3(name = "ERROR")]
     Error,
@@ -220,12 +215,7 @@ impl TryFrom<i32> for JobLogLevel {
 
 /// A single log message from a job execution. When you output logs within a Python model, they are persisted as `JobLogEvent`s.
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(
-    name = "JobLogEvent",
-    module = "bauplan.schema",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "JobLogEvent", module = "bauplan.schema", get_all)]
 pub(crate) struct JobLogEvent {
     /// The output stream (STDOUT, STDERR).
     pub stream: JobLogStream,
@@ -265,7 +255,7 @@ impl TryFrom<commanderpb::RuntimeLogEvent> for JobLogEvent {
 
 /// A node in the job DAG (a model).
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(module = "bauplan.schema", skip_from_py_object, get_all)]
+#[pyclass(module = "bauplan.schema", get_all)]
 pub(crate) struct DAGNode {
     /// The unique identifier for this node (model).
     id: String,
@@ -284,7 +274,7 @@ impl From<commanderpb::ModelNode> for DAGNode {
 
 /// A dependency between two `DAGNode` instances, representing dataflow.
 #[derive(Debug, Clone, Serialize)]
-#[pyclass(module = "bauplan.schema", skip_from_py_object, get_all)]
+#[pyclass(module = "bauplan.schema", get_all)]
 pub(crate) struct DAGEdge {
     /// The source model ID. `None` when the data source is a table scan rather than another model's output.
     source_model: Option<String>,
@@ -303,7 +293,7 @@ impl From<commanderpb::ModelEdge> for DAGEdge {
 
 /// The working context of a job, including its ref, DAG, code snapshot, and logs.
 #[derive(Debug, Clone)]
-#[pyclass(module = "bauplan.schema", skip_from_py_object, get_all)]
+#[pyclass(module = "bauplan.schema", get_all)]
 pub(crate) struct JobContext {
     pub id: String,
     pub project_id: Option<String>,

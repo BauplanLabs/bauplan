@@ -9,12 +9,7 @@ use crate::python::job::JobLogEvent;
 /// The execution context for a run, capturing the parameters that were
 /// used to launch it.
 #[derive(Clone)]
-#[pyclass(
-    name = "RunExecutionContext",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "RunExecutionContext", module = "bauplan.state", get_all)]
 pub(crate) struct RunExecutionContext {
     /// Identifier of the immutable project snapshot that the server executed.
     pub snapshot_id: String,
@@ -71,12 +66,7 @@ impl fmt::Debug for RunExecutionContext {
 /// The state of a completed (or failed) run, including logs, timing, and
 /// per-task lifecycle events.
 #[derive(Debug, Clone)]
-#[pyclass(
-    name = "RunState",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "RunState", module = "bauplan.state", get_all)]
 pub(crate) struct RunState {
     /// The job ID assigned by the server.
     pub job_id: Option<String>,
@@ -123,12 +113,7 @@ impl RunState {
 
 /// The parameters that were passed to a `Client.plan_table_creation` call.
 #[derive(Clone, Debug)]
-#[pyclass(
-    name = "TableCreatePlanContext",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "TableCreatePlanContext", module = "bauplan.state", get_all)]
 pub(crate) struct TableCreatePlanContext {
     /// Branch the table is being created on.
     pub branch_name: String,
@@ -254,12 +239,7 @@ impl fmt::Debug for TableCreatePlanApplyState {
 
 /// The parameters that were passed to a data import job.
 #[derive(Clone, Debug)]
-#[pyclass(
-    name = "TableDataImportContext",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "TableDataImportContext", module = "bauplan.state", get_all)]
 pub(crate) struct TableDataImportContext {
     /// Branch the data is being imported into.
     pub branch_name: String,
@@ -286,12 +266,7 @@ pub(crate) struct TableDataImportContext {
 
 /// The state of a completed data import job.
 #[derive(Clone)]
-#[pyclass(
-    name = "TableDataImportState",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "TableDataImportState", module = "bauplan.state", get_all)]
 pub(crate) struct TableDataImportState {
     /// The job ID assigned by the server.
     pub job_id: Option<String>,
@@ -327,12 +302,7 @@ impl fmt::Debug for TableDataImportState {
 /// External tables are read-only Iceberg tables registered against data that
 /// already lives in object storage; no data is copied.
 #[derive(Clone, Debug)]
-#[pyclass(
-    name = "ExternalTableCreateContext",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "ExternalTableCreateContext", module = "bauplan.state", get_all)]
 pub(crate) struct ExternalTableCreateContext {
     /// Branch the external table is being created on.
     pub branch_name: String,
@@ -344,12 +314,7 @@ pub(crate) struct ExternalTableCreateContext {
 
 /// The state of a completed external table creation job.
 #[derive(Clone)]
-#[pyclass(
-    name = "ExternalTableCreateState",
-    module = "bauplan.state",
-    skip_from_py_object,
-    get_all
-)]
+#[pyclass(name = "ExternalTableCreateState", module = "bauplan.state", get_all)]
 pub(crate) struct ExternalTableCreateState {
     /// The job ID assigned by the server.
     pub job_id: Option<String>,
