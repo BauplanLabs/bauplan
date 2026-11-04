@@ -965,7 +965,7 @@ fn handle_create_external_from_metadata(
 
     let resp = cli.roundtrip(req)?;
 
-    let table_id = resp.metadata.uuid();
+    let table_id = resp.metadata.table_uuid.unwrap_or_default();
     info!(
         table_id = %table_id.as_hyphenated(),
         namespace = namespace,

@@ -4,12 +4,37 @@
 //! Not all catalog operations are represented here; only the ones which are
 //! presently used in the CLI or PySDK.
 
-use iceberg_catalog_rest::{LoadTableResult as IcebergTable, RegisterTableRequest};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     ApiRequest, ApiResponse,
     api::{PathArgs, urlformat},
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+struct RegisterTableRequest<'a> {
+    name: &'a str,
+    metadata_location: &'a str,
+    overwrite: bool,
+}
+
+/// The response to a register table request, only the fields we use.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub struct LoadTableResult {
+    /// The table metadata.
+    pub metadata: TableMetadata,
+}
+
+/// The table metadata in a [`LoadTableResult`].
+#[derive(Debug, PartialEq, Deserialize, Eq, Clone, Copy, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct TableMetadata {
+    /// The table UUID, or None if the metadata doesn't have one.
+    pub table_uuid: Option<Uuid>,
+}
 
 /// Register a table in a namespace on a branch, using an existing metadata
 /// file.
@@ -28,7 +53,7 @@ pub struct RegisterTable<'a> {
 }
 
 impl ApiRequest for RegisterTable<'_> {
-    type Response = IcebergTable;
+    type Response = LoadTableResult;
 
     fn method(&self) -> http::Method {
         http::Method::POST
@@ -42,16 +67,16 @@ impl ApiRequest for RegisterTable<'_> {
         )
     }
 
-    fn body(&self) -> Option<impl serde::Serialize> {
+    fn body(&self) -> Option<impl Serialize> {
         Some(RegisterTableRequest {
-            name: self.name.to_string(),
-            metadata_location: self.metadata_location.to_string(),
-            overwrite: Some(self.overwrite),
+            name: self.name,
+            metadata_location: self.metadata_location,
+            overwrite: self.overwrite,
         })
     }
 }
 
-impl ApiResponse for IcebergTable {
+impl ApiResponse for LoadTableResult {
     fn from_response_parts(
         parts: http::response::Parts,
         body: impl std::io::Read,
