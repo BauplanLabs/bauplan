@@ -31,8 +31,8 @@ tracing.workspace = true
 url.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-arrow = "58"
-arrow-ipc = { version = "58", features = ["zstd"] }
+arrow = "59"
+arrow-ipc = { version = "59", features = ["zstd"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 js-sys = "0.3"
