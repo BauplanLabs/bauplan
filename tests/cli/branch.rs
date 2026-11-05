@@ -1,5 +1,6 @@
 use crate::cli::config::config_set;
 use crate::cli::{bauplan, test_branch, username};
+use predicates::function::function;
 use predicates::prelude::PredicateBooleanExt as _;
 use predicates::str::{contains, starts_with};
 
@@ -13,12 +14,18 @@ fn ls_json_output() {
 }
 
 #[test]
-fn ls() {
+fn ls_limit() {
+    // With this branch + main, there are at least 2 branches.
+    let _branch = test_branch("cli_ls_limit");
+
     bauplan()
-        .args(["branch", "ls", "--limit", "10"])
+        .args(["branch", "ls", "--limit", "1"])
         .assert()
         .success()
-        .stdout(contains("main"));
+        // Header + 1 branch (at least 1 branch omitted).
+        .stdout(function(|out: &str| {
+            out.lines().filter(|l| !l.trim().is_empty()).count() == 2
+        }));
 }
 
 #[test]
