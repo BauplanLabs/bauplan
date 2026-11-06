@@ -28,8 +28,8 @@ import {
 
 ## What is Bauplan under the hood
 
-Bauplan is a Python-first lakehouse runtime for building and operating data pipelines on object storage with [Git-style](/concepts/git-for-data) branching and versioning for data.
-It gives you a safe execution loop for changes: write to an [isolated branch](/concepts/git-for-data/data-branches), run and validate, then publish to `main` with an atomic merge, with rollback to a known-good commit.
+Bauplan is a Python-first lakehouse runtime for building and operating data pipelines on object storage with [Git-style](/concepts/catalog-and-branches) branching and versioning for data.
+It gives you a safe execution loop for changes: write to an [isolated branch](/concepts/catalog-and-branches#data-branches), run and validate, then publish to `main` with an atomic merge, with rollback to a known-good commit.
 Bauplan is designed for teams that want to ship production data changes without running a data platform project with special emphasis on AI-generated changes.
 
 ## Why we built it
