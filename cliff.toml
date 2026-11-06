@@ -19,7 +19,7 @@ body = """
 conventional_commits = true
 filter_unconventional = true
 tag_pattern = "v[0-9].*"
-include_paths = ["src/**", "python/**", "Cargo.toml"]
+include_paths = ["src/**", "python/**", "Cargo.toml", "pyproject.toml"]
 commit_parsers = [
   { message = '^\w+\(longbow\)', skip = true },
   { message = "^feat", group = "<!-- 0 -->New Features" },
