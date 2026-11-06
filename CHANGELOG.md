@@ -1,4 +1,10 @@
 
+## [0.3.7] - 2026-11-06
+
+### New Features
+
+- [pysdk] Support Python 3.15 (14c388381143e3ab0fdebad0e51eb7d5af172ce4)
+
 ## [0.3.6] - 2026-11-03
 
 ### Bugfixes
