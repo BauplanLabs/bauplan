@@ -204,6 +204,39 @@ ${[0, 1, 2]
     stroke-linecap: round;
   }
 
+  /* Sequence diagrams: participants as nodes, notes as groups */
+  rect.actor {
+    fill: var(--diagram-node-bg);
+    stroke: var(--diagram-node-border);
+    stroke-width: 1px;
+  }
+  g text.actor > tspan {
+    fill: var(--diagram-text);
+  }
+  line.actor-line {
+    stroke: var(--diagram-line);
+  }
+  rect.note {
+    fill: var(--diagram-group-bg);
+    stroke: var(--diagram-group-border);
+    stroke-width: 1px;
+  }
+  g text.noteText > tspan, text.noteText {
+    fill: var(--diagram-text);
+  }
+  line.messageLine0, line.messageLine1 {
+    stroke: var(--diagram-line);
+    stroke-width: 1.25px;
+  }
+  text.messageText {
+    fill: var(--diagram-text-muted);
+  }
+  /* Message arrowheads */
+  marker[id$='-arrowhead'] path {
+    fill: var(--diagram-line);
+    stroke: var(--diagram-line);
+  }
+
   g.node.title rect {
     fill: none;
     stroke: none;
