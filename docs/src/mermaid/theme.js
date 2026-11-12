@@ -29,6 +29,10 @@ const themeCSS = `
     rx: 10px;
     ry: 10px;
   }
+  g.cluster.iceberg rect {
+    fill: transparent;
+    stroke-dasharray: 4 3;
+  }
   g.cluster .cluster-label span, g.cluster .cluster-label text {
     color: var(--diagram-text);
     fill: var(--diagram-text);
