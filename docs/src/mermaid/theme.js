@@ -48,9 +48,9 @@ const themeCSS = `
     stroke: var(--diagram-line);
   }
   div.labelBkg, .edgeLabels span.edgeLabel, .edgeLabels .edgeLabel p, .edgeLabels .edgeLabel rect {
-    background-color: var(--diagram-label-bg);
-    fill: var(--diagram-label-bg);
-    color: var(--diagram-text-muted);
+    background-color: var(--diagram-edge-label-bg);
+    fill: var(--diagram-edge-label-bg);
+    color: var(--diagram-edge-label-text);
     font-size: 13px;
     opacity: 1;
   }
