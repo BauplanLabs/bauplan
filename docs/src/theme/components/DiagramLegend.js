@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
-// Keys match the node classes in src/mermaid/theme.js.
+// Keys match the node and group classes in src/mermaid/theme.js.
 const ITEMS = {
   default: "Your environment",
   accent: "Managed by Bauplan",
   external: "Your storage",
+  iceberg: "Iceberg types",
+  arrow: "Arrow types",
 };
 
 // Nodes that label or pad a group rather than stand for something.
@@ -35,6 +37,26 @@ function contains(outer, inner) {
   return x >= outer.left && x <= outer.right && y >= outer.top && y <= outer.bottom;
 }
 
+function containsWhole(outer, inner) {
+  return (
+    inner.left >= outer.left &&
+    inner.right <= outer.right &&
+    inner.top >= outer.top &&
+    inner.bottom <= outer.bottom
+  );
+}
+
+// Arrows that start and end inside the group stay bright with it.
+function markEdges(diagram, outline) {
+  const edges = diagram.querySelectorAll(".edgePaths path, .edgeLabels g.edgeLabel");
+  for (const edge of edges) {
+    const box = edge.getBoundingClientRect();
+    if (box.width > 0 && containsWhole(outline, box)) {
+      edge.classList.add("is-highlighted");
+    }
+  }
+}
+
 // Mermaid keeps groups and nodes in separate layers, so which node sits in
 // which group is only known from where they're drawn.
 function markGroups(diagram, kind) {
@@ -47,10 +69,15 @@ function markGroups(diagram, kind) {
     const outline = group.querySelector("rect").getBoundingClientRect();
     const inside = nodes.filter(({ box }) => contains(outline, box));
     const members = inside.filter(({ isLayout }) => !isLayout);
-    const matches = members.length > 0 && members.every(({ node }) => kindOf(node) === kind);
+    const isGroupKind = group.classList.contains(kind);
+    const matches =
+      isGroupKind || (members.length > 0 && members.every(({ node }) => kindOf(node) === kind));
     group.classList.toggle("is-highlighted", matches);
+    if (isGroupKind) {
+      markEdges(diagram, outline);
+    }
     for (const { node, isLayout } of inside) {
-      if (isLayout) {
+      if (isLayout || isGroupKind) {
         node.classList.toggle("is-highlighted", matches);
       }
     }
@@ -84,19 +111,32 @@ export function DiagramLegend({ items = Object.keys(ITEMS) }) {
     }
   }, [highlighted]);
 
-  // Esc clears a selection wherever focus is, so it listens on the document.
+  // Esc or a click outside the legend clears a selection, so both listen on
+  // the document.
   useEffect(() => {
     if (!pinned) {
       return;
     }
+    function clear() {
+      setPinned(null);
+      setHovered(null);
+    }
     function onKeyDown(event) {
       if (event.key === "Escape") {
-        setPinned(null);
-        setHovered(null);
+        clear();
+      }
+    }
+    function onPointerDown(event) {
+      if (!ref.current?.contains(event.target)) {
+        clear();
       }
     }
     document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
   }, [pinned]);
 
   return (

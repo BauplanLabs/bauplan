@@ -60,19 +60,23 @@ The diagram shows where each type system applies. Tables are stored with Iceberg
 
 ```mermaid
 flowchart LR
-  subgraph rest1["storage · Iceberg types"]
+  subgraph rest1["Storage"]
     A[("input table")]
   end
-  subgraph mem["memory · Arrow types"]
+  subgraph mem["Memory"]
     M["model"] -- returns --> O["output table"]
     S["output schema<br/>(Bauplan types)"] -. checks .-> O
   end
-  subgraph rest2["storage · Iceberg types"]
+  subgraph rest2["Storage"]
     B[("output table")]
   end
   A --> M
   O --> B
+  class rest1,rest2 iceberg
+  class mem arrow
 ```
+
+<DiagramLegend items={["iceberg", "arrow"]} />
 
 #### Type mapping
 

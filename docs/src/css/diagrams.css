@@ -124,10 +124,22 @@
   background: transparent;
 }
 
+/* Swatches for groups: a group's fill and border. Iceberg: dashed, no fill. */
+.diagram-legend__swatch--arrow,
+.diagram-legend__swatch--iceberg {
+  border-color: var(--diagram-group-border);
+  background: var(--diagram-group-bg);
+}
+
+.diagram-legend__swatch--iceberg {
+  border-style: dashed;
+  background: transparent;
+}
+
 /* Fades parts of a diagram in and out when they are dimmed. */
 .docusaurus-mermaid-container g.node,
 .docusaurus-mermaid-container g.cluster,
-.docusaurus-mermaid-container .edgePaths,
+.docusaurus-mermaid-container .edgePaths path,
 .docusaurus-mermaid-container .edgeLabels span.edgeLabel {
   transition: opacity 0.15s ease;
 }
@@ -136,15 +148,16 @@
    stays bright only when every box in it matches (DiagramLegend marks it
    .is-highlighted). Plain boxes (including code) have no role class. */
 .docusaurus-mermaid-container[data-highlight] g.cluster:not(.is-highlighted),
-.docusaurus-mermaid-container[data-highlight] .edgePaths,
+.docusaurus-mermaid-container[data-highlight] .edgePaths path:not(.is-highlighted),
 .docusaurus-mermaid-container[data-highlight] g.node.title:not(.is-highlighted),
 .docusaurus-mermaid-container[data-highlight='default'] g.node:is(.accent, .external),
 .docusaurus-mermaid-container[data-highlight='accent'] g.node:not(.accent, .is-highlighted),
-.docusaurus-mermaid-container[data-highlight='external'] g.node:not(.external, .is-highlighted) {
+.docusaurus-mermaid-container[data-highlight='external'] g.node:not(.external, .is-highlighted),
+.docusaurus-mermaid-container:is([data-highlight='iceberg'], [data-highlight='arrow']) g.node:not(.is-highlighted) {
   opacity: 0.25;
 }
 
 /* Dimmed arrow labels: faded text on an opaque background. */
-.docusaurus-mermaid-container[data-highlight] .edgeLabels span.edgeLabel {
+.docusaurus-mermaid-container[data-highlight] .edgeLabels g.edgeLabel:not(.is-highlighted) span.edgeLabel {
   opacity: 0.25 !important;
 }
