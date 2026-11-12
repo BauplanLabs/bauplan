@@ -223,12 +223,13 @@ a:has(> code):hover code {
 /* Admonitions accent in brand colors*/
 .alert--warning {
   --ifm-alert-border-color: #FFD600;
-  --contrast-foreground: #554700;
+  --ifm-alert-foreground-color: #554700;
 }
 
 .alert--success {
   --ifm-alert-border-color: var(--ifm-color-primary);
-  --contrast-foreground: #003B55;
+  --ifm-alert-foreground-color: var(--ifm-font-color-base);
+  --ifm-code-background: inherit;
 }
 
 .alert--danger {
