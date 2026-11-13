@@ -28,11 +28,11 @@ jobs:
     permissions:
       contents: write # Create tags and GitHub releases
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+      - uses: jdx/mise-action@v4.0.1
         with:
           cache: false
       - name: Check for unreleased version
@@ -92,7 +92,7 @@ jobs:
     permissions:
       contents: write # Upload tarballs to GitHub release
       id-token: write # Trusted publishing to PyPI
-    uses: ./.github/workflows/publish.yaml
+    uses: $/.github/workflows/publish.yaml
     with:
       tag: ${{ needs.release.outputs.tag }}
 
@@ -104,7 +104,7 @@ jobs:
     permissions:
       id-token: write # AWS OIDC authentication
       contents: read
-    uses: ./.github/workflows/docs.yaml
+    uses: $/.github/workflows/docs.yaml
     with:
       environment: prod
 
@@ -121,12 +121,12 @@ jobs:
       group: release-pr-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-      - uses: ./.github/actions/setup-caches
+      - uses: jdx/mise-action@v4.0.1
+      - uses: $/.github/actions/setup-caches
       - name: Compute version bump
         id: bump
         env:
