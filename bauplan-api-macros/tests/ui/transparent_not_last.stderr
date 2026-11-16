@@ -1,0 +1,5 @@
+error: `transparent` variants must come last
+  --> tests/ui/transparent_not_last.rs:15:5
+   |
+15 |     NotFound { name: String },
+   |     ^^^^^^^^
