@@ -5,6 +5,8 @@ lint:
     buf lint
     cargo fmt --all -- --check
     cargo clippy -- -Dwarnings
+    cargo clippy -p bauplan-api -p bauplan-api-macros --all-targets -- -Dwarnings
+    cargo clippy -p bauplan-api --all-targets --features client -- -Dwarnings
 
     # Prose linting.
     # https://github.com/vale-cli/vale/issues/575
@@ -15,7 +17,7 @@ lint:
     # Don't even think about it.
     ! grep -rn '[—–]' \
         --include="*.md" --include="*.mdx" --include "*.rs" --include "*.pyi" \
-        docs/pages examples python src
+        docs/pages examples python src bauplan-api bauplan-api-macros
 
     # These are technically tests, but they just check the source.
     just docs/generate-reference
@@ -26,4 +28,5 @@ lint:
 
 test:
     cargo test --features _integration-tests -- --test-threads=4
+    cargo test -p bauplan-api -p bauplan-api-macros
     uv run pytest -v

@@ -1,0 +1,5 @@
+error: `transparent` requires a newtype variant
+ --> tests/ui/transparent_not_newtype.rs:7:5
+  |
+7 |     NotFound { name: String },
+  |     ^^^^^^^^

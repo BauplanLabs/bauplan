@@ -1,0 +1,5 @@
+error: expected a status code or `transparent`
+ --> tests/ui/stale_template_args.rs:6:20
+  |
+6 |     #[api_error(404, "chair '{name}' not found")]
+  |                    ^
