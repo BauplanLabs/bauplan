@@ -24,18 +24,21 @@ pub struct Tag {
 }
 
 /// Request body for creating a tag.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateTagBody {
     /// Name for the new tag.
+    #[garde(custom(crate::model::ref_syntax))]
     pub name: String,
     /// The ref to tag.
+    #[garde(skip)]
     pub from_ref: String,
 }
 
 /// Request body for renaming a tag.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct RenameTagBody {
     /// The new tag name.
+    #[garde(custom(crate::model::ref_syntax))]
     pub name: String,
 }
 

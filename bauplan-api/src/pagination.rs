@@ -9,17 +9,19 @@ use serde::{Deserialize, Serialize};
 
 /// Query for a list endpoint: the cursor, the page size and the
 /// endpoint-specific filters.
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct ListQuery<T = ()> {
     /// Opaque cursor from the previous page.
     #[serde(default)]
+    #[garde(skip)]
     pub pagination_token: Option<String>,
     /// How many items to return, at most 500.
     #[serde(default = "default_limit")]
-    #[schemars(range(min = 1))]
+    #[garde(range(min = 1))]
     pub limit: u32,
     /// The endpoint-specific filters.
     #[serde(flatten)]
+    #[garde(skip)]
     pub filters: T,
 }
 

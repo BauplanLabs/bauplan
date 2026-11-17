@@ -29,30 +29,33 @@ pub struct Branch {
 }
 
 /// Request body for creating a branch.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateBranchBody {
     /// Name for the new branch.
+    #[garde(custom(crate::model::ref_syntax))]
     pub name: String,
     /// The ref to branch from.
+    #[garde(skip)]
     pub from_ref: String,
     /// If set, the branch should be automatically deleted after the given duration.
     #[serde(default)]
-    #[schemars(range(min = 1))]
+    #[garde(range(min = 1))]
     pub ttl_seconds: Option<u64>,
 }
 
 /// Request body for renaming a branch.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct RenameBranchBody {
     /// The new branch name.
+    #[garde(custom(crate::model::ref_syntax))]
     pub name: String,
 }
 
 /// Request body for setting the TTL of a branch.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct SetBranchTtlBody {
     /// How long the branch lives, in seconds.
-    #[schemars(range(min = 1))]
+    #[garde(range(min = 1))]
     pub ttl_seconds: u64,
 }
 

@@ -10,7 +10,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ErrorEnvelope, GenericError};
-use crate::model::{AtCommit, Commit, CommitOptions, WithCommit};
+use crate::model::{AtCommit, Commit, CommitOptions, WithCommit, is_identifier};
 use crate::pagination::{ListQuery, Page};
 
 /// A namespace.
@@ -20,21 +20,33 @@ pub struct Namespace {
     pub name: String,
 }
 
+/// A valid namespace name.
+fn namespace_name(value: &str, _: &()) -> garde::Result {
+    if is_identifier(value) {
+        Ok(())
+    } else {
+        Err(garde::Error::new("not a valid namespace name"))
+    }
+}
+
 /// Request body for creating a namespace.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateNamespaceBody {
     /// The namespace name.
+    #[garde(custom(namespace_name))]
     pub name: String,
     /// Commit options for the commit this creates.
     #[serde(default)]
+    #[garde(dive)]
     pub commit: CommitOptions,
 }
 
 /// Request body for deleting a namespace.
-#[derive(Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct DeleteNamespaceBody {
     /// Commit options for the commit this creates.
     #[serde(default)]
+    #[garde(dive)]
     pub commit: CommitOptions,
 }
 
