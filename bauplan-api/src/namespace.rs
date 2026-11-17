@@ -60,6 +60,8 @@ pub enum ListNamespacesError {
     #[api_error(404)]
     RefNotFound { ref_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -86,6 +88,8 @@ pub enum CreateNamespaceError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -115,6 +119,8 @@ pub enum DeleteNamespaceError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }

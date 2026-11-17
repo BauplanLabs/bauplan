@@ -190,6 +190,8 @@ pub enum ListTablesError {
     #[api_error(404)]
     RefNotFound { ref_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -222,6 +224,8 @@ pub enum CreateTableError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -266,6 +270,8 @@ pub enum CloneTableError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -283,6 +289,8 @@ pub enum GetTableError {
     #[api_error(404)]
     TableNotFound { table_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -315,6 +323,8 @@ pub enum RenameTableError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -341,6 +351,8 @@ pub enum DeleteTableError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }

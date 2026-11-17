@@ -111,6 +111,8 @@ pub enum ListBranchesError {
     #[api_error(404)]
     CatalogNotFound { catalog_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -134,6 +136,8 @@ pub enum CreateBranchError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -148,6 +152,8 @@ pub enum ResolveBranchError {
     #[api_error(404)]
     BranchNotFound { branch_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -177,6 +183,8 @@ pub enum RenameBranchError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -194,6 +202,8 @@ pub enum SetBranchTtlError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -211,6 +221,8 @@ pub enum RemoveBranchTtlError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -234,6 +246,8 @@ pub enum DeleteBranchError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -266,6 +280,8 @@ pub enum MergeBranchError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }

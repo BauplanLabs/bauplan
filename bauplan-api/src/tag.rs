@@ -49,6 +49,8 @@ pub enum ListTagsError {
     #[api_error(404)]
     CatalogNotFound { catalog_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -69,6 +71,8 @@ pub enum CreateTagError {
     #[api_error(404)]
     FromRefNotFound { from_ref: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -83,6 +87,8 @@ pub enum ResolveTagError {
     #[api_error(404)]
     TagNotFound { tag_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -106,6 +112,8 @@ pub enum RenameTagError {
     #[api_error(409)]
     TagChanged { tag_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -123,6 +131,8 @@ pub enum DeleteTagError {
     #[api_error(409)]
     TagChanged { tag_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }

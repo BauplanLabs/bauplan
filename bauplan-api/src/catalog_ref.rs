@@ -18,6 +18,8 @@ pub enum ListHistoryError {
     #[api_error(404)]
     RefNotFound { ref_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
