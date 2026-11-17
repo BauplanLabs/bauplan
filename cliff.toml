@@ -21,7 +21,7 @@ filter_unconventional = true
 tag_pattern = "v[0-9].*"
 include_paths = ["src/**", "python/**", "bauplan-api/**", "bauplan-api-macros/**", "Cargo.toml", "pyproject.toml"]
 commit_parsers = [
-  { message = '^\w+\(longbow\)', skip = true },
+  { message = '^\w+\((longbow|api)\)', skip = true },
   { message = "^feat", group = "<!-- 0 -->New Features" },
   { message = "^fix", group = "<!-- 1 -->Bugfixes" },
   { message = "^doc", skip = true },
