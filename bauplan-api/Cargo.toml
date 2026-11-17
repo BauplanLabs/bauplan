@@ -15,7 +15,9 @@ client = ["gropius/client-reqwest"]
 bauplan-api-macros = { path = "../bauplan-api-macros" }
 chrono = { version = "0.4", features = ["serde"] }
 displaydoc = "0.2"
+garde = { version = "0.23.0", features = ["derive", "pattern"] }
 gropius = { git = "https://github.com/BauplanLabs/gropius" }
+regex = "1"
 schemars = { version = "1", features = ["chrono04"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

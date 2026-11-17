@@ -11,8 +11,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::arrow_schema::ArrowField;
 use crate::error::{ErrorEnvelope, GenericError};
-use crate::model::{AtCommit, Commit, CommitOptions, WithCommit};
+use crate::model::{AtCommit, Commit, CommitOptions, WithCommit, is_identifier};
 use crate::pagination::{ListQuery, Page};
+
+/// Splits a full table name `namespace.table` by the dot. We do not validate
+/// the identifiers here, a name is validated only when it is created.
+pub fn split_table_name(name: &str) -> Option<(&str, &str)> {
+    let (namespace, table) = name.split_once('.')?;
+    if namespace.is_empty() || table.is_empty() || table.contains('.') {
+        return None;
+    }
+
+    Some((namespace, table))
+}
+
+/// A valid table name is made of two valid identifiers.
+fn table_name(value: &str, _: &()) -> garde::Result {
+    match split_table_name(value) {
+        Some((namespace, table)) if is_identifier(namespace) && is_identifier(table) => Ok(()),
+        _ => Err(garde::Error::new("not a valid table name")),
+    }
+}
 
 /// A table in a list.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -100,53 +119,64 @@ pub enum PartitionTransform {
 }
 
 /// Request body for creating a table.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateTableBody {
     /// The table name, `namespace.table`. The namespace must exist.
+    #[garde(custom(table_name))]
     pub name: String,
     /// The documentation of the table.
     #[serde(default)]
+    #[garde(skip)]
     pub doc: Option<String>,
     /// The columns of the table, in arrow terms.
-    #[schemars(length(min = 1))]
+    #[garde(length(min = 1))]
     pub columns: Vec<ArrowField>,
     /// The partition fields.
     #[serde(default)]
+    #[garde(skip)]
     pub partitions: Vec<PartitionField>,
     /// Commit options for the commit this creates.
     #[serde(default)]
+    #[garde(dive)]
     pub commit: CommitOptions,
 }
 
 /// Request body for cloning a table.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CloneTableBody {
     /// The name of the clone, `namespace.table`. The namespace must exist.
+    #[garde(custom(table_name))]
     pub name: String,
     /// The ref to clone from, a branch, a tag or a commit hash.
+    #[garde(skip)]
     pub from_ref: String,
     /// The table to clone, `namespace.table`, as it is at `from_ref`.
+    #[garde(skip)]
     pub from_table: String,
     /// Commit options for the commit this creates.
     #[serde(default)]
+    #[garde(dive)]
     pub commit: CommitOptions,
 }
 
 /// Request body for renaming a table.
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct RenameTableBody {
     /// The new name, `namespace.table`. The namespace must exist.
+    #[garde(custom(table_name))]
     pub name: String,
     /// Commit options for the commit this creates.
     #[serde(default)]
+    #[garde(dive)]
     pub commit: CommitOptions,
 }
 
 /// Request body for deleting a table.
-#[derive(Debug, Default, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Default, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct DeleteTableBody {
     /// Commit options for the commit this creates.
     #[serde(default)]
+    #[garde(dive)]
     pub commit: CommitOptions,
 }
 

@@ -1,6 +1,9 @@
 //! Catalog endpoints.
 
+use std::sync::LazyLock;
+
 use gropius::{Body, EmptyResponse, Path, Query, Request};
+use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -14,14 +17,25 @@ pub struct Catalog {
     pub name: String,
 }
 
+const CATALOG_NAME_PATTERN: &str = "^[A-Za-z](?:[A-Za-z0-9_-]*[A-Za-z0-9])?$";
+static CATALOG_NAME: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(CATALOG_NAME_PATTERN).expect("static regex"));
+
+/// A valid catalog name.
+fn catalog_name(value: &str, _: &()) -> garde::Result {
+    if CATALOG_NAME.is_match(value) {
+        Ok(())
+    } else {
+        Err(garde::Error::new("not a valid catalog name"))
+    }
+}
+
 /// Request body for creating a catalog.
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateCatalogBody {
     /// The catalog name.
-    #[schemars(
-        length(max = 64),
-        regex(pattern = "^[A-Za-z](?:[A-Za-z0-9_-]*[A-Za-z0-9])?$")
-    )]
+    #[garde(length(max = 64), custom(catalog_name))]
+    #[schemars(regex(pattern = CATALOG_NAME_PATTERN))]
     pub name: String,
 }
 
@@ -87,4 +101,32 @@ pub trait CatalogApi {
         path: Path<String>,
         req: Request,
     ) -> Result<EmptyResponse, DeleteCatalogError>;
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn validates_catalog_names() {
+        let validate = |name: &str| {
+            garde::Validate::validate(&CreateCatalogBody {
+                name: name.to_owned(),
+            })
+            .is_ok()
+        };
+
+        for valid in ["default", "a", "big-catalog_1"] {
+            assert!(validate(valid), "{valid:?}");
+        }
+
+        for rejected in [
+            "", " default", "default ", "9lead", "_lead", "lead_", "lead-", "a.b", "a/b", "a b",
+        ] {
+            assert!(!validate(rejected), "{rejected:?}");
+        }
+
+        assert!(validate(&format!("a{}", "b".repeat(63))));
+        assert!(!validate(&format!("a{}", "b".repeat(64))));
+    }
 }
