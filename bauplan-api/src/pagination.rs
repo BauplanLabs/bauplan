@@ -5,7 +5,7 @@
 //! only carries the resume position.
 
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, de};
 
 /// Query for a list endpoint: the cursor, the page size and the
 /// endpoint-specific filters.
@@ -23,6 +23,24 @@ pub struct ListQuery<T = ()> {
     #[serde(flatten)]
     #[garde(skip)]
     pub filters: T,
+}
+
+/// Reads a boolean filter of a list query.
+///
+/// The filters are flattened into the query, and serde reads a flattened
+/// value as text.
+pub(crate) fn query_bool<'de, D: Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Value {
+        Bool(bool),
+        Text(String),
+    }
+
+    match Value::deserialize(deserializer)? {
+        Value::Bool(value) => Ok(value),
+        Value::Text(text) => text.parse().map_err(de::Error::custom),
+    }
 }
 
 /// One page of results plus the cursor for the next page.

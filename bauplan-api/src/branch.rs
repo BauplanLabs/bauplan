@@ -28,6 +28,18 @@ pub struct Branch {
     pub ttl_seconds: Option<u64>,
 }
 
+/// Filters for the list of branches.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct BranchFilters {
+    /// Only the branches owned by the current user.
+    #[serde(
+        default,
+        skip_serializing_if = "std::ops::Not::not",
+        deserialize_with = "crate::pagination::query_bool"
+    )]
+    pub owned: bool,
+}
+
 /// Request body for creating a branch.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateBranchBody {
@@ -294,7 +306,7 @@ pub trait BranchApi {
     async fn list_branches(
         &self,
         path: Path<String>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<BranchFilters>>,
         req: Request,
     ) -> Result<Page<Branch>, ListBranchesError>;
 
