@@ -15,18 +15,14 @@ pub struct ListQuery<T = ()> {
     #[serde(default)]
     #[garde(skip)]
     pub pagination_token: Option<String>,
-    /// How many items to return, at most 500.
-    #[serde(default = "default_limit")]
+    /// The maximum number of items to return.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[garde(range(min = 1))]
-    pub limit: u32,
+    pub limit: Option<u32>,
     /// The endpoint-specific filters.
     #[serde(flatten)]
     #[garde(skip)]
     pub filters: T,
-}
-
-fn default_limit() -> u32 {
-    500
 }
 
 /// One page of results plus the cursor for the next page.
