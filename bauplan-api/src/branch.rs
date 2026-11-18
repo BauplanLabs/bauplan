@@ -114,6 +114,10 @@ pub enum Conflict {
     Table(String),
     /// A namespace.
     Namespace(String),
+    /// A kind of entity this client does not know yet.
+    #[serde(untagged)]
+    #[schemars(skip)]
+    Unknown(serde_json::Value),
 }
 
 /// API error returned by `list_branches`.

@@ -90,7 +90,7 @@ pub enum TableKind {
         metadata_location: String,
     },
     /// A kind this client does not know yet.
-    #[serde(untagged, skip_serializing)]
+    #[serde(untagged)]
     #[schemars(skip)]
     Unknown(serde_json::Value),
 }
