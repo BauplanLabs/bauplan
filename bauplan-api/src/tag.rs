@@ -23,6 +23,15 @@ pub struct Tag {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Filters for the list of tags.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct TagFilters {
+    /// Keeps the tags whose name contains it, `^` and `$` anchor it to
+    /// the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// Request body for creating a tag.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateTagBody {
@@ -145,7 +154,7 @@ pub trait TagApi {
     async fn list_tags(
         &self,
         path: Path<String>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<TagFilters>>,
         req: Request,
     ) -> Result<Page<Tag>, ListTagsError>;
 

@@ -38,6 +38,10 @@ pub struct BranchFilters {
         deserialize_with = "crate::pagination::query_bool"
     )]
     pub owned: bool,
+    /// Keeps the branches whose name contains it, `^` and `$` anchor it to
+    /// the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// Request body for creating a branch.

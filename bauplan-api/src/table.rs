@@ -40,6 +40,19 @@ pub struct TableIdentifier {
     pub name: String,
 }
 
+/// Filters for the list of tables.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct TableFilters {
+    /// Keeps the tables whose `namespace.table` contains it, `^` and `$`
+    /// anchor it to the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Keeps the tables whose namespace contains it, `^` and `$` anchor it to
+    /// the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
+}
+
 /// A table.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Table {
@@ -365,7 +378,7 @@ pub trait TableApi {
     async fn list_tables(
         &self,
         path: Path<(String, String)>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<TableFilters>>,
         req: Request,
     ) -> Result<AtCommit<Page<TableIdentifier>>, ListTablesError>;
 
