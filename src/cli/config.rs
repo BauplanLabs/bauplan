@@ -115,6 +115,7 @@ fn config_get(args: ConfigGetArgs, global: GlobalArgs) -> anyhow::Result<()> {
 
             let mut tw = TabWriter::new(&mut out).ansi(true);
             print_profile(&mut tw, &profile)?;
+            tw.flush()?;
         }
         (Output::Tty, true) => {
             let mut tw = TabWriter::new(&mut out).ansi(true);
@@ -124,6 +125,7 @@ fn config_get(args: ConfigGetArgs, global: GlobalArgs) -> anyhow::Result<()> {
                 }
                 print_profile(&mut tw, &profile)?;
             }
+            tw.flush()?;
         }
         (Output::Json, false) => {
             let profile = match global.profile {
