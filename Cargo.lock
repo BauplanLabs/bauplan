@@ -598,7 +598,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "bauplan"
-version = "0.3.7"
+version = "0.3.8"
 dependencies = [
  "anstream 0.6.21",
  "anstyle",
@@ -673,7 +673,7 @@ dependencies = [
 
 [[package]]
 name = "bauplan-api"
-version = "0.3.7"
+version = "0.3.8"
 dependencies = [
  "anyhow",
  "bauplan-api-macros",
@@ -690,7 +690,7 @@ dependencies = [
 
 [[package]]
 name = "bauplan-api-macros"
-version = "0.3.7"
+version = "0.3.8"
 dependencies = [
  "anyhow",
  "displaydoc",
@@ -707,7 +707,7 @@ dependencies = [
 
 [[package]]
 name = "bauplan-longbow"
-version = "0.3.7"
+version = "0.3.8"
 dependencies = [
  "anyhow",
  "arrow",

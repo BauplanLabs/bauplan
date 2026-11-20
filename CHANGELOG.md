@@ -1,4 +1,11 @@
 
+## [0.3.8] - 2026-11-20
+
+### Bugfixes
+
+- [pysdk] Keep the namespace of a `Table` passed to table methods (c7f4cb056b210c9d6fe1ff3cbe5d4a84398a3863)
+- [cli] Print the whole profile in `config get` (066b6a70cd6dbc878ea44d0d9866545ede343b05)
+
 ## [0.3.7] - 2026-11-06
 
 ### New Features
