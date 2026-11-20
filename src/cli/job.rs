@@ -16,7 +16,7 @@ use tabwriter::TabWriter;
 
 use tracing::info;
 
-use crate::cli::{Cli, Output, color::*, format_grpc_status};
+use crate::cli::{Cli, Output, color::*, datetime::format_datetime, format_grpc_status};
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 pub enum JobKindArg {
@@ -199,31 +199,6 @@ fn parse_datetime(s: &str, utc: bool) -> anyhow::Result<DateTime<Utc>> {
         dateparser::parse_with_timezone(s, &Local)
     }
     .map_err(|e| anyhow::anyhow!("invalid date format: {}", e))
-}
-
-fn format_datetime(dt: Option<DateTime<Utc>>, utc: bool, include_elapsed: bool) -> String {
-    let Some(dt) = dt else {
-        return format!("{DIM}-{DIM:#}");
-    };
-
-    let rfc3339 = if utc {
-        dt.to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-    } else {
-        dt.with_timezone(&Local)
-            .to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
-    };
-
-    let elapsed = Utc::now() - dt;
-    if include_elapsed && elapsed.num_days() < 1 {
-        // "Round" by splitting the string and taking the most significant
-        // "digit". For example, "23h 24m 10s" becomes "23h".
-        let elapsed_human = humantime::format_duration(elapsed.to_std().unwrap()).to_string();
-        let elapsed_short = elapsed_human.split_ascii_whitespace().next().unwrap();
-
-        format!("{rfc3339} {DIM}[{elapsed_short} ago]{DIM:#}")
-    } else {
-        rfc3339
-    }
 }
 
 async fn handle_ls(cli: &Cli, args: JobLsArgs) -> anyhow::Result<()> {

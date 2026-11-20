@@ -1,9 +1,15 @@
 use std::io::{Write as _, stdout};
 
-use bauplan::{ApiErrorKind, tag::*};
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::tag::{CreateTagBody, CreateTagError, DeleteTagError, RenameTagBody, TagFilters};
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, Output, api_err_kind, color::CliExamples};
+use crate::cli::{
+    Cli, Output,
+    color::{CliExamples, GREEN},
+    datetime::format_datetime,
+    paginate::paginate,
+};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct TagArgs {
@@ -16,6 +22,8 @@ pub(crate) enum TagCommand {
     /// List all available tags (default action)
     #[clap(alias = "list")]
     Ls(TagLsArgs),
+    /// Get information about a tag
+    Get(TagGetArgs),
     /// Create a new tag
     Create(TagCreateArgs),
     /// Delete a tag
@@ -30,19 +38,38 @@ pub(crate) enum TagCommand {
   # List all tags
   bauplan tag ls
 
-  # Filter by name pattern
-  bauplan tag ls --name \"v.*\"
+  # List the tags whose name contains release
+  bauplan tag ls --name release
 
   # Limit results
   bauplan tag ls --limit 10
 "))]
 pub(crate) struct TagLsArgs {
-    /// Filter by name (can be a regex)
-    #[arg(long)]
+    /// Filter by name, `^` and `$` anchor it to the start or the end
+    #[arg(short, long)]
     pub name: Option<String>,
     /// Limit the number of tags to show
     #[arg(long)]
     pub limit: Option<usize>,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
+}
+
+#[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Get tag information
+  bauplan tag get v1.0
+
+  # Show the dates in UTC
+  bauplan tag get v1.0 --utc
+"))]
+pub(crate) struct TagGetArgs {
+    /// Tag name
+    pub tag_name: String,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -97,18 +124,49 @@ pub(crate) struct TagRenameArgs {
 pub(crate) fn handle(cli: &Cli, args: TagArgs) -> anyhow::Result<()> {
     match args.command {
         TagCommand::Ls(args) => list_tags(cli, args),
+        TagCommand::Get(args) => get_tag(cli, args),
         TagCommand::Create(args) => create_tag(cli, args),
         TagCommand::Rm(args) => delete_tag(cli, args),
         TagCommand::Rename(args) => rename_tag(cli, args),
     }
 }
 
-fn list_tags(cli: &Cli, TagLsArgs { name, limit }: TagLsArgs) -> anyhow::Result<()> {
-    let req = GetTags {
-        filter_by_name: name.as_deref(),
-    };
+fn get_tag(cli: &Cli, TagGetArgs { tag_name, utc }: TagGetArgs) -> anyhow::Result<()> {
+    let path = (cli.global.catalog.clone(), tag_name);
+    let tag = cli.tags()?.resolve_tag(path)?;
 
-    let tags = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
+    match cli.global.output {
+        Output::Json => {
+            serde_json::to_writer(stdout(), &tag)?;
+            println!();
+        }
+        Output::Tty => {
+            let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+            writeln!(&mut tw, "{GREEN}Name{GREEN:#}\t{}", tag.name)?;
+            writeln!(&mut tw, "{GREEN}Commit{GREEN:#}\t{}", tag.commit_hash)?;
+            writeln!(
+                &mut tw,
+                "{GREEN}Created at{GREEN:#}\t{}",
+                format_datetime(Some(tag.created_at), utc, true)
+            )?;
+            writeln!(
+                &mut tw,
+                "{GREEN}Updated at{GREEN:#}\t{}",
+                format_datetime(Some(tag.updated_at), utc, true)
+            )?;
+            tw.flush()?;
+        }
+    }
+
+    Ok(())
+}
+
+fn list_tags(cli: &Cli, TagLsArgs { name, limit, utc }: TagLsArgs) -> anyhow::Result<()> {
+    let client = cli.tags()?;
+    let filters = TagFilters { name };
+    let tags = paginate(limit, filters, |query| {
+        client.list_tags(cli.global.catalog.clone(), query)
+    })?;
 
     match cli.global.output {
         Output::Json => {
@@ -117,11 +175,12 @@ fn list_tags(cli: &Cli, TagLsArgs { name, limit }: TagLsArgs) -> anyhow::Result<
             println!();
         }
         Output::Tty => {
-            let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAME\tHASH")?;
+            let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+            writeln!(&mut tw, "NAME\tHASH\tUPDATED")?;
             for tag in tags {
                 let tag = tag?;
-                writeln!(&mut tw, "{}\t{}", tag.name, tag.hash)?;
+                let updated_at = format_datetime(Some(tag.updated_at), utc, true);
+                writeln!(&mut tw, "{}\t{}\t{updated_at}", tag.name, tag.commit_hash)?;
             }
 
             tw.flush()?;
@@ -144,21 +203,21 @@ fn create_tag(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = CreateTag {
-        name: &tag_name,
-        from_ref,
+    let body = CreateTagBody {
+        name: tag_name,
+        from_ref: from_ref.to_owned(),
     };
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_not_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TagExists { .. })) {
-            eprintln!("Tag {tag_name:?} already exists");
+    let tag = match cli.tags()?.create_tag(cli.global.catalog.clone(), body) {
+        Ok(tag) => tag,
+        Err(ClientError::Api(err @ CreateTagError::TagNameConflict { .. })) if if_not_exists => {
+            eprintln!("{err}");
             return Ok(());
-        } else {
-            return Err(e);
         }
-    }
+        Err(err) => return Err(err.into()),
+    };
 
-    eprintln!("Created tag {tag_name:?}");
+    eprintln!("Created tag {:?}", tag.name);
     Ok(())
 }
 
@@ -169,15 +228,14 @@ fn delete_tag(
         if_exists,
     }: TagRmArgs,
 ) -> anyhow::Result<()> {
-    let req = DeleteTag { name: &tag_name };
-
-    if let Err(e) = cli.roundtrip(req) {
-        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TagNotFound { .. })) {
-            eprintln!("Tag {tag_name:?} does not exist");
+    let path = (cli.global.catalog.clone(), tag_name.clone());
+    match cli.tags()?.delete_tag(path) {
+        Ok(_) => (),
+        Err(ClientError::Api(err @ DeleteTagError::TagNotFound { .. })) if if_exists => {
+            eprintln!("{err}");
             return Ok(());
-        } else {
-            return Err(e);
         }
+        Err(err) => return Err(err.into()),
     }
 
     eprintln!("Deleted tag {tag_name:?}");
@@ -191,13 +249,10 @@ fn rename_tag(
         new_tag_name,
     }: TagRenameArgs,
 ) -> anyhow::Result<()> {
-    let req = RenameTag {
-        name: &tag_name,
-        new_name: &new_tag_name,
-    };
-
-    cli.roundtrip(req)?;
-    eprintln!("Renamed tag {tag_name:?} to {new_tag_name:?}");
+    let path = (cli.global.catalog.clone(), tag_name.clone());
+    let body = RenameTagBody { name: new_tag_name };
+    let tag = cli.tags()?.rename_tag(path, body)?;
+    eprintln!("Renamed tag {tag_name:?} to {:?}", tag.name);
 
     Ok(())
 }

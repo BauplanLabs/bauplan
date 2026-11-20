@@ -38,7 +38,7 @@ fn create_and_delete() {
     let branch = test_branch("cli_create_delete");
 
     bauplan()
-        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
+        .args(["branch", "ls"])
         .assert()
         .success()
         .stdout(contains(&branch.name));
@@ -51,7 +51,7 @@ fn create_and_delete() {
         .stderr(contains(format!("Deleted branch \"{}\"", branch.name)));
 
     bauplan()
-        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
+        .args(["branch", "ls"])
         .assert()
         .success()
         .stdout(contains(&branch.name).not());
@@ -89,7 +89,7 @@ fn delete_if_exists() {
         .args(["branch", "delete", "--if-exists", &branch])
         .assert()
         .success()
-        .stderr(contains("does not exist"));
+        .stderr(contains("not found"));
 
     // Without the flag, should fail.
     bauplan()
@@ -144,7 +144,7 @@ fn rename() {
 
     // Old name should be gone, new name should exist.
     bauplan()
-        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
+        .args(["branch", "ls"])
         .assert()
         .success()
         .stdout(contains(&branch.name))
