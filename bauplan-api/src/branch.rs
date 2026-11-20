@@ -218,6 +218,9 @@ pub enum SetBranchTtlError {
     /// Branch 'main' cannot have a TTL.
     #[api_error(403)]
     MainBranch,
+    /// Branch '{branch_name}' not found.
+    #[api_error(404)]
+    BranchNotFound { branch_name: String },
     /// Not implemented.
     #[api_error(501)]
     NotImplemented,
@@ -237,6 +240,9 @@ pub enum RemoveBranchTtlError {
     /// Branch 'main' cannot have a TTL.
     #[api_error(403)]
     MainBranch,
+    /// Branch '{branch_name}' not found.
+    #[api_error(404)]
+    BranchNotFound { branch_name: String },
     /// Not implemented.
     #[api_error(501)]
     NotImplemented,
