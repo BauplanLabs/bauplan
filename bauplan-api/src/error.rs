@@ -32,12 +32,15 @@ pub enum GenericError {
     #[api_error(503)]
     ServiceUnavailable,
     /// The request was invalid.
+    #[displaydoc("{0}")]
     #[api_error(transparent)]
     BadRequest(BadRequest),
 }
 
 #[cfg(test)]
 mod test {
+    use std::error::Error as _;
+
     use super::*;
     use crate::branch::ListBranchesError;
 
@@ -51,11 +54,12 @@ mod test {
         assert_eq!(v["type"], "INTERNAL");
         assert_eq!(v["message"], "Internal error.");
 
-        let v = serde_json::to_value(ListBranchesError::Generic(GenericError::BadRequest(
-            BadRequest {
-                message: "name: nope".into(),
-            },
-        )))?;
+        let err = ListBranchesError::Generic(GenericError::BadRequest(BadRequest {
+            message: "name: nope".into(),
+        }));
+        assert_eq!(err.to_string(), "name: nope");
+        assert!(err.source().is_none());
+        let v = serde_json::to_value(err)?;
         assert_eq!(v["type"], "BAD_REQUEST");
         assert_eq!(v["message"], "name: nope");
 

@@ -40,6 +40,19 @@ pub struct TableIdentifier {
     pub name: String,
 }
 
+/// Filters for the list of tables.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct TableFilters {
+    /// Keeps the tables whose `namespace.table` contains it, `^` and `$`
+    /// anchor it to the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Keeps the tables whose namespace contains it, `^` and `$` anchor it to
+    /// the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
+}
+
 /// A table.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Table {
@@ -90,7 +103,7 @@ pub enum TableKind {
         metadata_location: String,
     },
     /// A kind this client does not know yet.
-    #[serde(untagged, skip_serializing)]
+    #[serde(untagged)]
     #[schemars(skip)]
     Unknown(serde_json::Value),
 }
@@ -190,6 +203,8 @@ pub enum ListTablesError {
     #[api_error(404)]
     RefNotFound { ref_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -222,6 +237,8 @@ pub enum CreateTableError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -266,6 +283,8 @@ pub enum CloneTableError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -283,6 +302,8 @@ pub enum GetTableError {
     #[api_error(404)]
     TableNotFound { table_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -315,6 +336,8 @@ pub enum RenameTableError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -341,6 +364,8 @@ pub enum DeleteTableError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -353,7 +378,7 @@ pub trait TableApi {
     async fn list_tables(
         &self,
         path: Path<(String, String)>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<TableFilters>>,
         req: Request,
     ) -> Result<AtCommit<Page<TableIdentifier>>, ListTablesError>;
 

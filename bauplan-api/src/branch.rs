@@ -28,6 +28,22 @@ pub struct Branch {
     pub ttl_seconds: Option<u64>,
 }
 
+/// Filters for the list of branches.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct BranchFilters {
+    /// Only the branches owned by the current user.
+    #[serde(
+        default,
+        skip_serializing_if = "std::ops::Not::not",
+        deserialize_with = "crate::pagination::query_bool"
+    )]
+    pub owned: bool,
+    /// Keeps the branches whose name contains it, `^` and `$` anchor it to
+    /// the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// Request body for creating a branch.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateBranchBody {
@@ -102,6 +118,10 @@ pub enum Conflict {
     Table(String),
     /// A namespace.
     Namespace(String),
+    /// A kind of entity this client does not know yet.
+    #[serde(untagged)]
+    #[schemars(skip)]
+    Unknown(serde_json::Value),
 }
 
 /// API error returned by `list_branches`.
@@ -111,6 +131,8 @@ pub enum ListBranchesError {
     #[api_error(404)]
     CatalogNotFound { catalog_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -134,6 +156,8 @@ pub enum CreateBranchError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -148,6 +172,8 @@ pub enum ResolveBranchError {
     #[api_error(404)]
     BranchNotFound { branch_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -177,6 +203,8 @@ pub enum RenameBranchError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -190,10 +218,15 @@ pub enum SetBranchTtlError {
     /// Branch 'main' cannot have a TTL.
     #[api_error(403)]
     MainBranch,
+    /// Branch '{branch_name}' not found.
+    #[api_error(404)]
+    BranchNotFound { branch_name: String },
     /// Not implemented.
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -207,10 +240,15 @@ pub enum RemoveBranchTtlError {
     /// Branch 'main' cannot have a TTL.
     #[api_error(403)]
     MainBranch,
+    /// Branch '{branch_name}' not found.
+    #[api_error(404)]
+    BranchNotFound { branch_name: String },
     /// Not implemented.
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -234,6 +272,8 @@ pub enum DeleteBranchError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -266,6 +306,8 @@ pub enum MergeBranchError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -278,7 +320,7 @@ pub trait BranchApi {
     async fn list_branches(
         &self,
         path: Path<String>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<BranchFilters>>,
         req: Request,
     ) -> Result<Page<Branch>, ListBranchesError>;
 

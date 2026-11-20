@@ -9,9 +9,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 // We refuse the commit syntax (`name@hash`, `~N`, `^N`, `*T`) and a lone
-// `-`, so a name never points to a commit.
-static REF_NAME: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"^(?:[^@~^*-]|-[^@~^*])[^@~^*]*$").expect("static regex"));
+// `-`, so a name never points to a commit, the whitespace, and `$`, which
+// can interfere with the name filters.
+static REF_NAME: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:[^@~^*$\s-]|-[^@~^*$\s])[^@~^*$\s]*$").expect("static regex")
+});
 
 // URL builders normalize these two names as path navigation rather than data.
 pub fn is_ref_name(value: &str) -> bool {
@@ -182,6 +184,11 @@ mod test {
             "main~3",
             "main^2",
             "main*1685185847230",
+            "main$",
+            "ma$in",
+            "my branch",
+            " main",
+            "main\t",
             ".",
             "..",
         ] {

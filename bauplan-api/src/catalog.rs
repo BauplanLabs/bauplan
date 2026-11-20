@@ -40,9 +40,10 @@ pub struct CreateCatalogBody {
 }
 
 /// API error returned by `list_catalogs`.
-#[derive(Debug, displaydoc::Display, thiserror::Error, gropius::ApiError, ErrorEnvelope)]
+#[derive(Debug, thiserror::Error, gropius::ApiError, ErrorEnvelope)]
 pub enum ListCatalogsError {
     /// A generic error.
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -57,6 +58,8 @@ pub enum CreateCatalogError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -71,6 +74,8 @@ pub enum DeleteCatalogError {
     #[api_error(501)]
     NotImplemented,
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }

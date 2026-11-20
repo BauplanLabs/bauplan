@@ -20,6 +20,22 @@ pub struct Namespace {
     pub name: String,
 }
 
+/// A namespace in a list.
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct NamespaceIdentifier {
+    /// The namespace name.
+    pub name: String,
+}
+
+/// Filters for the list of namespaces.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct NamespaceFilters {
+    /// Keeps the namespaces whose name contains it, `^` and `$` anchor it to
+    /// the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// A valid namespace name.
 fn namespace_name(value: &str, _: &()) -> garde::Result {
     if is_identifier(value) {
@@ -60,6 +76,8 @@ pub enum ListNamespacesError {
     #[api_error(404)]
     RefNotFound { ref_name: String },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -86,6 +104,8 @@ pub enum CreateNamespaceError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -115,6 +135,8 @@ pub enum DeleteNamespaceError {
         commit_hash: String,
     },
     /// A generic error.
+    #[displaydoc("{0}")]
+    #[error(transparent)]
     #[api_error(transparent)]
     Generic(#[from] GenericError),
 }
@@ -127,9 +149,9 @@ pub trait NamespaceApi {
     async fn list_namespaces(
         &self,
         path: Path<(String, String)>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<NamespaceFilters>>,
         req: Request,
-    ) -> Result<AtCommit<Page<Namespace>>, ListNamespacesError>;
+    ) -> Result<AtCommit<Page<NamespaceIdentifier>>, ListNamespacesError>;
 
     /// Create a namespace.
     ///
