@@ -5,22 +5,31 @@ use std::{
 };
 
 use crate::cli::{
-    Cli, KeyValue, Output, Priority, api_err_kind,
+    Cli, KeyValue, Output, Priority,
     color::*,
+    datetime::format_datetime,
     format_grpc_status,
+    paginate::paginate,
     run::{job_request_common, monitor_job_progress},
     spinner::{self, ProgressExt as _},
     with_rt,
 };
 use anyhow::{anyhow, bail};
 use bauplan::{
-    ApiErrorKind,
     commit::CommitOptions,
     grpc::{self, generated as commanderpb},
     table::*,
 };
+use bauplan_api::arrow_schema::{ArrowField, ArrowTimeUnit, ArrowType};
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::{self, AtCommit};
+use bauplan_api::pagination::Page;
+use bauplan_api::table::{
+    DeleteTableBody, DeleteTableError, GetTableError, ListTablesError, PartitionField,
+    PartitionTransform, Table, TableFilters, TableKind,
+};
 use commanderpb::runner_event::Event as RunnerEvent;
-use indicatif::ProgressBar;
+use indicatif::{HumanBytes, ProgressBar};
 use tabwriter::TabWriter;
 use tracing::info;
 
@@ -59,62 +68,72 @@ pub(crate) enum TableCommand {
   # List tables on active branch
   bauplan table ls
 
-  # List tables in specific namespace
-  bauplan table ls --namespace raw_data
-
   # List tables from specific branch
   bauplan table ls --ref main
+
+  # List the tables in raw whose name ends with events
+  bauplan table ls --namespace '^raw$' --name 'events$'
 
   # Limit results
   bauplan table ls --limit 20
 "))]
 pub(crate) struct TableLsArgs {
-    /// Filter tables by name (exact match or regex)
-    #[arg(long)]
-    pub name: Option<String>,
-    /// Filter by namespace (exact match or regex)
+    /// Filter by the full name `namespace.table`, `^` and `$` anchor it to
+    /// the start or the end
     #[arg(short, long)]
+    pub name: Option<String>,
+    /// Filter by namespace, `^` and `$` anchor it to the start or the end
+    #[arg(long)]
     pub namespace: Option<String>,
     /// Ref or branch name to list tables from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of tables to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Get table info from active branch
-  bauplan table get customers
+  bauplan table get raw_data.customers
 
   # Get table info from specific branch
-  bauplan table get customers --ref main
+  bauplan table get raw_data.customers --ref main
 
-  # Get table info with namespace prefix
-  bauplan table get raw_data.customers
+  # Show the dates in UTC
+  bauplan table get raw_data.customers --utc
 "))]
 pub(crate) struct TableGetArgs {
-    /// Table name
+    /// Table name, `namespace.table`
     pub table_name: String,
     /// Ref or branch name to get the table from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
 }
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Delete table from active branch
-  bauplan table rm old_table
+  bauplan table rm raw_data.old_table
 
   # Delete from specific branch
-  bauplan table rm old_table --branch main
+  bauplan table rm raw_data.old_table --branch main
 
   # Conditionally delete
-  bauplan table rm maybe_table --if-exists
+  bauplan table rm raw_data.maybe_table --if-exists
+
+  # Delete only if nobody moved the branch since you read its head
+  bauplan table rm raw_data.old_table --if-head <commit_hash>
 "))]
 pub(crate) struct TableRmArgs {
-    /// Table name
+    /// Table name, `namespace.table`
     pub table_name: String,
     /// Branch to delete the table from [default: active branch]
     #[arg(short, long)]
@@ -125,6 +144,9 @@ pub(crate) struct TableRmArgs {
     /// Optional commit body to append to the commit message
     #[arg(long)]
     pub commit_body: Option<String>,
+    /// Delete only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub if_head: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -368,6 +390,7 @@ fn handle_list_tables(
         namespace,
         r#ref,
         limit,
+        pagination_token,
     }: TableLsArgs,
 ) -> anyhow::Result<()> {
     let at_ref = r#ref
@@ -375,30 +398,44 @@ fn handle_list_tables(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = GetTables {
-        at_ref,
-        filter_by_name: name.as_deref(),
-        filter_by_namespace: namespace.as_deref(),
-    };
-
-    let tables = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
+    let client = cli.tables()?;
+    let mut commit_hash = None;
+    let filters = TableFilters { name, namespace };
+    let mut tables = paginate(limit, pagination_token, filters, |query| {
+        // We read the next pages at the commit of the first one, so the list
+        // stays the same if the ref moves meanwhile.
+        let at = commit_hash.as_deref().unwrap_or(at_ref);
+        let path = (cli.profile.catalog.clone(), at.to_owned());
+        match client.list_tables(path, query) {
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
+            Err(ClientError::Api(err @ ListTablesError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(err.into()),
+        }
+    })?;
 
     match cli.global.output {
         Output::Json => {
-            let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_tables)?;
+            let items = tables.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = AtCommit {
+                inner: Page {
+                    items,
+                    pagination_token: tables.pagination_token(),
+                },
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAMESPACE\tNAME\tKIND")?;
+            writeln!(&mut tw, "NAME")?;
             for table in tables {
-                let table = table?;
-                writeln!(
-                    &mut tw,
-                    "{}\t{}\t{}",
-                    table.namespace, table.name, table.kind
-                )?;
+                writeln!(&mut tw, "{}", table?.name)?;
             }
 
             tw.flush()?;
@@ -446,56 +483,210 @@ fn doc_summary(doc: Option<&str>) -> (bool, String) {
 
 fn handle_get_table(
     cli: &Cli,
-    TableGetArgs { table_name, r#ref }: TableGetArgs,
+    TableGetArgs {
+        table_name,
+        r#ref,
+        utc,
+    }: TableGetArgs,
 ) -> anyhow::Result<()> {
-    let req = GetTable {
-        name: &table_name,
-        at_ref: r#ref
-            .as_deref()
-            .or(cli.profile.active_branch.as_deref())
-            .unwrap_or("main"),
-        namespace: None,
+    let at_ref = r#ref
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let path = (cli.profile.catalog.clone(), at_ref.to_owned(), table_name);
+    let table = match cli.tables()?.get_table(path) {
+        Ok(table) => table,
+        Err(ClientError::Api(err @ GetTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(at_ref, err));
+        }
+        Err(err) => return Err(err.into()),
     };
 
-    let resp = cli.roundtrip(req)?;
     match cli.global.output {
         Output::Json => {
-            serde_json::to_writer(stdout(), &resp)?;
+            serde_json::to_writer(stdout(), &table)?;
             println!();
         }
-        Output::Tty => {
-            if let Some(comment) = resp.comment() {
-                println!("Table Documentation:\n{comment}\n");
-            }
-
-            let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "COLUMN\tTYPE\tNULLABLE\tDOC")?;
-
-            let mut is_truncated = false;
-            for TableField {
-                name,
-                r#type,
-                required,
-                doc,
-                ..
-            } in resp.fields
-            {
-                let (is_doc_truncated, field_doc) = doc_summary(doc.as_deref());
-                is_truncated = is_truncated || is_doc_truncated;
-                writeln!(&mut tw, "{name}\t{type}\t{}\t{field_doc}", !required)?;
-            }
-
-            tw.flush()?;
-
-            if is_truncated {
-                eprintln!(
-                    "\nNote: some documentation was truncated. Use `-O json` to see it in full."
-                );
-            }
-        }
+        Output::Tty => print_table(&table.inner, &table.commit.hash, utc)?,
     }
 
     Ok(())
+}
+
+fn print_table(table: &Table, commit_hash: &str, utc: bool) -> anyhow::Result<()> {
+    let kind = match &table.kind {
+        TableKind::IcebergManaged { .. } => "iceberg",
+        TableKind::IcebergExternal { .. } => "iceberg (external)",
+        TableKind::IcebergExternalParquet { .. } => "parquet (external)",
+        TableKind::Unknown(_) => "unknown",
+    };
+
+    let dash = format!("{DIM}-{DIM:#}");
+
+    let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+    writeln!(&mut tw, "{GREEN}Name{GREEN:#}\t{}", table.name)?;
+    writeln!(&mut tw, "{GREEN}Kind{GREEN:#}\t{kind}")?;
+    writeln!(&mut tw, "{GREEN}Commit{GREEN:#}\t{commit_hash}")?;
+    match table.records {
+        Some(records) => writeln!(&mut tw, "{GREEN}Records{GREEN:#}\t{records}")?,
+        None => writeln!(&mut tw, "{GREEN}Records{GREEN:#}\t{dash}")?,
+    }
+    match table.size {
+        Some(size) => writeln!(&mut tw, "{GREEN}Size{GREEN:#}\t{}", HumanBytes(size))?,
+        None => writeln!(&mut tw, "{GREEN}Size{GREEN:#}\t{dash}")?,
+    }
+    writeln!(
+        &mut tw,
+        "{GREEN}Created at{GREEN:#}\t{}",
+        format_datetime(table.created_at, utc, true)
+    )?;
+    writeln!(
+        &mut tw,
+        "{GREEN}Updated at{GREEN:#}\t{}",
+        format_datetime(Some(table.updated_at), utc, true)
+    )?;
+    tw.flush()?;
+
+    if let Some(doc) = clean_doc(table.doc.as_deref()) {
+        println!();
+        for line in doc.lines() {
+            println!("    {line}");
+        }
+    }
+
+    println!();
+    let mut tw = TabWriter::new(stdout());
+    writeln!(&mut tw, "COLUMN\tTYPE\tNULLABLE\tDOC")?;
+    let mut is_truncated = false;
+    for column in &table.columns {
+        let (is_doc_truncated, doc) = doc_summary(column.metadata.get("doc").map(String::as_str));
+        is_truncated |= is_doc_truncated;
+        writeln!(
+            &mut tw,
+            "{}\t{}\t{}\t{doc}",
+            column.name,
+            DisplayType(&column.data_type),
+            column.nullable
+        )?;
+    }
+
+    tw.flush()?;
+
+    if !table.partitions.is_empty() {
+        println!();
+        let mut tw = TabWriter::new(stdout());
+        writeln!(&mut tw, "PARTITION\tTRANSFORM")?;
+        for PartitionField { name, transform } in &table.partitions {
+            writeln!(&mut tw, "{name}\t{}", DisplayTransform(transform))?;
+        }
+
+        tw.flush()?;
+    }
+
+    if is_truncated {
+        eprintln!("\nNote: some documentation was truncated. Use `-O json` to see it in full.");
+    }
+
+    Ok(())
+}
+
+/// A partition transform by its wire name, like `day` or `bucket(16)`.
+struct DisplayTransform<'a>(&'a PartitionTransform);
+
+impl std::fmt::Display for DisplayTransform<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            PartitionTransform::Identity => write!(f, "identity"),
+            PartitionTransform::Year => write!(f, "year"),
+            PartitionTransform::Month => write!(f, "month"),
+            PartitionTransform::Day => write!(f, "day"),
+            PartitionTransform::Hour => write!(f, "hour"),
+            PartitionTransform::Bucket(n) => write!(f, "bucket({n})"),
+            PartitionTransform::Truncate(n) => write!(f, "truncate({n})"),
+        }
+    }
+}
+
+/// An arrow type by its wire name, with the parameters and the nested
+/// fields spelled out, like `timestamp[us, tz=UTC]` or `list<item: int64>`.
+struct DisplayType<'a>(&'a ArrowType);
+
+impl std::fmt::Display for DisplayType<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            ArrowType::Timestamp { unit, tz } => {
+                write!(f, "timestamp[{}", DisplayTimeUnit(unit))?;
+                if let Some(tz) = tz {
+                    write!(f, ", tz={tz}")?;
+                }
+
+                write!(f, "]")
+            }
+            ArrowType::Time32(unit) => write!(f, "time32[{}]", DisplayTimeUnit(unit)),
+            ArrowType::Time64(unit) => write!(f, "time64[{}]", DisplayTimeUnit(unit)),
+            ArrowType::Duration(unit) => write!(f, "duration[{}]", DisplayTimeUnit(unit)),
+            ArrowType::FixedSizeBinary(size) => write!(f, "fixed_size_binary[{size}]"),
+            ArrowType::Decimal32 { precision, scale } => {
+                write!(f, "decimal32({precision}, {scale})")
+            }
+            ArrowType::Decimal64 { precision, scale } => {
+                write!(f, "decimal64({precision}, {scale})")
+            }
+            ArrowType::Decimal128 { precision, scale } => {
+                write!(f, "decimal128({precision}, {scale})")
+            }
+            ArrowType::Decimal256 { precision, scale } => {
+                write!(f, "decimal256({precision}, {scale})")
+            }
+            ArrowType::List(field) => write!(f, "list<{}>", DisplayField(field)),
+            ArrowType::LargeList(field) => write!(f, "large_list<{}>", DisplayField(field)),
+            ArrowType::ListView(field) => write!(f, "list_view<{}>", DisplayField(field)),
+            ArrowType::LargeListView(field) => {
+                write!(f, "large_list_view<{}>", DisplayField(field))
+            }
+            ArrowType::FixedSizeList { field, size } => {
+                write!(f, "fixed_size_list<{}>[{size}]", DisplayField(field))
+            }
+            ArrowType::Map { entries, .. } => write!(f, "map<{}>", DisplayType(&entries.data_type)),
+            ArrowType::Struct(fields) => {
+                write!(f, "struct<")?;
+                for (i, field) in fields.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", DisplayField(field))?;
+                }
+                write!(f, ">")
+            }
+            other => match serde_json::to_value(other) {
+                Ok(serde_json::Value::String(name)) => write!(f, "{name}"),
+                Ok(value) => write!(f, "{value}"),
+                Err(_) => Err(std::fmt::Error),
+            },
+        }
+    }
+}
+
+struct DisplayField<'a>(&'a ArrowField);
+
+impl std::fmt::Display for DisplayField<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.0.name, DisplayType(&self.0.data_type))
+    }
+}
+
+struct DisplayTimeUnit<'a>(&'a ArrowTimeUnit);
+
+impl std::fmt::Display for DisplayTimeUnit<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            ArrowTimeUnit::Second => write!(f, "s"),
+            ArrowTimeUnit::Millisecond => write!(f, "ms"),
+            ArrowTimeUnit::Microsecond => write!(f, "us"),
+            ArrowTimeUnit::Nanosecond => write!(f, "ns"),
+        }
+    }
 }
 
 fn handle_delete_table(
@@ -505,6 +696,7 @@ fn handle_delete_table(
         branch,
         if_exists,
         commit_body,
+        if_head,
     }: TableRmArgs,
 ) -> anyhow::Result<()> {
     let branch = branch
@@ -512,26 +704,37 @@ fn handle_delete_table(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = DeleteTable {
-        name: &table_name,
-        branch,
-        namespace: None,
-        commit: CommitOptions {
-            body: commit_body.as_deref(),
-            properties: Default::default(),
+    let path = (
+        cli.profile.catalog.clone(),
+        branch.to_owned(),
+        table_name.clone(),
+    );
+    let body = DeleteTableBody {
+        commit: model::CommitOptions {
+            body: commit_body,
+            expected_commit_hash: if_head,
         },
     };
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TableNotFound { .. })) {
-            eprintln!("Table {table_name:?} does not exist");
-            return Ok(());
-        } else {
-            return Err(e);
+    let commit = match cli.tables()?.delete_table(path, Some(body)) {
+        Ok(commit) => commit,
+        Err(ClientError::Api(err @ DeleteTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
         }
+        Err(ClientError::Api(err @ DeleteTableError::TableNotFound { .. })) if if_exists => {
+            eprintln!("{err}");
+            return Ok(());
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    eprintln!("Deleted table {table_name:?} (commit {})", commit.hash);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &commit)?;
+        println!();
     }
 
-    eprintln!("Deleted table {table_name:?}");
     Ok(())
 }
 

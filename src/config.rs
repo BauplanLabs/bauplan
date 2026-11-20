@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 const DEFAULT_API_ENDPOINT: &str = "https://api.use1.aprod.bauplanlabs.com";
+const DEFAULT_NEW_API_ENDPOINT: &str = "https://api.bauplanlabs.com";
+const DEFAULT_CATALOG: &str = "default";
 
 /// An error encountered while loading or resolving a configuration profile.
 #[derive(thiserror::Error, Debug)]
@@ -36,6 +38,9 @@ pub struct Profile {
     /// The API endpoint to use. Intended for internal use.
     #[serde(skip)]
     pub api_endpoint: http::Uri,
+    /// The endpoint of the new API. Intended for internal use.
+    #[serde(skip)]
+    pub new_api_endpoint: http::Uri,
     /// The API key to use for authentication.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
@@ -43,6 +48,8 @@ pub struct Profile {
     /// Intended for internal use.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub active_branch: Option<String>,
+    /// The catalog to work on.
+    pub catalog: String,
     /// Default args to include in every job request. CLI/SDK args override
     /// these on a per-key basis.
     #[serde(skip_serializing_if = "HashMap::is_empty")]
@@ -61,8 +68,10 @@ impl std::fmt::Debug for Profile {
         f.debug_struct("Profile")
             .field("name", &self.name)
             .field("api_endpoint", &self.api_endpoint)
+            .field("new_api_endpoint", &self.new_api_endpoint)
             .field("api_key", &"********")
             .field("active_branch", &self.active_branch)
+            .field("catalog", &self.catalog)
             .field("args", &self.args)
             .field("user_agent", &self.user_agent)
             .finish()
@@ -74,7 +83,9 @@ impl std::fmt::Debug for Profile {
 struct ConfigProfile {
     pub(crate) active_branch: Option<String>,
     pub(crate) api_endpoint: Option<String>,
+    pub(crate) new_api_endpoint: Option<String>,
     pub(crate) api_key: Option<String>,
+    pub(crate) catalog: Option<String>,
     #[serde(default)]
     pub(crate) args: HashMap<String, String>,
 }
@@ -108,10 +119,12 @@ impl Profile {
     /// The following environment variables can override the corresponding
     /// values in the config file:
     ///
-    /// | Environment Variable    | Config Value   |
-    /// |-------------------------|----------------|
-    /// | `BAUPLAN_API_KEY`       | `api_key`      |
-    /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
+    /// | Environment Variable       | Config Value       |
+    /// |----------------------------|--------------------|
+    /// | `BAUPLAN_API_KEY`          | `api_key`          |
+    /// | `BAUPLAN_API_ENDPOINT`     | `api_endpoint`     |
+    /// | `BAUPLAN_NEW_API_ENDPOINT` | `new_api_endpoint` |
+    /// | `BAUPLAN_CATALOG`          | `catalog`          |
     pub fn from_default_env() -> Result<Self, Error> {
         if let Ok(s) = env::var("BAUPLAN_PROFILE") {
             Self::from_env(&s)
@@ -127,13 +140,17 @@ impl Profile {
     /// The following environment variables can override the corresponding
     /// values in the config file:
     ///
-    /// | Environment Variable    | Config Value   |
-    /// |-------------------------|----------------|
-    /// | `BAUPLAN_API_KEY`       | `api_key`      |
-    /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
+    /// | Environment Variable       | Config Value       |
+    /// |----------------------------|--------------------|
+    /// | `BAUPLAN_API_KEY`          | `api_key`          |
+    /// | `BAUPLAN_API_ENDPOINT`     | `api_endpoint`     |
+    /// | `BAUPLAN_NEW_API_ENDPOINT` | `new_api_endpoint` |
+    /// | `BAUPLAN_CATALOG`          | `catalog`          |
     pub fn from_env(name: &str) -> Result<Self, Error> {
         let api_key = env::var("BAUPLAN_API_KEY").ok();
         let api_endpoint = env::var("BAUPLAN_API_ENDPOINT").ok();
+        let new_api_endpoint = env::var("BAUPLAN_NEW_API_ENDPOINT").ok();
+        let catalog = env::var("BAUPLAN_CATALOG").ok();
 
         let config_path = find_config()?;
         let profile = match read_profile(&config_path, name) {
@@ -150,14 +167,24 @@ impl Profile {
             .or(profile.api_endpoint.as_deref())
             .unwrap_or(DEFAULT_API_ENDPOINT)
             .parse()?;
+        let new_api_endpoint = new_api_endpoint
+            .as_deref()
+            .or(profile.new_api_endpoint.as_deref())
+            .unwrap_or(DEFAULT_NEW_API_ENDPOINT)
+            .parse()?;
 
         let api_key = api_key.or(profile.api_key);
+        let catalog = catalog
+            .or(profile.catalog)
+            .unwrap_or_else(|| DEFAULT_CATALOG.to_owned());
 
         Ok(Self {
             name: name.to_owned(),
             active_branch: profile.active_branch,
+            catalog,
             args: profile.args,
             api_endpoint,
+            new_api_endpoint,
             api_key,
             user_agent: make_ua(None),
             config_path,
@@ -167,6 +194,12 @@ impl Profile {
     /// Sets the API key on the profile.
     pub fn with_api_key(mut self, api_key: String) -> Self {
         self.api_key = Some(api_key);
+        self
+    }
+
+    /// Sets the catalog on the profile.
+    pub fn with_catalog(mut self, catalog: String) -> Self {
+        self.catalog = catalog;
         self
     }
 
@@ -237,19 +270,26 @@ impl Profile {
         let ConfigProfile {
             active_branch,
             api_endpoint,
+            new_api_endpoint,
             api_key,
+            catalog,
             args,
         } = raw;
 
         let api_endpoint = api_endpoint
             .unwrap_or(DEFAULT_API_ENDPOINT.to_string())
             .parse()?;
+        let new_api_endpoint = new_api_endpoint
+            .unwrap_or(DEFAULT_NEW_API_ENDPOINT.to_string())
+            .parse()?;
 
         Ok(Self {
             name,
             active_branch,
+            catalog: catalog.unwrap_or_else(|| DEFAULT_CATALOG.to_owned()),
             args,
             api_endpoint,
+            new_api_endpoint,
             api_key,
             user_agent: make_ua(None),
             config_path: path.to_owned(),
@@ -294,4 +334,23 @@ fn read_profile(p: &Path, name: &str) -> Result<ConfigProfile, Error> {
 
 fn make_ua(product: Option<&str>) -> String {
     format!("{}/{}", product.unwrap_or("default"), env!("BPLN_VERSION"))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn reads_the_catalog() -> anyhow::Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("config.yml");
+        std::fs::write(
+            &path,
+            "profiles:\n  default: {}\n  other:\n    catalog: other\n",
+        )?;
+
+        assert_eq!(Profile::read(&path, None)?.catalog, "default");
+        assert_eq!(Profile::read(&path, Some("other"))?.catalog, "other");
+        Ok(())
+    }
 }

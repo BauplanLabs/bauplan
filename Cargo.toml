@@ -62,6 +62,7 @@ _check-parse = []
 anstream = "0.6"
 anstyle = "1"
 anyhow.workspace = true
+bauplan-api = { path = "bauplan-api", features = ["client"] }
 bauplan-longbow = { path = "bauplan-longbow", default-features = false, features = ["client"] }
 arrow = { version = "59", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
 arrow-csv = { version = "59", optional = true }
@@ -88,8 +89,10 @@ pyo3-arrow = { version = "0.20", optional = true }
 pyo3-log = { version = "0.13.5", optional = true }
 rand = "0.8"
 regex = "1"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls-no-provider"] }
 resolve-path = "0.1"
 rsa = { version = "0.9", features = ["pem", "sha2"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_path_to_error = "0.1"
@@ -130,7 +133,6 @@ bstr = "1"
 escargot = "0.5"
 http-body-util = "0.1"
 predicates = "3"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 shlex = "1"
 similar = { version = "2", features = ["bytes"] }
 tempfile = "3"

@@ -1,350 +1,255 @@
 //! Namespace operations.
 
-use pyo3::{exceptions::PyTypeError, prelude::*};
-use std::collections::BTreeMap;
-
-use crate::{
-    ApiErrorKind, ApiRequest, CatalogRef,
-    commit::CommitOptions,
-    namespace::{CreateNamespace, DeleteNamespace, GetNamespace, GetNamespaces, Namespace},
-    python::paginate::PyPaginator,
-    python::refs::{BranchArg, RefArg},
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::CommitOptions;
+use bauplan_api::namespace::{
+    self, CreateNamespaceBody, CreateNamespaceError, DeleteNamespaceBody, DeleteNamespaceError,
+    NamespaceFilters,
 };
+use bauplan_api::pagination::ListQuery;
+use pyo3::prelude::*;
 
-use super::Client;
+use super::exceptions::api_error;
+use super::paginate::{PyPaginator, from_api_page};
+use super::{Client, commit::PyCommit};
 
-/// Accepts a namespace name or Namespace object (from which the name is
-/// extracted).
-pub(crate) struct NamespaceArg(pub String);
+/// A namespace in a list. A namespace is a container for organizing tables.
+#[pyclass(
+    name = "NamespaceIdentifier",
+    module = "bauplan.schema",
+    frozen,
+    get_all
+)]
+pub(crate) struct PyNamespaceIdentifier {
+    /// The name of the namespace.
+    name: String,
+}
 
-impl<'a, 'py> FromPyObject<'a, 'py> for NamespaceArg {
-    type Error = PyErr;
+#[pymethods]
+impl PyNamespaceIdentifier {
+    fn __repr__(&self) -> String {
+        format!("NamespaceIdentifier(name={:?})", self.name)
+    }
+}
 
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(NamespaceArg(s))
-        } else if let Ok(ns) = ob.extract::<Namespace>() {
-            Ok(NamespaceArg(ns.name))
-        } else {
-            Err(PyTypeError::new_err("expected str or Namespace"))
+impl From<namespace::NamespaceIdentifier> for PyNamespaceIdentifier {
+    fn from(namespace: namespace::NamespaceIdentifier) -> Self {
+        Self {
+            name: namespace.name,
         }
     }
 }
 
 #[pymethods]
 impl Client {
-    /// Get the available data namespaces in the Bauplan catalog branch.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Get the namespaces at a ref.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// for namespace in client.get_namespaces('my_ref_or_branch_name'):
+    /// for namespace in client.get_namespaces('main', name='^raw_'):
     ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     ref: The ref, branch name or tag name to retrieve the namespaces from.
-    ///     filter_by_name: Optional, filter the namespaces by name.
+    ///     ref: The ref, a branch, a tag or a commit hash.
+    ///     name: Filter the namespaces by name, `^` and `$` anchor it to the start or the end.
     ///     limit: Optional, max number of namespaces to get.
+    /// Returns:
+    ///     An iterator over `bauplan.schema.NamespaceIdentifier` objects.
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.BadRequestError`: if the name filter is not valid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    ///
-    /// Yields:
-    ///     `bauplan.schema.Namespace` objects.
     #[pyo3(signature = (
-        r#ref: "str | Ref",
+        r#ref: "str",
         *,
-        filter_by_name: "str | None" = None,
+        name: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "typing.Iterator[Namespace]")]
+    ) -> "typing.Iterator[NamespaceIdentifier]")]
     fn get_namespaces(
         &self,
         py: Python<'_>,
-        r#ref: RefArg,
-        filter_by_name: Option<String>,
+        r#ref: String,
+        name: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
-        let r#ref = r#ref.0;
-        let profile = self.profile.clone();
-        let agent = self.agent.clone();
-        PyPaginator::new(py, limit, move |py, token, limit| {
-            let req = GetNamespaces {
-                at_ref: &r#ref,
-                filter_by_name: filter_by_name.as_deref(),
-            }
-            .paginate(token, limit);
-
-            Ok(super::roundtrip(py, req, &profile, &agent)?)
+        let client = self.namespaces()?;
+        let catalog = self.profile.catalog.clone();
+        let filters = NamespaceFilters { name };
+        let mut commit_hash = None;
+        PyPaginator::new(py, limit, move |py, pagination_token, limit| {
+            let query = ListQuery {
+                pagination_token: pagination_token.map(str::to_owned),
+                limit: limit.and_then(|limit| u32::try_from(limit).ok()),
+                filters: filters.clone(),
+            };
+            // We read the next pages at the commit of the first one, so the list
+            // stays the same if the ref moves meanwhile.
+            let at = commit_hash.clone().unwrap_or_else(|| r#ref.clone());
+            let page = py.detach(|| client.list_namespaces((catalog.clone(), at), query));
+            let page = page.map_err(api_error)?;
+            commit_hash.get_or_insert(page.commit_hash);
+            Ok(from_api_page::<_, PyNamespaceIdentifier>(page.inner))
         })
     }
 
-    /// Get a namespace.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Check if a namespace exists at a ref.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// namespace =  client.get_namespace(
-    ///     namespace='my_namespace_name',
-    ///     ref='my_branch_name',
-    /// )
-    /// ```
-    ///
-    /// Parameters:
-    ///     namespace: The name of the namespace to get.
-    ///     ref: The ref, branch name or tag name to check the namespace on.
-    /// Returns:
-    ///     A `bauplan.schema.Namespace` object.
-    ///
-    /// Raises:
-    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        namespace: "str | Namespace",
-        r#ref: "str | Ref",
-    ) -> "Namespace")]
-    fn get_namespace(
-        &self,
-        py: Python<'_>,
-        namespace: NamespaceArg,
-        r#ref: RefArg,
-    ) -> PyResult<Namespace> {
-        let req = GetNamespace {
-            name: &namespace.0,
-            at_ref: &r#ref.0,
-        };
-
-        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
-    }
-
-    /// Create a new namespace at a given branch.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
-    ///
-    /// ```python
-    /// import bauplan
-    /// client = bauplan.Client()
-    ///
-    /// assert client.create_namespace(
-    ///     namespace='my_namespace_name',
-    ///     branch='my_branch_name',
-    ///     if_not_exists=True,
-    /// )
+    /// if client.has_namespace('raw_data', 'main'):
+    ///     ...
     /// ```
     ///
     /// Parameters:
     ///     namespace: The name of the namespace.
-    ///     branch: The name of the branch to create the namespace on.
-    ///     commit_body: Optional, the commit body to attach to the operation.
-    ///     commit_properties: Optional, a list of properties to attach to the commit.
-    ///     if_not_exists: If set to `True`, the namespace will not be created if it already exists.
-    /// Returns:
-    ///     The created `bauplan.schema.Namespace` object.
-    ///
-    /// Raises:
-    ///     `bauplan.exceptions.CreateNamespaceForbiddenError`: if the user does not have access to create the namespace.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-    ///     `bauplan.exceptions.NamespaceExistsError`: if the namespace already exists.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        namespace: "str | Namespace",
-        branch: "str | Branch",
-        *,
-        commit_body: "str | None" = None,
-        commit_properties: "dict[str, str] | None" = None,
-        if_not_exists: "bool" = false,
-    ) -> "Namespace")]
-    fn create_namespace(
-        &self,
-        py: Python<'_>,
-        namespace: NamespaceArg,
-        branch: BranchArg,
-        commit_body: Option<&str>,
-        commit_properties: Option<BTreeMap<String, String>>,
-        if_not_exists: bool,
-    ) -> PyResult<Namespace> {
-        let namespace = &namespace.0;
-        let branch = &branch.0;
-        let commit_properties = commit_properties.unwrap_or_default();
-        let properties = commit_properties
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-
-        let req = CreateNamespace {
-            name: namespace,
-            branch,
-            commit: CommitOptions {
-                body: commit_body,
-                properties,
-            },
-        };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(ns) => Ok(ns),
-            Err(e) => {
-                if if_not_exists
-                    && let Some(ApiErrorKind::NamespaceExists { namespace_name, .. }) = e.kind()
-                {
-                    Ok(Namespace {
-                        name: namespace_name.clone(),
-                    })
-                } else {
-                    Err(e.into())
-                }
-            }
-        }
-    }
-
-    /// Delete a namespace.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
-    ///
-    /// ```python
-    /// import bauplan
-    /// client = bauplan.Client()
-    ///
-    /// assert client.delete_namespace(
-    ///     namespace='my_namespace_name',
-    ///     branch='my_branch_name',
-    /// )
-    /// ```
-    ///
-    /// Parameters:
-    ///     namespace: The name of the namespace to delete.
-    ///     branch: The name of the branch to delete the namespace from.
-    ///     commit_body: Optional, the commit body to attach to the operation.
-    ///     commit_properties: Optional, a list of properties to attach to the commit.
-    ///     if_exists: If set to `True`, the namespace will not raise an error if it does not exist.
-    /// Returns:
-    ///     A `bauplan.schema.Branch` object pointing to head.
-    ///
-    /// Raises:
-    ///     `bauplan.exceptions.DeleteNamespaceForbiddenError`: if the user does not have access to delete the namespace.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-    ///     `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace is not empty.
-    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        namespace: "str | Namespace",
-        branch: "str | Branch",
-        *,
-        if_exists: "bool" = false,
-        commit_body: "str | None" = None,
-        commit_properties: "dict[str, str] | None" = None,
-    ) -> "Branch")]
-    fn delete_namespace(
-        &self,
-        py: Python<'_>,
-        namespace: NamespaceArg,
-        branch: BranchArg,
-        if_exists: bool,
-        commit_body: Option<&str>,
-        commit_properties: Option<BTreeMap<String, String>>,
-    ) -> PyResult<CatalogRef> {
-        let namespace = &namespace.0;
-        let branch = &branch.0;
-        let commit_properties = commit_properties.unwrap_or_default();
-        let properties = commit_properties
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-
-        let req = DeleteNamespace {
-            name: namespace,
-            branch,
-            commit: CommitOptions {
-                body: commit_body,
-                properties,
-            },
-        };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(r) => Ok(r),
-            Err(e) => {
-                if if_exists
-                    && let Some(ApiErrorKind::NamespaceNotFound { catalog_ref, .. }) = e.kind()
-                {
-                    Ok(catalog_ref.clone())
-                } else {
-                    Err(e.into())
-                }
-            }
-        }
-    }
-
-    /// Check if a namespace exists.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
-    ///
-    /// ```python
-    /// import bauplan
-    /// client = bauplan.Client()
-    ///
-    /// assert client.has_namespace(
-    ///     namespace='my_namespace_name',
-    ///     ref='my_branch_name',
-    /// )
-    /// ```
-    ///
-    /// Parameters:
-    ///     namespace: The name of the namespace to check.
-    ///     ref: The ref, branch name or tag name to check the namespace on.
-    ///
+    ///     ref: The ref, a branch, a tag or a commit hash.
     /// Returns:
     ///     A boolean for if the namespace exists.
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    #[pyo3(signature = (namespace: "str", r#ref: "str") -> "bool")]
+    fn has_namespace(&self, py: Python<'_>, namespace: String, r#ref: String) -> PyResult<bool> {
+        let client = self.namespaces()?;
+        // There is no endpoint for a single namespace, so we search the list
+        // for the exact name.
+        let query = ListQuery {
+            pagination_token: None,
+            limit: Some(1),
+            filters: NamespaceFilters {
+                name: Some(format!("^{namespace}$")),
+            },
+        };
+        let path = (self.profile.catalog.clone(), r#ref);
+        let page = py.detach(|| client.list_namespaces(path, query));
+        Ok(!page.map_err(api_error)?.inner.items.is_empty())
+    }
+
+    /// Create a namespace on a branch.
+    ///
+    /// ```python
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// commit = client.create_namespace('raw_data', 'username.feature', if_not_exists=True)
+    /// ```
+    ///
+    /// Parameters:
+    ///     namespace: The name of the new namespace.
+    ///     branch: The branch to create the namespace on.
+    ///     commit_body: Optional, the body of the commit message.
+    ///     if_head: Optional, create only if the branch points to this commit hash.
+    ///     if_not_exists: If set to `True`, a namespace or a table with the same name is not an error.
+    /// Returns:
+    ///     The `bauplan.schema.Commit` that creates the namespace, or `None` when the name is in use and `if_not_exists` is set.
+    ///
+    /// Raises:
+    ///     `bauplan.exceptions.NameConflictError`: if a namespace or a table with the same name exists.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchRefError`: if the ref is not a branch.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't create the namespace.
+    ///     `bauplan.exceptions.BadRequestError`: if the name is not valid.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     #[pyo3(signature = (
-        namespace: "str | Namespace",
-        r#ref: "str | Ref",
-    ) -> "bool")]
-    fn has_namespace(
+        namespace: "str",
+        branch: "str",
+        *,
+        commit_body: "str | None" = None,
+        if_head: "str | None" = None,
+        if_not_exists: "bool" = false,
+    ) -> "Commit | None")]
+    fn create_namespace(
         &self,
         py: Python<'_>,
-        namespace: NamespaceArg,
-        r#ref: RefArg,
-    ) -> PyResult<bool> {
-        let req = GetNamespace {
-            name: &namespace.0,
-            at_ref: &r#ref.0,
+        namespace: String,
+        branch: String,
+        commit_body: Option<String>,
+        if_head: Option<String>,
+        if_not_exists: bool,
+    ) -> PyResult<Option<PyCommit>> {
+        let client = self.namespaces()?;
+        let body = CreateNamespaceBody {
+            name: namespace,
+            commit: CommitOptions {
+                body: commit_body,
+                expected_commit_hash: if_head,
+            },
         };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(_) => Ok(true),
-            Err(e) => {
-                if matches!(e.kind(), Some(ApiErrorKind::NamespaceNotFound { .. })) {
-                    Ok(false)
-                } else {
-                    Err(e.into())
-                }
+        let path = (self.profile.catalog.clone(), branch);
+        match py.detach(|| client.create_namespace(path, body)) {
+            Ok(created) => Ok(Some(created.commit.into())),
+            Err(ClientError::Api(CreateNamespaceError::NameConflict { .. })) if if_not_exists => {
+                Ok(None)
             }
+            Err(err) => Err(api_error(err)),
+        }
+    }
+
+    /// Delete an empty namespace from a branch.
+    ///
+    /// ```python
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// commit = client.delete_namespace('raw_data', 'username.feature', if_exists=True)
+    /// ```
+    ///
+    /// Parameters:
+    ///     namespace: The name of the namespace.
+    ///     branch: The branch to delete the namespace from.
+    ///     commit_body: Optional, the body of the commit message.
+    ///     if_head: Optional, delete only if the branch points to this commit hash.
+    ///     if_exists: If set to `True`, a missing namespace is not an error.
+    /// Returns:
+    ///     The `bauplan.schema.Commit` that deletes the namespace, or `None` when it does not exist and `if_exists` is set.
+    ///
+    /// Raises:
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace still has tables.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchRefError`: if the ref is not a branch.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't delete the namespace.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    #[pyo3(signature = (
+        namespace: "str",
+        branch: "str",
+        *,
+        commit_body: "str | None" = None,
+        if_head: "str | None" = None,
+        if_exists: "bool" = false,
+    ) -> "Commit | None")]
+    fn delete_namespace(
+        &self,
+        py: Python<'_>,
+        namespace: String,
+        branch: String,
+        commit_body: Option<String>,
+        if_head: Option<String>,
+        if_exists: bool,
+    ) -> PyResult<Option<PyCommit>> {
+        let client = self.namespaces()?;
+        let body = DeleteNamespaceBody {
+            commit: CommitOptions {
+                body: commit_body,
+                expected_commit_hash: if_head,
+            },
+        };
+        let path = (self.profile.catalog.clone(), branch, namespace);
+        match py.detach(|| client.delete_namespace(path, Some(body))) {
+            Ok(commit) => Ok(Some(commit.into())),
+            Err(ClientError::Api(DeleteNamespaceError::NamespaceNotFound { .. })) if if_exists => {
+                Ok(None)
+            }
+            Err(err) => Err(api_error(err)),
         }
     }
 }

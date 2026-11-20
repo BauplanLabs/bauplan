@@ -1,6 +1,9 @@
-use crate::cli::{Cli, color::CliExamples, yaml};
-use anyhow::{Context as _, bail};
-use bauplan::branch::{CreateBranch, GetBranch};
+use std::io::stdout;
+
+use crate::cli::{Cli, Output, color::CliExamples, yaml};
+use anyhow::bail;
+use bauplan_api::branch::{CreateBranchBody, CreateBranchError};
+use bauplan_api::gropius::client::ClientError;
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
@@ -35,31 +38,52 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
         from_ref,
     } = args;
 
-    if create {
-        let from_ref = from_ref
-            .as_deref()
-            .or(cli.profile.active_branch.as_deref())
-            .unwrap_or("main");
-
-        let req = CreateBranch {
-            name: &branch_name,
-            from_ref,
-        };
-
-        cli.roundtrip(req).context("Failed to create branch")?;
-        eprintln!("Created branch {branch_name:?}");
-    } else if from_ref.is_some() {
-        bail!("--from-ref can only be used with -b");
+    if !create {
+        if from_ref.is_some() {
+            bail!("--from-ref can only be used with -b");
+        }
+        return switch_branch(cli, &branch_name);
     }
 
-    switch_branch(cli, &branch_name)
+    let from_ref = from_ref
+        .as_deref()
+        .or(cli.profile.active_branch.as_deref())
+        .unwrap_or("main");
+
+    let body = CreateBranchBody {
+        name: branch_name,
+        from_ref: from_ref.to_owned(),
+        ttl_seconds: None,
+    };
+
+    let catalog = cli.profile.catalog.clone();
+    let branch = match cli.branches()?.create_branch(catalog, body) {
+        Ok(branch) => branch,
+        Err(ClientError::Api(err @ CreateBranchError::FromRefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(from_ref, err));
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    eprintln!("Created branch {:?}", branch.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &branch)?;
+        println!();
+    }
+
+    set_active_branch(cli, &branch.name)
 }
 
 pub(crate) fn switch_branch(cli: &Cli, branch_name: &str) -> anyhow::Result<()> {
-    if cli.roundtrip(GetBranch { name: branch_name }).is_err() {
-        bail!("branch {branch_name:?} doesn't exist or is inaccessible");
-    }
+    let path = (cli.profile.catalog.clone(), branch_name.to_owned());
+    let branch = cli.branches()?.resolve_branch(path)?;
 
+    set_active_branch(cli, &branch.name)
+}
+
+/// Saves the active branch in the profile.
+pub(crate) fn set_active_branch(cli: &Cli, branch_name: &str) -> anyhow::Result<()> {
     yaml::edit(&cli.profile.config_path, |doc| {
         let mut profile = yaml::mapping_at_path(doc, &["profiles", &cli.profile.name])?;
         yaml::upsert_str(&mut profile, "active_branch", branch_name);

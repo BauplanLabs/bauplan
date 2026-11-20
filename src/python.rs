@@ -8,6 +8,7 @@ use std::{
 use pyo3::{exceptions::PyValueError, marker::Ungil, prelude::*};
 use tokio::runtime::Runtime;
 
+mod arrow_schema;
 mod branch;
 mod commit;
 mod exceptions;
@@ -23,8 +24,13 @@ mod state;
 mod table;
 mod tag;
 
+use bauplan_api::{
+    branch::BranchApiClient, catalog_ref::RefApiClient, namespace::NamespaceApiClient,
+    table::TableApiClient, tag::TagApiClient,
+};
+
 use crate::{
-    ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile, grpc,
+    ApiError, ApiRequest, ApiResponse, Profile, grpc,
     python::exceptions::{BauplanError, BauplanJobError},
 };
 
@@ -40,15 +46,6 @@ enum ClientError {
     Transport(#[from] ureq::Error),
     #[error(transparent)]
     Api(#[from] ApiError),
-}
-
-impl ClientError {
-    pub(crate) fn kind(&self) -> Option<&ApiErrorKind> {
-        match self {
-            ClientError::Api(ae) => ae.kind(),
-            _ => None,
-        }
-    }
 }
 
 /// A client for the Bauplan API.
@@ -160,6 +157,7 @@ impl ClientError {
 ///     api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) ~/.bauplan/config.yaml
 ///     client_timeout: The client timeout in seconds for all the requests.
 ///     config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
+///     catalog: The name of the catalog to use. If not provided, fetch precedence is 1) environment `BAUPLAN_CATALOG` 2) ~/.bauplan/config.yaml 3) `default`
 #[pyclass(module = "bauplan")]
 pub(crate) struct Client {
     pub(crate) profile: Profile,
@@ -182,6 +180,7 @@ impl Client {
             api_key = None,
             client_timeout = None,
             config_file_path = None,
+            catalog = None,
         ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -189,6 +188,7 @@ impl Client {
         api_key: Option<String>,
         client_timeout: Option<u64>,
         config_file_path: Option<&str>,
+        catalog: Option<String>,
     ) -> PyResult<Self> {
         let profile = if let Some(p) = config_file_path {
             Profile::read(p, profile)
@@ -203,6 +203,9 @@ impl Client {
             .with_ua_product("bauplan-pysdk");
         if let Some(api_key) = api_key {
             profile = profile.with_api_key(api_key);
+        }
+        if let Some(catalog) = catalog {
+            profile = profile.with_catalog(catalog);
         }
 
         profile
@@ -239,6 +242,70 @@ impl Client {
             client_timeout,
             longbow_endpoint: Arc::new(tokio::sync::OnceCell::new()),
         })
+    }
+}
+
+impl Client {
+    /// A client for the branch endpoints of the api.
+    fn branches(&self) -> PyResult<BranchApiClient> {
+        Ok(BranchApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the namespace endpoints of the api.
+    fn namespaces(&self) -> PyResult<NamespaceApiClient> {
+        Ok(NamespaceApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the table endpoints of the api.
+    fn tables(&self) -> PyResult<TableApiClient> {
+        Ok(TableApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the tag endpoints of the api.
+    fn tags(&self) -> PyResult<TagApiClient> {
+        Ok(TagApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the ref endpoints of the api.
+    fn refs(&self) -> PyResult<RefApiClient> {
+        Ok(RefApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// The HTTP client the api clients go through. We build one for every
+    /// call, because the client keeps a thread that a forked process loses.
+    fn http(&self) -> PyResult<reqwest::blocking::Client> {
+        let mut headers = http::HeaderMap::new();
+        if let Some(key) = &self.profile.api_key {
+            let value = format!("Bearer {key}")
+                .parse()
+                .map_err(BauplanError::new_err)?;
+            headers.insert(http::header::AUTHORIZATION, value);
+        }
+
+        // reqwest comes without a crypto provider.
+        let _ = rustls::crypto::ring::default_provider().install_default();
+
+        reqwest::blocking::Client::builder()
+            .user_agent(&self.profile.user_agent)
+            .default_headers(headers)
+            .timeout(self.client_timeout)
+            .build()
+            .map_err(BauplanError::new_err)
     }
 }
 

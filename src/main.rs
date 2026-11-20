@@ -1,10 +1,22 @@
 mod cli;
 
+use std::process::ExitCode;
+
 use clap::Parser;
 use tracing_indicatif::IndicatifWriter;
 use tracing_subscriber::{EnvFilter, fmt};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            anstream::eprintln!("Error: {err:?}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
     // Used by integration tests to validate argument parsing without executing.

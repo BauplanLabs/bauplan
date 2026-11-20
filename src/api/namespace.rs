@@ -9,24 +9,12 @@ use crate::{
 
 /// A container for organizing tables.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(name = "Namespace", module = "bauplan.schema", from_py_object, get_all)
-)]
 pub struct Namespace {
     /// The namespace name.
     pub name: String,
 }
 
 impl DataResponse for Namespace {}
-
-#[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl Namespace {
-    fn __repr__(&self) -> String {
-        format!("Namespace(name={:?})", self.name)
-    }
-}
 
 /// Load a single namespace.
 #[derive(Debug, Clone)]

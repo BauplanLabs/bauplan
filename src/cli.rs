@@ -3,9 +3,11 @@ mod checkout;
 mod color;
 mod commit;
 mod config;
+mod datetime;
 mod init;
 mod job;
 mod namespace;
+mod paginate;
 mod parameter;
 mod query;
 mod run;
@@ -20,10 +22,15 @@ use color::*;
 
 use anyhow::bail;
 use bauplan::{
-    ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile,
+    ApiRequest, ApiResponse, Profile,
     grpc::{self, generated as commanderpb},
 };
 
+use bauplan_api::branch::BranchApiClient;
+use bauplan_api::catalog_ref::RefApiClient;
+use bauplan_api::namespace::NamespaceApiClient;
+use bauplan_api::table::TableApiClient;
+use bauplan_api::tag::TagApiClient;
 use clap::{Parser, Subcommand};
 use opentelemetry::trace::{SpanId, TraceFlags, TraceId};
 use tracing::debug;
@@ -113,6 +120,9 @@ pub(crate) struct GlobalArgs {
     /// Name of the profile to use
     #[arg(long, short = 'P', global = true)]
     pub profile: Option<String>,
+    /// Name of the catalog to use [default: catalog of the profile]
+    #[arg(long, global = true)]
+    pub catalog: Option<String>,
     /// Output format
     #[arg(long, short = 'O', global = true, default_value_t = Output::default())]
     pub output: Output,
@@ -183,7 +193,10 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Profile::from_default_env()
     };
 
-    let profile = profile?.with_ua_product("bauplan-cli");
+    let mut profile = profile?.with_ua_product("bauplan-cli");
+    if let Some(catalog) = args.global.catalog.clone() {
+        profile = profile.with_catalog(catalog);
+    }
     profile.validate()?;
 
     // Allows error responses to be parsed.
@@ -265,6 +278,88 @@ impl Cli {
         Ok(resp)
     }
 
+    /// A client for the branch endpoints of the api.
+    pub(crate) fn branches(&self) -> anyhow::Result<BranchApiClient> {
+        Ok(BranchApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the tag endpoints of the api.
+    pub(crate) fn tags(&self) -> anyhow::Result<TagApiClient> {
+        Ok(TagApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the table endpoints of the api.
+    pub(crate) fn tables(&self) -> anyhow::Result<TableApiClient> {
+        Ok(TableApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the ref endpoints of the api.
+    pub(crate) fn refs(&self) -> anyhow::Result<RefApiClient> {
+        Ok(RefApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// A client for the namespace endpoints of the api.
+    pub(crate) fn namespaces(&self) -> anyhow::Result<NamespaceApiClient> {
+        Ok(NamespaceApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.http()?,
+        ))
+    }
+
+    /// The HTTP client the api clients go through.
+    fn http(&self) -> anyhow::Result<reqwest::blocking::Client> {
+        let mut headers = http::HeaderMap::new();
+        headers.insert("traceparent", self.traceparent().parse()?);
+        if let Some(key) = &self.profile.api_key {
+            headers.insert(
+                http::header::AUTHORIZATION,
+                format!("Bearer {key}").parse()?,
+            );
+        }
+
+        // reqwest comes without a crypto provider.
+        let _ = rustls::crypto::ring::default_provider().install_default();
+
+        let http = reqwest::blocking::Client::builder()
+            .user_agent(&self.profile.user_agent)
+            .default_headers(headers)
+            .timeout(self.timeout)
+            .build()?;
+
+        Ok(http)
+    }
+
+    /// Adds a tip to switch branch when the ref the server did not find is the
+    /// active branch.
+    pub(crate) fn with_active_branch_tip(
+        &self,
+        ref_name: &str,
+        err: impl std::error::Error + Send + Sync + 'static,
+    ) -> anyhow::Error {
+        let is_active = self.profile.active_branch.as_deref() == Some(ref_name);
+        if !is_active || ref_name == "main" {
+            return err.into();
+        }
+
+        anyhow::anyhow!(
+            "{err} It is your active branch.\n\n\
+             {GREEN}TIP:{GREEN:#} To switch to another branch, run:\n\
+             \tbauplan checkout main"
+        )
+    }
+
     /// Wraps a gRPC request message with a `traceparent` metadata header.
     pub(crate) fn traced<T>(&self, msg: T) -> tonic::Request<T> {
         let mut req = tonic::Request::new(msg);
@@ -272,10 +367,6 @@ impl Cli {
             .insert("traceparent", self.traceparent().parse().unwrap());
         req
     }
-}
-
-pub(crate) fn api_err_kind(err: &anyhow::Error) -> Option<&ApiErrorKind> {
-    err.downcast_ref::<ApiError>()?.kind()
 }
 
 pub(crate) fn format_grpc_status(status: tonic::Status) -> anyhow::Error {

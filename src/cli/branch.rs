@@ -3,13 +3,16 @@ use std::{
     io::{Write as _, stdout},
 };
 
-use crate::cli::{Cli, Output, api_err_kind, checkout, color::*};
+use crate::cli::{Cli, Output, checkout, color::*, datetime::format_datetime, paginate::paginate};
 use anyhow::bail;
-use bauplan::{
-    ApiErrorKind,
-    branch::*,
-    table::{GetTables, Table},
+use bauplan::table::{GetTables, Table};
+use bauplan_api::branch::{
+    BranchFilters, CreateBranchBody, CreateBranchError, DeleteBranchError, MergeBranchBody,
+    MergeBranchError, MergeStrategy, RenameBranchBody, ResolveBranchError,
 };
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::ExpectedHead;
+use bauplan_api::pagination::Page;
 use tabwriter::TabWriter;
 
 #[derive(Debug, clap::Args)]
@@ -20,7 +23,7 @@ pub(crate) struct BranchArgs {
 
 #[derive(Debug, clap::Subcommand)]
 pub(crate) enum BranchCommand {
-    /// List branches (shows only your branches by default)
+    /// List branches
     #[clap(alias = "list")]
     Ls(BranchLsArgs),
     /// Create a new branch
@@ -42,36 +45,34 @@ pub(crate) enum BranchCommand {
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
-  # List user's own branches
+  # List the active branch, main and your branches
   bauplan branch ls
 
-  # List all branches
-  bauplan branch ls --all-zones
+  # List the branches of everyone
+  bauplan branch ls --all
 
-  # Filter by name
-  bauplan branch ls --name \"dev\"
-
-  # Filter by user
-  bauplan branch ls --user username
+  # List your branches whose name starts with username.feature
+  bauplan branch ls --name '^username.feature'
 
   # Limit results
   bauplan branch ls --limit 5
 "))]
 pub(crate) struct BranchLsArgs {
-    /// Branch name
-    pub branch_name: Option<String>,
-    /// Show the branches of all users, not only yours
+    /// Show the branches of everyone, not only yours
     #[arg(short, long)]
-    pub all_zones: bool,
-    /// Filter by name
+    pub all: bool,
+    /// Filter by name, `^` and `$` anchor it to the start or the end
     #[arg(short, long)]
     pub name: Option<String>,
-    /// Filter by user
-    #[arg(short, long)]
-    pub user: Option<String>,
     /// Limit the number of branches to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -103,6 +104,9 @@ pub(crate) struct BranchCreateArgs {
 
   # Conditionally delete
   bauplan branch rm username.maybe_branch --if-exists
+
+  # Delete only if nobody moved the branch since you read its head
+  bauplan branch rm username.old_branch --if-head <commit_hash>
 "))]
 pub(crate) struct BranchRmArgs {
     /// Branch name
@@ -110,6 +114,9 @@ pub(crate) struct BranchRmArgs {
     /// Command succeeds even if the branch does not exist
     #[arg(long)]
     pub if_exists: bool,
+    /// Delete only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub if_head: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -117,15 +124,15 @@ pub(crate) struct BranchRmArgs {
   # Get branch information
   bauplan branch get username.dev_branch
 
-  # Get with namespace filter
-  bauplan branch get username.branch --namespace raw_data
+  # Show the dates in UTC
+  bauplan branch get username.dev_branch --utc
 "))]
 pub(crate) struct BranchGetArgs {
     /// Branch name
     pub branch_name: String,
-    /// Filter by namespace (exact match or regex)
-    #[arg(short, long)]
-    pub namespace: Option<String>,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
 }
 
 #[derive(Debug, clap::Args)]
@@ -166,13 +173,21 @@ pub(crate) struct BranchDiffArgs {
 
   # Merge with custom commit message
   bauplan branch merge username.feature --commit-message \"Merge feature updates\"
+
+  # Merge only if nobody moved the active branch since you read its head
+  bauplan branch merge username.feature --if-head <commit_hash>
 "))]
 pub(crate) struct BranchMergeArgs {
-    /// Branch name
+    /// Branch, tag or full commit hash to merge into the active branch
+    #[arg(value_name = "REF")]
     pub branch_name: String,
     /// Optional commit message
     #[arg(long)]
     pub commit_message: Option<String>,
+    /// Merge only if the head of the active branch is still at this full
+    /// commit hash
+    #[arg(long, value_name = "HASH")]
+    pub if_head: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -207,98 +222,135 @@ pub(crate) fn handle(cli: &Cli, args: BranchArgs) -> anyhow::Result<()> {
 
 fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
     let BranchLsArgs {
-        branch_name,
-        all_zones,
+        all,
         name,
-        user,
         limit,
+        pagination_token,
+        utc,
     } = args;
 
-    // The branch_name positional arg acts as a name filter.
-    let filter_by_name = name.as_deref().or(branch_name.as_deref());
+    let client = cli.branches()?;
+    let filters = BranchFilters { owned: !all, name };
 
-    // By default, only show the current user's branches. The --all-zones
-    // flag disables this, and --user overrides it.
-    let filter_by_user = if all_zones {
-        None
-    } else if let Some(ref user) = user {
-        Some(user.as_str())
-    } else {
-        Some(CURRENT_USER) // This is a special string the server understands.
+    // We print the list as the server returns it, the active branch and main
+    // first are only for the terminal.
+    if cli.global.output == Output::Json {
+        let mut branches = paginate(limit, pagination_token, filters, |query| {
+            client.list_branches(cli.profile.catalog.clone(), query)
+        })?;
+        let items = branches.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+        let page = Page {
+            items,
+            pagination_token: branches.pagination_token(),
+        };
+        serde_json::to_writer(stdout(), &page)?;
+        println!();
+        return Ok(());
+    }
+
+    let active_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
+
+    // Without a name filter, we show the active branch and main first, and
+    // they count toward the limit.
+    let mut top_names = match filters.name {
+        None => vec![active_branch, "main"],
+        Some(_) => Vec::new(),
     };
+    top_names.dedup();
 
-    let req = GetBranches {
-        filter_by_name,
-        filter_by_user,
-    };
-
-    let branches = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
-
-    match cli.global.output {
-        Output::Json => {
-            let all_branches = branches.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_branches)?;
-            println!();
+    let mut top = Vec::new();
+    let mut missing_active = None;
+    for &name in &top_names {
+        if limit == Some(top.len() as u32) {
+            break;
         }
-        Output::Tty => {
-            let mut tw = TabWriter::new(stdout()).ansi(true);
-            writeln!(&mut tw, "NAME\tZONE\tHASH")?;
-            for branch in branches {
-                let branch = branch?;
-                let zone = branch.name.split('.').next().unwrap_or("");
 
-                if let Some(active_branch) = &cli.profile.active_branch
-                    && &branch.name == active_branch
-                {
-                    writeln!(
-                        &mut tw,
-                        "{GREEN}{}{GREEN:#} {DIM}[active]{DIM:#}\t{zone}\t{}",
-                        branch.name, branch.hash
-                    )?;
-                } else {
-                    writeln!(&mut tw, "{}\t{}\t{}", branch.name, zone, branch.hash)?;
+        match client.resolve_branch((cli.profile.catalog.clone(), name.to_owned())) {
+            Ok(branch) => top.push(branch),
+            Err(ClientError::Api(err @ ResolveBranchError::BranchNotFound { .. })) => {
+                if name == active_branch {
+                    missing_active = Some(err);
                 }
             }
-
-            tw.flush()?;
+            Err(err) => return Err(err.into()),
         }
+    }
+
+    // We ask for the whole limit, because the list can still contain the
+    // branches we show first.
+    let rest = paginate(limit, pagination_token, filters, |query| {
+        client.list_branches(cli.profile.catalog.clone(), query)
+    })?
+    .filter(|branch| !matches!(branch, Ok(branch) if top_names.contains(&branch.name.as_str())));
+    let branches = top
+        .into_iter()
+        .map(Ok)
+        .chain(rest)
+        .take(limit.map_or(usize::MAX, |limit| limit as usize));
+
+    let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+    writeln!(&mut tw, "NAME\tHASH\tUPDATED")?;
+    for branch in branches {
+        let branch = branch?;
+        let updated_at = format_datetime(Some(branch.updated_at), utc, true);
+
+        if branch.name == active_branch {
+            writeln!(
+                &mut tw,
+                "{GREEN}{}{GREEN:#} {DIM}[active]{DIM:#}\t{}\t{updated_at}",
+                branch.name, branch.commit_hash
+            )?;
+        } else {
+            writeln!(
+                &mut tw,
+                "{}\t{}\t{updated_at}",
+                branch.name, branch.commit_hash
+            )?;
+        }
+    }
+
+    tw.flush()?;
+
+    if let Some(err) = missing_active {
+        let err = cli.with_active_branch_tip(active_branch, err);
+        anstream::eprintln!("{YELLOW}WARNING:{YELLOW:#} {err}");
     }
 
     Ok(())
 }
 
 fn get_branch(cli: &Cli, args: BranchGetArgs) -> anyhow::Result<()> {
-    let BranchGetArgs {
-        branch_name,
-        namespace,
-    } = args;
+    let BranchGetArgs { branch_name, utc } = args;
 
-    let req = GetTables {
-        at_ref: &branch_name,
-        filter_by_name: None,
-        filter_by_namespace: namespace.as_deref(),
-    };
-
-    let tables = bauplan::paginate(req, None, |r| cli.roundtrip(r))?;
+    let path = (cli.profile.catalog.clone(), branch_name);
+    let branch = cli.branches()?.resolve_branch(path)?;
 
     match cli.global.output {
         Output::Json => {
-            let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_tables)?;
+            serde_json::to_writer(stdout(), &branch)?;
             println!();
         }
         Output::Tty => {
-            let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAMESPACE\tNAME\tKIND")?;
-            for table in tables {
-                let table = table?;
-                writeln!(
-                    &mut tw,
-                    "{}\t{}\t{}",
-                    table.namespace, table.name, table.kind
-                )?;
-            }
+            let active_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
+            let active = if branch.name == active_branch {
+                format!(" {DIM}[active]{DIM:#}")
+            } else {
+                String::new()
+            };
 
+            let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+            writeln!(&mut tw, "{GREEN}Name{GREEN:#}\t{}{active}", branch.name)?;
+            writeln!(&mut tw, "{GREEN}Commit{GREEN:#}\t{}", branch.commit_hash)?;
+            writeln!(
+                &mut tw,
+                "{GREEN}Created at{GREEN:#}\t{}",
+                format_datetime(Some(branch.created_at), utc, true)
+            )?;
+            writeln!(
+                &mut tw,
+                "{GREEN}Updated at{GREEN:#}\t{}",
+                format_datetime(Some(branch.updated_at), utc, true)
+            )?;
             tw.flush()?;
         }
     }
@@ -318,23 +370,36 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = CreateBranch {
-        name: &branch_name,
-        from_ref,
+    let body = CreateBranchBody {
+        name: branch_name,
+        from_ref: from_ref.to_owned(),
+        ttl_seconds: None,
     };
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_not_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::BranchExists { .. })) {
-            eprintln!("Branch {branch_name:?} already exists");
+    let catalog = cli.profile.catalog.clone();
+    let branch = match cli.branches()?.create_branch(catalog, body) {
+        Ok(branch) => branch,
+        Err(ClientError::Api(err @ CreateBranchError::BranchNameConflict { .. }))
+            if if_not_exists =>
+        {
+            eprintln!("{err}");
             return Ok(());
-        } else {
-            return Err(e);
         }
+        Err(ClientError::Api(err @ CreateBranchError::FromRefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(from_ref, err));
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    eprintln!("Created branch {:?}", branch.name);
+    anstream::eprintln!("{GREEN}TIP:{GREEN:#} To switch to the new branch, run:");
+    eprintln!("\tbauplan checkout {:?}", branch.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &branch)?;
+        println!();
     }
 
-    eprintln!("Created branch \"{branch_name}\"");
-    anstream::eprintln!("{GREEN}TIP:{GREEN:#} To switch to the new branch, run:");
-    eprintln!("\tbauplan checkout {branch_name:?}");
     Ok(())
 }
 
@@ -342,24 +407,27 @@ fn delete_branch(cli: &Cli, args: BranchRmArgs) -> anyhow::Result<()> {
     let BranchRmArgs {
         branch_name,
         if_exists,
+        if_head,
     } = args;
-
-    let req = DeleteBranch { name: &branch_name };
 
     if cli.profile.active_branch.as_deref().unwrap_or("main") == branch_name.as_str() {
         bail!("cannot delete the active branch {branch_name:?}");
     }
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::BranchNotFound { .. })) {
-            eprintln!("Branch \"{branch_name}\" does not exist");
+    let path = (cli.profile.catalog.clone(), branch_name.clone());
+    let expected_head = if_head.map(|hash| ExpectedHead {
+        expected_commit_hash: Some(hash),
+    });
+    match cli.branches()?.delete_branch(path, expected_head) {
+        Ok(_) => (),
+        Err(ClientError::Api(err @ DeleteBranchError::BranchNotFound { .. })) if if_exists => {
+            eprintln!("{err}");
             return Ok(());
-        } else {
-            return Err(e);
         }
+        Err(err) => return Err(err.into()),
     }
 
-    eprintln!("Deleted branch \"{branch_name}\"");
+    eprintln!("Deleted branch {branch_name:?}");
 
     Ok(())
 }
@@ -368,21 +436,42 @@ fn merge_branch(cli: &Cli, args: BranchMergeArgs) -> anyhow::Result<()> {
     let BranchMergeArgs {
         branch_name,
         commit_message,
+        if_head,
     } = args;
 
     let into_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
 
-    let req = MergeBranch {
-        source_ref: &branch_name,
-        into_branch,
-        commit: MergeCommitOptions {
-            commit_message: commit_message.as_deref(),
-            ..Default::default()
+    let path = (cli.profile.catalog.clone(), into_branch.to_owned());
+    let body = MergeBranchBody {
+        from_ref: branch_name.clone(),
+        strategy: MergeStrategy::Squash {
+            message: commit_message,
+        },
+        expected_head: ExpectedHead {
+            expected_commit_hash: if_head,
         },
     };
 
-    cli.roundtrip(req)?;
-    eprintln!("Merged branch \"{branch_name}\" into \"{into_branch}\"");
+    let merged = match cli.branches()?.merge_branch(path, body) {
+        Ok(merged) => merged,
+        Err(ClientError::Api(err @ MergeBranchError::BranchNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(into_branch, err));
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    match &merged {
+        Some(commit) => eprintln!(
+            "Merged \"{branch_name}\" into \"{into_branch}\" (commit {})",
+            commit.hash
+        ),
+        None => eprintln!("Nothing to merge from \"{branch_name}\" into \"{into_branch}\""),
+    }
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &merged)?;
+        println!();
+    }
 
     Ok(())
 }
@@ -393,13 +482,21 @@ fn rename_branch(cli: &Cli, args: BranchRenameArgs) -> anyhow::Result<()> {
         new_branch_name,
     } = args;
 
-    let req = RenameBranch {
-        name: &branch_name,
-        new_name: &new_branch_name,
+    let path = (cli.profile.catalog.clone(), branch_name.clone());
+    let body = RenameBranchBody {
+        name: new_branch_name,
     };
+    let branch = cli.branches()?.rename_branch(path, body)?;
+    eprintln!("Renamed branch {branch_name:?} to {:?}", branch.name);
 
-    cli.roundtrip(req)?;
-    eprintln!("Renamed branch \"{branch_name}\" to \"{new_branch_name}\"");
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &branch)?;
+        println!();
+    }
+
+    if cli.profile.active_branch.as_deref() == Some(branch_name.as_str()) {
+        checkout::set_active_branch(cli, &branch.name)?;
+    }
 
     Ok(())
 }

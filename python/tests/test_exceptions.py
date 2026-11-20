@@ -79,44 +79,36 @@ class TestExceptionHierarchy:
         )
 
 
-class TestTableNotFoundContext:
-    def test_get_nonexistent_table(self, client: bauplan.Client):
-        with pytest.raises(exceptions.TableNotFoundError) as exc_info:
-            client.get_table("nonexistent_table_xyz", "main")
-
-        e = exc_info.value
-        assert isinstance(e.kind, exceptions.ApiErrorKind.TableNotFound)
-        assert "nonexistent_table_xyz" in e.kind.table_name
-        assert e.kind.catalog_ref is not None
-        assert e.kind.catalog_ref.type == bauplan.RefType.BRANCH
-
+class TestTableNotFound:
     def test_delete_nonexistent_table_raises(
         self, client: bauplan.Client, temp_branch: str
     ):
         with pytest.raises(exceptions.TableNotFoundError) as exc_info:
-            client.delete_table("nonexistent_table_xyz", temp_branch)
+            client.delete_table("bauplan.nonexistent_table_xyz", temp_branch)
 
         e = exc_info.value
-        assert isinstance(e.kind, exceptions.ApiErrorKind.TableNotFound)
-        assert "nonexistent_table_xyz" in e.kind.table_name
+        assert e.type == "TABLE_NOT_FOUND"
+        assert "nonexistent_table_xyz" in e.message
 
     def test_delete_table_if_exists(self, client: bauplan.Client, temp_branch: str):
-        ref = client.delete_table("nonexistent_table_xyz", temp_branch, if_exists=True)
-        assert ref.type == bauplan.RefType.BRANCH
+        commit = client.delete_table(
+            "bauplan.nonexistent_table_xyz", temp_branch, if_exists=True
+        )
+        assert commit is None
 
     def test_has_table_false(self, client: bauplan.Client):
-        assert client.has_table("nonexistent_table_xyz", "main") is False
+        assert client.has_table("bauplan.nonexistent_table_xyz", "main") is False
 
 
-class TestBranchExistsContext:
+class TestBranchNameConflict:
     def test_create_duplicate_branch(self, client: bauplan.Client, temp_branch: str):
-        with pytest.raises(exceptions.BranchExistsError) as exc_info:
+        with pytest.raises(exceptions.BranchNameConflictError) as exc_info:
             client.create_branch(branch=temp_branch, from_ref="main")
 
         e = exc_info.value
-        assert isinstance(e.kind, exceptions.ApiErrorKind.BranchExists)
-        assert e.kind.catalog_ref is not None
-        assert e.kind.catalog_ref.type == bauplan.RefType.BRANCH
+        assert e.code == 409
+        assert e.type == "BRANCH_NAME_CONFLICT"
+        assert temp_branch in e.message
 
     def test_create_branch_if_not_exists(
         self, client: bauplan.Client, temp_branch: str
@@ -124,19 +116,19 @@ class TestBranchExistsContext:
         branch = client.create_branch(
             branch=temp_branch, from_ref="main", if_not_exists=True
         )
-        assert branch.name == temp_branch
-        assert branch.type == bauplan.RefType.BRANCH
+        assert branch is None
 
 
-class TestNamespaceNotFoundContext:
-    def test_get_table_bad_namespace(self, client: bauplan.Client):
+class TestNamespaceNotFound:
+    def test_delete_nonexistent_namespace(
+        self, client: bauplan.Client, temp_branch: str
+    ):
         with pytest.raises(exceptions.NamespaceNotFoundError) as exc_info:
-            client.get_table("titanic", "main", namespace="nonexistent_ns_xyz")
+            client.delete_namespace("nonexistent_ns_xyz", temp_branch)
 
         e = exc_info.value
-        assert isinstance(e.kind, exceptions.ApiErrorKind.NamespaceNotFound)
-        assert e.kind.namespace_name == "nonexistent_ns_xyz"
-        assert e.kind.catalog_ref is not None
+        assert e.type == "NAMESPACE_NOT_FOUND"
+        assert "nonexistent_ns_xyz" in e.message
 
 
 class TestExceptionInstantiation:
@@ -165,13 +157,12 @@ class TestUnauthorized:
         e = exc_info.value
         assert e.code == 401
         assert e.type == "UNAUTHORIZED"
-        assert isinstance(e.kind, exceptions.ApiErrorKind.Unauthorized)
 
 
 class TestHttpErrorProperties:
     def test_table_not_found_has_code(self, client: bauplan.Client):
         with pytest.raises(exceptions.TableNotFoundError) as exc_info:
-            client.get_table("nonexistent_table_xyz", "main")
+            client.get_table("bauplan.nonexistent_table_xyz", "main")
 
         e = exc_info.value
         assert e.code == 404

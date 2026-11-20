@@ -1,9 +1,16 @@
-use std::collections::BTreeMap;
 use std::io::{Write, stdout};
 
-use bauplan::commit::{Commit, GetCommits};
+use bauplan_api::catalog_ref::ListHistoryError;
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::{AtCommit, Commit};
+use bauplan_api::pagination::Page;
 
-use crate::cli::{Cli, Output, color::*};
+use crate::cli::{
+    Cli, Output,
+    color::{CliExamples, YELLOW},
+    datetime::format_datetime,
+    paginate::paginate,
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum Format {
@@ -38,91 +45,79 @@ impl std::fmt::Display for Format {
   # Show more commits
   bauplan commit --max-count 20
 
-  # Show commits by specific author
-  bauplan commit --author-username john_doe
-
-  # Show commits matching message pattern
-  bauplan commit --message \"^fix.*\" --max-count 5
-
   # Show commits in oneline format
   bauplan commit --format oneline
 "))]
 pub(crate) struct CommitArgs {
     /// Ref or branch name to get commits from [default: active branch]
     pub ref_name: Option<String>,
-    /// Filter by message content (string or a regex like "^something.*$")
-    #[arg(long)]
-    pub message: Option<String>,
-    /// Filter by author username (string or a regex like "^something.*$")
-    #[arg(long)]
-    pub author_username: Option<String>,
-    /// Filter by author name (string or a regex like "^something.*$")
-    #[arg(long)]
-    pub author_name: Option<String>,
-    /// Filter by author email (string or a regex like "^something.*$")
-    #[arg(long)]
-    pub author_email: Option<String>,
-    /// Filter by a property. Format: key=value. Can be used multiple times.
-    #[arg(long, action = clap::ArgAction::Append)]
-    pub property: Vec<String>,
     /// Limit the number of commits to show
-    #[arg(short = 'n', long, visible_alias = "limit", default_value = "10")]
-    pub max_count: usize,
+    #[arg(
+        short = 'n',
+        long,
+        visible_alias = "limit",
+        default_value = "10",
+        value_parser = clap::value_parser!(u32).range(1..)
+    )]
+    pub max_count: u32,
+    /// Continue from the `pagination_token` of a previous `-O json` output
+    #[arg(long)]
+    pub pagination_token: Option<String>,
     /// How to format commits.
     #[arg(long, default_value_t = Format::default(), alias = "pretty")]
     pub format: Format,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
 }
 
 pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
-    // Positional ref_name takes precedence over --ref flag.
-    let at_ref = args
-        .ref_name
+    let CommitArgs {
+        ref_name,
+        max_count,
+        pagination_token,
+        format,
+        utc,
+    } = args;
+
+    let at_ref = ref_name
         .as_deref()
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let properties: BTreeMap<String, String> = args
-        .property
-        .iter()
-        .filter_map(|p| {
-            let (k, v) = p.split_once('=')?;
-            Some((k.to_string(), v.to_string()))
-        })
-        .collect();
-
-    let filter_by_properties = if properties.is_empty() {
-        None
-    } else {
-        Some(&properties)
-    };
-
-    let req = GetCommits {
-        at_ref,
-        filter_by_message: args.message.as_deref(),
-        filter_by_author_username: args.author_username.as_deref(),
-        filter_by_author_name: args.author_name.as_deref(),
-        filter_by_author_email: args.author_email.as_deref(),
-        filter_by_authored_date: None,
-        filter_by_authored_date_start_at: None,
-        filter_by_authored_date_end_at: None,
-        filter_by_parent_hash: None,
-        filter_by_properties,
-        filter: None,
-    };
-
-    let commits = bauplan::paginate(req, Some(args.max_count), |r| cli.roundtrip(r))?;
+    let client = cli.refs()?;
+    let mut commit_hash = None;
+    let mut commits = paginate(Some(max_count), pagination_token, (), |query| {
+        let path = (cli.profile.catalog.clone(), at_ref.to_owned());
+        match client.list_history(path, query) {
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
+            Err(ClientError::Api(err @ ListHistoryError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(err.into()),
+        }
+    })?;
 
     match cli.global.output {
         Output::Json => {
-            let all_commits = commits.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_commits)?;
+            let items = commits.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = AtCommit {
+                inner: Page {
+                    items,
+                    pagination_token: commits.pagination_token(),
+                },
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
             let mut out = anstream::stdout().lock();
             for commit in commits {
-                let commit = commit?;
-                print_commit(&mut out, &commit, args.format)?;
+                print_commit(&mut out, &commit?, format, utc)?;
             }
         }
     }
@@ -130,119 +125,59 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_commit(out: &mut impl Write, commit: &Commit, format: Format) -> std::io::Result<()> {
-    match format {
-        Format::Oneline => {
-            let subject = commit.subject().unwrap_or("");
-            writeln!(out, "{}\t{}", commit.hash(), subject)?;
-        }
-        Format::Short => {
-            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
-            if let Some(author) = commit.author() {
-                writeln!(out, "Author: {}", format_actor(author))?;
-            }
-            writeln!(out)?;
-            if let Some(subject) = commit.subject() {
-                writeln!(out, "    {subject}")?;
-            }
-            writeln!(out)?;
-        }
-        Format::Medium => {
-            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
-            if let Some(author) = commit.author() {
-                writeln!(out, "Author: {}", format_actor(author))?;
-            }
-            writeln!(out, "Date: {}", format_date(&commit.authored_date))?;
-            writeln!(out)?;
-            if let Some(subject) = commit.subject() {
-                writeln!(out, "    {subject}")?;
-            }
-            if let Some(body) = commit.body() {
-                writeln!(out)?;
-                for line in body.lines() {
-                    writeln!(out, "    {line}")?;
-                }
-            }
-            writeln!(out)?;
-        }
-        Format::Full => {
-            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
-            if let Some(author) = commit.author() {
-                writeln!(out, "Author: {}", format_actor(author))?;
-            }
-            if !commit.committer.name.is_empty() {
-                writeln!(out, "Commit: {}", format_actor(&commit.committer))?;
-            }
-            print_properties(out, commit)?;
-            print_parent_commits(out, commit)?;
-            writeln!(out)?;
-            if let Some(subject) = commit.subject() {
-                writeln!(out, "    {subject}")?;
-            }
-            if let Some(body) = commit.body() {
-                writeln!(out)?;
-                for line in body.lines() {
-                    writeln!(out, "    {line}")?;
-                }
-            }
-            writeln!(out)?;
-        }
-        Format::Fuller => {
-            writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash())?;
-            if let Some(author) = commit.author() {
-                writeln!(out, "Author: {}", format_actor(author))?;
-            }
-            writeln!(out, "Author Date: {}", format_date(&commit.authored_date))?;
-            if !commit.committer.name.is_empty() {
-                writeln!(out, "Commit: {}", format_actor(&commit.committer))?;
-            }
-            writeln!(out, "Commit Date: {}", format_date(&commit.committed_date))?;
-            print_properties(out, commit)?;
-            print_parent_commits(out, commit)?;
-            writeln!(out)?;
-            if let Some(subject) = commit.subject() {
-                writeln!(out, "    {subject}")?;
-            }
-            if let Some(body) = commit.body() {
-                writeln!(out)?;
-                for line in body.lines() {
-                    writeln!(out, "    {line}")?;
-                }
-            }
-            writeln!(out)?;
-        }
+/// Prints a commit like `git log --pretty=<format>`, plus the properties in
+/// `full` and `fuller`.
+fn print_commit(
+    out: &mut impl Write,
+    commit: &Commit,
+    format: Format,
+    utc: bool,
+) -> std::io::Result<()> {
+    let author = format_actor(&commit.author_name, commit.author_email.as_deref());
+    let committer = format_actor(&commit.committer_name, commit.committer_email.as_deref());
+    let authored_at = format_datetime(Some(commit.authored_at), utc, false);
+    let committed_at = format_datetime(Some(commit.committed_at), utc, false);
+
+    let header = match format {
+        Format::Oneline => return writeln!(out, "{} {}", commit.hash, commit.title),
+        Format::Short => format!("Author: {author}\n"),
+        Format::Medium => format!("Author: {author}\nDate:   {authored_at}\n"),
+        Format::Full => format!("Author: {author}\nCommit: {committer}\n"),
+        Format::Fuller => format!(
+            "Author:     {author}\nAuthorDate: {authored_at}\n\
+             Commit:     {committer}\nCommitDate: {committed_at}\n"
+        ),
+    };
+
+    writeln!(out, "{YELLOW}commit {}{YELLOW:#}", commit.hash)?;
+    if let (Some(parent_hash), Some(merge_parent_hash)) =
+        (&commit.parent_hash, &commit.merge_parent_hash)
+    {
+        writeln!(out, "Merge: {parent_hash} {merge_parent_hash}")?;
     }
+    write!(out, "{header}")?;
 
-    Ok(())
-}
-
-fn print_properties(out: &mut impl Write, commit: &Commit) -> std::io::Result<()> {
-    if !commit.properties.is_empty() {
+    if matches!(format, Format::Full | Format::Fuller) && !commit.properties.is_empty() {
         writeln!(out, "Properties:")?;
-        for (k, v) in &commit.properties {
-            writeln!(out, "    {k} = {v}")?;
+        for (key, value) in &commit.properties {
+            writeln!(out, "    {key} = {value}")?;
         }
     }
-    Ok(())
-}
 
-fn print_parent_commits(out: &mut impl Write, commit: &Commit) -> std::io::Result<()> {
-    if commit.parent_hashes.len() > 1 {
-        writeln!(out, "Parent Commits:")?;
-        for hash in &commit.parent_hashes {
-            writeln!(out, "    {hash}")?;
-        }
+    let message = match format {
+        Format::Short => &commit.title,
+        _ => &commit.message,
+    };
+    writeln!(out)?;
+    for line in message.lines() {
+        writeln!(out, "    {line}")?;
     }
-    Ok(())
+    writeln!(out)
 }
 
-fn format_date(date: &chrono::DateTime<chrono::Utc>) -> String {
-    date.format("%Y-%m-%dT%H:%M:%S%.fZ").to_string()
-}
-
-fn format_actor(actor: &bauplan::commit::Actor) -> String {
-    match &actor.email {
-        Some(email) => format!("{} <{}>", actor.name, email),
-        None => actor.name.clone(),
+fn format_actor(name: &str, email: Option<&str>) -> String {
+    match email {
+        Some(email) => format!("{name} <{email}>"),
+        None => name.to_owned(),
     }
 }

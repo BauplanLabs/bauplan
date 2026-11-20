@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use pyo3::IntoPyObjectExt;
 use pyo3::prelude::*;
 
+use bauplan_api::pagination::Page;
+
 use crate::PaginatedResponse;
 
 type FetchFn = dyn FnMut(
@@ -44,7 +46,14 @@ impl PyPaginator {
             + Send
             + 'static,
     {
-        let first = fetch_batch(py, None, limit)?;
+        // The api wants a limit of at least 1, so we do not ask for zero items.
+        let first = match limit {
+            Some(0) => PaginatedResponse {
+                page: Vec::new(),
+                pagination_token: None,
+            },
+            _ => fetch_batch(py, None, limit)?,
+        };
         let buf = convert_page(py, first.page)?;
 
         let fetch: Box<FetchFn> = Box::new(move |py, token, limit| {
@@ -61,6 +70,14 @@ impl PyPaginator {
                 fetch,
             }),
         })
+    }
+}
+
+/// A page of `bauplan-api`, with its items converted for Python.
+pub(crate) fn from_api_page<T, U: From<T>>(page: Page<T>) -> PaginatedResponse<U> {
+    PaginatedResponse {
+        page: page.items.into_iter().map(U::from).collect(),
+        pagination_token: page.pagination_token,
     }
 }
 

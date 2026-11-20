@@ -13,15 +13,6 @@ use crate::{
 
 /// A field in a table schema.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(
-        name = "TableField",
-        module = "bauplan.schema",
-        from_py_object,
-        get_all
-    )
-)]
 pub struct TableField {
     /// The field ID.
     pub id: i32,
@@ -37,15 +28,6 @@ pub struct TableField {
 
 /// A partition field on a table.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(
-        name = "PartitionField",
-        module = "bauplan.schema",
-        from_py_object,
-        get_all
-    )
-)]
 pub struct PartitionField {
     /// The partition field name.
     pub name: String,
@@ -56,10 +38,6 @@ pub struct PartitionField {
 /// The kind of table entry.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(module = "bauplan.schema", from_py_object, eq, eq_int)
-)]
 pub enum TableKind {
     /// A managed table.
     #[default]
@@ -79,10 +57,6 @@ impl std::fmt::Display for TableKind {
 
 /// A table in the lake.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(name = "Table", module = "bauplan.schema", from_py_object, get_all)
-)]
 pub struct Table {
     /// The table ID.
     pub id: Uuid,
@@ -144,61 +118,6 @@ impl Table {
     /// The table documentation, carried as the `comment` table property.
     pub fn comment(&self) -> Option<&str> {
         clean_doc(self.properties.get("comment").map(String::as_str))
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl Table {
-    /// The fully qualified name: `namespace.name`.
-    #[getter(fqn)]
-    fn py_fqn(&self) -> String {
-        self.fqn()
-    }
-
-    /// The table documentation, carried as the `comment` table property.
-    #[getter(comment)]
-    fn py_comment(&self) -> Option<&str> {
-        self.comment()
-    }
-
-    /// Whether this is a managed table.
-    fn is_managed(&self) -> bool {
-        self.kind == TableKind::Table
-    }
-
-    /// Whether this is an external table.
-    fn is_external(&self) -> bool {
-        self.kind == TableKind::ExternalTable
-    }
-
-    fn __repr__(&self) -> String {
-        format!(
-            "Table(name={:?}, namespace={:?}, kind={})",
-            self.name, self.namespace, self.kind,
-        )
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl TableField {
-    fn __repr__(&self) -> String {
-        format!(
-            "TableField(name={:?}, type={:?}, required={})",
-            self.name, self.r#type, self.required,
-        )
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl PartitionField {
-    fn __repr__(&self) -> String {
-        format!(
-            "PartitionField(name={:?}, transform={:?})",
-            self.name, self.transform,
-        )
     }
 }
 

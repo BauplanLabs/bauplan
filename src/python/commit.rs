@@ -2,122 +2,116 @@
 
 use std::collections::BTreeMap;
 
-use pyo3::{exceptions::PyTypeError, prelude::*};
+use bauplan_api::model::Commit;
+use bauplan_api::pagination::ListQuery;
+use chrono::{DateTime, Utc};
+use pyo3::prelude::*;
 
-use crate::{ApiRequest, commit::GetCommits};
+use super::Client;
+use super::exceptions::api_error;
+use super::paginate::{PyPaginator, from_api_page};
 
-use super::{Client, paginate::PyPaginator, refs::RefArg};
+/// A commit in the catalog history.
+#[pyclass(name = "Commit", module = "bauplan.schema", frozen, get_all)]
+pub(crate) struct PyCommit {
+    /// The commit hash.
+    hash: String,
+    /// The commit title, the first line of the message.
+    title: String,
+    /// The full commit message.
+    message: String,
+    /// The author's display name.
+    author_name: String,
+    /// The author's email, if known.
+    author_email: Option<String>,
+    /// When the commit was authored.
+    authored_at: DateTime<Utc>,
+    /// The committer's display name.
+    committer_name: String,
+    /// The committer's email, if known.
+    committer_email: Option<String>,
+    /// When the commit was committed.
+    committed_at: DateTime<Utc>,
+    /// The parent commit hash, `None` only on the root commit.
+    parent_hash: Option<String>,
+    /// The hash of the commit merged in, only on merge commits.
+    merge_parent_hash: Option<String>,
+    /// The properties of the commit.
+    properties: BTreeMap<String, String>,
+}
 
-struct DatetimeArg(String);
+#[pymethods]
+impl PyCommit {
+    fn __repr__(&self) -> String {
+        format!(
+            "Commit(hash={:?}, author_name={:?}, title={:?})",
+            self.hash, self.author_name, self.title
+        )
+    }
+}
 
-impl<'a, 'py> FromPyObject<'a, 'py> for DatetimeArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(DatetimeArg(s))
-        } else if let Ok(s) = ob
-            .call_method0("isoformat")
-            .and_then(|v| v.extract::<String>())
-        {
-            Ok(DatetimeArg(s))
-        } else {
-            Err(PyTypeError::new_err("expected str or datetime"))
+impl From<Commit> for PyCommit {
+    fn from(commit: Commit) -> Self {
+        Self {
+            hash: commit.hash,
+            title: commit.title,
+            message: commit.message,
+            author_name: commit.author_name,
+            author_email: commit.author_email,
+            authored_at: commit.authored_at,
+            committer_name: commit.committer_name,
+            committer_email: commit.committer_email,
+            committed_at: commit.committed_at,
+            parent_hash: commit.parent_hash,
+            merge_parent_hash: commit.merge_parent_hash,
+            properties: commit.properties,
         }
     }
 }
 
 #[pymethods]
 impl Client {
-    /// Get the commits for the target branch or ref.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Get the commit history at a ref, newest first.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// for commit in client.get_commits('my_ref_or_branch_name', limit=50):
+    /// for commit in client.get_commits('main', limit=50):
     ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     ref: The ref or branch to get the commits from.
-    ///     filter_by_message: Optional, filter the commits by message (can be a string or a regex like '^abc.*$')
-    ///     filter_by_author_username: Optional, filter the commits by author username (can be a string or a regex like '^abc.*$')
-    ///     filter_by_author_name: Optional, filter the commits by author name (can be a string or a regex like '^abc.*$')
-    ///     filter_by_author_email: Optional, filter the commits by author email (can be a string or a regex like '^abc.*$')
-    ///     filter_by_authored_date: Optional, filter the commits by the exact authored date.
-    ///     filter_by_authored_date_start_at: Optional, filter the commits by authored date start at.
-    ///     filter_by_authored_date_end_at: Optional, filter the commits by authored date end at.
-    ///     filter_by_parent_hash: Optional, filter the commits by parent hash.
-    ///     filter_by_properties: Optional, filter the commits by commit properties.
-    ///     filter: Optional, a CEL filter expression to filter the commits.
+    ///     ref: The ref, a branch, a tag or a commit hash.
     ///     limit: Optional, max number of commits to get.
     /// Returns:
     ///     An iterator over `bauplan.schema.Commit` objects.
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        r#ref: "str | Ref",
+        r#ref: "str",
         *,
-        filter_by_message: "str | None" = None,
-        filter_by_author_username: "str | None" = None,
-        filter_by_author_name: "str | None" = None,
-        filter_by_author_email: "str | None" = None,
-        filter_by_authored_date: "str | datetime | None" = None,
-        filter_by_authored_date_start_at: "str | datetime | None" = None,
-        filter_by_authored_date_end_at: "str | datetime | None" = None,
-        filter_by_parent_hash: "str | None" = None,
-        filter_by_properties: "dict[str, str] | None" = None,
-        filter: "str | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Commit]")]
-    #[allow(clippy::too_many_arguments)]
     fn get_commits(
         &self,
         py: Python<'_>,
-        r#ref: RefArg,
-        filter_by_message: Option<String>,
-        filter_by_author_username: Option<String>,
-        filter_by_author_name: Option<String>,
-        filter_by_author_email: Option<String>,
-        filter_by_authored_date: Option<DatetimeArg>,
-        filter_by_authored_date_start_at: Option<DatetimeArg>,
-        filter_by_authored_date_end_at: Option<DatetimeArg>,
-        filter_by_parent_hash: Option<String>,
-        filter_by_properties: Option<BTreeMap<String, String>>,
-        filter: Option<String>,
+        r#ref: String,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
-        let profile = self.profile.clone();
-        let agent = self.agent.clone();
-        let r#ref = r#ref.0;
-        let filter_by_authored_date = filter_by_authored_date.map(|a| a.0);
-        let filter_by_authored_date_start_at = filter_by_authored_date_start_at.map(|a| a.0);
-        let filter_by_authored_date_end_at = filter_by_authored_date_end_at.map(|a| a.0);
-
-        PyPaginator::new(py, limit, move |py, token, limit| {
-            let req = GetCommits {
-                at_ref: &r#ref,
-                filter_by_message: filter_by_message.as_deref(),
-                filter_by_author_username: filter_by_author_username.as_deref(),
-                filter_by_author_name: filter_by_author_name.as_deref(),
-                filter_by_author_email: filter_by_author_email.as_deref(),
-                filter_by_authored_date: filter_by_authored_date.as_deref(),
-                filter_by_authored_date_start_at: filter_by_authored_date_start_at.as_deref(),
-                filter_by_authored_date_end_at: filter_by_authored_date_end_at.as_deref(),
-                filter_by_parent_hash: filter_by_parent_hash.as_deref(),
-                filter_by_properties: filter_by_properties.as_ref(),
-                filter: filter.as_deref(),
-            }
-            .paginate(token, limit);
-
-            Ok(super::roundtrip(py, req, &profile, &agent)?)
+        let client = self.refs()?;
+        let catalog = self.profile.catalog.clone();
+        PyPaginator::new(py, limit, move |py, pagination_token, limit| {
+            let query = ListQuery {
+                pagination_token: pagination_token.map(str::to_owned),
+                limit: limit.and_then(|limit| u32::try_from(limit).ok()),
+                filters: (),
+            };
+            let path = (catalog.clone(), r#ref.clone());
+            let page = py.detach(|| client.list_history(path, query));
+            Ok(from_api_page::<_, PyCommit>(page.map_err(api_error)?.inner))
         })
     }
 }

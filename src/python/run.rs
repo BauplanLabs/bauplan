@@ -15,11 +15,9 @@ use futures::TryStreamExt;
 use tracing::{error, info, trace};
 
 use super::Client;
-use super::refs::RefArg;
 use crate::grpc::{self, generated as commanderpb, job::empty_parameter_value};
 use crate::project::{ParameterType, ParameterValue, ProjectFile};
 use crate::python::job::JobLogEvent;
-use crate::python::namespace::NamespaceArg;
 use crate::python::{job_err, rt};
 use gethostname::gethostname;
 use pyo3::exceptions::PyValueError;
@@ -240,8 +238,8 @@ impl Client {
     #[pyo3(signature = (
         project_dir: "str",
         *,
-        r#ref: "str | Ref | None" = None,
-        namespace: "str | Namespace | None" = None,
+        r#ref: "str | None" = None,
+        namespace: "str | None" = None,
         parameters: "dict[str, str | int | float | bool | None] | None" = None,
         cache: "bool" = true,
         transaction: "bool" = true,
@@ -258,8 +256,8 @@ impl Client {
         &self,
         py: Python<'_>,
         project_dir: PathBuf,
-        r#ref: Option<RefArg>,
-        namespace: Option<NamespaceArg>,
+        r#ref: Option<String>,
+        namespace: Option<String>,
         parameters: Option<HashMap<String, Option<RawParameterValue>>>,
         cache: bool,
         transaction: bool,
@@ -299,8 +297,8 @@ impl Client {
         let req = commanderpb::CodeSnapshotRunRequest {
             job_request_common: Some(common),
             zip_file,
-            r#ref: r#ref.map(|a| a.0),
-            namespace: namespace.map(|a| a.0),
+            r#ref,
+            namespace,
             dry_run: dry_run.into(),
             transaction: transaction.to_owned(),
             strict: strict.to_owned(),

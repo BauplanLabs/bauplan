@@ -1,9 +1,15 @@
 use std::io::{Write as _, stdout};
 
-use bauplan::{ApiErrorKind, commit::CommitOptions, namespace::*};
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::{self, AtCommit};
+use bauplan_api::namespace::{
+    CreateNamespaceBody, CreateNamespaceError, DeleteNamespaceBody, DeleteNamespaceError,
+    ListNamespacesError, NamespaceFilters,
+};
+use bauplan_api::pagination::Page;
 use tabwriter::TabWriter;
 
-use crate::cli::{Cli, Output, api_err_kind, color::CliExamples};
+use crate::cli::{Cli, Output, color::CliExamples, paginate::paginate};
 
 #[derive(Debug, clap::Args)]
 pub(crate) struct NamespaceArgs {
@@ -31,18 +37,25 @@ pub(crate) enum NamespaceCommand {
   # List namespaces on specific branch
   bauplan namespace ls --ref main
 
+  # List the namespaces whose name starts with raw
+  bauplan namespace ls --name '^raw'
+
   # Limit results
   bauplan namespace ls --limit 10
 "))]
 pub(crate) struct NamespaceLsArgs {
-    /// Filter namespaces by name
-    pub namespace: Option<String>,
+    /// Filter by name, `^` and `$` anchor it to the start or the end
+    #[arg(short, long)]
+    pub name: Option<String>,
     /// Ref or branch name to list namespaces from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of namespaces to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -55,6 +68,9 @@ pub(crate) struct NamespaceLsArgs {
 
   # Create namespace if it doesn't already exist
   bauplan namespace create my_namespace --if-not-exists
+
+  # Create only if nobody moved the branch since you read its head
+  bauplan namespace create my_namespace --if-head <commit_hash>
 "))]
 pub(crate) struct NamespaceCreateArgs {
     /// Namespace
@@ -68,6 +84,9 @@ pub(crate) struct NamespaceCreateArgs {
     /// Optional commit body to append to the commit message
     #[arg(long)]
     pub commit_body: Option<String>,
+    /// Create only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub if_head: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -80,6 +99,9 @@ pub(crate) struct NamespaceCreateArgs {
 
   # Conditionally delete
   bauplan namespace rm maybe_namespace --if-exists
+
+  # Delete only if nobody moved the branch since you read its head
+  bauplan namespace rm old_namespace --if-head <commit_hash>
 "))]
 pub(crate) struct NamespaceRmArgs {
     /// Namespace
@@ -93,6 +115,9 @@ pub(crate) struct NamespaceRmArgs {
     /// Optional commit body to append to the commit message
     #[arg(long)]
     pub commit_body: Option<String>,
+    /// Delete only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub if_head: Option<String>,
 }
 
 pub(crate) fn handle(cli: &Cli, args: NamespaceArgs) -> anyhow::Result<()> {
@@ -106,9 +131,10 @@ pub(crate) fn handle(cli: &Cli, args: NamespaceArgs) -> anyhow::Result<()> {
 fn list_namespaces(
     cli: &Cli,
     NamespaceLsArgs {
-        namespace,
+        name,
         r#ref,
         limit,
+        pagination_token,
     }: NamespaceLsArgs,
 ) -> anyhow::Result<()> {
     let at_ref = r#ref
@@ -116,25 +142,45 @@ fn list_namespaces(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = GetNamespaces {
-        at_ref,
-        filter_by_name: namespace.as_deref(),
-    };
-
-    let namespaces = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
+    let client = cli.namespaces()?;
+    let mut commit_hash = None;
+    let filters = NamespaceFilters { name };
+    let mut namespaces = paginate(limit, pagination_token, filters, |query| {
+        // We read the next pages at the commit of the first one, so the list
+        // stays the same if the ref moves meanwhile.
+        let at = commit_hash.as_deref().unwrap_or(at_ref);
+        let path = (cli.profile.catalog.clone(), at.to_owned());
+        match client.list_namespaces(path, query) {
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
+            Err(ClientError::Api(err @ ListNamespacesError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(err.into()),
+        }
+    })?;
 
     match cli.global.output {
         Output::Json => {
-            let all_namespaces = namespaces.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_namespaces)?;
+            let items = namespaces.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = AtCommit {
+                inner: Page {
+                    items,
+                    pagination_token: namespaces.pagination_token(),
+                },
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAME\tKIND")?;
+            writeln!(&mut tw, "NAME")?;
             for ns in namespaces {
                 let ns = ns?;
-                writeln!(&mut tw, "{}\tNAMESPACE", ns.name)?;
+                writeln!(&mut tw, "{}", ns.name)?;
             }
 
             tw.flush()?;
@@ -151,6 +197,7 @@ fn create_namespace(
         branch,
         if_not_exists,
         commit_body,
+        if_head,
     }: NamespaceCreateArgs,
 ) -> anyhow::Result<()> {
     let branch = branch
@@ -158,25 +205,37 @@ fn create_namespace(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = CreateNamespace {
-        name: &namespace,
-        branch,
-        commit: CommitOptions {
-            body: commit_body.as_deref(),
-            properties: Default::default(),
+    let path = (cli.profile.catalog.clone(), branch.to_owned());
+    let body = CreateNamespaceBody {
+        name: namespace,
+        commit: model::CommitOptions {
+            body: commit_body,
+            expected_commit_hash: if_head,
         },
     };
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_not_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::NamespaceExists { .. })) {
-            eprintln!("Namespace {namespace:?} already exists");
-            return Ok(());
-        } else {
-            return Err(e);
+    let created = match cli.namespaces()?.create_namespace(path, body) {
+        Ok(created) => created,
+        Err(ClientError::Api(err @ CreateNamespaceError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
         }
+        Err(ClientError::Api(err @ CreateNamespaceError::NameConflict { .. })) if if_not_exists => {
+            eprintln!("{err}");
+            return Ok(());
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    eprintln!(
+        "Created namespace {:?} (commit {})",
+        created.inner.name, created.commit.hash
+    );
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &created)?;
+        println!();
     }
 
-    eprintln!("Created namespace {namespace:?}");
     Ok(())
 }
 
@@ -187,6 +246,7 @@ fn delete_namespace(
         branch,
         if_exists,
         commit_body,
+        if_head,
     }: NamespaceRmArgs,
 ) -> anyhow::Result<()> {
     let branch = branch
@@ -194,29 +254,38 @@ fn delete_namespace(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let req = DeleteNamespace {
-        name: &namespace,
-        branch,
-        commit: CommitOptions {
-            body: commit_body.as_deref(),
-            properties: Default::default(),
+    let path = (
+        cli.profile.catalog.clone(),
+        branch.to_owned(),
+        namespace.clone(),
+    );
+    let body = DeleteNamespaceBody {
+        commit: model::CommitOptions {
+            body: commit_body,
+            expected_commit_hash: if_head,
         },
     };
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_exists
-            && matches!(
-                api_err_kind(&e),
-                Some(ApiErrorKind::NamespaceNotFound { .. })
-            )
-        {
-            eprintln!("Namespace {namespace:?} does not exist");
-            return Ok(());
-        } else {
-            return Err(e);
+    let commit = match cli.namespaces()?.delete_namespace(path, Some(body)) {
+        Ok(commit) => commit,
+        Err(ClientError::Api(err @ DeleteNamespaceError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
         }
+        Err(ClientError::Api(err @ DeleteNamespaceError::NamespaceNotFound { .. }))
+            if if_exists =>
+        {
+            eprintln!("{err}");
+            return Ok(());
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    eprintln!("Deleted namespace {namespace:?} (commit {})", commit.hash);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &commit)?;
+        println!();
     }
 
-    eprintln!("Deleted namespace {namespace:?}");
     Ok(())
 }

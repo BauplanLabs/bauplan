@@ -33,7 +33,7 @@ def test_get_tags_pagination(client: bauplan.Client):
     all_tags = list(tags)
     for t in all_tags:
         assert hasattr(t, "name")
-        assert hasattr(t, "hash")
+        assert hasattr(t, "commit_hash")
 
 
 def test_get_namespaces_pagination(client: bauplan.Client):
@@ -50,7 +50,7 @@ def test_get_namespaces_pagination(client: bauplan.Client):
 
 
 def test_get_tables_pagination(client: bauplan.Client):
-    tables = client.get_tables(ref="main", filter_by_namespace="bauplan")
+    tables = client.get_tables(ref="main", namespace="bauplan")
 
     assert hasattr(tables, "__iter__")
     assert hasattr(tables, "__next__")
@@ -60,20 +60,16 @@ def test_get_tables_pagination(client: bauplan.Client):
 
     # titanic should be there
     table_names = [t.name for t in all_tables]
-    assert "titanic" in table_names
+    assert "bauplan.titanic" in table_names
 
 
 def test_get_tables_with_limit(client: bauplan.Client):
-    all_tables = list(
-        client.get_tables(ref="main", filter_by_namespace="bauplan", limit=5)
-    )
+    all_tables = list(client.get_tables(ref="main", namespace="bauplan", limit=5))
 
     if len(all_tables) < 2:
         pytest.skip("Need at least 2 tables to test limit")
 
-    limited = list(
-        client.get_tables(ref="main", filter_by_namespace="bauplan", limit=1)
-    )
+    limited = list(client.get_tables(ref="main", namespace="bauplan", limit=1))
     assert len(limited) == 1
 
 

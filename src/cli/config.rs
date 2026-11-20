@@ -25,6 +25,8 @@ pub(crate) enum ConfigSetting {
     ApiKey,
     #[value(hide = true)]
     ApiEndpoint,
+    #[value(hide = true)]
+    NewApiEndpoint,
     ActiveBranch,
 }
 
@@ -33,6 +35,7 @@ impl std::fmt::Display for ConfigSetting {
         match self {
             ConfigSetting::ApiKey => f.write_str("api_key"),
             ConfigSetting::ApiEndpoint => f.write_str("api_endpoint"),
+            ConfigSetting::NewApiEndpoint => f.write_str("new_api_endpoint"),
             ConfigSetting::ActiveBranch => f.write_str("active_branch"),
         }
     }
@@ -152,6 +155,7 @@ fn print_profile(out: &mut impl Write, profile: &bauplan::Profile) -> anyhow::Re
     writeln!(out, "{HEADER}Profile {:?}{HEADER:#}", profile.name)?;
     writeln!(out, "{GREEN}API Key{GREEN:#}\t*********")?;
     writeln!(out, "{GREEN}Active Branch{GREEN:#}\t{active_branch}",)?;
+    writeln!(out, "{GREEN}Catalog{GREEN:#}\t{}", profile.catalog)?;
 
     if !profile.args.is_empty() {
         writeln!(out, "{GREEN}Args{GREEN:#}")?;
