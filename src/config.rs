@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use tracing::debug;
 
 const DEFAULT_API_ENDPOINT: &str = "https://api.use1.aprod.bauplanlabs.com";
+const DEFAULT_NEW_API_ENDPOINT: &str = "https://api.bauplanlabs.com";
 
 /// An error encountered while loading or resolving a configuration profile.
 #[derive(thiserror::Error, Debug)]
@@ -36,6 +37,9 @@ pub struct Profile {
     /// The API endpoint to use. Intended for internal use.
     #[serde(skip)]
     pub api_endpoint: http::Uri,
+    /// The endpoint of the new API. Intended for internal use.
+    #[serde(skip)]
+    pub new_api_endpoint: http::Uri,
     /// The API key to use for authentication.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
@@ -61,6 +65,7 @@ impl std::fmt::Debug for Profile {
         f.debug_struct("Profile")
             .field("name", &self.name)
             .field("api_endpoint", &self.api_endpoint)
+            .field("new_api_endpoint", &self.new_api_endpoint)
             .field("api_key", &"********")
             .field("active_branch", &self.active_branch)
             .field("args", &self.args)
@@ -74,6 +79,7 @@ impl std::fmt::Debug for Profile {
 struct ConfigProfile {
     pub(crate) active_branch: Option<String>,
     pub(crate) api_endpoint: Option<String>,
+    pub(crate) new_api_endpoint: Option<String>,
     pub(crate) api_key: Option<String>,
     #[serde(default)]
     pub(crate) args: HashMap<String, String>,
@@ -108,10 +114,11 @@ impl Profile {
     /// The following environment variables can override the corresponding
     /// values in the config file:
     ///
-    /// | Environment Variable    | Config Value   |
-    /// |-------------------------|----------------|
-    /// | `BAUPLAN_API_KEY`       | `api_key`      |
-    /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
+    /// | Environment Variable       | Config Value       |
+    /// |----------------------------|--------------------|
+    /// | `BAUPLAN_API_KEY`          | `api_key`          |
+    /// | `BAUPLAN_API_ENDPOINT`     | `api_endpoint`     |
+    /// | `BAUPLAN_NEW_API_ENDPOINT` | `new_api_endpoint` |
     pub fn from_default_env() -> Result<Self, Error> {
         if let Ok(s) = env::var("BAUPLAN_PROFILE") {
             Self::from_env(&s)
@@ -127,13 +134,15 @@ impl Profile {
     /// The following environment variables can override the corresponding
     /// values in the config file:
     ///
-    /// | Environment Variable    | Config Value   |
-    /// |-------------------------|----------------|
-    /// | `BAUPLAN_API_KEY`       | `api_key`      |
-    /// | `BAUPLAN_API_ENDPOINT`  | `api_endpoint` |
+    /// | Environment Variable       | Config Value       |
+    /// |----------------------------|--------------------|
+    /// | `BAUPLAN_API_KEY`          | `api_key`          |
+    /// | `BAUPLAN_API_ENDPOINT`     | `api_endpoint`     |
+    /// | `BAUPLAN_NEW_API_ENDPOINT` | `new_api_endpoint` |
     pub fn from_env(name: &str) -> Result<Self, Error> {
         let api_key = env::var("BAUPLAN_API_KEY").ok();
         let api_endpoint = env::var("BAUPLAN_API_ENDPOINT").ok();
+        let new_api_endpoint = env::var("BAUPLAN_NEW_API_ENDPOINT").ok();
 
         let config_path = find_config()?;
         let profile = match read_profile(&config_path, name) {
@@ -150,6 +159,11 @@ impl Profile {
             .or(profile.api_endpoint.as_deref())
             .unwrap_or(DEFAULT_API_ENDPOINT)
             .parse()?;
+        let new_api_endpoint = new_api_endpoint
+            .as_deref()
+            .or(profile.new_api_endpoint.as_deref())
+            .unwrap_or(DEFAULT_NEW_API_ENDPOINT)
+            .parse()?;
 
         let api_key = api_key.or(profile.api_key);
 
@@ -158,6 +172,7 @@ impl Profile {
             active_branch: profile.active_branch,
             args: profile.args,
             api_endpoint,
+            new_api_endpoint,
             api_key,
             user_agent: make_ua(None),
             config_path,
@@ -237,6 +252,7 @@ impl Profile {
         let ConfigProfile {
             active_branch,
             api_endpoint,
+            new_api_endpoint,
             api_key,
             args,
         } = raw;
@@ -244,12 +260,16 @@ impl Profile {
         let api_endpoint = api_endpoint
             .unwrap_or(DEFAULT_API_ENDPOINT.to_string())
             .parse()?;
+        let new_api_endpoint = new_api_endpoint
+            .unwrap_or(DEFAULT_NEW_API_ENDPOINT.to_string())
+            .parse()?;
 
         Ok(Self {
             name,
             active_branch,
             args,
             api_endpoint,
+            new_api_endpoint,
             api_key,
             user_agent: make_ua(None),
             config_path: path.to_owned(),

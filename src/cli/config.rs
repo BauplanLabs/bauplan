@@ -25,6 +25,8 @@ pub(crate) enum ConfigSetting {
     ApiKey,
     #[value(hide = true)]
     ApiEndpoint,
+    #[value(hide = true)]
+    NewApiEndpoint,
     ActiveBranch,
 }
 
@@ -33,6 +35,7 @@ impl std::fmt::Display for ConfigSetting {
         match self {
             ConfigSetting::ApiKey => f.write_str("api_key"),
             ConfigSetting::ApiEndpoint => f.write_str("api_endpoint"),
+            ConfigSetting::NewApiEndpoint => f.write_str("new_api_endpoint"),
             ConfigSetting::ActiveBranch => f.write_str("active_branch"),
         }
     }
