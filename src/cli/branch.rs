@@ -8,7 +8,7 @@ use anyhow::bail;
 use bauplan::table::{GetTables, Table};
 use bauplan_api::branch::{
     BranchFilters, CreateBranchBody, CreateBranchError, DeleteBranchError, MergeBranchBody,
-    MergeStrategy, RenameBranchBody, ResolveBranchError,
+    MergeBranchError, MergeStrategy, RenameBranchBody, ResolveBranchError,
 };
 use bauplan_api::gropius::client::ClientError;
 use bauplan_api::model::ExpectedHead;
@@ -299,9 +299,8 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
     }
 
     if let Some(err) = missing_active {
-        anstream::eprintln!("{YELLOW}WARNING:{YELLOW:#} {err} It is your active branch.");
-        anstream::eprintln!("{GREEN}TIP:{GREEN:#} To switch to another branch, run:");
-        eprintln!("\tbauplan checkout main");
+        let err = cli.with_active_branch_tip(active_branch, err);
+        anstream::eprintln!("{YELLOW}WARNING:{YELLOW:#} {err}");
     }
 
     Ok(())
@@ -373,6 +372,9 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
             eprintln!("{err}");
             return Ok(());
         }
+        Err(ClientError::Api(err @ CreateBranchError::FromRefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(from_ref, err));
+        }
         Err(err) => return Err(err.into()),
     };
 
@@ -431,7 +433,15 @@ fn merge_branch(cli: &Cli, args: BranchMergeArgs) -> anyhow::Result<()> {
         },
     };
 
-    match cli.branches()?.merge_branch(path, body)? {
+    let merged = match cli.branches()?.merge_branch(path, body) {
+        Ok(merged) => merged,
+        Err(ClientError::Api(err @ MergeBranchError::BranchNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(into_branch, err));
+        }
+        Err(err) => return Err(err.into()),
+    };
+
+    match merged {
         Some(commit) => eprintln!(
             "Merged \"{branch_name}\" into \"{into_branch}\" (commit {})",
             commit.hash

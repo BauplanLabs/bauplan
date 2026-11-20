@@ -4,7 +4,7 @@ use bauplan_api::gropius::client::ClientError;
 use bauplan_api::model;
 use bauplan_api::namespace::{
     CreateNamespaceBody, CreateNamespaceError, DeleteNamespaceBody, DeleteNamespaceError,
-    NamespaceFilters,
+    ListNamespacesError, NamespaceFilters,
 };
 use tabwriter::TabWriter;
 
@@ -137,7 +137,13 @@ fn list_namespaces(
     let filters = NamespaceFilters { name };
     let namespaces = paginate(limit, filters, |query| {
         let path = (cli.global.catalog.clone(), at_ref.to_owned());
-        client.list_namespaces(path, query).map(|page| page.inner)
+        match client.list_namespaces(path, query) {
+            Ok(page) => Ok(page.inner),
+            Err(ClientError::Api(err @ ListNamespacesError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(err.into()),
+        }
     })?;
 
     match cli.global.output {
@@ -187,6 +193,9 @@ fn create_namespace(
 
     let created = match cli.namespaces()?.create_namespace(path, body) {
         Ok(created) => created,
+        Err(ClientError::Api(err @ CreateNamespaceError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
+        }
         Err(ClientError::Api(err @ CreateNamespaceError::NameConflict { .. })) if if_not_exists => {
             eprintln!("{err}");
             return Ok(());
@@ -230,6 +239,9 @@ fn delete_namespace(
 
     let commit = match cli.namespaces()?.delete_namespace(path, Some(body)) {
         Ok(commit) => commit,
+        Err(ClientError::Api(err @ DeleteNamespaceError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
+        }
         Err(ClientError::Api(err @ DeleteNamespaceError::NamespaceNotFound { .. }))
             if if_exists =>
         {

@@ -214,6 +214,9 @@ fn create_tag(
             eprintln!("{err}");
             return Ok(());
         }
+        Err(ClientError::Api(err @ CreateTagError::FromRefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(from_ref, err));
+        }
         Err(err) => return Err(err.into()),
     };
 

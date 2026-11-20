@@ -24,8 +24,8 @@ use bauplan_api::arrow_schema::{ArrowField, ArrowTimeUnit, ArrowType};
 use bauplan_api::gropius::client::ClientError;
 use bauplan_api::model;
 use bauplan_api::table::{
-    DeleteTableBody, DeleteTableError, PartitionField, PartitionTransform, Table, TableFilters,
-    TableKind,
+    DeleteTableBody, DeleteTableError, GetTableError, ListTablesError, PartitionField,
+    PartitionTransform, Table, TableFilters, TableKind,
 };
 use commanderpb::runner_event::Event as RunnerEvent;
 use indicatif::{HumanBytes, ProgressBar};
@@ -397,7 +397,13 @@ fn handle_list_tables(
     let filters = TableFilters { name, namespace };
     let tables = paginate(limit, filters, |query| {
         let path = (cli.global.catalog.clone(), at_ref.to_owned());
-        client.list_tables(path, query).map(|page| page.inner)
+        match client.list_tables(path, query) {
+            Ok(page) => Ok(page.inner),
+            Err(ClientError::Api(err @ ListTablesError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(err.into()),
+        }
     })?;
 
     match cli.global.output {
@@ -470,7 +476,13 @@ fn handle_get_table(
         .unwrap_or("main");
 
     let path = (cli.global.catalog.clone(), at_ref.to_owned(), table_name);
-    let table = cli.tables()?.get_table(path)?;
+    let table = match cli.tables()?.get_table(path) {
+        Ok(table) => table,
+        Err(ClientError::Api(err @ GetTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(at_ref, err));
+        }
+        Err(err) => return Err(err.into()),
+    };
 
     match cli.global.output {
         Output::Json => {
@@ -687,6 +699,9 @@ fn handle_delete_table(
 
     let commit = match cli.tables()?.delete_table(path, Some(body)) {
         Ok(commit) => commit,
+        Err(ClientError::Api(err @ DeleteTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
+        }
         Err(ClientError::Api(err @ DeleteTableError::TableNotFound { .. })) if if_exists => {
             eprintln!("{err}");
             return Ok(());

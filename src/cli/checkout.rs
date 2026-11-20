@@ -1,6 +1,7 @@
 use crate::cli::{Cli, color::CliExamples, yaml};
 use anyhow::bail;
-use bauplan_api::branch::CreateBranchBody;
+use bauplan_api::branch::{CreateBranchBody, CreateBranchError};
+use bauplan_api::gropius::client::ClientError;
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
@@ -53,9 +54,15 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
         ttl_seconds: None,
     };
 
-    let branch = cli
-        .branches()?
-        .create_branch(cli.global.catalog.clone(), body)?;
+    let catalog = cli.global.catalog.clone();
+    let branch = match cli.branches()?.create_branch(catalog, body) {
+        Ok(branch) => branch,
+        Err(ClientError::Api(err @ CreateBranchError::FromRefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(from_ref, err));
+        }
+        Err(err) => return Err(err.into()),
+    };
+
     eprintln!("Created branch {:?}", branch.name);
 
     set_active_branch(cli, &branch.name)

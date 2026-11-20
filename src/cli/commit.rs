@@ -1,5 +1,7 @@
 use std::io::{Write, stdout};
 
+use bauplan_api::catalog_ref::ListHistoryError;
+use bauplan_api::gropius::client::ClientError;
 use bauplan_api::model::Commit;
 
 use crate::cli::{
@@ -75,7 +77,13 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
     let client = cli.refs()?;
     let commits = paginate(Some(max_count), (), |query| {
         let path = (cli.global.catalog.clone(), at_ref.to_owned());
-        client.list_history(path, query).map(|page| page.inner)
+        match client.list_history(path, query) {
+            Ok(page) => Ok(page.inner),
+            Err(ClientError::Api(err @ ListHistoryError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(err.into()),
+        }
     })?;
 
     match cli.global.output {

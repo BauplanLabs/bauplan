@@ -338,6 +338,25 @@ impl Cli {
         Ok(http)
     }
 
+    /// Adds a tip to switch branch when the ref the server did not find is the
+    /// active branch.
+    pub(crate) fn with_active_branch_tip(
+        &self,
+        ref_name: &str,
+        err: impl std::error::Error + Send + Sync + 'static,
+    ) -> anyhow::Error {
+        let is_active = self.profile.active_branch.as_deref() == Some(ref_name);
+        if !is_active || ref_name == "main" {
+            return err.into();
+        }
+
+        anyhow::anyhow!(
+            "{err} It is your active branch.\n\n\
+             {GREEN}TIP:{GREEN:#} To switch to another branch, run:\n\
+             \tbauplan checkout main"
+        )
+    }
+
     /// Wraps a gRPC request message with a `traceparent` metadata header.
     pub(crate) fn traced<T>(&self, msg: T) -> tonic::Request<T> {
         let mut req = tonic::Request::new(msg);
