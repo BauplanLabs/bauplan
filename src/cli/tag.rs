@@ -136,7 +136,7 @@ pub(crate) fn handle(cli: &Cli, args: TagArgs) -> anyhow::Result<()> {
 }
 
 fn get_tag(cli: &Cli, TagGetArgs { tag_name, utc }: TagGetArgs) -> anyhow::Result<()> {
-    let path = (cli.global.catalog.clone(), tag_name);
+    let path = (cli.profile.catalog.clone(), tag_name);
     let tag = cli.tags()?.resolve_tag(path)?;
 
     match cli.global.output {
@@ -177,7 +177,7 @@ fn list_tags(
     let client = cli.tags()?;
     let filters = TagFilters { name };
     let mut tags = paginate(limit, pagination_token, filters, |query| {
-        client.list_tags(cli.global.catalog.clone(), query)
+        client.list_tags(cli.profile.catalog.clone(), query)
     })?;
 
     match cli.global.output {
@@ -224,7 +224,7 @@ fn create_tag(
         from_ref: from_ref.to_owned(),
     };
 
-    let tag = match cli.tags()?.create_tag(cli.global.catalog.clone(), body) {
+    let tag = match cli.tags()?.create_tag(cli.profile.catalog.clone(), body) {
         Ok(tag) => tag,
         Err(ClientError::Api(err @ CreateTagError::TagNameConflict { .. })) if if_not_exists => {
             eprintln!("{err}");
@@ -253,7 +253,7 @@ fn delete_tag(
         if_exists,
     }: TagRmArgs,
 ) -> anyhow::Result<()> {
-    let path = (cli.global.catalog.clone(), tag_name.clone());
+    let path = (cli.profile.catalog.clone(), tag_name.clone());
     match cli.tags()?.delete_tag(path) {
         Ok(_) => (),
         Err(ClientError::Api(err @ DeleteTagError::TagNotFound { .. })) if if_exists => {
@@ -274,7 +274,7 @@ fn rename_tag(
         new_tag_name,
     }: TagRenameArgs,
 ) -> anyhow::Result<()> {
-    let path = (cli.global.catalog.clone(), tag_name.clone());
+    let path = (cli.profile.catalog.clone(), tag_name.clone());
     let body = RenameTagBody { name: new_tag_name };
     let tag = cli.tags()?.rename_tag(path, body)?;
     eprintln!("Renamed tag {tag_name:?} to {:?}", tag.name);

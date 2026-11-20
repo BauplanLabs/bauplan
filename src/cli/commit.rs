@@ -88,7 +88,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
     let client = cli.refs()?;
     let mut commit_hash = None;
     let mut commits = paginate(Some(max_count), pagination_token, (), |query| {
-        let path = (cli.global.catalog.clone(), at_ref.to_owned());
+        let path = (cli.profile.catalog.clone(), at_ref.to_owned());
         match client.list_history(path, query) {
             Ok(page) => {
                 commit_hash.get_or_insert(page.commit_hash);

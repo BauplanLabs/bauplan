@@ -56,7 +56,7 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
         ttl_seconds: None,
     };
 
-    let catalog = cli.global.catalog.clone();
+    let catalog = cli.profile.catalog.clone();
     let branch = match cli.branches()?.create_branch(catalog, body) {
         Ok(branch) => branch,
         Err(ClientError::Api(err @ CreateBranchError::FromRefNotFound { .. })) => {
@@ -76,7 +76,7 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
 }
 
 pub(crate) fn switch_branch(cli: &Cli, branch_name: &str) -> anyhow::Result<()> {
-    let path = (cli.global.catalog.clone(), branch_name.to_owned());
+    let path = (cli.profile.catalog.clone(), branch_name.to_owned());
     let branch = cli.branches()?.resolve_branch(path)?;
 
     set_active_branch(cli, &branch.name)

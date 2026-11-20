@@ -149,7 +149,7 @@ fn list_namespaces(
         // We read the next pages at the commit of the first one, so the list
         // stays the same if the ref moves meanwhile.
         let at = commit_hash.as_deref().unwrap_or(at_ref);
-        let path = (cli.global.catalog.clone(), at.to_owned());
+        let path = (cli.profile.catalog.clone(), at.to_owned());
         match client.list_namespaces(path, query) {
             Ok(page) => {
                 commit_hash.get_or_insert(page.commit_hash);
@@ -205,7 +205,7 @@ fn create_namespace(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let path = (cli.global.catalog.clone(), branch.to_owned());
+    let path = (cli.profile.catalog.clone(), branch.to_owned());
     let body = CreateNamespaceBody {
         name: namespace,
         commit: model::CommitOptions {
@@ -255,7 +255,7 @@ fn delete_namespace(
         .unwrap_or("main");
 
     let path = (
-        cli.global.catalog.clone(),
+        cli.profile.catalog.clone(),
         branch.to_owned(),
         namespace.clone(),
     );

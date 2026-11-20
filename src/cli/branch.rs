@@ -236,7 +236,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
     // first are only for the terminal.
     if cli.global.output == Output::Json {
         let mut branches = paginate(limit, pagination_token, filters, |query| {
-            client.list_branches(cli.global.catalog.clone(), query)
+            client.list_branches(cli.profile.catalog.clone(), query)
         })?;
         let items = branches.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
         let page = Page {
@@ -265,7 +265,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
             break;
         }
 
-        match client.resolve_branch((cli.global.catalog.clone(), name.to_owned())) {
+        match client.resolve_branch((cli.profile.catalog.clone(), name.to_owned())) {
             Ok(branch) => top.push(branch),
             Err(ClientError::Api(err @ ResolveBranchError::BranchNotFound { .. })) => {
                 if name == active_branch {
@@ -279,7 +279,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
     // We ask for the whole limit, because the list can still contain the
     // branches we show first.
     let rest = paginate(limit, pagination_token, filters, |query| {
-        client.list_branches(cli.global.catalog.clone(), query)
+        client.list_branches(cli.profile.catalog.clone(), query)
     })?
     .filter(|branch| !matches!(branch, Ok(branch) if top_names.contains(&branch.name.as_str())));
     let branches = top
@@ -322,7 +322,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
 fn get_branch(cli: &Cli, args: BranchGetArgs) -> anyhow::Result<()> {
     let BranchGetArgs { branch_name, utc } = args;
 
-    let path = (cli.global.catalog.clone(), branch_name);
+    let path = (cli.profile.catalog.clone(), branch_name);
     let branch = cli.branches()?.resolve_branch(path)?;
 
     match cli.global.output {
@@ -376,7 +376,7 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
         ttl_seconds: None,
     };
 
-    let catalog = cli.global.catalog.clone();
+    let catalog = cli.profile.catalog.clone();
     let branch = match cli.branches()?.create_branch(catalog, body) {
         Ok(branch) => branch,
         Err(ClientError::Api(err @ CreateBranchError::BranchNameConflict { .. }))
@@ -414,7 +414,7 @@ fn delete_branch(cli: &Cli, args: BranchRmArgs) -> anyhow::Result<()> {
         bail!("cannot delete the active branch {branch_name:?}");
     }
 
-    let path = (cli.global.catalog.clone(), branch_name.clone());
+    let path = (cli.profile.catalog.clone(), branch_name.clone());
     let expected_head = if_head.map(|hash| ExpectedHead {
         expected_commit_hash: Some(hash),
     });
@@ -441,7 +441,7 @@ fn merge_branch(cli: &Cli, args: BranchMergeArgs) -> anyhow::Result<()> {
 
     let into_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
 
-    let path = (cli.global.catalog.clone(), into_branch.to_owned());
+    let path = (cli.profile.catalog.clone(), into_branch.to_owned());
     let body = MergeBranchBody {
         from_ref: branch_name.clone(),
         strategy: MergeStrategy::Squash {
@@ -482,7 +482,7 @@ fn rename_branch(cli: &Cli, args: BranchRenameArgs) -> anyhow::Result<()> {
         new_branch_name,
     } = args;
 
-    let path = (cli.global.catalog.clone(), branch_name.clone());
+    let path = (cli.profile.catalog.clone(), branch_name.clone());
     let body = RenameBranchBody {
         name: new_branch_name,
     };

@@ -120,9 +120,9 @@ pub(crate) struct GlobalArgs {
     /// Name of the profile to use
     #[arg(long, short = 'P', global = true)]
     pub profile: Option<String>,
-    /// Name of the catalog to use
-    #[arg(long, global = true, default_value = "default")]
-    pub catalog: String,
+    /// Name of the catalog to use [default: catalog of the profile]
+    #[arg(long, global = true)]
+    pub catalog: Option<String>,
     /// Output format
     #[arg(long, short = 'O', global = true, default_value_t = Output::default())]
     pub output: Output,
@@ -193,7 +193,10 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Profile::from_default_env()
     };
 
-    let profile = profile?.with_ua_product("bauplan-cli");
+    let mut profile = profile?.with_ua_product("bauplan-cli");
+    if let Some(catalog) = args.global.catalog.clone() {
+        profile = profile.with_catalog(catalog);
+    }
     profile.validate()?;
 
     // Allows error responses to be parsed.

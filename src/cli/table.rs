@@ -405,7 +405,7 @@ fn handle_list_tables(
         // We read the next pages at the commit of the first one, so the list
         // stays the same if the ref moves meanwhile.
         let at = commit_hash.as_deref().unwrap_or(at_ref);
-        let path = (cli.global.catalog.clone(), at.to_owned());
+        let path = (cli.profile.catalog.clone(), at.to_owned());
         match client.list_tables(path, query) {
             Ok(page) => {
                 commit_hash.get_or_insert(page.commit_hash);
@@ -494,7 +494,7 @@ fn handle_get_table(
         .or(cli.profile.active_branch.as_deref())
         .unwrap_or("main");
 
-    let path = (cli.global.catalog.clone(), at_ref.to_owned(), table_name);
+    let path = (cli.profile.catalog.clone(), at_ref.to_owned(), table_name);
     let table = match cli.tables()?.get_table(path) {
         Ok(table) => table,
         Err(ClientError::Api(err @ GetTableError::RefNotFound { .. })) => {
@@ -705,7 +705,7 @@ fn handle_delete_table(
         .unwrap_or("main");
 
     let path = (
-        cli.global.catalog.clone(),
+        cli.profile.catalog.clone(),
         branch.to_owned(),
         table_name.clone(),
     );
