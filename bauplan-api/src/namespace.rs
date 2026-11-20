@@ -20,6 +20,13 @@ pub struct Namespace {
     pub name: String,
 }
 
+/// A namespace in a list.
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct NamespaceIdentifier {
+    /// The namespace name.
+    pub name: String,
+}
+
 /// Filters for the list of namespaces.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 pub struct NamespaceFilters {
@@ -144,7 +151,7 @@ pub trait NamespaceApi {
         path: Path<(String, String)>,
         query: Query<ListQuery<NamespaceFilters>>,
         req: Request,
-    ) -> Result<AtCommit<Page<Namespace>>, ListNamespacesError>;
+    ) -> Result<AtCommit<Page<NamespaceIdentifier>>, ListNamespacesError>;
 
     /// Create a namespace.
     ///
