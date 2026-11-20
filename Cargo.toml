@@ -62,6 +62,7 @@ _check-parse = []
 anstream = "0.6"
 anstyle = "1"
 anyhow.workspace = true
+bauplan-api = { path = "bauplan-api", features = ["client-ureq"] }
 bauplan-longbow = { path = "bauplan-longbow", default-features = false, features = ["client"] }
 arrow = { version = "59", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
 arrow-csv = { version = "59", optional = true }
@@ -130,7 +131,7 @@ bstr = "1"
 escargot = "0.5"
 http-body-util = "0.1"
 predicates = "3"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.13", default-features = false }
 shlex = "1"
 similar = { version = "2", features = ["bytes"] }
 tempfile = "3"

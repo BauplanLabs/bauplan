@@ -3,9 +3,11 @@ mod checkout;
 mod color;
 mod commit;
 mod config;
+mod datetime;
 mod init;
 mod job;
 mod namespace;
+mod paginate;
 mod parameter;
 mod query;
 mod run;
@@ -20,13 +22,20 @@ use color::*;
 
 use anyhow::bail;
 use bauplan::{
-    ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile,
+    Profile,
     grpc::{self, generated as commanderpb},
 };
 
+use bauplan_api::branch::BranchApiClient;
+use bauplan_api::catalog_ref::RefApiClient;
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::namespace::NamespaceApiClient;
+use bauplan_api::table::TableApiClient;
+use bauplan_api::tag::TagApiClient;
 use clap::{Parser, Subcommand};
 use opentelemetry::trace::{SpanId, TraceFlags, TraceId};
 use tracing::debug;
+use ureq::middleware::MiddlewareNext;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -82,10 +91,6 @@ impl FromStr for Priority {
 pub(crate) struct KeyValue(String, String);
 
 impl KeyValue {
-    fn as_strs(&self) -> (&str, &str) {
-        (&self.0, &self.1)
-    }
-
     fn into_strings(self) -> (String, String) {
         (self.0, self.1)
     }
@@ -113,6 +118,9 @@ pub(crate) struct GlobalArgs {
     /// Name of the profile to use
     #[arg(long, short = 'P', global = true)]
     pub profile: Option<String>,
+    /// Name of the catalog to use [default: catalog of the profile]
+    #[arg(long, global = true)]
+    pub catalog: Option<String>,
     /// Output format
     #[arg(long, short = 'O', global = true, default_value_t = Output::default())]
     pub output: Output,
@@ -160,6 +168,8 @@ pub(crate) struct Cli {
     pub(crate) profile: Profile,
     pub(crate) global: GlobalArgs,
     pub(crate) timeout: Option<time::Duration>,
+    /// Every request through it carries the api key and the trace of this
+    /// invocation.
     pub(crate) agent: ureq::Agent,
     pub(crate) multiprogress: indicatif::MultiProgress,
     pub(crate) trace_id: TraceId,
@@ -183,28 +193,44 @@ pub(crate) fn run(args: Args, multiprogress: indicatif::MultiProgress) -> anyhow
         Profile::from_default_env()
     };
 
-    let profile = profile?.with_ua_product("bauplan-cli");
+    let mut profile = profile?.with_ua_product("bauplan-cli");
+    if let Some(catalog) = args.global.catalog.clone() {
+        profile = profile.with_catalog(catalog);
+    }
     profile.validate()?;
 
-    // Allows error responses to be parsed.
-    let mut cfg = ureq::config::Config::builder()
-        .http_status_as_error(false)
-        .tls_config(
-            ureq::tls::TlsConfig::builder()
-                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
-                .build(),
-        );
     let timeout = match args.global.client_timeout {
         Some(-1) | None => None,
         Some(v) if v > 0 => Some(time::Duration::from_secs(v as _)),
         Some(v) => bail!("Invalid timeout value: {v}"),
     };
 
-    cfg = cfg.timeout_global(timeout);
-    let agent = ureq::Agent::new_with_config(cfg.build());
-
     let trace_id = TraceId::from(rand::random::<u128>());
     debug!(%trace_id, command = ?args.command, "cli invocation");
+
+    let authorization = profile.authorization()?;
+
+    let middleware = move |mut req: http::Request<ureq::SendBody<'_>>, next: MiddlewareNext<'_>| {
+        let headers = req.headers_mut();
+        if let Some(authorization) = &authorization {
+            headers.insert(http::header::AUTHORIZATION, authorization.clone());
+        }
+        headers.insert("traceparent", traceparent(trace_id).parse().unwrap());
+        next.handle(req)
+    };
+
+    let cfg = ureq::config::Config::builder()
+        // Allows error responses to be parsed.
+        .http_status_as_error(false)
+        .tls_config(
+            ureq::tls::TlsConfig::builder()
+                .root_certs(ureq::tls::RootCerts::PlatformVerifier)
+                .build(),
+        )
+        .user_agent(&profile.user_agent)
+        .timeout_global(timeout)
+        .middleware(middleware);
+    let agent = ureq::Agent::new_with_config(cfg.build());
 
     let cli = Cli {
         profile,
@@ -243,26 +269,73 @@ fn with_rt<T, F: Future<Output = T>>(f: F) -> T {
 }
 
 impl Cli {
-    /// Formats a W3C `traceparent` header value using this invocation's trace
-    /// ID and a fresh span ID.
-    /// See <https://www.w3.org/TR/trace-context/#traceparent-header>.
+    /// The active branch, or `main` when the profile has none.
+    pub(crate) fn active_branch(&self) -> &str {
+        self.profile.active_branch.as_deref().unwrap_or("main")
+    }
+
+    /// The `traceparent` of this invocation, with a fresh span.
     pub(crate) fn traceparent(&self) -> String {
-        let span_id = SpanId::from(rand::random::<u64>());
-        format!(
-            "00-{}-{}-{:02x}",
-            self.trace_id,
-            span_id,
-            TraceFlags::SAMPLED.to_u8()
+        traceparent(self.trace_id)
+    }
+
+    /// A client for the branch endpoints of the api.
+    pub(crate) fn branches(&self) -> BranchApiClient {
+        BranchApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
         )
     }
 
-    pub(crate) fn roundtrip<T: ApiRequest>(&self, req: T) -> anyhow::Result<T::Response> {
-        let mut req = req.into_request(&self.profile)?;
-        req.headers_mut()
-            .insert("traceparent", self.traceparent().parse().unwrap());
-        let resp = self.agent.run(req)?;
-        let resp = <T::Response as ApiResponse>::from_response(resp.map(ureq::Body::into_reader))?;
-        Ok(resp)
+    /// A client for the tag endpoints of the api.
+    pub(crate) fn tags(&self) -> TagApiClient {
+        TagApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the table endpoints of the api.
+    pub(crate) fn tables(&self) -> TableApiClient {
+        TableApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the ref endpoints of the api.
+    pub(crate) fn refs(&self) -> RefApiClient {
+        RefApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the namespace endpoints of the api.
+    pub(crate) fn namespaces(&self) -> NamespaceApiClient {
+        NamespaceApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// When the server does not find the active branch, adds a tip to switch
+    /// branch.
+    pub(crate) fn with_active_branch_tip(
+        &self,
+        ref_name: &str,
+        err: impl std::error::Error + Send + Sync + 'static,
+    ) -> anyhow::Error {
+        let is_active = self.profile.active_branch.as_deref() == Some(ref_name);
+        if !is_active || ref_name == "main" {
+            return err.into();
+        }
+
+        anyhow::anyhow!(
+            "{err} It is your active branch.\n\n\
+             {GREEN}TIP:{GREEN:#} To switch to another branch, run:\n\
+             \tbauplan checkout main"
+        )
     }
 
     /// Wraps a gRPC request message with a `traceparent` metadata header.
@@ -274,8 +347,35 @@ impl Cli {
     }
 }
 
-pub(crate) fn api_err_kind(err: &anyhow::Error) -> Option<&ApiErrorKind> {
-    err.downcast_ref::<ApiError>()?.kind()
+/// A W3C `traceparent` header value for the trace of this invocation and a
+/// fresh span.
+/// See <https://www.w3.org/TR/trace-context/#traceparent-header>.
+fn traceparent(trace_id: TraceId) -> String {
+    let span_id = SpanId::from(rand::random::<u64>());
+    format!(
+        "00-{trace_id}-{span_id}-{:02x}",
+        TraceFlags::SAMPLED.to_u8()
+    )
+}
+
+/// The error of an api call. When the body is not an error of the endpoint, we
+/// still show the message of the server, if it has one.
+pub(crate) fn api_error<E>(err: ClientError<E>) -> anyhow::Error
+where
+    E: std::error::Error + Send + Sync + 'static,
+{
+    #[derive(serde::Deserialize)]
+    struct Envelope {
+        message: String,
+    }
+
+    if let ClientError::Unexpected { body, .. } = &err
+        && let Ok(Envelope { message }) = serde_json::from_slice(body)
+    {
+        return anyhow::Error::msg(message);
+    }
+
+    err.into()
 }
 
 pub(crate) fn format_grpc_status(status: tonic::Status) -> anyhow::Error {
@@ -297,7 +397,7 @@ async fn handle_info(cli: &Cli) -> anyhow::Result<()> {
         .into_inner();
 
     let profile_name = &cli.profile.name;
-    let active_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
+    let active_branch = cli.active_branch();
 
     writeln!(&mut out, "{GREEN}{:<35}{GREEN:#} {profile_name}", "Profile")?;
     writeln!(

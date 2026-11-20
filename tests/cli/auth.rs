@@ -9,6 +9,7 @@ fn invalid_api_key() {
         .args(["branch", "ls", "--limit", "10"])
         .assert()
         .failure()
-        .stderr(contains("UNAUTHORIZED"))
+        .stderr(contains("Invalid or missing bearer token."))
+        .stderr(contains("A generic error.").not())
         .stderr(contains("Failed to parse").not());
 }

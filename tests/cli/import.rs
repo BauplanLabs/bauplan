@@ -2,7 +2,7 @@ use predicates::str::contains;
 
 use crate::cli::{bauplan, test_branch};
 
-const NAMESPACE_NAME: &str = "e2e-create-table";
+const NAMESPACE_NAME: &str = "e2e_create_table";
 const TABLE_NAME: &str = "my-table-name";
 
 #[test]

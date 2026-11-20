@@ -1,6 +1,5 @@
 use anstyle::{AnsiColor, Style};
-use anyhow::Context as _;
-use bauplan::ApiResponse as _;
+use bauplan_api::branch::{BranchApiClient, CreateBranchBody};
 use bstr::{BStr, BString, ByteSlice as _};
 use predicates::reflection::{Case, Product};
 use similar::{ChangeTag, TextDiff};
@@ -55,20 +54,22 @@ pub fn test_branch(suffix: &str) -> TestBranch {
         .unwrap()
         .as_secs();
     let name = format!("{}.{suffix}.{timestamp}", username());
+    let branch = TestBranch { name, profile };
 
     // Clean up any leftover branch from a previous run.
-    let _ = roundtrip(&profile, bauplan::branch::DeleteBranch { name: &name });
+    let _ = branch.delete();
 
-    roundtrip(
-        &profile,
-        bauplan::branch::CreateBranch {
-            name: &name,
-            from_ref: "main",
-        },
-    )
-    .expect("Failed to create test branch");
+    let body = CreateBranchBody {
+        name: branch.name.clone(),
+        from_ref: "main".to_owned(),
+        ttl_seconds: None,
+    };
+    branch
+        .client()
+        .create_branch(branch.profile.catalog.clone(), body)
+        .expect("Failed to create test branch");
 
-    TestBranch { name, profile }
+    branch
 }
 
 /// A temporary branch that is deleted when dropped.
@@ -77,24 +78,41 @@ pub struct TestBranch {
     profile: bauplan::Profile,
 }
 
-fn roundtrip<T: bauplan::ApiRequest>(
-    profile: &bauplan::Profile,
-    req: T,
-) -> Result<T::Response, anyhow::Error> {
-    let req = req
-        .into_request(profile)
-        .context("Failed to create request")?;
-    let resp = ureq::run(req).context("HTTP error")?;
-    let resp = T::Response::from_response(resp.map(ureq::Body::into_reader))?;
-    Ok(resp)
+impl TestBranch {
+    fn client(&self) -> BranchApiClient {
+        let authorization = self
+            .profile
+            .api_key
+            .as_ref()
+            .map(|key| format!("Bearer {key}"));
+        let middleware =
+            move |mut req: http::Request<ureq::SendBody<'_>>,
+                  next: ureq::middleware::MiddlewareNext<'_>| {
+                if let Some(authorization) = &authorization {
+                    req.headers_mut()
+                        .insert(http::header::AUTHORIZATION, authorization.parse().unwrap());
+                }
+                next.handle(req)
+            };
+        let agent = ureq::Agent::new_with_config(
+            ureq::config::Config::builder()
+                .http_status_as_error(false)
+                .middleware(middleware)
+                .build(),
+        );
+        BranchApiClient::with_transport(self.profile.new_api_endpoint.to_string(), agent)
+    }
+
+    fn delete(&self) -> anyhow::Result<()> {
+        let path = (self.profile.catalog.clone(), self.name.clone());
+        self.client().delete_branch(path, None)?;
+        Ok(())
+    }
 }
 
 impl Drop for TestBranch {
     fn drop(&mut self) {
-        if let Err(e) = roundtrip(
-            &self.profile,
-            bauplan::branch::DeleteBranch { name: &self.name },
-        ) {
+        if let Err(e) = self.delete() {
             eprintln!("Warning: failed to delete test branch {}: {e}", self.name);
         }
     }

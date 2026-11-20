@@ -20,13 +20,11 @@ fn register_table_metadata() {
         .args([
             "table",
             "create-external",
-            "external_table_metadata",
+            "bauplan.external_table_metadata",
             "--branch",
             &branch.name,
-            "--metadata-json-uri",
+            "--metadata-location",
             "s3://bauplan-openlake-db87a23/iceberg/tpch_1/customer_e53c682c-36c4-4e3d-9ded-1214d0ee157f/metadata/00000-b6f502e1-5140-499e-bf83-22f943067e36.metadata.json",
-            "--namespace",
-            "bauplan",
         ])
         .assert()
         .success();
@@ -78,8 +76,7 @@ fn get_json_output() {
         .args(["-O", "json", "table", "get", "bauplan.taxi_fhvhv"])
         .assert()
         .success()
-        .stdout(contains(r#""name":"taxi_fhvhv","#))
-        .stdout(contains(r#""namespace":"bauplan","#));
+        .stdout(contains(r#""name":"bauplan.taxi_fhvhv","#));
 }
 
 #[test]
@@ -109,52 +106,52 @@ fn get_documentation() {
     // - doc string contains a tab (tab expansion in a DAG)
     // - empty doc (`None`)
     bauplan()
-        .args(["table", "get", "--ref", &branch.name, "normalize_data"])
+        .args(["table", "get", "--ref", &branch.name, "bauplan.normalize_data"])
         .assert()
         .success()
         .stdout(lines(&[
-            "A \"no-op\" normalization of taxi data from `bauplan.query_model` that doesn't do",
-            "anything and materializes the data as-is into `bauplan.normalize_data` (results",
-            "should be identical to `bauplan.query_model`).",
-            "",
-            "The output schema, `NormalizedTripsSchema`, is also used as a projection schema on",
-            "`query_model`.",
+            "    A \"no-op\" normalization of taxi data from `bauplan.query_model` that doesn't do",
+            "    anything and materializes the data as-is into `bauplan.normalize_data` (results",
+            "    should be identical to `bauplan.query_model`).",
+            "    ",
+            "    The output schema, `NormalizedTripsSchema`, is also used as a projection schema on",
+            "    `query_model`.",
         ]))
         .stdout(lines(&[
-            "COLUMN               TYPE         NULLABLE  DOC",
-            "trip_time            long         true      Trip duration, in seconds.",
-            "pickup_datetime      timestamptz  true      Pickup time....",
-            "trip_miles           double       true      Distanza percorsa: è espressa...",
-            "dropoff_datetime     timestamptz  true      The time the passengers left...",
-            "base_passenger_fare  double       true      Fare    before tolls and tax.",
-            "tolls                double       true      -",
+            "COLUMN               TYPE                      NULLABLE  DOC",
+            "trip_time            int64                     true      Trip duration, in seconds.",
+            "pickup_datetime      timestamp[us, tz=+00:00]  true      Pickup time....",
+            "trip_miles           float64                   true      Distanza percorsa: è espressa...",
+            "dropoff_datetime     timestamp[us, tz=+00:00]  true      The time the passengers left...",
+            "base_passenger_fare  float64                   true      Fare    before tolls and tax.",
+            "tolls                float64                   true      -",
         ]))
         .stderr(contains("some documentation was truncated"));
 
     // We also check that SQL models have documentation persisted.
     bauplan()
-        .args(["table", "get", "--ref", &branch.name, "query_model"])
+        .args(["table", "get", "--ref", &branch.name, "bauplan.query_model"])
         .assert()
         .success()
         .stdout(lines(&[
-            "Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.",
-            "",
-            "+ ---------- +   QueryModelSchema    + ----------- +",
-            "| taxi_fhvhv | --------------------> | query_model |",
-            "+ ---------- +                       + ----------- +",
+            "    Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.",
+            "    ",
+            "    + ---------- +   QueryModelSchema    + ----------- +",
+            "    | taxi_fhvhv | --------------------> | query_model |",
+            "    + ---------- +                       + ----------- +",
         ]))
         .stdout(lines(&[
-            "COLUMN               TYPE         NULLABLE  DOC",
-            "pickup_datetime      timestamptz  true      Pickup time, UTC timezone, fi...",
-            "dropoff_datetime     timestamptz  true      -",
-            "PULocationID         long         true      -",
-            "DOLocationID         long         true      -",
-            "trip_miles           double       true      -",
-            "trip_time            long         true      -",
-            "base_passenger_fare  double       true      -",
-            "tolls                double       true      -",
-            "sales_tax            double       true      -",
-            "tips                 double       true      -",
+            "COLUMN               TYPE                      NULLABLE  DOC",
+            "pickup_datetime      timestamp[us, tz=+00:00]  true      Pickup time, UTC timezone, fi...",
+            "dropoff_datetime     timestamp[us, tz=+00:00]  true      -",
+            "PULocationID         int64                     true      -",
+            "DOLocationID         int64                     true      -",
+            "trip_miles           float64                   true      -",
+            "trip_time            int64                     true      -",
+            "base_passenger_fare  float64                   true      -",
+            "tolls                float64                   true      -",
+            "sales_tax            float64                   true      -",
+            "tips                 float64                   true      -",
         ]))
         .stderr(contains("some documentation was truncated"));
 
@@ -173,53 +170,53 @@ fn get_documentation() {
 
     // We check that the updated python model writes new documentation.
     bauplan()
-        .args(["table", "get", "--ref", &branch.name, "normalize_data"])
+        .args(["table", "get", "--ref", &branch.name, "bauplan.normalize_data"])
         .assert()
         .success()
         .stdout(lines(&[
-            "A projection schema applied to `bauplan.query_model` but also representing the output",
-            "schema of the model `normalize_data`.",
-            "",
-            "",
-            "+ ----------- +   NormalizedTripsSchema    + -------------- +",
-            "| query_model | -------------------------> | normalize_data |",
-            "+ ----------- +                            + -------------- +",
+            "    A projection schema applied to `bauplan.query_model` but also representing the output",
+            "    schema of the model `normalize_data`.",
+            "    ",
+            "    ",
+            "    + ----------- +   NormalizedTripsSchema    + -------------- +",
+            "    | query_model | -------------------------> | normalize_data |",
+            "    + ----------- +                            + -------------- +",
         ]))
         .stdout(lines(&[
-            "COLUMN               TYPE         NULLABLE  DOC",
-            "trip_time            long         true      -",
-            "pickup_datetime      timestamptz  true      -",
-            "trip_miles           double       true      -",
-            "dropoff_datetime     timestamptz  true      -",
-            "base_passenger_fare  double       true      -",
-            "tolls                double       true      -",
+            "COLUMN               TYPE                      NULLABLE  DOC",
+            "trip_time            int64                     true      -",
+            "pickup_datetime      timestamp[us, tz=+00:00]  true      -",
+            "trip_miles           float64                   true      -",
+            "dropoff_datetime     timestamp[us, tz=+00:00]  true      -",
+            "base_passenger_fare  float64                   true      -",
+            "tolls                float64                   true      -",
         ]))
         .stderr(contains("some documentation was truncated").not());
 
     // We check that the SQL model documentation is not overwritten if it no longer materializes.
     bauplan()
-        .args(["table", "get", "--ref", &branch.name, "query_model"])
+        .args(["table", "get", "--ref", &branch.name, "bauplan.query_model"])
         .assert()
         .success()
         .stdout(lines(&[
-            "Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.",
-            "",
-            "+ ---------- +   QueryModelSchema    + ----------- +",
-            "| taxi_fhvhv | --------------------> | query_model |",
-            "+ ---------- +                       + ----------- +",
+            "    Output schema for `query_model` applied as a projection on `bauplan.taxi_fhvhv`.",
+            "    ",
+            "    + ---------- +   QueryModelSchema    + ----------- +",
+            "    | taxi_fhvhv | --------------------> | query_model |",
+            "    + ---------- +                       + ----------- +",
         ]))
         .stdout(lines(&[
-            "COLUMN               TYPE         NULLABLE  DOC",
-            "pickup_datetime      timestamptz  true      Pickup time, UTC timezone, fi...",
-            "dropoff_datetime     timestamptz  true      -",
-            "PULocationID         long         true      -",
-            "DOLocationID         long         true      -",
-            "trip_miles           double       true      -",
-            "trip_time            long         true      -",
-            "base_passenger_fare  double       true      -",
-            "tolls                double       true      -",
-            "sales_tax            double       true      -",
-            "tips                 double       true      -",
+            "COLUMN               TYPE                      NULLABLE  DOC",
+            "pickup_datetime      timestamp[us, tz=+00:00]  true      Pickup time, UTC timezone, fi...",
+            "dropoff_datetime     timestamp[us, tz=+00:00]  true      -",
+            "PULocationID         int64                     true      -",
+            "DOLocationID         int64                     true      -",
+            "trip_miles           float64                   true      -",
+            "trip_time            int64                     true      -",
+            "base_passenger_fare  float64                   true      -",
+            "tolls                float64                   true      -",
+            "sales_tax            float64                   true      -",
+            "tips                 float64                   true      -",
         ]))
         .stderr(contains("some documentation was truncated"));
 }
@@ -241,13 +238,11 @@ fn delete_table() {
         .args([
             "table",
             "create-external",
-            "delete_me",
+            "bauplan.delete_me",
             "--branch",
             &branch.name,
-            "--metadata-json-uri",
+            "--metadata-location",
             "s3://bauplan-openlake-db87a23/iceberg/tpch_1/customer_e53c682c-36c4-4e3d-9ded-1214d0ee157f/metadata/00000-b6f502e1-5140-499e-bf83-22f943067e36.metadata.json",
-            "--namespace",
-            "bauplan",
         ])
         .assert()
         .success();
@@ -290,7 +285,7 @@ fn delete_table_if_exists() {
         ])
         .assert()
         .success()
-        .stderr(contains("does not exist"));
+        .stderr(contains("Table 'bauplan.nonexistent_xyz' not found."));
 
     // Without the flag, should fail.
     bauplan()
