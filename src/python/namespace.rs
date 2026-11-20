@@ -1,6 +1,6 @@
 //! Namespace operations.
 
-use pyo3::{exceptions::PyTypeError, prelude::*};
+use pyo3::prelude::*;
 use std::collections::BTreeMap;
 
 use crate::{
@@ -8,28 +8,9 @@ use crate::{
     commit::CommitOptions,
     namespace::{CreateNamespace, DeleteNamespace, GetNamespace, GetNamespaces, Namespace},
     python::paginate::PyPaginator,
-    python::refs::{BranchArg, RefArg},
 };
 
 use super::Client;
-
-/// Accepts a namespace name or Namespace object (from which the name is
-/// extracted).
-pub(crate) struct NamespaceArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for NamespaceArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(NamespaceArg(s))
-        } else if let Ok(ns) = ob.extract::<Namespace>() {
-            Ok(NamespaceArg(ns.name))
-        } else {
-            Err(PyTypeError::new_err("expected str or Namespace"))
-        }
-    }
-}
 
 #[pymethods]
 impl Client {
@@ -59,7 +40,7 @@ impl Client {
     /// Yields:
     ///     `bauplan.schema.Namespace` objects.
     #[pyo3(signature = (
-        r#ref: "str | Ref",
+        r#ref: "str",
         *,
         filter_by_name: "str | None" = None,
         limit: "int | None" = None,
@@ -67,11 +48,10 @@ impl Client {
     fn get_namespaces(
         &self,
         py: Python<'_>,
-        r#ref: RefArg,
+        r#ref: String,
         filter_by_name: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
-        let r#ref = r#ref.0;
         let profile = self.profile.clone();
         let agent = self.agent.clone();
         PyPaginator::new(py, limit, move |py, token, limit| {
@@ -112,18 +92,18 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        namespace: "str | Namespace",
-        r#ref: "str | Ref",
+        namespace: "str",
+        r#ref: "str",
     ) -> "Namespace")]
     fn get_namespace(
         &self,
         py: Python<'_>,
-        namespace: NamespaceArg,
-        r#ref: RefArg,
+        namespace: String,
+        r#ref: String,
     ) -> PyResult<Namespace> {
         let req = GetNamespace {
-            name: &namespace.0,
-            at_ref: &r#ref.0,
+            name: &namespace,
+            at_ref: &r#ref,
         };
 
         Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
@@ -165,8 +145,8 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        namespace: "str | Namespace",
-        branch: "str | Branch",
+        namespace: "str",
+        branch: "str",
         *,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
@@ -175,14 +155,12 @@ impl Client {
     fn create_namespace(
         &self,
         py: Python<'_>,
-        namespace: NamespaceArg,
-        branch: BranchArg,
+        namespace: String,
+        branch: String,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
         if_not_exists: bool,
     ) -> PyResult<Namespace> {
-        let namespace = &namespace.0;
-        let branch = &branch.0;
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -190,8 +168,8 @@ impl Client {
             .collect();
 
         let req = CreateNamespace {
-            name: namespace,
-            branch,
+            name: &namespace,
+            branch: &branch,
             commit: CommitOptions {
                 body: commit_body,
                 properties,
@@ -248,8 +226,8 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        namespace: "str | Namespace",
-        branch: "str | Branch",
+        namespace: "str",
+        branch: "str",
         *,
         if_exists: "bool" = false,
         commit_body: "str | None" = None,
@@ -258,14 +236,12 @@ impl Client {
     fn delete_namespace(
         &self,
         py: Python<'_>,
-        namespace: NamespaceArg,
-        branch: BranchArg,
+        namespace: String,
+        branch: String,
         if_exists: bool,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
     ) -> PyResult<CatalogRef> {
-        let namespace = &namespace.0;
-        let branch = &branch.0;
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -273,8 +249,8 @@ impl Client {
             .collect();
 
         let req = DeleteNamespace {
-            name: namespace,
-            branch,
+            name: &namespace,
+            branch: &branch,
             commit: CommitOptions {
                 body: commit_body,
                 properties,
@@ -322,18 +298,13 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        namespace: "str | Namespace",
-        r#ref: "str | Ref",
+        namespace: "str",
+        r#ref: "str",
     ) -> "bool")]
-    fn has_namespace(
-        &self,
-        py: Python<'_>,
-        namespace: NamespaceArg,
-        r#ref: RefArg,
-    ) -> PyResult<bool> {
+    fn has_namespace(&self, py: Python<'_>, namespace: String, r#ref: String) -> PyResult<bool> {
         let req = GetNamespace {
-            name: &namespace.0,
-            at_ref: &r#ref.0,
+            name: &namespace,
+            at_ref: &r#ref,
         };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {

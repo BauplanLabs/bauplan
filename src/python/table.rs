@@ -11,12 +11,7 @@ use crate::{
     commit::CommitOptions,
     grpc::generated as commanderpb,
     iceberg::RegisterTable,
-    python::{
-        job_err,
-        namespace::NamespaceArg,
-        paginate::PyPaginator,
-        refs::{BranchArg, RefArg},
-    },
+    python::{job_err, paginate::PyPaginator},
     table::{DeleteTable, GetTable, GetTables, RevertTable},
 };
 
@@ -27,23 +22,6 @@ use crate::python::run::state::{
     ExternalTableCreateContext, ExternalTableCreateState, TableCreatePlanApplyState,
     TableCreatePlanContext, TableCreatePlanState, TableDataImportContext, TableDataImportState,
 };
-
-/// Accepts a table name or Table object (converted to `namespace.name`).
-pub(crate) struct TableArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(TableArg(s))
-        } else if let Ok(table) = ob.extract::<Table>() {
-            Ok(TableArg(table.fqn()))
-        } else {
-            Err(PyTypeError::new_err("expected str or Table"))
-        }
-    }
-}
 
 #[pymethods]
 impl Client {
@@ -97,11 +75,11 @@ impl Client {
     ///     `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
     ///     `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_uri: "str",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         partitioned_by: "str | None" = None,
         replace: "bool | None" = None,
         args: "dict[str, str] | None" = None,
@@ -274,11 +252,11 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_uri: "str",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         partitioned_by: "str | None" = None,
         replace: "bool | None" = None,
         args: "dict[str, str] | None" = None,
@@ -524,11 +502,11 @@ impl Client {
     /// Returns:
     ///     A `bauplan.state.TableDataImportState` object.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_uri: "str",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         continue_on_error: "bool" = false,
         import_duplicate_files: "bool" = false,
         best_effort: "bool" = false,
@@ -652,11 +630,11 @@ impl Client {
     /// Returns:
     ///     A `bauplan.state.ExternalTableCreateState` object.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_patterns: "list[str]",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         overwrite: "bool" = false,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -765,22 +743,20 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        r#ref: "str | Ref",
+        r#ref: "str",
         *,
         filter_by_name: "str | None" = None,
-        filter_by_namespace: "str | Namespace | None" = None,
+        filter_by_namespace: "str | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Table]")]
     fn get_tables(
         &self,
         py: Python<'_>,
-        r#ref: RefArg,
+        r#ref: String,
         filter_by_name: Option<String>,
-        filter_by_namespace: Option<NamespaceArg>,
+        filter_by_namespace: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
-        let r#ref = r#ref.0;
-        let filter_by_namespace = filter_by_namespace.map(|a| a.0);
         let profile = self.profile.clone();
         let agent = self.agent.clone();
         PyPaginator::new(py, limit, move |py, token, limit| {
@@ -837,22 +813,21 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        table: "str | Table",
-        r#ref: "str | Ref",
+        table: "str",
+        r#ref: "str",
         *,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
     ) -> "Table")]
     fn get_table(
         &self,
         py: Python<'_>,
-        table: TableArg,
-        r#ref: RefArg,
-        namespace: Option<NamespaceArg>,
+        table: String,
+        r#ref: String,
+        namespace: Option<String>,
     ) -> PyResult<Table> {
-        let namespace = namespace.map(|a| a.0);
         let req = GetTable {
-            name: &table.0,
-            at_ref: &r#ref.0,
+            name: &table,
+            at_ref: &r#ref,
             namespace: namespace.as_deref(),
         };
 
@@ -888,22 +863,21 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        table: "str | Table",
-        r#ref: "str | Ref",
+        table: "str",
+        r#ref: "str",
         *,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
     ) -> "bool")]
     fn has_table(
         &self,
         py: Python<'_>,
-        table: TableArg,
-        r#ref: RefArg,
-        namespace: Option<NamespaceArg>,
+        table: String,
+        r#ref: String,
+        namespace: Option<String>,
     ) -> PyResult<bool> {
-        let namespace = namespace.map(|a| a.0);
         let req = GetTable {
-            name: &table.0,
-            at_ref: &r#ref.0,
+            name: &table,
+            at_ref: &r#ref,
             namespace: namespace.as_deref(),
         };
 
@@ -956,10 +930,10 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        table: "str | Table",
-        branch: "str | Branch",
+        table: "str",
+        branch: "str",
         *,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         if_exists: "bool" = false,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
@@ -968,14 +942,13 @@ impl Client {
     fn delete_table(
         &self,
         py: Python<'_>,
-        table: TableArg,
-        branch: BranchArg,
-        namespace: Option<NamespaceArg>,
+        table: String,
+        branch: String,
+        namespace: Option<String>,
         if_exists: bool,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
     ) -> PyResult<CatalogRef> {
-        let namespace = namespace.map(|a| a.0);
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -983,8 +956,8 @@ impl Client {
             .collect();
 
         let req = DeleteTable {
-            name: &table.0,
-            branch: &branch.0,
+            name: &table,
+            branch: &branch,
             namespace: namespace.as_deref(),
             commit: CommitOptions {
                 body: commit_body,
@@ -1043,11 +1016,11 @@ impl Client {
     ///     `bauplan.exceptions.UpdateConflictError`: if a table with the same name already exists and overwrite=False.
     ///     `bauplan.exceptions.BauplanError`: for other API errors during registration or retrieval.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         metadata_json_uri: "str",
         *,
-        namespace: "str | Namespace",
-        branch: "str | Branch | None" = None,
+        namespace: "str",
+        branch: "str | None" = None,
         overwrite: "bool" = false,
     ) -> "Table")]
     fn create_external_table_from_metadata(
@@ -1126,11 +1099,11 @@ impl Client {
     ///     `bauplan.exceptions.RevertIdenticalTableError`: if the source and destination have the same snapshot.
     ///     `bauplan.exceptions.MergeConflictError`: if there is a merge conflict during the transactional revert.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         *,
-        namespace: "str | Namespace | None" = None,
-        source_ref: "str | Ref",
-        into_branch: "str | Branch",
+        namespace: "str | None" = None,
+        source_ref: "str",
+        into_branch: "str",
         replace: "bool | None" = None,
         commit_body: "str | None" = None,
         commit_properties: "dict[str, str] | None" = None,
@@ -1139,15 +1112,14 @@ impl Client {
     fn revert_table(
         &self,
         py: Python<'_>,
-        table: TableArg,
-        namespace: Option<NamespaceArg>,
-        source_ref: RefArg,
-        into_branch: BranchArg,
+        table: String,
+        namespace: Option<String>,
+        source_ref: String,
+        into_branch: String,
         replace: Option<bool>,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
     ) -> PyResult<CatalogRef> {
-        let namespace = namespace.map(|a| a.0);
         let commit_properties = commit_properties.unwrap_or_default();
         let properties = commit_properties
             .iter()
@@ -1155,9 +1127,9 @@ impl Client {
             .collect();
 
         let req = RevertTable {
-            name: &table.0,
-            source_ref: &source_ref.0,
-            into_branch: &into_branch.0,
+            name: &table,
+            source_ref: &source_ref,
+            into_branch: &into_branch,
             namespace: namespace.as_deref(),
             replace: replace.unwrap_or_default(),
             commit: CommitOptions {

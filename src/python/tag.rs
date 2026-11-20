@@ -4,10 +4,7 @@ use pyo3::prelude::*;
 
 use crate::{
     ApiErrorKind, ApiRequest, CatalogRef,
-    python::{
-        paginate::PyPaginator,
-        refs::{RefArg, TagArg},
-    },
+    python::paginate::PyPaginator,
     tag::{CreateTag, DeleteTag, GetTag, GetTags, RenameTag, Tag},
 };
 
@@ -82,9 +79,9 @@ impl Client {
     ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (tag: "str | Tag") -> "Tag")]
-    fn get_tag(&self, py: Python<'_>, tag: TagArg) -> PyResult<Tag> {
-        let req = GetTag { name: &tag.0 };
+    #[pyo3(signature = (tag: "str") -> "Tag")]
+    fn get_tag(&self, py: Python<'_>, tag: String) -> PyResult<Tag> {
+        let req = GetTag { name: &tag };
         let t = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(t)
     }
@@ -110,9 +107,9 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (tag: "str | Tag") -> "bool")]
-    fn has_tag(&self, py: Python<'_>, tag: TagArg) -> PyResult<bool> {
-        let req = GetTag { name: &tag.0 };
+    #[pyo3(signature = (tag: "str") -> "bool")]
+    fn has_tag(&self, py: Python<'_>, tag: String) -> PyResult<bool> {
+        let req = GetTag { name: &tag };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
@@ -157,21 +154,21 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        tag: "str | Tag",
-        from_ref: "str | Ref",
+        tag: "str",
+        from_ref: "str",
         *,
         if_not_exists: "bool" = false,
     ) -> "Tag")]
     fn create_tag(
         &self,
         py: Python<'_>,
-        tag: TagArg,
-        from_ref: RefArg,
+        tag: String,
+        from_ref: String,
         if_not_exists: bool,
     ) -> PyResult<Tag> {
         let req = CreateTag {
-            name: &tag.0,
-            from_ref: &from_ref.0,
+            name: &tag,
+            from_ref: &from_ref,
         };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {
@@ -224,13 +221,13 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        tag: "str | Tag",
-        new_tag: "str | Tag",
+        tag: "str",
+        new_tag: "str",
     ) -> "Tag")]
-    fn rename_tag(&self, py: Python<'_>, tag: TagArg, new_tag: TagArg) -> PyResult<Tag> {
+    fn rename_tag(&self, py: Python<'_>, tag: String, new_tag: String) -> PyResult<Tag> {
         let req = RenameTag {
-            name: &tag.0,
-            new_name: &new_tag.0,
+            name: &tag,
+            new_name: &new_tag,
         };
 
         let t = super::roundtrip(py, req, &self.profile, &self.agent)?;
@@ -263,12 +260,12 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        tag: "str | Tag",
+        tag: "str",
         *,
         if_exists: "bool" = false,
     ) -> "bool")]
-    fn delete_tag(&self, py: Python<'_>, tag: TagArg, if_exists: bool) -> PyResult<bool> {
-        let req = DeleteTag { name: &tag.0 };
+    fn delete_tag(&self, py: Python<'_>, tag: String, if_exists: bool) -> PyResult<bool> {
+        let req = DeleteTag { name: &tag };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),

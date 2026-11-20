@@ -1,7 +1,6 @@
 //! Ref types for the Python SDK.
 
 use pyo3::Borrowed;
-use pyo3::exceptions::PyTypeError;
 use pyo3::prelude::*;
 
 use crate::CatalogRef;
@@ -132,72 +131,6 @@ pub struct PyTag;
 #[derive(Debug, Clone, Copy)]
 #[pyclass(name = "DetachedRef", module = "bauplan.schema", extends = PyRef, from_py_object)]
 pub(crate) struct PyDetachedRef;
-
-/// Accepts a ref hash, a tag/branch name, or any ref object (Ref, Branch,
-/// Tag, DetachedRef), from which a ref string that the API understands is
-/// extracted.
-///
-/// This is used by API methods which operate on some ref (eg `query`).
-///
-/// For example:
-///  - For `Branch(name='foo', hash='abcd...')`, the result
-///    is `foo@abcd...`.
-///  - For `Tag(name='bar', hash=None)`, the result is `bar`.
-pub(crate) struct RefArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for RefArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(RefArg(s))
-        } else if let Ok(r) = ob.extract::<pyo3::PyRef<'_, PyRef>>() {
-            Ok(RefArg(r.to_string()))
-        } else {
-            Err(PyTypeError::new_err("expected str or Ref"))
-        }
-    }
-}
-
-/// Accepts either a branch name or a Branch object (from which the name is extracted).
-///
-/// This is used by methods like `rename_branch`, which operate on the branch
-/// name and not a specific hash.
-pub(crate) struct BranchArg(pub(crate) String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for BranchArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(BranchArg(s))
-        } else if let Ok(branch) = ob.extract::<pyo3::PyRef<'_, PyBranch>>() {
-            Ok(BranchArg(branch.as_super().name.clone()))
-        } else {
-            Err(PyTypeError::new_err("expected str or Branch"))
-        }
-    }
-}
-
-/// Accepts a tag name or Tag object (from which the name is extracted).
-///
-/// This is used by methods like `delete_tag`, which operate on the tag name and
-/// not a specific tag.
-pub(crate) struct TagArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for TagArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(TagArg(s))
-        } else if let Ok(tag) = ob.extract::<pyo3::PyRef<'_, PyTag>>() {
-            Ok(TagArg(tag.as_super().name.clone()))
-        } else {
-            Err(PyTypeError::new_err("expected str or Tag"))
-        }
-    }
-}
 
 impl<'py> IntoPyObject<'py> for CatalogRef {
     type Target = PyRef;

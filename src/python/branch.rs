@@ -9,10 +9,7 @@ use crate::{
         Branch, CreateBranch, DeleteBranch, GetBranch, GetBranches, MergeBranch,
         MergeCommitOptions, RenameBranch,
     },
-    python::{
-        paginate::PyPaginator,
-        refs::{BranchArg, RefArg},
-    },
+    python::paginate::PyPaginator,
 };
 
 use super::Client;
@@ -86,9 +83,9 @@ impl Client {
     ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (branch: "str | Branch") -> "Branch")]
-    fn get_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<Branch> {
-        let req = GetBranch { name: &branch.0 };
+    #[pyo3(signature = (branch: "str") -> "Branch")]
+    fn get_branch(&self, py: Python<'_>, branch: String) -> PyResult<Branch> {
+        let req = GetBranch { name: &branch };
         let b = super::roundtrip(py, req, &self.profile, &self.agent)?;
         Ok(b)
     }
@@ -114,9 +111,9 @@ impl Client {
     ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (branch: "str | Branch") -> "bool")]
-    fn has_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<bool> {
-        let req = GetBranch { name: &branch.0 };
+    #[pyo3(signature = (branch: "str") -> "bool")]
+    fn has_branch(&self, py: Python<'_>, branch: String) -> PyResult<bool> {
+        let req = GetBranch { name: &branch };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {
             Ok(_) => Ok(true),
@@ -167,21 +164,21 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        branch: "str | Branch",
-        from_ref: "str | Ref",
+        branch: "str",
+        from_ref: "str",
         *,
         if_not_exists: "bool" = false,
     ) -> "Branch")]
     fn create_branch(
         &self,
         py: Python<'_>,
-        branch: BranchArg,
-        from_ref: RefArg,
+        branch: String,
+        from_ref: String,
         if_not_exists: bool,
     ) -> PyResult<Branch> {
         let req = CreateBranch {
-            name: &branch.0,
-            from_ref: &from_ref.0,
+            name: &branch,
+            from_ref: &from_ref,
         };
 
         match super::roundtrip(py, req, &self.profile, &self.agent) {
@@ -235,18 +232,18 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        branch: "str | Branch",
-        new_branch: "str | Branch",
+        branch: "str",
+        new_branch: "str",
     ) -> "Branch")]
     fn rename_branch(
         &self,
         py: Python<'_>,
-        branch: BranchArg,
-        new_branch: BranchArg,
+        branch: String,
+        new_branch: String,
     ) -> PyResult<Branch> {
         let req = RenameBranch {
-            name: &branch.0,
-            new_name: &new_branch.0,
+            name: &branch,
+            new_name: &new_branch,
         };
 
         let b = super::roundtrip(py, req, &self.profile, &self.agent)?;
@@ -287,8 +284,8 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        source_ref: "str | Ref",
-        into_branch: "str | Branch",
+        source_ref: "str",
+        into_branch: "str",
         *,
         commit_message: "str | None" = None,
         commit_body: "str | None" = None,
@@ -297,8 +294,8 @@ impl Client {
     fn merge_branch(
         &self,
         py: Python<'_>,
-        source_ref: RefArg,
-        into_branch: BranchArg,
+        source_ref: String,
+        into_branch: String,
         commit_message: Option<&str>,
         commit_body: Option<&str>,
         commit_properties: Option<BTreeMap<String, String>>,
@@ -310,8 +307,8 @@ impl Client {
             .collect();
 
         let req = MergeBranch {
-            source_ref: &source_ref.0,
-            into_branch: &into_branch.0,
+            source_ref: &source_ref,
+            into_branch: &into_branch,
             commit: MergeCommitOptions {
                 commit_message,
                 commit_body,
@@ -350,12 +347,12 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        branch: "str | Branch",
+        branch: "str",
         *,
         if_exists: "bool" = false,
     ) -> "bool")]
-    fn delete_branch(&self, py: Python<'_>, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
-        let req = DeleteBranch { name: &branch.0 };
+    fn delete_branch(&self, py: Python<'_>, branch: String, if_exists: bool) -> PyResult<bool> {
+        let req = DeleteBranch { name: &branch };
 
         if let Err(e) = super::roundtrip(py, req, &self.profile, &self.agent) {
             if if_exists && matches!(e.kind(), Some(ApiErrorKind::BranchNotFound { .. })) {

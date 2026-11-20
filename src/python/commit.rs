@@ -6,7 +6,7 @@ use pyo3::{exceptions::PyTypeError, prelude::*};
 
 use crate::{ApiRequest, commit::GetCommits};
 
-use super::{Client, paginate::PyPaginator, refs::RefArg};
+use super::{Client, paginate::PyPaginator};
 
 struct DatetimeArg(String);
 
@@ -63,7 +63,7 @@ impl Client {
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
     ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
-        r#ref: "str | Ref",
+        r#ref: "str",
         *,
         filter_by_message: "str | None" = None,
         filter_by_author_username: "str | None" = None,
@@ -81,7 +81,7 @@ impl Client {
     fn get_commits(
         &self,
         py: Python<'_>,
-        r#ref: RefArg,
+        r#ref: String,
         filter_by_message: Option<String>,
         filter_by_author_username: Option<String>,
         filter_by_author_name: Option<String>,
@@ -96,7 +96,6 @@ impl Client {
     ) -> PyResult<PyPaginator> {
         let profile = self.profile.clone();
         let agent = self.agent.clone();
-        let r#ref = r#ref.0;
         let filter_by_authored_date = filter_by_authored_date.map(|a| a.0);
         let filter_by_authored_date_start_at = filter_by_authored_date_start_at.map(|a| a.0);
         let filter_by_authored_date_end_at = filter_by_authored_date_end_at.map(|a| a.0);

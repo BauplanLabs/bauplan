@@ -18,27 +18,7 @@ use crate::{
 
 use super::Client;
 
-/// Accepts a job ID or Job object.
-#[derive(Debug, Default)]
-pub(crate) struct JobArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for JobArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(JobArg(s))
-        } else if let Ok(job) = ob.extract::<PyRef<'_, Job>>() {
-            Ok(JobArg(job.id.clone()))
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str or Job",
-            ))
-        }
-    }
-}
-
-/// Accepts a single job ID, a list of job IDs, or list of Job objects.
+/// Accepts a single string or a list of strings.
 #[derive(Debug, Default)]
 pub(crate) struct JobListArg(pub Vec<String>);
 
@@ -50,11 +30,9 @@ impl<'a, 'py> FromPyObject<'a, 'py> for JobListArg {
             Ok(Self(vec![id]))
         } else if let Ok(ids) = ob.extract::<Vec<String>>() {
             Ok(Self(ids))
-        } else if let Ok(jobs) = ob.extract::<Vec<Job>>() {
-            Ok(Self(jobs.iter().map(|j| j.id.clone()).collect()))
         } else {
             Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str, list[str], or list[Job]",
+                "expected str or list[str]",
             ))
         }
     }
@@ -528,13 +506,13 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     job: Union[str, Job]: A job ID or a Job instance.
+    ///     job: A job ID.
     /// Returns:
     ///     A list of `bauplan.schema.JobLogEvent` objects representing the log events for the job.
     #[pyo3(signature = (job) -> "list[JobLogEvent]")]
-    fn get_job_logs(&self, py: Python<'_>, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
+    fn get_job_logs(&self, py: Python<'_>, job: String) -> PyResult<Vec<JobLogEvent>> {
         let mut req = Request::new(commanderpb::GetLogsRequest {
-            job_id: job.0,
+            job_id: job,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
@@ -572,7 +550,7 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     job: Union[str, Job]: A job ID or a Job instance.
+    ///     job: A job ID.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
     /// Returns:
@@ -581,11 +559,11 @@ impl Client {
     fn get_job_context(
         &self,
         py: Python<'_>,
-        job: JobArg,
+        job: String,
         include_logs: bool,
         include_snapshot: bool,
     ) -> PyResult<JobContext> {
-        let job_id = job.0;
+        let job_id = job;
         let mut req = Request::new(commanderpb::GetJobContextRequest {
             job_ids: vec![job_id.clone()],
             include_logs,
@@ -623,13 +601,13 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// contexts = client.get_job_contexts([my_job], include_logs=True)
+    /// contexts = client.get_job_contexts([my_job.id], include_logs=True)
     /// for ctx in contexts:
     ///     print(f"{ctx.id}: {ctx.project_name} on {ctx.ref}")
     /// ```
     ///
     /// Parameters:
-    ///     jobs: list[Union[str, Job]]: A list of job IDs or Job instances.
+    ///     jobs: A job ID or a list of job IDs.
     ///     include_logs: bool: Whether to include logs in the response.
     ///     include_snapshot: bool: Whether to include the code snapshot in the response.
     /// Returns:
