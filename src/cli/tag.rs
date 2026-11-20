@@ -1,6 +1,7 @@
 use std::io::{Write as _, stdout};
 
 use bauplan_api::gropius::client::ClientError;
+use bauplan_api::pagination::Page;
 use bauplan_api::tag::{CreateTagBody, CreateTagError, DeleteTagError, RenameTagBody, TagFilters};
 use tabwriter::TabWriter;
 
@@ -49,8 +50,11 @@ pub(crate) struct TagLsArgs {
     #[arg(short, long)]
     pub name: Option<String>,
     /// Limit the number of tags to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
     /// Use UTC for date display
     #[arg(short = 'z', long)]
     pub utc: bool,
@@ -161,17 +165,29 @@ fn get_tag(cli: &Cli, TagGetArgs { tag_name, utc }: TagGetArgs) -> anyhow::Resul
     Ok(())
 }
 
-fn list_tags(cli: &Cli, TagLsArgs { name, limit, utc }: TagLsArgs) -> anyhow::Result<()> {
+fn list_tags(
+    cli: &Cli,
+    TagLsArgs {
+        name,
+        limit,
+        pagination_token,
+        utc,
+    }: TagLsArgs,
+) -> anyhow::Result<()> {
     let client = cli.tags()?;
     let filters = TagFilters { name };
-    let tags = paginate(limit, filters, |query| {
+    let mut tags = paginate(limit, pagination_token, filters, |query| {
         client.list_tags(cli.global.catalog.clone(), query)
     })?;
 
     match cli.global.output {
         Output::Json => {
-            let all_tags = tags.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_tags)?;
+            let items = tags.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = Page {
+                items,
+                pagination_token: tags.pagination_token(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
@@ -221,6 +237,12 @@ fn create_tag(
     };
 
     eprintln!("Created tag {:?}", tag.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &tag)?;
+        println!();
+    }
+
     Ok(())
 }
 
@@ -256,6 +278,11 @@ fn rename_tag(
     let body = RenameTagBody { name: new_tag_name };
     let tag = cli.tags()?.rename_tag(path, body)?;
     eprintln!("Renamed tag {tag_name:?} to {:?}", tag.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &tag)?;
+        println!();
+    }
 
     Ok(())
 }

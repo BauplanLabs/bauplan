@@ -10,7 +10,7 @@ fn ls_json_output() {
         .args(["-O", "json", "branch", "ls", "--limit", "10"])
         .assert()
         .success()
-        .stdout(starts_with("["));
+        .stdout(starts_with("{\"items\":"));
 }
 
 #[test]

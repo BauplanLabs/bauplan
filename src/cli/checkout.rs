@@ -1,4 +1,6 @@
-use crate::cli::{Cli, color::CliExamples, yaml};
+use std::io::stdout;
+
+use crate::cli::{Cli, Output, color::CliExamples, yaml};
 use anyhow::bail;
 use bauplan_api::branch::{CreateBranchBody, CreateBranchError};
 use bauplan_api::gropius::client::ClientError;
@@ -64,6 +66,11 @@ pub(crate) fn handle(cli: &Cli, args: CheckoutArgs) -> anyhow::Result<()> {
     };
 
     eprintln!("Created branch {:?}", branch.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &branch)?;
+        println!();
+    }
 
     set_active_branch(cli, &branch.name)
 }

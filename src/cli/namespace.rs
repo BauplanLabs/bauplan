@@ -1,11 +1,12 @@
 use std::io::{Write as _, stdout};
 
 use bauplan_api::gropius::client::ClientError;
-use bauplan_api::model;
+use bauplan_api::model::{self, AtCommit};
 use bauplan_api::namespace::{
     CreateNamespaceBody, CreateNamespaceError, DeleteNamespaceBody, DeleteNamespaceError,
     ListNamespacesError, NamespaceFilters,
 };
+use bauplan_api::pagination::Page;
 use tabwriter::TabWriter;
 
 use crate::cli::{Cli, Output, color::CliExamples, paginate::paginate};
@@ -50,8 +51,11 @@ pub(crate) struct NamespaceLsArgs {
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of namespaces to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -126,7 +130,12 @@ pub(crate) fn handle(cli: &Cli, args: NamespaceArgs) -> anyhow::Result<()> {
 
 fn list_namespaces(
     cli: &Cli,
-    NamespaceLsArgs { name, r#ref, limit }: NamespaceLsArgs,
+    NamespaceLsArgs {
+        name,
+        r#ref,
+        limit,
+        pagination_token,
+    }: NamespaceLsArgs,
 ) -> anyhow::Result<()> {
     let at_ref = r#ref
         .as_deref()
@@ -134,11 +143,18 @@ fn list_namespaces(
         .unwrap_or("main");
 
     let client = cli.namespaces()?;
+    let mut commit_hash = None;
     let filters = NamespaceFilters { name };
-    let namespaces = paginate(limit, filters, |query| {
-        let path = (cli.global.catalog.clone(), at_ref.to_owned());
+    let mut namespaces = paginate(limit, pagination_token, filters, |query| {
+        // We read the next pages at the commit of the first one, so the list
+        // stays the same if the ref moves meanwhile.
+        let at = commit_hash.as_deref().unwrap_or(at_ref);
+        let path = (cli.global.catalog.clone(), at.to_owned());
         match client.list_namespaces(path, query) {
-            Ok(page) => Ok(page.inner),
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
             Err(ClientError::Api(err @ ListNamespacesError::RefNotFound { .. })) => {
                 Err(cli.with_active_branch_tip(at_ref, err))
             }
@@ -148,8 +164,15 @@ fn list_namespaces(
 
     match cli.global.output {
         Output::Json => {
-            let all_namespaces = namespaces.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_namespaces)?;
+            let items = namespaces.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = AtCommit {
+                inner: Page {
+                    items,
+                    pagination_token: namespaces.pagination_token(),
+                },
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
@@ -207,6 +230,12 @@ fn create_namespace(
         "Created namespace {:?} (commit {})",
         created.inner.name, created.commit.hash
     );
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &created)?;
+        println!();
+    }
+
     Ok(())
 }
 
@@ -252,5 +281,11 @@ fn delete_namespace(
     };
 
     eprintln!("Deleted namespace {namespace:?} (commit {})", commit.hash);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &commit)?;
+        println!();
+    }
+
     Ok(())
 }

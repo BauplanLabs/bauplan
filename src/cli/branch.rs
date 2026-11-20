@@ -12,6 +12,7 @@ use bauplan_api::branch::{
 };
 use bauplan_api::gropius::client::ClientError;
 use bauplan_api::model::ExpectedHead;
+use bauplan_api::pagination::Page;
 use tabwriter::TabWriter;
 
 #[derive(Debug, clap::Args)]
@@ -64,8 +65,11 @@ pub(crate) struct BranchLsArgs {
     #[arg(short, long)]
     pub name: Option<String>,
     /// Limit the number of branches to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
     /// Use UTC for date display
     #[arg(short = 'z', long)]
     pub utc: bool,
@@ -221,11 +225,29 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
         all,
         name,
         limit,
+        pagination_token,
         utc,
     } = args;
 
     let client = cli.branches()?;
     let filters = BranchFilters { owned: !all, name };
+
+    // We print the list as the server returns it, the active branch and main
+    // first are only for the terminal.
+    if cli.global.output == Output::Json {
+        let mut branches = paginate(limit, pagination_token, filters, |query| {
+            client.list_branches(cli.global.catalog.clone(), query)
+        })?;
+        let items = branches.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+        let page = Page {
+            items,
+            pagination_token: branches.pagination_token(),
+        };
+        serde_json::to_writer(stdout(), &page)?;
+        println!();
+        return Ok(());
+    }
+
     let active_branch = cli.profile.active_branch.as_deref().unwrap_or("main");
 
     // Without a name filter, we show the active branch and main first, and
@@ -239,7 +261,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
     let mut top = Vec::new();
     let mut missing_active = None;
     for &name in &top_names {
-        if limit == Some(top.len()) {
+        if limit == Some(top.len() as u32) {
             break;
         }
 
@@ -256,7 +278,7 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
 
     // We ask for the whole limit, because the list can still contain the
     // branches we show first.
-    let rest = paginate(limit, filters, |query| {
+    let rest = paginate(limit, pagination_token, filters, |query| {
         client.list_branches(cli.global.catalog.clone(), query)
     })?
     .filter(|branch| !matches!(branch, Ok(branch) if top_names.contains(&branch.name.as_str())));
@@ -264,39 +286,30 @@ fn list_branches(cli: &Cli, args: BranchLsArgs) -> anyhow::Result<()> {
         .into_iter()
         .map(Ok)
         .chain(rest)
-        .take(limit.unwrap_or(usize::MAX));
+        .take(limit.map_or(usize::MAX, |limit| limit as usize));
 
-    match cli.global.output {
-        Output::Json => {
-            let all_branches = branches.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_branches)?;
-            println!();
-        }
-        Output::Tty => {
-            let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
-            writeln!(&mut tw, "NAME\tHASH\tUPDATED")?;
-            for branch in branches {
-                let branch = branch?;
-                let updated_at = format_datetime(Some(branch.updated_at), utc, true);
+    let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+    writeln!(&mut tw, "NAME\tHASH\tUPDATED")?;
+    for branch in branches {
+        let branch = branch?;
+        let updated_at = format_datetime(Some(branch.updated_at), utc, true);
 
-                if branch.name == active_branch {
-                    writeln!(
-                        &mut tw,
-                        "{GREEN}{}{GREEN:#} {DIM}[active]{DIM:#}\t{}\t{updated_at}",
-                        branch.name, branch.commit_hash
-                    )?;
-                } else {
-                    writeln!(
-                        &mut tw,
-                        "{}\t{}\t{updated_at}",
-                        branch.name, branch.commit_hash
-                    )?;
-                }
-            }
-
-            tw.flush()?;
+        if branch.name == active_branch {
+            writeln!(
+                &mut tw,
+                "{GREEN}{}{GREEN:#} {DIM}[active]{DIM:#}\t{}\t{updated_at}",
+                branch.name, branch.commit_hash
+            )?;
+        } else {
+            writeln!(
+                &mut tw,
+                "{}\t{}\t{updated_at}",
+                branch.name, branch.commit_hash
+            )?;
         }
     }
+
+    tw.flush()?;
 
     if let Some(err) = missing_active {
         let err = cli.with_active_branch_tip(active_branch, err);
@@ -381,6 +394,12 @@ fn create_branch(cli: &Cli, args: BranchCreateArgs) -> anyhow::Result<()> {
     eprintln!("Created branch {:?}", branch.name);
     anstream::eprintln!("{GREEN}TIP:{GREEN:#} To switch to the new branch, run:");
     eprintln!("\tbauplan checkout {:?}", branch.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &branch)?;
+        println!();
+    }
+
     Ok(())
 }
 
@@ -441,12 +460,17 @@ fn merge_branch(cli: &Cli, args: BranchMergeArgs) -> anyhow::Result<()> {
         Err(err) => return Err(err.into()),
     };
 
-    match merged {
+    match &merged {
         Some(commit) => eprintln!(
             "Merged \"{branch_name}\" into \"{into_branch}\" (commit {})",
             commit.hash
         ),
         None => eprintln!("Nothing to merge from \"{branch_name}\" into \"{into_branch}\""),
+    }
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &merged)?;
+        println!();
     }
 
     Ok(())
@@ -464,6 +488,11 @@ fn rename_branch(cli: &Cli, args: BranchRenameArgs) -> anyhow::Result<()> {
     };
     let branch = cli.branches()?.rename_branch(path, body)?;
     eprintln!("Renamed branch {branch_name:?} to {:?}", branch.name);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &branch)?;
+        println!();
+    }
 
     if cli.profile.active_branch.as_deref() == Some(branch_name.as_str()) {
         checkout::set_active_branch(cli, &branch.name)?;

@@ -2,7 +2,8 @@ use std::io::{Write, stdout};
 
 use bauplan_api::catalog_ref::ListHistoryError;
 use bauplan_api::gropius::client::ClientError;
-use bauplan_api::model::Commit;
+use bauplan_api::model::{AtCommit, Commit};
+use bauplan_api::pagination::Page;
 
 use crate::cli::{
     Cli, Output,
@@ -51,8 +52,17 @@ pub(crate) struct CommitArgs {
     /// Ref or branch name to get commits from [default: active branch]
     pub ref_name: Option<String>,
     /// Limit the number of commits to show
-    #[arg(short = 'n', long, visible_alias = "limit", default_value = "10")]
-    pub max_count: usize,
+    #[arg(
+        short = 'n',
+        long,
+        visible_alias = "limit",
+        default_value = "10",
+        value_parser = clap::value_parser!(u32).range(1..)
+    )]
+    pub max_count: u32,
+    /// Continue from the `pagination_token` of a previous `-O json` output
+    #[arg(long)]
+    pub pagination_token: Option<String>,
     /// How to format commits.
     #[arg(long, default_value_t = Format::default(), alias = "pretty")]
     pub format: Format,
@@ -65,6 +75,7 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
     let CommitArgs {
         ref_name,
         max_count,
+        pagination_token,
         format,
         utc,
     } = args;
@@ -75,10 +86,14 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
         .unwrap_or("main");
 
     let client = cli.refs()?;
-    let commits = paginate(Some(max_count), (), |query| {
+    let mut commit_hash = None;
+    let mut commits = paginate(Some(max_count), pagination_token, (), |query| {
         let path = (cli.global.catalog.clone(), at_ref.to_owned());
         match client.list_history(path, query) {
-            Ok(page) => Ok(page.inner),
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
             Err(ClientError::Api(err @ ListHistoryError::RefNotFound { .. })) => {
                 Err(cli.with_active_branch_tip(at_ref, err))
             }
@@ -88,8 +103,15 @@ pub(crate) fn handle(cli: &Cli, args: CommitArgs) -> anyhow::Result<()> {
 
     match cli.global.output {
         Output::Json => {
-            let all_commits = commits.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_commits)?;
+            let items = commits.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = AtCommit {
+                inner: Page {
+                    items,
+                    pagination_token: commits.pagination_token(),
+                },
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {

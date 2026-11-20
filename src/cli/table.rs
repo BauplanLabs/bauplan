@@ -22,7 +22,8 @@ use bauplan::{
 };
 use bauplan_api::arrow_schema::{ArrowField, ArrowTimeUnit, ArrowType};
 use bauplan_api::gropius::client::ClientError;
-use bauplan_api::model;
+use bauplan_api::model::{self, AtCommit};
+use bauplan_api::pagination::Page;
 use bauplan_api::table::{
     DeleteTableBody, DeleteTableError, GetTableError, ListTablesError, PartitionField,
     PartitionTransform, Table, TableFilters, TableKind,
@@ -88,8 +89,11 @@ pub(crate) struct TableLsArgs {
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of tables to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -386,6 +390,7 @@ fn handle_list_tables(
         namespace,
         r#ref,
         limit,
+        pagination_token,
     }: TableLsArgs,
 ) -> anyhow::Result<()> {
     let at_ref = r#ref
@@ -394,11 +399,18 @@ fn handle_list_tables(
         .unwrap_or("main");
 
     let client = cli.tables()?;
+    let mut commit_hash = None;
     let filters = TableFilters { name, namespace };
-    let tables = paginate(limit, filters, |query| {
-        let path = (cli.global.catalog.clone(), at_ref.to_owned());
+    let mut tables = paginate(limit, pagination_token, filters, |query| {
+        // We read the next pages at the commit of the first one, so the list
+        // stays the same if the ref moves meanwhile.
+        let at = commit_hash.as_deref().unwrap_or(at_ref);
+        let path = (cli.global.catalog.clone(), at.to_owned());
         match client.list_tables(path, query) {
-            Ok(page) => Ok(page.inner),
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
             Err(ClientError::Api(err @ ListTablesError::RefNotFound { .. })) => {
                 Err(cli.with_active_branch_tip(at_ref, err))
             }
@@ -408,8 +420,15 @@ fn handle_list_tables(
 
     match cli.global.output {
         Output::Json => {
-            let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_tables)?;
+            let items = tables.by_ref().collect::<anyhow::Result<Vec<_>>>()?;
+            let page = AtCommit {
+                inner: Page {
+                    items,
+                    pagination_token: tables.pagination_token(),
+                },
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
@@ -710,6 +729,12 @@ fn handle_delete_table(
     };
 
     eprintln!("Deleted table {table_name:?} (commit {})", commit.hash);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &commit)?;
+        println!();
+    }
+
     Ok(())
 }
 
