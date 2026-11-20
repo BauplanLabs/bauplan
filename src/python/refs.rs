@@ -4,8 +4,6 @@ use pyo3::Borrowed;
 use pyo3::prelude::*;
 
 use crate::CatalogRef;
-use crate::branch::Branch;
-use crate::tag::Tag;
 
 /// The type of a ref.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -54,28 +52,6 @@ pub struct PyRef {
 }
 
 impl PyRef {
-    fn branch(name: String, hash: String) -> (PyBranch, Self) {
-        (
-            PyBranch,
-            PyRef {
-                name,
-                hash,
-                r#type: PyRefType::Branch,
-            },
-        )
-    }
-
-    fn tag(name: String, hash: String) -> (PyTag, Self) {
-        (
-            PyTag,
-            PyRef {
-                name,
-                hash,
-                r#type: PyRefType::Tag,
-            },
-        )
-    }
-
     fn detached(hash: String) -> (PyDetachedRef, Self) {
         (
             PyDetachedRef,
@@ -110,22 +86,11 @@ impl PyRef {
 impl PyRefType {
     fn class_name(self) -> &'static str {
         match self {
-            PyRefType::Branch => "Branch",
-            PyRefType::Tag => "Tag",
+            PyRefType::Branch | PyRefType::Tag => "Ref",
             PyRefType::Detached => "DetachedRef",
         }
     }
 }
-
-/// A data branch, used to isolate data changes before merging into main.
-#[derive(Debug, Clone, Copy)]
-#[pyclass(name = "Branch", module = "bauplan.schema", extends = PyRef, from_py_object)]
-pub struct PyBranch;
-
-/// A tag reference returned by the API.
-#[derive(Debug, Clone, Copy)]
-#[pyclass(name = "Tag", module = "bauplan.schema", extends = PyRef, from_py_object)]
-pub struct PyTag;
 
 /// A ref not attached to a branch or tag, pointing directly to a commit hash.
 #[derive(Debug, Clone, Copy)]
@@ -139,12 +104,22 @@ impl<'py> IntoPyObject<'py> for CatalogRef {
 
     fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
         match self {
-            CatalogRef::Branch { name, hash } => Ok(Py::new(py, PyRef::branch(name, hash))?
-                .into_bound(py)
-                .into_super()),
-            CatalogRef::Tag { name, hash } => Ok(Py::new(py, PyRef::tag(name, hash))?
-                .into_bound(py)
-                .into_super()),
+            CatalogRef::Branch { name, hash } => {
+                let r#ref = PyRef {
+                    name,
+                    hash,
+                    r#type: PyRefType::Branch,
+                };
+                Ok(Bound::new(py, r#ref)?)
+            }
+            CatalogRef::Tag { name, hash } => {
+                let r#ref = PyRef {
+                    name,
+                    hash,
+                    r#type: PyRefType::Tag,
+                };
+                Ok(Bound::new(py, r#ref)?)
+            }
             CatalogRef::Detached { hash } => Ok(Py::new(py, PyRef::detached(hash))?
                 .into_bound(py)
                 .into_super()),
@@ -170,25 +145,5 @@ impl<'a, 'py> FromPyObject<'a, 'py> for CatalogRef {
                 hash: r.hash.clone(),
             },
         })
-    }
-}
-
-impl<'py> IntoPyObject<'py> for Branch {
-    type Target = PyBranch;
-    type Output = Bound<'py, PyBranch>;
-    type Error = PyErr;
-
-    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        Ok(Py::new(py, PyRef::branch(self.name, self.hash))?.into_bound(py))
-    }
-}
-
-impl<'py> IntoPyObject<'py> for Tag {
-    type Target = PyTag;
-    type Output = Bound<'py, PyTag>;
-    type Error = PyErr;
-
-    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
-        Ok(Py::new(py, PyRef::tag(self.name, self.hash))?.into_bound(py))
     }
 }

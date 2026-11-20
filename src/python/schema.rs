@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 pub mod schema {
     // Refs
     #[pymodule_export]
-    use crate::python::refs::PyBranch as Branch;
+    use crate::python::branch::PyBranch as Branch;
     #[pymodule_export]
     use crate::python::refs::PyDetachedRef as DetachedRef;
     #[pymodule_export]
@@ -12,25 +12,21 @@ pub mod schema {
     #[pymodule_export]
     use crate::python::refs::PyRefType;
     #[pymodule_export]
-    use crate::python::refs::PyTag as Tag;
+    use crate::python::tag::PyTag as Tag;
 
     // Commits
     #[pymodule_export]
-    use crate::commit::Actor;
-    #[pymodule_export]
-    use crate::commit::Commit;
+    use crate::python::commit::PyCommit as Commit;
 
     // Catalog
     #[pymodule_export]
-    use crate::namespace::Namespace;
+    use crate::python::namespace::PyNamespaceIdentifier as NamespaceIdentifier;
     #[pymodule_export]
-    use crate::table::PartitionField;
+    use crate::python::table::PyPartitionField as PartitionField;
     #[pymodule_export]
-    use crate::table::Table;
+    use crate::python::table::PyTable as Table;
     #[pymodule_export]
-    use crate::table::TableField;
-    #[pymodule_export]
-    use crate::table::TableKind;
+    use crate::python::table::PyTableIdentifier as TableIdentifier;
 
     // Jobs
     #[pymodule_export]

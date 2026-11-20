@@ -13,10 +13,6 @@ use crate::{
 
 /// An actor (author or committer) in a commit.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(name = "Actor", module = "bauplan.schema", from_py_object, get_all)
-)]
 pub struct Actor {
     /// The actor's name.
     pub name: String,
@@ -26,10 +22,6 @@ pub struct Actor {
 
 /// A commit in the catalog.
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "python",
-    pyo3::pyclass(name = "Commit", module = "bauplan.schema", from_py_object, get_all)
-)]
 pub struct Commit {
     /// The ref (branch, tag, or detached) this commit is on.
     pub r#ref: CatalogRef,
@@ -100,54 +92,6 @@ impl Commit {
         }
 
         None
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl Commit {
-    fn __repr__(&self) -> String {
-        let hash = self.hash();
-        let short_hash = &hash[..hash.len().min(8)];
-        let subject = self.subject().unwrap_or_default();
-        let author = self.author().map(|a| a.name.as_str()).unwrap_or_default();
-        format!("Commit(hash={short_hash:?}, author={author:?}, message={subject:?})")
-    }
-
-    /// The first author of the commit.
-    #[getter(author)]
-    fn py_author(&self) -> Option<Actor> {
-        self.author().cloned()
-    }
-
-    /// The subject line of the commit message.
-    #[getter(subject)]
-    fn py_subject(&self) -> Option<&str> {
-        self.subject()
-    }
-
-    /// The body of the commit message. `None` if the message has no body.
-    #[getter(body)]
-    fn py_body(&self) -> Option<&str> {
-        self.body()
-    }
-
-    /// For merge commits, the branch that was merged in (second parent). `None` for regular commits.
-    #[getter(parent_merge_ref)]
-    fn py_parent_merge_ref(&self) -> Option<Branch> {
-        self.parent_merge_ref()
-    }
-}
-
-#[cfg(feature = "python")]
-#[pyo3::pymethods]
-impl Actor {
-    fn __repr__(&self) -> String {
-        if let Some(email) = &self.email {
-            format!("Actor(name={:?}, email={:?})", self.name, email)
-        } else {
-            format!("Actor(name={:?})", self.name)
-        }
     }
 }
 

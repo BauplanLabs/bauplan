@@ -37,7 +37,6 @@ class TestInheritance:
                 "ForbiddenError",
                 "bauplan.exceptions.BauplanHTTPError",
             ),
-            ("bauplan.schema", "Branch", "bauplan.schema.Ref"),
         ],
     )
     def test_base_class(self, mod: str, cls: str, base: str):

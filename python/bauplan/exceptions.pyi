@@ -363,11 +363,14 @@ class UnauthorizedError(BauplanHTTPError):
 class ForbiddenError(BauplanHTTPError):
     """Raised on an HTTP 403 response: the caller is not permitted to perform the action."""
 
+class MainBranchError(ForbiddenError):
+    """Raised when the operation is not allowed on the main branch."""
+
 class CreateBranchForbiddenError(ForbiddenError):
     """Raised when the caller is not permitted to create a `bauplan.schema.Branch`."""
 
 class CreateNamespaceForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to create a `bauplan.schema.Namespace`."""
+    """Raised when the caller is not permitted to create a namespace."""
 
 class CreateTagForbiddenError(ForbiddenError):
     """Raised when the caller is not permitted to create a `bauplan.schema.Tag`."""
@@ -376,7 +379,7 @@ class DeleteBranchForbiddenError(ForbiddenError):
     """Raised when the caller is not permitted to delete a `bauplan.schema.Branch`."""
 
 class DeleteNamespaceForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to delete a `bauplan.schema.Namespace`."""
+    """Raised when the caller is not permitted to delete a namespace."""
 
 class DeleteTableForbiddenError(ForbiddenError):
     """Raised when the caller is not permitted to delete tables."""
@@ -407,13 +410,19 @@ class TableNotFoundError(ResourceNotFoundError):
     """Raised when the referenced table does not exist on the given `bauplan.schema.Ref`."""
 
 class NamespaceNotFoundError(ResourceNotFoundError):
-    """Raised when the referenced `bauplan.schema.Namespace` does not exist on the given `bauplan.schema.Ref`."""
+    """Raised when the referenced namespace does not exist on the given `bauplan.schema.Ref`."""
 
 class BranchNotFoundError(ResourceNotFoundError):
     """Raised when the referenced `bauplan.schema.Branch` does not exist."""
 
 class RefNotFoundError(ResourceNotFoundError):
     """Raised when the referenced `bauplan.schema.Ref` does not exist."""
+
+class FromRefNotFoundError(RefNotFoundError):
+    """Raised when the ref to start from does not exist."""
+
+class CatalogNotFoundError(ResourceNotFoundError):
+    """Raised when the catalog does not exist."""
 
 class TagNotFoundError(ResourceNotFoundError):
     """Raised when the referenced `bauplan.schema.Tag` does not exist."""
@@ -438,6 +447,18 @@ class UpdateConflictError(ConflictError):
 class BranchExistsError(UpdateConflictError):
     """Raised when creating a `bauplan.schema.Branch` that already exists."""
 
+class BranchNameConflictError(UpdateConflictError):
+    """Raised when a `bauplan.schema.Branch` with the name already exists."""
+
+class TagNameConflictError(UpdateConflictError):
+    """Raised when a `bauplan.schema.Tag` with the name already exists."""
+
+class NameConflictError(UpdateConflictError):
+    """Raised when a namespace or a table with the name already exists."""
+
+class TagChangedError(UpdateConflictError):
+    """Raised when a `bauplan.schema.Tag` changed during the request."""
+
 class TableExistsError(UpdateConflictError):
     """Raised when creating a table that already exists on the target `bauplan.schema.Ref`."""
 
@@ -445,10 +466,10 @@ class TagExistsError(UpdateConflictError):
     """Raised when creating a `bauplan.schema.Tag` that already exists."""
 
 class NamespaceExistsError(UpdateConflictError):
-    """Raised when creating a `bauplan.schema.Namespace` that already exists on the target `bauplan.schema.Ref`."""
+    """Raised when creating a namespace that already exists on the target `bauplan.schema.Ref`."""
 
 class NamespaceUnresolvedError(ConflictError):
-    """Raised when a bauplan.schema.Namespace is specified both in the table name (e.g. ns.table) and through an explicit namespace parameter, resulting in an ambiguous reference."""
+    """Raised when a namespace is specified both in the table name (e.g. ns.table) and through an explicit namespace parameter, resulting in an ambiguous reference."""
 
 class BranchHeadChangedError(UpdateConflictError):
     """Raised when the `bauplan.schema.Branch` head hash has changed since it was last read."""
@@ -457,7 +478,7 @@ class MergeConflictError(UpdateConflictError):
     """Raised when a merge cannot be completed due to conflicting changes."""
 
 class NamespaceIsNotEmptyError(UpdateConflictError):
-    """Raised when attempting to delete a `bauplan.schema.Namespace` that still contains tables."""
+    """Raised when attempting to delete a namespace that still contains tables."""
 
 class RevertDestinationTableExistsError(UpdateConflictError):
     """Raised when the destination of a revert operation already exists."""

@@ -1,11 +1,10 @@
 from datetime import datetime
 from typing import Final, final
-from uuid import UUID
 
+import pyarrow
 from typing_extensions import disjoint_base
 
 __all__ = [
-    "Actor",
     "Branch",
     "Commit",
     "DAGEdge",
@@ -18,105 +17,106 @@ __all__ = [
     "JobLogLevel",
     "JobLogStream",
     "JobState",
-    "Namespace",
+    "NamespaceIdentifier",
     "PartitionField",
     "Ref",
     "RefType",
     "Table",
-    "TableField",
-    "TableKind",
+    "TableIdentifier",
     "Tag",
 ]
 
 @final
-class Actor:
+class Branch:
     """
-    An actor (author or committer) in a commit.
+    A data branch, used to isolate data changes before merging into main.
     """
     @property
-    def email(self, /) -> str | None:
+    def commit_hash(self, /) -> str:
         """
-        The actor's email address.
+        The hash of the commit the branch points to.
+        """
+    @property
+    def created_at(self, /) -> datetime:
+        """
+        When the branch was created.
         """
     @property
     def name(self, /) -> str:
         """
-        The actor's name.
+        The name of the branch.
         """
-
-@final
-class Branch(Ref):
-    """
-    A data branch, used to isolate data changes before merging into main.
-    """
+    @property
+    def updated_at(self, /) -> datetime:
+        """
+        When the branch last moved.
+        """
 
 @final
 class Commit:
     """
-    A commit in the catalog.
+    A commit in the catalog history.
     """
     @property
-    def author(self, /) -> Actor | None:
-        """The first author of the commit."""
-    @property
-    def authored_date(self, /) -> datetime:
+    def author_email(self, /) -> str | None:
         """
-        The date the commit was authored.
+        The author's email, if known.
         """
     @property
-    def authors(self, /) -> list[Actor]:
+    def author_name(self, /) -> str:
         """
-        The authors of the commit.
-        """
-    @property
-    def body(self, /) -> str | None:
-        """The body of the commit message. `None` if the message has no body."""
-    @property
-    def committed_date(self, /) -> datetime:
-        """
-        The date the commit was committed.
+        The author's display name.
         """
     @property
-    def committer(self, /) -> Actor:
+    def authored_at(self, /) -> datetime:
         """
-        The committer of the commit.
-        """
-    @property
-    def message(self, /) -> str | None:
-        """
-        The commit message.
+        When the commit was authored.
         """
     @property
-    def parent_hashes(self, /) -> list[str]:
+    def committed_at(self, /) -> datetime:
         """
-        The parent commit hashes.
+        When the commit was committed.
         """
     @property
-    def parent_merge_ref(self, /) -> Branch | None:
-        """For merge commits, the branch that was merged in (second parent). `None` for regular commits."""
-    @property
-    def parent_ref(self, /) -> Ref:
+    def committer_email(self, /) -> str | None:
         """
-        The parent ref.
+        The committer's email, if known.
+        """
+    @property
+    def committer_name(self, /) -> str:
+        """
+        The committer's display name.
+        """
+    @property
+    def hash(self, /) -> str:
+        """
+        The commit hash.
+        """
+    @property
+    def merge_parent_hash(self, /) -> str | None:
+        """
+        The hash of the commit merged in, only on merge commits.
+        """
+    @property
+    def message(self, /) -> str:
+        """
+        The full commit message.
+        """
+    @property
+    def parent_hash(self, /) -> str | None:
+        """
+        The parent commit hash, `None` only on the root commit.
         """
     @property
     def properties(self, /) -> dict[str, str]:
         """
-        Custom properties on the commit.
+        The properties of the commit.
         """
     @property
-    def ref(self, /) -> Ref:
+    def title(self, /) -> str:
         """
-        The ref (branch, tag, or detached) this commit is on.
+        The commit title, the first line of the message.
         """
-    @property
-    def signed_off_by(self, /) -> list[Actor]:
-        """
-        Actors who signed off on the commit.
-        """
-    @property
-    def subject(self, /) -> str | None:
-        """The subject line of the commit message."""
 
 @final
 class DAGEdge:
@@ -321,30 +321,30 @@ class JobState:
     def __ne__(self, value: object, /) -> bool: ...
 
 @final
-class Namespace:
+class NamespaceIdentifier:
     """
-    A container for organizing tables.
+    A namespace in a list. A namespace is a container for organizing tables.
     """
     @property
     def name(self, /) -> str:
         """
-        The namespace name.
+        The name of the namespace.
         """
 
 @final
 class PartitionField:
     """
-    A partition field on a table.
+    A partition field of a table.
     """
     @property
     def name(self, /) -> str:
         """
-        The partition field name.
+        The field the table is partitioned by.
         """
     @property
     def transform(self, /) -> str:
         """
-        The partition transform (e.g. "day", "month", "identity").
+        The partition transform, like `day` or `bucket[16]`.
         """
 
 @disjoint_base
@@ -381,145 +381,98 @@ class Table:
     A table in the lake.
     """
     @property
-    def fqn(self, /) -> str:
+    def commit_hash(self, /) -> str:
         """
-        The fully qualified name: `namespace.name`.
-        """
-    @property
-    def comment(self, /) -> str | None:
-        """
-        The table documentation, carried as the `comment` table property.
-        """
-    def is_managed(self, /) -> bool:
-        """
-        Whether this is a managed table.
-        """
-    def is_external(self, /) -> bool:
-        """
-        Whether this is an external table.
+        The hash of the commit the table was read at.
         """
     @property
-    def current_schema_id(self, /) -> int | None:
+    def created_at(self, /) -> datetime | None:
         """
-        The current Iceberg schema ID.
-        """
-    @property
-    def current_snapshot_id(self, /) -> int | None:
-        """
-        The current Iceberg snapshot ID.
+        When the table was created, only for the tables that record it.
         """
     @property
-    def fields(self, /) -> list[TableField]:
+    def doc(self, /) -> str | None:
         """
-        The fields in the table schema.
-        """
-    @property
-    def id(self, /) -> UUID:
-        """
-        The table ID.
+        The documentation of the table.
         """
     @property
-    def kind(self, /) -> TableKind:
+    def kind(self, /) -> str:
         """
-        The table type.
-        """
-    @property
-    def last_updated_at(self, /) -> datetime:
-        """
-        The timestamp when the table was last updated.
+        The kind of table: `iceberg_managed`, `iceberg_external` or
+        `iceberg_external_parquet`.
         """
     @property
-    def metadata_location(self, /) -> str:
+    def metadata_location(self, /) -> str | None:
         """
-        The URI of the Iceberg metadata file.
+        The location of the current iceberg metadata file.
         """
     @property
     def name(self, /) -> str:
         """
-        The table name.
-        """
-    @property
-    def namespace(self, /) -> str:
-        """
-        The table namespace.
+        The full name of the table, `namespace.table`.
         """
     @property
     def partitions(self, /) -> list[PartitionField]:
         """
-        The partition fields on the table.
-        """
-    @property
-    def properties(self, /) -> dict[str, str]:
-        """
-        Table properties.
+        The partition fields.
         """
     @property
     def records(self, /) -> int | None:
         """
-        The number of records in the table.
+        The number of records, if the current snapshot has the totals.
+        """
+    @property
+    def schema(self, /) -> pyarrow.Schema:
+        """
+        The schema of the table, a `pyarrow.Schema`.
         """
     @property
     def size(self, /) -> int | None:
         """
-        The size of the table.
+        The size of the data files in bytes, if the current snapshot has the
+        totals.
         """
     @property
-    def snapshots(self, /) -> int | None:
+    def updated_at(self, /) -> datetime:
         """
-        The number of snapshots.
+        When the table was last written.
         """
 
 @final
-class TableField:
+class TableIdentifier:
     """
-    A field in a table schema.
+    A table in a list.
     """
     @property
-    def doc(self, /) -> str | None:
+    def name(self, /) -> str:
         """
-        The field documentation.
+        The full name of the table, `namespace.table`.
+        """
+
+@final
+class Tag:
+    """
+    A human-readable name that points to a specific commit in the data lake.
+    Tags are often used to mark important milestones in the data lake
+    history, such as releases or experiments.
+    """
+    @property
+    def commit_hash(self, /) -> str:
+        """
+        The hash of the commit the tag points to.
         """
     @property
-    def id(self, /) -> int:
+    def created_at(self, /) -> datetime:
         """
-        The field ID.
+        When the tag was created.
         """
     @property
     def name(self, /) -> str:
         """
-        The field name.
+        The name of the tag.
         """
     @property
-    def required(self, /) -> bool:
+    def updated_at(self, /) -> datetime:
         """
-        Whether the field is required.
+        When the tag was last updated.
         """
-    @property
-    def type(self, /) -> str:
-        """
-        The field type.
-        """
-
-@final
-class TableKind:
-    """
-    The kind of table entry.
-    """
-
-    ExternalTable: Final[TableKind]
-    """
-    An external table.
-    """
-    Table: Final[TableKind]
-    """
-    A managed table.
-    """
-    def __eq__(self, value: object, /) -> bool: ...
-    def __int__(self, /) -> int: ...
-    def __ne__(self, value: object, /) -> bool: ...
-
-@final
-class Tag(Ref):
-    """
-    A human-readable name that points to a specific commit in the data lake. Tags are often used to mark important milestones in the data lake history, such as releases or experiments.
-    """

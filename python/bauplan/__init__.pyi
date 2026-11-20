@@ -35,9 +35,11 @@ from bauplan.schema import (
     JobKind,
     JobLogEvent,
     JobState,
-    Namespace,
+    NamespaceIdentifier,
+    Ref,
     RefType,
     Table,
+    TableIdentifier,
     Tag,
 )
 from bauplan.state import (
@@ -205,6 +207,7 @@ class Client:
         api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) ~/.bauplan/config.yaml
         client_timeout: The client timeout in seconds for all the requests.
         config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
+        catalog: The name of the catalog to use. If not provided, fetch precedence is 1) environment `BAUPLAN_CATALOG` 2) ~/.bauplan/config.yaml 3) `default`
     """
     def __new__(
         cls,
@@ -213,6 +216,7 @@ class Client:
         api_key: str | None = None,
         client_timeout: int | None = None,
         config_file_path: str | None = None,
+        catalog: str | None = None,
     ) -> Client: ...
     def apply_table_creation_plan(
         self,
@@ -293,47 +297,34 @@ class Client:
             job_id: A job ID
         """
     def create_branch(
-        self,
-        /,
-        branch: str,
-        from_ref: str,
-        *,
-        if_not_exists: bool = False,
-    ) -> Branch:
+        self, /, branch: str, from_ref: str, *, if_not_exists: bool = False
+    ) -> Branch | None:
         """
-        Create a new branch at a given ref.
-        The branch name should follow the convention of `username.branch_name`,
-        otherwise non-admin users won't be able to complete the operation.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Create a branch at a ref. The name of the branch should start with
+        the username, `username.branch_name`, otherwise non-admin users can't
+        create it.
 
         ```python
         import bauplan
-
         client = bauplan.Client()
-        username = client.info().user.username
 
-        branch = client.create_branch(
-            branch = username+'.feature_branch',
-            from_ref = 'branch_name@abcd1234',
-            if_not_exists = True,
-        )
+        branch = client.create_branch('username.feature', 'main', if_not_exists=True)
         ```
 
         Parameters:
             branch: The name of the new branch.
-            from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
-            if_not_exists: If set to `True`, the branch will not be created if it already exists.
+            from_ref: The ref to start from, a branch, a tag or a commit hash.
+            if_not_exists: If set to `True`, a branch with the same name is not an error.
         Returns:
-            The created `bauplan.schema.Branch` object.
+            The created `bauplan.schema.Branch`, or `None` when a branch with the same name exists and `if_not_exists` is set.
 
         Raises:
-            `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
-            `bauplan.exceptions.BranchExistsError`: if the branch already exists.
-            `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.BranchNameConflictError`: if a branch with the same name exists.
+            `bauplan.exceptions.TagNameConflictError`: if a tag with the same name exists.
+            `bauplan.exceptions.FromRefNotFoundError`: if the ref to start from does not exist.
+            `bauplan.exceptions.ForbiddenError`: if the user can't create the branch.
+            `bauplan.exceptions.BadRequestError`: if the name is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def create_external_table_from_metadata(
         self,
@@ -439,45 +430,36 @@ class Client:
         branch: str,
         *,
         commit_body: str | None = None,
-        commit_properties: dict[str, str] | None = None,
+        if_head: str | None = None,
         if_not_exists: bool = False,
-    ) -> Namespace:
+    ) -> Commit | None:
         """
-        Create a new namespace at a given branch.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Create a namespace on a branch.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.create_namespace(
-            namespace='my_namespace_name',
-            branch='my_branch_name',
-            if_not_exists=True,
-        )
+        commit = client.create_namespace('raw_data', 'username.feature', if_not_exists=True)
         ```
 
         Parameters:
-            namespace: The name of the namespace.
-            branch: The name of the branch to create the namespace on.
-            commit_body: Optional, the commit body to attach to the operation.
-            commit_properties: Optional, a list of properties to attach to the commit.
-            if_not_exists: If set to `True`, the namespace will not be created if it already exists.
+            namespace: The name of the new namespace.
+            branch: The branch to create the namespace on.
+            commit_body: Optional, the body of the commit message.
+            if_head: Optional, create only if the branch points to this commit hash.
+            if_not_exists: If set to `True`, a namespace or a table with the same name is not an error.
         Returns:
-            The created `bauplan.schema.Namespace` object.
+            The `bauplan.schema.Commit` that creates the namespace, or `None` when the name is in use and `if_not_exists` is set.
 
         Raises:
-            `bauplan.exceptions.CreateNamespaceForbiddenError`: if the user does not have access to create the namespace.
-            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-            `bauplan.exceptions.NamespaceExistsError`: if the namespace already exists.
-            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.NameConflictError`: if a namespace or a table with the same name exists.
+            `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotABranchRefError`: if the ref is not a branch.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+            `bauplan.exceptions.ForbiddenError`: if the user can't create the namespace.
+            `bauplan.exceptions.BadRequestError`: if the name is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def create_table(
         self,
@@ -545,72 +527,57 @@ class Client:
             `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
         """
     def create_tag(
-        self,
-        /,
-        tag: str,
-        from_ref: str,
-        *,
-        if_not_exists: bool = False,
-    ) -> Tag:
+        self, /, tag: str, from_ref: str, *, if_not_exists: bool = False
+    ) -> Tag | None:
         """
-        Create a new tag at a given ref.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Create a tag at a ref.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.create_tag(
-            tag='my_tag',
-            from_ref='my_ref_or_branch_name',
-        )
+        tag = client.create_tag('v1.0', 'main', if_not_exists=True)
         ```
 
         Parameters:
             tag: The name of the new tag.
-            from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
-            if_not_exists: If set to `True`, the tag will not be created if it already exists.
+            from_ref: The ref to tag, a branch, a tag or a commit hash.
+            if_not_exists: If set to `True`, a tag with the same name is not an error.
         Returns:
-            The created `bauplan.schema.Tag` object.
+            The created `bauplan.schema.Tag`, or `None` when a tag with the same name exists and `if_not_exists` is set.
 
         Raises:
-            `bauplan.exceptions.CreateTagForbiddenError`: if the user does not have access to create the tag.
-            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.TagExistsError`: if the tag already exists.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.TagNameConflictError`: if a tag with the same name exists.
+            `bauplan.exceptions.BranchNameConflictError`: if a branch with the same name exists.
+            `bauplan.exceptions.FromRefNotFoundError`: if the ref to tag does not exist.
+            `bauplan.exceptions.ForbiddenError`: if the user can't create the tag.
+            `bauplan.exceptions.BadRequestError`: if the name is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
-    def delete_branch(self, /, branch: str, *, if_exists: bool = False) -> bool:
+    def delete_branch(
+        self, /, branch: str, *, if_exists: bool = False, if_head: str | None = None
+    ) -> None:
         """
         Delete a branch.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        if client.delete_branch('my_branch_name'):
-            ...
+        client.delete_branch('username.feature', if_exists=True)
         ```
 
         Parameters:
-            branch: The name of the branch to delete.
-            if_exists: If set to `True`, the branch will not raise an error if it does not exist.
-        Returns:
-            A boolean for if the branch was deleted.
+            branch: The name of the branch.
+            if_exists: If set to `True`, a missing branch is not an error.
+            if_head: Optional, delete only if the branch points to this commit hash.
 
         Raises:
-            `bauplan.exceptions.DeleteBranchForbiddenError`: if the user does not have access to delete the branch.
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+            `bauplan.exceptions.MainBranchError`: if the branch is main.
+            `bauplan.exceptions.ForbiddenError`: if the user can't delete the branch.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def delete_namespace(
         self,
@@ -618,44 +585,37 @@ class Client:
         namespace: str,
         branch: str,
         *,
-        if_exists: bool = False,
         commit_body: str | None = None,
-        commit_properties: dict[str, str] | None = None,
-    ) -> Branch:
+        if_head: str | None = None,
+        if_exists: bool = False,
+    ) -> Commit | None:
         """
-        Delete a namespace.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Delete an empty namespace from a branch.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.delete_namespace(
-            namespace='my_namespace_name',
-            branch='my_branch_name',
-        )
+        commit = client.delete_namespace('raw_data', 'username.feature', if_exists=True)
         ```
 
         Parameters:
-            namespace: The name of the namespace to delete.
-            branch: The name of the branch to delete the namespace from.
-            commit_body: Optional, the commit body to attach to the operation.
-            commit_properties: Optional, a list of properties to attach to the commit.
-            if_exists: If set to `True`, the namespace will not raise an error if it does not exist.
+            namespace: The name of the namespace.
+            branch: The branch to delete the namespace from.
+            commit_body: Optional, the body of the commit message.
+            if_head: Optional, delete only if the branch points to this commit hash.
+            if_exists: If set to `True`, a missing namespace is not an error.
         Returns:
-            A `bauplan.schema.Branch` object pointing to head.
+            The `bauplan.schema.Commit` that deletes the namespace, or `None` when it does not exist and `if_exists` is set.
 
         Raises:
-            `bauplan.exceptions.DeleteNamespaceForbiddenError`: if the user does not have access to delete the namespace.
-            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
             `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-            `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace is not empty.
+            `bauplan.exceptions.NamespaceIsNotEmptyError`: if the namespace still has tables.
+            `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotABranchRefError`: if the ref is not a branch.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+            `bauplan.exceptions.ForbiddenError`: if the user can't delete the namespace.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def delete_table(
         self,
@@ -663,183 +623,131 @@ class Client:
         table: str,
         branch: str,
         *,
-        namespace: str | None = None,
-        if_exists: bool = False,
         commit_body: str | None = None,
-        commit_properties: dict[str, str] | None = None,
-    ) -> Branch:
+        if_head: str | None = None,
+        if_exists: bool = False,
+    ) -> Commit | None:
         """
-        Drop a table.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Delete a table from a branch. The data files stay in the storage.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.delete_table(
-            table='my_table_name',
-            branch='my_branch_name',
-            namespace='my_namespace',
-        )
+        commit = client.delete_table('raw_data.orders', 'username.feature', if_exists=True)
         ```
 
         Parameters:
-            table: The table to delete.
-            branch: The branch on which the table is stored.
-            namespace: The namespace of the table to delete.
-            commit_body: Optional, the commit body message to attach to the commit.
-            commit_properties: Optional, a list of properties to attach to the commit.
-            if_exists: If set to `True`, the table will not raise an error if it does not exist.
+            table: The full name of the table, `namespace.table`.
+            branch: The branch to delete the table from.
+            commit_body: Optional, the body of the commit message.
+            if_head: Optional, delete only if the branch points to this commit hash.
+            if_exists: If set to `True`, a missing table is not an error.
         Returns:
-            A `bauplan.schema.Branch` object pointing to the new head.
+            The `bauplan.schema.Commit` that deletes the table, or `None` when it does not exist and `if_exists` is set.
 
         Raises:
-            `bauplan.exceptions.DeleteTableForbiddenError`: if the user does not have access to delete the table.
-            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-            `bauplan.exceptions.MergeConflictError`: if the delete operation results in a conflict.
             `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
-            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-            `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.NotABranchRefError`: if the ref is not a branch.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+            `bauplan.exceptions.ForbiddenError`: if the user can't delete the table.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
-    def delete_tag(self, /, tag: str, *, if_exists: bool = False) -> bool:
+    def delete_tag(self, /, tag: str, *, if_exists: bool = False) -> None:
         """
         Delete a tag.
 
-        Upon failure, raises `bauplan.exceptions.BauplanError`
-
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.delete_tag('my_tag_name')
+        client.delete_tag('v1.0', if_exists=True)
         ```
 
         Parameters:
-            tag: The name of the tag to delete.
-            if_exists: If set to `True`, the tag will not raise an error if it does not exist.
-        Returns:
-            A boolean for if the tag was deleted.
+            tag: The name of the tag.
+            if_exists: If set to `True`, a missing tag is not an error.
 
         Raises:
-            `bauplan.exceptions.DeleteTagForbiddenError`: if the user does not have access to delete the tag.
             `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
-            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-            `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.TagChangedError`: if the tag changed during the delete.
+            `bauplan.exceptions.ForbiddenError`: if the user can't delete the tag.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def get_branch(self, /, branch: str) -> Branch:
         """
-        Get the branch.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get a branch.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        branch = client.get_branch('my_branch_name')
+        branch = client.get_branch('main')
         ```
 
         Parameters:
-            branch: The name of the branch to retrieve.
+            branch: The name of the branch.
         Returns:
             A `bauplan.schema.Branch` object.
 
         Raises:
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-            `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def get_branches(
         self,
         /,
         *,
         name: str | None = None,
-        user: str | None = None,
+        owned: bool = False,
         limit: int | None = None,
     ) -> typing.Iterator[Branch]:
         """
-        Get the available data branches in the Bauplan catalog.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get the branches in the Bauplan catalog.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        for branch in client.get_branches():
+        for branch in client.get_branches(name='^username.', owned=True):
             ...
         ```
 
         Parameters:
-            name: Filter the branches by name.
-            user: Filter the branches by user.
+            name: Filter the branches by name, `^` and `$` anchor it to the start or the end.
+            owned: Only the branches of the caller.
             limit: Optional, max number of branches to get.
         Returns:
             An iterator over `bauplan.schema.Branch` objects.
+
+        Raises:
+            `bauplan.exceptions.BadRequestError`: if the name filter is not valid.
+            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
         """
     def get_commits(
-        self,
-        /,
-        ref: str,
-        *,
-        filter_by_message: str | None = None,
-        filter_by_author_username: str | None = None,
-        filter_by_author_name: str | None = None,
-        filter_by_author_email: str | None = None,
-        filter_by_authored_date: str | datetime | None = None,
-        filter_by_authored_date_start_at: str | datetime | None = None,
-        filter_by_authored_date_end_at: str | datetime | None = None,
-        filter_by_parent_hash: str | None = None,
-        filter_by_properties: dict[str, str] | None = None,
-        filter: str | None = None,
-        limit: int | None = None,
+        self, /, ref: str, *, limit: int | None = None
     ) -> typing.Iterator[Commit]:
         """
-        Get the commits for the target branch or ref.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get the commit history at a ref, newest first.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        for commit in client.get_commits('my_ref_or_branch_name', limit=50):
+        for commit in client.get_commits('main', limit=50):
             ...
         ```
 
         Parameters:
-            ref: The ref or branch to get the commits from.
-            filter_by_message: Optional, filter the commits by message (can be a string or a regex like '^abc.*$')
-            filter_by_author_username: Optional, filter the commits by author username (can be a string or a regex like '^abc.*$')
-            filter_by_author_name: Optional, filter the commits by author name (can be a string or a regex like '^abc.*$')
-            filter_by_author_email: Optional, filter the commits by author email (can be a string or a regex like '^abc.*$')
-            filter_by_authored_date: Optional, filter the commits by the exact authored date.
-            filter_by_authored_date_start_at: Optional, filter the commits by authored date start at.
-            filter_by_authored_date_end_at: Optional, filter the commits by authored date end at.
-            filter_by_parent_hash: Optional, filter the commits by parent hash.
-            filter_by_properties: Optional, filter the commits by commit properties.
-            filter: Optional, a CEL filter expression to filter the commits.
+            ref: The ref, a branch, a tag or a commit hash.
             limit: Optional, max number of commits to get.
         Returns:
             An iterator over `bauplan.schema.Commit` objects.
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def get_job(self, job_id: str, /) -> Job:
         """
@@ -972,325 +880,215 @@ class Client:
         Returns:
             An iterator over `bauplan.schema.Job` objects.
         """
-    def get_namespace(self, /, namespace: str, ref: str) -> Namespace:
-        """
-        Get a namespace.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
-
-        ```python
-        import bauplan
-        client = bauplan.Client()
-
-        namespace =  client.get_namespace(
-            namespace='my_namespace_name',
-            ref='my_branch_name',
-        )
-        ```
-
-        Parameters:
-            namespace: The name of the namespace to get.
-            ref: The ref, branch name or tag name to check the namespace on.
-        Returns:
-            A `bauplan.schema.Namespace` object.
-
-        Raises:
-            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-            `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
-        """
     def get_namespaces(
-        self,
-        /,
-        ref: str,
-        *,
-        filter_by_name: str | None = None,
-        limit: int | None = None,
-    ) -> typing.Iterator[Namespace]:
+        self, /, ref: str, *, name: str | None = None, limit: int | None = None
+    ) -> typing.Iterator[NamespaceIdentifier]:
         """
-        Get the available data namespaces in the Bauplan catalog branch.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get the namespaces at a ref.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        for namespace in client.get_namespaces('my_ref_or_branch_name'):
+        for namespace in client.get_namespaces('main', name='^raw_'):
             ...
         ```
 
         Parameters:
-            ref: The ref, branch name or tag name to retrieve the namespaces from.
-            filter_by_name: Optional, filter the namespaces by name.
+            ref: The ref, a branch, a tag or a commit hash.
+            name: Filter the namespaces by name, `^` and `$` anchor it to the start or the end.
             limit: Optional, max number of namespaces to get.
+        Returns:
+            An iterator over `bauplan.schema.NamespaceIdentifier` objects.
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.BadRequestError`: if the name filter is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
-
-        Yields:
-            `bauplan.schema.Namespace` objects.
         """
-    def get_table(
-        self,
-        /,
-        table: str,
-        ref: str,
-        *,
-        namespace: str | None = None,
-    ) -> Table:
+    def get_table(self, /, table: str, ref: str) -> Table:
         """
-        Get the table data and metadata for a table in the target branch.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get a table at a ref.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        # get the fields and metadata for a table
-        table = client.get_table(
-            table='titanic',
-            ref='my_ref_or_branch_name',
-            namespace='bauplan',
-        )
-
-        # You can get the total number of rows this way.
-        num_records = table.records
-
-        # The table documentation, if the table has any.
-        print(table.comment)
-
-        # Or access the schema.
-        for c in table.fields:
-            print(c.name, c.type, c.doc)
+        table = client.get_table('bauplan.titanic', 'main')
+        print(table.records, table.schema.names)
         ```
 
         Parameters:
-            ref: The ref, branch name or tag name to get the table from.
-            table: The table to retrieve.
-            namespace: The namespace of the table to retrieve.
+            table: The full name of the table, `namespace.table`.
+            ref: The ref, a branch, a tag or a commit hash.
         Returns:
-            a `bauplan.schema.Table` object
+            A `bauplan.schema.Table` object.
 
         Raises:
-            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-            `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
             `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+            `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def get_tables(
         self,
         /,
         ref: str,
         *,
-        filter_by_name: str | None = None,
-        filter_by_namespace: str | None = None,
+        name: str | None = None,
+        namespace: str | None = None,
         limit: int | None = None,
-    ) -> typing.Iterator[Table]:
+    ) -> typing.Iterator[TableIdentifier]:
         """
-        Get the tables and views in the target branch.
-
-        On failure, raises `bauplan.exceptions.BauplanError`.
+        Get the tables at a ref.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        for table in client.get_tables('my_branch_name'):
+        for table in client.get_tables('main', namespace='bauplan'):
             ...
         ```
 
         Parameters:
-            ref: The ref or branch to get the tables from.
-            filter_by_name: Optional, the table name to filter by.
-            filter_by_namespace: Optional, the namespace to get filtered tables from.
+            ref: The ref, a branch, a tag or a commit hash.
+            name: Filter the tables by their full name, `^` and `$` anchor it to the start or the end.
+            namespace: Filter the tables by namespace, `^` and `$` anchor it to the start or the end.
             limit: Optional, max number of tables to get.
         Returns:
-            An iterator over `bauplan.schema.Table` objects.
+            An iterator over `bauplan.schema.TableIdentifier` objects.
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-            `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+            `bauplan.exceptions.BadRequestError`: if a filter is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def get_tag(self, /, tag: str) -> Tag:
         """
-        Get the tag.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get a tag.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        tag = client.get_tag('my_tag_name')
+        tag = client.get_tag('v1.0')
         ```
 
         Parameters:
-            tag: The name of the tag to retrieve.
+            tag: The name of the tag.
         Returns:
             A `bauplan.schema.Tag` object.
 
         Raises:
             `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
-            `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def get_tags(
-        self, /, *, filter_by_name: str | None = None, limit: int | None = None
+        self, /, *, name: str | None = None, limit: int | None = None
     ) -> typing.Iterator[Tag]:
         """
-        Get all the tags.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Get the tags in the Bauplan catalog.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        tags = client.get_tags()
-        for tag in tags:
-            print(tag.name)
+        for tag in client.get_tags(name='^v1.'):
+            ...
         ```
 
         Parameters:
-            filter_by_name: Optional, filter the tags by name.
+            name: Filter the tags by name, `^` and `$` anchor it to the start or the end.
             limit: Optional, max number of tags to get.
         Returns:
             An iterator over `bauplan.schema.Tag` objects.
 
         Raises:
+            `bauplan.exceptions.BadRequestError`: if the name filter is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def has_branch(self, /, branch: str) -> bool:
         """
         Check if a branch exists.
 
-        Upon failure, raises `bauplan.exceptions.BauplanError`
-
         ```python
         import bauplan
         client = bauplan.Client()
 
-        if client.has_branch('my_branch_name'):
+        if client.has_branch('main'):
             ...
         ```
 
         Parameters:
-            branch: The name of the branch to check.
+            branch: The name of the branch.
         Returns:
             A boolean for if the branch exists.
 
         Raises:
-            `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def has_namespace(self, /, namespace: str, ref: str) -> bool:
         """
-        Check if a namespace exists.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Check if a namespace exists at a ref.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.has_namespace(
-            namespace='my_namespace_name',
-            ref='my_branch_name',
-        )
+        if client.has_namespace('raw_data', 'main'):
+            ...
         ```
 
         Parameters:
-            namespace: The name of the namespace to check.
-            ref: The ref, branch name or tag name to check the namespace on.
-
+            namespace: The name of the namespace.
+            ref: The ref, a branch, a tag or a commit hash.
         Returns:
             A boolean for if the namespace exists.
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
-    def has_table(
-        self,
-        /,
-        table: str,
-        ref: str,
-        *,
-        namespace: str | None = None,
-    ) -> bool:
+    def has_table(self, /, table: str, ref: str) -> bool:
         """
-        Check if a table exists.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Check if a table exists at a ref.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.has_table(
-            table='titanic',
-            ref='my_ref_or_branch_name',
-            namespace='bauplan',
-        )
+        if client.has_table('bauplan.titanic', 'main'):
+            ...
         ```
 
         Parameters:
-            ref: The ref, branch name or tag name to get the table from.
-            table: The table to retrieve.
-            namespace: The namespace of the table to check.
+            table: The full name of the table, `namespace.table`.
+            ref: The ref, a branch, a tag or a commit hash.
         Returns:
             A boolean for if the table exists.
 
         Raises:
             `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-            `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def has_tag(self, /, tag: str) -> bool:
         """
         Check if a tag exists.
 
-        Upon failure, raises `bauplan.exceptions.BauplanError`
-
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.has_tag(
-            tag='my_tag_name',
-        )
+        if client.has_tag('v1.0'):
+            ...
         ```
 
         Parameters:
-            tag: The tag to retrieve.
+            tag: The name of the tag.
         Returns:
             A boolean for if the tag exists.
 
         Raises:
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def import_data(
         self,
@@ -1368,44 +1166,37 @@ class Client:
         source_ref: str,
         into_branch: str,
         *,
+        strategy: Literal["squash", "rebase", "fast_forward"] = "squash",
         commit_message: str | None = None,
-        commit_body: str | None = None,
-        commit_properties: dict[str, str] | None = None,
-    ) -> Branch:
+        if_head: str | None = None,
+    ) -> Commit | None:
         """
-        Merge one branch into another.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Merge a ref into a branch.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.merge_branch(
-            source_ref='my_ref_or_branch_name',
-            into_branch='main',
-        )
+        commit = client.merge_branch('username.feature', 'main')
         ```
 
         Parameters:
-            source_ref: The name of the merge source; either a branch like "main" or ref like "main@[sha]".
-            into_branch: The name of the merge target.
-            commit_message: Optional, the commit message.
-            commit_body: Optional, the commit body.
-            commit_properties: Optional, a list of properties to attach to the merge.
+            source_ref: The ref to merge, a branch, a tag or a commit hash.
+            into_branch: The branch to merge into.
+            strategy: `squash` makes one commit with all the changes, `rebase` replays the commits one by one, `fast_forward` moves the branch to the ref.
+            commit_message: Optional, the message of the `squash` commit.
+            if_head: Optional, merge only if the branch points to this commit hash.
         Returns:
-            The `bauplan.schema.Branch` where the merge was made.
+            The `bauplan.schema.Commit` of the merge, or `None` when there is nothing to merge.
 
         Raises:
-            `bauplan.exceptions.MergeForbiddenError`: if the user does not have access to merge the branch.
-            `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
-            `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-            `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-            `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
-            `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+            `bauplan.exceptions.FromRefNotFoundError`: if the ref to merge does not exist.
+            `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `if_head`.
+            `bauplan.exceptions.MergeConflictError`: if the merge has conflicts.
+            `bauplan.exceptions.ForbiddenError`: if the user can't merge into the branch.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
+            `ValueError`: if the strategy is not valid, or there is a message without `squash`.
         """
     def plan_table_creation(
         self,
@@ -1707,67 +1498,56 @@ class Client:
         """
     def rename_branch(self, /, branch: str, new_branch: str) -> Branch:
         """
-        Rename an existing branch.
-        The branch name should follow the convention of "username.branch_name",
-        otherwise non-admin users won't be able to complete the operation.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Rename a branch. The new name should start with the username,
+        `username.branch_name`, otherwise non-admin users can't rename it.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.rename_branch(
-            branch='username.old_name',
-            new_branch='username.new_name',
-        )
+        branch = client.rename_branch('username.old_name', 'username.new_name')
         ```
 
         Parameters:
-            branch: The name of the branch to rename.
-            new_branch: The name of the new branch.
+            branch: The name of the branch.
+            new_branch: The new name of the branch.
         Returns:
-            The renamed `bauplan.schema.Branch` object.
+            The renamed `bauplan.schema.Branch`.
 
         Raises:
-            `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to rename the branch.
             `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-            `bauplan.exceptions.BranchExistsError`: if the new branch name already exists.
-            `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.BranchNameConflictError`: if a branch with the new name exists.
+            `bauplan.exceptions.TagNameConflictError`: if a tag with the new name exists.
+            `bauplan.exceptions.MainBranchError`: if the branch is main.
+            `bauplan.exceptions.ForbiddenError`: if the user can't rename the branch.
+            `bauplan.exceptions.BadRequestError`: if the new name is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def rename_tag(self, /, tag: str, new_tag: str) -> Tag:
         """
-        Rename an existing tag.
-
-        Upon failure, raises `bauplan.exceptions.BauplanError`
+        Rename a tag.
 
         ```python
         import bauplan
         client = bauplan.Client()
 
-        assert client.rename_tag(
-            tag='old_tag_name',
-            new_tag='new_tag_name',
-        )
+        tag = client.rename_tag('v1.0', 'v1.0.0')
         ```
 
         Parameters:
-            tag: The name of the tag to rename.
-            new_tag: The name of the new tag.
+            tag: The name of the tag.
+            new_tag: The new name of the tag.
         Returns:
-            The renamed `bauplan.schema.Tag` object.
+            The renamed `bauplan.schema.Tag`.
 
         Raises:
-            `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to rename the tag.
             `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
-            `bauplan.exceptions.TagExistsError`: if the new tag name already exists.
-            `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
-            `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+            `bauplan.exceptions.TagNameConflictError`: if a tag with the new name exists.
+            `bauplan.exceptions.BranchNameConflictError`: if a branch with the new name exists.
+            `bauplan.exceptions.TagChangedError`: if the tag changed during the rename.
+            `bauplan.exceptions.ForbiddenError`: if the user can't rename the tag.
+            `bauplan.exceptions.BadRequestError`: if the new name is not valid.
             `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-            `ValueError`: if one or more parameters are invalid.
         """
     def revert_table(
         self,
@@ -1780,7 +1560,7 @@ class Client:
         replace: bool | None = None,
         commit_body: str | None = None,
         commit_properties: dict[str, str] | None = None,
-    ) -> Branch:
+    ) -> Ref:
         """
         Revert a table to a previous state.
 
@@ -1807,7 +1587,7 @@ class Client:
             commit_body: Optional, the commit body message to attach to the operation.
             commit_properties: Optional, a list of properties to attach to the operation.
         Returns:
-            The `bauplan.schema.Branch` where the revert was made.
+            The `bauplan.schema.Ref` of the branch where the revert was made.
 
         Raises:
             `ValueError`: if the table identifier is invalid, source_ref or branch_name is blank, the source entry is not Iceberg, a snapshot_id is missing, or a path validation error occurs.

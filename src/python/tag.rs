@@ -1,278 +1,265 @@
 //! Tag operations.
 
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::pagination::ListQuery;
+use bauplan_api::tag::{
+    self, CreateTagBody, CreateTagError, DeleteTagError, RenameTagBody, ResolveTagError, TagFilters,
+};
+use chrono::{DateTime, Utc};
 use pyo3::prelude::*;
 
-use crate::{
-    ApiErrorKind, ApiRequest, CatalogRef,
-    python::paginate::PyPaginator,
-    tag::{CreateTag, DeleteTag, GetTag, GetTags, RenameTag, Tag},
-};
-
 use super::Client;
+use super::exceptions::api_error;
+use super::paginate::{PyPaginator, from_api_page};
+
+/// A human-readable name that points to a specific commit in the data lake.
+/// Tags are often used to mark important milestones in the data lake
+/// history, such as releases or experiments.
+#[pyclass(name = "Tag", module = "bauplan.schema", frozen, get_all)]
+pub(crate) struct PyTag {
+    /// The name of the tag.
+    name: String,
+    /// The hash of the commit the tag points to.
+    commit_hash: String,
+    /// When the tag was created.
+    created_at: DateTime<Utc>,
+    /// When the tag was last updated.
+    updated_at: DateTime<Utc>,
+}
+
+#[pymethods]
+impl PyTag {
+    fn __repr__(&self) -> String {
+        format!(
+            "Tag(name={:?}, commit_hash={:?})",
+            self.name, self.commit_hash
+        )
+    }
+}
+
+impl From<tag::Tag> for PyTag {
+    fn from(tag: tag::Tag) -> Self {
+        Self {
+            name: tag.name,
+            commit_hash: tag.commit_hash,
+            created_at: tag.created_at,
+            updated_at: tag.updated_at,
+        }
+    }
+}
 
 #[pymethods]
 impl Client {
-    /// Get all the tags.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Get the tags in the Bauplan catalog.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// tags = client.get_tags()
-    /// for tag in tags:
-    ///     print(tag.name)
+    /// for tag in client.get_tags(name='^v1.'):
+    ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     filter_by_name: Optional, filter the tags by name.
+    ///     name: Filter the tags by name, `^` and `$` anchor it to the start or the end.
     ///     limit: Optional, max number of tags to get.
     /// Returns:
     ///     An iterator over `bauplan.schema.Tag` objects.
     ///
     /// Raises:
+    ///     `bauplan.exceptions.BadRequestError`: if the name filter is not valid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         *,
-        filter_by_name: "str | None" = None,
+        name: "str | None" = None,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Tag]")]
     fn get_tags(
         &self,
         py: Python<'_>,
-        filter_by_name: Option<String>,
+        name: Option<String>,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
-        let profile = self.profile.clone();
-        let agent = self.agent.clone();
-        PyPaginator::new(py, limit, move |py, token, limit| {
-            let req = GetTags {
-                filter_by_name: filter_by_name.as_deref(),
-            }
-            .paginate(token, limit);
-
-            Ok(super::roundtrip(py, req, &profile, &agent)?)
+        let client = self.tags()?;
+        let catalog = self.profile.catalog.clone();
+        let filters = TagFilters { name };
+        PyPaginator::new(py, limit, move |py, pagination_token, limit| {
+            let query = ListQuery {
+                pagination_token: pagination_token.map(str::to_owned),
+                limit: limit.and_then(|limit| u32::try_from(limit).ok()),
+                filters: filters.clone(),
+            };
+            let page = py.detach(|| client.list_tags(catalog.clone(), query));
+            Ok(from_api_page::<_, PyTag>(page.map_err(api_error)?))
         })
     }
 
-    /// Get the tag.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Get a tag.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// tag = client.get_tag('my_tag_name')
+    /// tag = client.get_tag('v1.0')
     /// ```
     ///
     /// Parameters:
-    ///     tag: The name of the tag to retrieve.
+    ///     tag: The name of the tag.
     /// Returns:
     ///     A `bauplan.schema.Tag` object.
     ///
     /// Raises:
     ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
-    ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str") -> "Tag")]
-    fn get_tag(&self, py: Python<'_>, tag: String) -> PyResult<Tag> {
-        let req = GetTag { name: &tag };
-        let t = super::roundtrip(py, req, &self.profile, &self.agent)?;
-        Ok(t)
+    fn get_tag(&self, py: Python<'_>, tag: String) -> PyResult<PyTag> {
+        let client = self.tags()?;
+        let path = (self.profile.catalog.clone(), tag);
+        let tag = py.detach(|| client.resolve_tag(path));
+        Ok(tag.map_err(api_error)?.into())
     }
 
     /// Check if a tag exists.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.has_tag(
-    ///     tag='my_tag_name',
-    /// )
+    /// if client.has_tag('v1.0'):
+    ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     tag: The tag to retrieve.
+    ///     tag: The name of the tag.
     /// Returns:
     ///     A boolean for if the tag exists.
     ///
     /// Raises:
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (tag: "str") -> "bool")]
     fn has_tag(&self, py: Python<'_>, tag: String) -> PyResult<bool> {
-        let req = GetTag { name: &tag };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
+        let client = self.tags()?;
+        let path = (self.profile.catalog.clone(), tag);
+        match py.detach(|| client.resolve_tag(path)) {
             Ok(_) => Ok(true),
-            Err(e)
-                if matches!(
-                    e.kind(),
-                    Some(ApiErrorKind::TagNotFound { .. } | ApiErrorKind::NotATagRef { .. })
-                ) =>
-            {
-                Ok(false)
-            }
-            Err(e) => Err(e.into()),
+            Err(ClientError::Api(ResolveTagError::TagNotFound { .. })) => Ok(false),
+            Err(err) => Err(api_error(err)),
         }
     }
 
-    /// Create a new tag at a given ref.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Create a tag at a ref.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.create_tag(
-    ///     tag='my_tag',
-    ///     from_ref='my_ref_or_branch_name',
-    /// )
+    /// tag = client.create_tag('v1.0', 'main', if_not_exists=True)
     /// ```
     ///
     /// Parameters:
     ///     tag: The name of the new tag.
-    ///     from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
-    ///     if_not_exists: If set to `True`, the tag will not be created if it already exists.
+    ///     from_ref: The ref to tag, a branch, a tag or a commit hash.
+    ///     if_not_exists: If set to `True`, a tag with the same name is not an error.
     /// Returns:
-    ///     The created `bauplan.schema.Tag` object.
+    ///     The created `bauplan.schema.Tag`, or `None` when a tag with the same name exists and `if_not_exists` is set.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.CreateTagForbiddenError`: if the user does not have access to create the tag.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.TagExistsError`: if the tag already exists.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.TagNameConflictError`: if a tag with the same name exists.
+    ///     `bauplan.exceptions.BranchNameConflictError`: if a branch with the same name exists.
+    ///     `bauplan.exceptions.FromRefNotFoundError`: if the ref to tag does not exist.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't create the tag.
+    ///     `bauplan.exceptions.BadRequestError`: if the name is not valid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str",
         from_ref: "str",
         *,
         if_not_exists: "bool" = false,
-    ) -> "Tag")]
+    ) -> "Tag | None")]
     fn create_tag(
         &self,
         py: Python<'_>,
         tag: String,
         from_ref: String,
         if_not_exists: bool,
-    ) -> PyResult<Tag> {
-        let req = CreateTag {
-            name: &tag,
-            from_ref: &from_ref,
+    ) -> PyResult<Option<PyTag>> {
+        let client = self.tags()?;
+        let body = CreateTagBody {
+            name: tag,
+            from_ref,
         };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(t) => Ok(t),
-
-            Err(e) => {
-                if if_not_exists
-                    && let Some(ApiErrorKind::TagExists {
-                        catalog_ref: CatalogRef::Tag { name, hash },
-                        ..
-                    }) = e.kind()
-                {
-                    Ok(Tag {
-                        name: name.clone(),
-                        hash: hash.clone(),
-                    })
-                } else {
-                    Err(e.into())
-                }
+        let catalog = self.profile.catalog.clone();
+        match py.detach(|| client.create_tag(catalog, body)) {
+            Ok(tag) => Ok(Some(tag.into())),
+            Err(ClientError::Api(CreateTagError::TagNameConflict { .. })) if if_not_exists => {
+                Ok(None)
             }
+            Err(err) => Err(api_error(err)),
         }
     }
 
-    /// Rename an existing tag.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Rename a tag.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.rename_tag(
-    ///     tag='old_tag_name',
-    ///     new_tag='new_tag_name',
-    /// )
+    /// tag = client.rename_tag('v1.0', 'v1.0.0')
     /// ```
     ///
     /// Parameters:
-    ///     tag: The name of the tag to rename.
-    ///     new_tag: The name of the new tag.
+    ///     tag: The name of the tag.
+    ///     new_tag: The new name of the tag.
     /// Returns:
-    ///     The renamed `bauplan.schema.Tag` object.
+    ///     The renamed `bauplan.schema.Tag`.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.RenameTagForbiddenError`: if the user does not have access to rename the tag.
     ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
-    ///     `bauplan.exceptions.TagExistsError`: if the new tag name already exists.
-    ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.TagNameConflictError`: if a tag with the new name exists.
+    ///     `bauplan.exceptions.BranchNameConflictError`: if a branch with the new name exists.
+    ///     `bauplan.exceptions.TagChangedError`: if the tag changed during the rename.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't rename the tag.
+    ///     `bauplan.exceptions.BadRequestError`: if the new name is not valid.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        tag: "str",
-        new_tag: "str",
-    ) -> "Tag")]
-    fn rename_tag(&self, py: Python<'_>, tag: String, new_tag: String) -> PyResult<Tag> {
-        let req = RenameTag {
-            name: &tag,
-            new_name: &new_tag,
-        };
-
-        let t = super::roundtrip(py, req, &self.profile, &self.agent)?;
-        Ok(t)
+    #[pyo3(signature = (tag: "str", new_tag: "str") -> "Tag")]
+    fn rename_tag(&self, py: Python<'_>, tag: String, new_tag: String) -> PyResult<PyTag> {
+        let client = self.tags()?;
+        let body = RenameTagBody { name: new_tag };
+        let path = (self.profile.catalog.clone(), tag);
+        let tag = py.detach(|| client.rename_tag(path, body));
+        Ok(tag.map_err(api_error)?.into())
     }
 
     /// Delete a tag.
     ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
-    ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.delete_tag('my_tag_name')
+    /// client.delete_tag('v1.0', if_exists=True)
     /// ```
     ///
     /// Parameters:
-    ///     tag: The name of the tag to delete.
-    ///     if_exists: If set to `True`, the tag will not raise an error if it does not exist.
-    /// Returns:
-    ///     A boolean for if the tag was deleted.
+    ///     tag: The name of the tag.
+    ///     if_exists: If set to `True`, a missing tag is not an error.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.DeleteTagForbiddenError`: if the user does not have access to delete the tag.
     ///     `bauplan.exceptions.TagNotFoundError`: if the tag does not exist.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.NotATagRefError`: if the object is not a tag.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.TagChangedError`: if the tag changed during the delete.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't delete the tag.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
     #[pyo3(signature = (
         tag: "str",
         *,
         if_exists: "bool" = false,
-    ) -> "bool")]
-    fn delete_tag(&self, py: Python<'_>, tag: String, if_exists: bool) -> PyResult<bool> {
-        let req = DeleteTag { name: &tag };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(_) => Ok(true),
-            Err(e) if matches!(e.kind(), Some(ApiErrorKind::TagNotFound { .. })) && if_exists => {
-                Ok(false)
-            }
-            Err(e) => Err(e.into()),
+    ) -> "None")]
+    fn delete_tag(&self, py: Python<'_>, tag: String, if_exists: bool) -> PyResult<()> {
+        let client = self.tags()?;
+        let path = (self.profile.catalog.clone(), tag);
+        match py.detach(|| client.delete_tag(path)) {
+            Ok(_) => Ok(()),
+            Err(ClientError::Api(DeleteTagError::TagNotFound { .. })) if if_exists => Ok(()),
+            Err(err) => Err(api_error(err)),
         }
     }
 }
