@@ -44,7 +44,7 @@ output. Tackle one file at a time.
 Replace `typing.Any` with correct types by examining:
 
 - The Rust source in `src/python/*.rs` (PyO3 method signatures)
-- The API types in `src/api/*.rs` (underlying data structures)
+- The API types in `bauplan-api/src/*.rs` (underlying data structures)
 - The original Python SDK in `~/dev/bpln/all-events/cli/bauplan/`
 
 ### Validating stubs
@@ -83,15 +83,14 @@ Common patterns from Rust to Python stubs:
 Rust sources to consult:
 
 - `src/python.rs` - Module structure and re-exports
-- `src/python/schema.rs` - Schema submodule (refs, catalog, job types)
+- `src/python/schema.rs` - Schema submodule (catalog and job types)
 - `src/python/state.rs` - State submodule (run/import/plan state types)
 - `src/python/client.rs` - Client class definition
 - `src/python/query.rs` - Query methods
 - `src/python/run.rs` - Run/rerun methods and state types
 - `src/python/table.rs` - Table operations
-- `src/python/refs.rs` - Ref, Branch, Tag types
 - `src/python/job.rs` - Job types
-- `src/api/*.rs` - Underlying API types
+- `bauplan-api/src/*.rs` - Underlying API types
 
 Original SDK (for interface compatibility):
 
@@ -110,9 +109,9 @@ The auto-generated stubs use fully-qualified names like `bauplan.X` or
 - In `schema.pyi` and `state.pyi`: strip the `bauplan.` prefix so
   `bauplan.Actor` becomes `Actor` (the type is local to the submodule).
 - In `exceptions.pyi`: strip `bauplan.exceptions.` for self-references (e.g.
-  `bauplan.exceptions.ApiErrorKind` -> `ApiErrorKind`). Cross-references to
+  `bauplan.exceptions.BauplanError` -> `BauplanError`). Cross-references to
   other submodules need an import from the sibling (e.g.
-  `from bauplan.schema import Ref`).
+  `from bauplan.schema import Entity`).
 - In `__init__.pyi`: types that live in submodules (like `Branch`, `Table`)
   appear as bare names without imports. Add imports from
   `bauplan.schema` / `bauplan.state` as needed.
@@ -138,7 +137,6 @@ committer -> Actor
 # String-like identifiers that are UUIDs or hashes
 id -> str
 hash -> str
-catalog_ref -> Ref
 
 # Dicts with known structure
 properties -> dict[str, str]

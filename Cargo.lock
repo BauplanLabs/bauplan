@@ -458,12 +458,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "assert_matches"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
-
-[[package]]
 name = "async-trait"
 version = "0.1.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -607,7 +601,6 @@ dependencies = [
  "arrow-csv",
  "arrow-flight",
  "assert_cmd",
- "assert_matches",
  "base64 0.22.1",
  "bauplan-api",
  "bauplan-longbow",
@@ -620,7 +613,6 @@ dependencies = [
  "gethostname",
  "globset",
  "http",
- "http-body-util",
  "humantime",
  "ignore",
  "indicatif",
@@ -628,7 +620,6 @@ dependencies = [
  "nondestructive",
  "opentelemetry",
  "parquet",
- "percent-encoding",
  "polyglot-sql",
  "predicates",
  "prost",
@@ -638,13 +629,10 @@ dependencies = [
  "pyo3-log",
  "rand 0.8.6",
  "regex",
- "reqwest",
  "resolve-path",
  "rsa",
  "serde",
  "serde_json",
- "serde_path_to_error",
- "serde_qs",
  "serde_yaml",
  "shlex",
  "similar",
@@ -4903,17 +4891,6 @@ dependencies = [
  "itoa",
  "serde",
  "serde_core",
-]
-
-[[package]]
-name = "serde_qs"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3faaf9e727533a19351a43cc5a8de957372163c7d35cc48c90b75cdda13c352"
-dependencies = [
- "percent-encoding",
- "serde",
- "thiserror 2.0.18",
 ]
 
 [[package]]

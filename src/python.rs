@@ -7,48 +7,36 @@ use std::{
 
 use pyo3::{exceptions::PyValueError, marker::Ungil, prelude::*};
 use tokio::runtime::Runtime;
+use ureq::middleware::MiddlewareNext;
 
+mod arrow_schema;
 mod branch;
 mod commit;
+mod diff;
 mod exceptions;
 mod info;
 pub(crate) mod job;
 mod namespace;
 mod paginate;
 mod query;
-mod refs;
 mod run;
 mod schema;
 mod state;
 mod table;
 mod tag;
 
+use bauplan_api::{
+    branch::BranchApiClient, catalog_ref::RefApiClient, namespace::NamespaceApiClient,
+    table::TableApiClient, tag::TagApiClient,
+};
+
 use crate::{
-    ApiError, ApiErrorKind, ApiRequest, ApiResponse, Profile, grpc,
+    Profile, grpc,
     python::exceptions::{BauplanError, BauplanJobError},
 };
 
 pub(crate) fn job_err(e: impl std::fmt::Display) -> PyErr {
     BauplanJobError::new_err(e.to_string())
-}
-
-#[derive(Debug, thiserror::Error)]
-enum ClientError {
-    #[error("error building request")]
-    Validation(#[from] http::Error),
-    #[error("transport error: {0}")]
-    Transport(#[from] ureq::Error),
-    #[error(transparent)]
-    Api(#[from] ApiError),
-}
-
-impl ClientError {
-    pub(crate) fn kind(&self) -> Option<&ApiErrorKind> {
-        match self {
-            ClientError::Api(ae) => ae.kind(),
-            _ => None,
-        }
-    }
 }
 
 /// A client for the Bauplan API.
@@ -92,19 +80,15 @@ impl ClientError {
 /// #### Handling Exceptions
 ///
 /// Catalog operations (branch, tag, namespace and table methods) raise a subclass of
-/// `bauplan.exceptions.BauplanHTTPError` matching the HTTP status code:
+/// `bauplan.exceptions.BauplanAPIError`, one for each type of error, like
+/// `TableNotFoundError`. Each method lists the ones it raises, and every method can
+/// also raise `InternalError` and `ServiceUnavailableError`.
 ///
-/// - 400: `bauplan.exceptions.BadRequestError` (e.g. `InvalidRefError`)
-/// - 401: `bauplan.exceptions.UnauthorizedError`
-/// - 403: `bauplan.exceptions.ForbiddenError`
-/// - 404: `bauplan.exceptions.NotFoundError` (e.g. `TableNotFoundError`)
-/// - 405: `bauplan.exceptions.MethodNotAllowedError`
-/// - 409: `bauplan.exceptions.ConflictError` (e.g. `MergeConflictError`)
-/// - 429: `bauplan.exceptions.TooManyRequestsError`
-/// - 500: `bauplan.exceptions.InternalError`
-/// - 502: `bauplan.exceptions.BadGatewayError`
-/// - 503: `bauplan.exceptions.ServiceUnavailableError`
-/// - 504: `bauplan.exceptions.GatewayTimeoutError`
+/// Every HTTP error is a `bauplan.exceptions.BauplanStatusError`, with the `status` of
+/// the response. For an error without a type we know, like a 502 from a proxy or an
+/// error added after this release, we raise `BauplanStatusError` itself. To retry a
+/// temporary error, catch `BauplanStatusError` and check its `status`, like 502, 503
+/// or 504.
 ///
 /// Jobs like `run` and `import_data` return a state object instead. A failed job doesn't
 /// raise; check `state.job_status` and `state.error`. `bauplan.exceptions.BauplanJobError`
@@ -130,11 +114,11 @@ impl ClientError {
 ///
 /// #### Pagination
 ///
-/// Methods like `get_branches` and `get_tables` return a lazy paginating iterator:
+/// Methods like `list_branches` and `list_tables` return a lazy paginating iterator:
 ///
 /// ```python
 /// #! client = bauplan.Client()
-/// for branch in client.get_branches():
+/// for branch in client.list_branches():
 ///     ...
 /// ```
 ///
@@ -143,7 +127,7 @@ impl ClientError {
 /// ```python
 /// #! client = bauplan.Client()
 /// # Don't do this!
-/// branches = list(client.get_branches())
+/// branches = list(client.list_branches())
 /// ```
 ///
 /// ## Examples
@@ -160,9 +144,11 @@ impl ClientError {
 ///     api_key: Your unique Bauplan API key; mutually exclusive with `profile`. If not provided, fetch precedence is 1) environment `BAUPLAN_API_KEY` 2) ~/.bauplan/config.yaml
 ///     client_timeout: The client timeout in seconds for all the requests.
 ///     config_file_path: The path to the Bauplan config file to use. If not provided, ~/.bauplan/config.yaml will be used. Note that this disables any environment-based configuration.
+///     catalog: The name of the catalog to use. If not provided, fetch precedence is 1) environment `BAUPLAN_CATALOG` 2) ~/.bauplan/config.yaml 3) `default`
 #[pyclass(module = "bauplan")]
 pub(crate) struct Client {
     pub(crate) profile: Profile,
+    /// Every request through it carries the api key.
     pub(crate) agent: ureq::Agent,
     pub(crate) grpc: grpc::Client,
     pub(crate) client_timeout: time::Duration,
@@ -182,6 +168,7 @@ impl Client {
             api_key = None,
             client_timeout = None,
             config_file_path = None,
+            catalog = None,
         ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -189,6 +176,7 @@ impl Client {
         api_key: Option<String>,
         client_timeout: Option<u64>,
         config_file_path: Option<&str>,
+        catalog: Option<String>,
     ) -> PyResult<Self> {
         let profile = if let Some(p) = config_file_path {
             Profile::read(p, profile)
@@ -204,6 +192,9 @@ impl Client {
         if let Some(api_key) = api_key {
             profile = profile.with_api_key(api_key);
         }
+        if let Some(catalog) = catalog {
+            profile = profile.with_catalog(catalog);
+        }
 
         profile
             .validate()
@@ -215,14 +206,28 @@ impl Client {
             .map(time::Duration::from_secs)
             .unwrap_or(time::Duration::from_secs(30));
 
+        let authorization = profile.authorization().map_err(BauplanError::new_err)?;
+
+        let middleware = move |mut req: http::Request<ureq::SendBody<'_>>,
+                               next: MiddlewareNext<'_>| {
+            if let Some(authorization) = &authorization {
+                req.headers_mut()
+                    .insert(http::header::AUTHORIZATION, authorization.clone());
+            }
+            next.handle(req)
+        };
+
         let cfg = ureq::config::Config::builder()
+            // Allows error responses to be parsed.
             .http_status_as_error(false)
             .tls_config(
                 ureq::tls::TlsConfig::builder()
                     .root_certs(ureq::tls::RootCerts::PlatformVerifier)
                     .build(),
             )
-            .timeout_global(Some(client_timeout));
+            .user_agent(&profile.user_agent)
+            .timeout_global(Some(client_timeout))
+            .middleware(middleware);
         let agent = ureq::Agent::new_with_config(cfg.build());
 
         let grpc = {
@@ -242,21 +247,46 @@ impl Client {
     }
 }
 
-#[allow(clippy::result_large_err)]
-fn roundtrip<T: ApiRequest>(
-    py: Python<'_>,
-    req: T,
-    profile: &Profile,
-    agent: &ureq::Agent,
-) -> Result<T::Response, ClientError>
-where
-    T::Response: Send,
-{
-    let req = req.into_request(profile)?;
-    py.detach(|| {
-        let resp = agent.run(req)?.map(ureq::Body::into_reader);
-        Ok(<T::Response as ApiResponse>::from_response(resp)?)
-    })
+impl Client {
+    /// A client for the branch endpoints of the api.
+    fn branches(&self) -> BranchApiClient {
+        BranchApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the namespace endpoints of the api.
+    fn namespaces(&self) -> NamespaceApiClient {
+        NamespaceApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the table endpoints of the api.
+    fn tables(&self) -> TableApiClient {
+        TableApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the tag endpoints of the api.
+    fn tags(&self) -> TagApiClient {
+        TagApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
+
+    /// A client for the ref endpoints of the api.
+    fn refs(&self) -> RefApiClient {
+        RefApiClient::with_transport(
+            self.profile.new_api_endpoint.to_string(),
+            self.agent.clone(),
+        )
+    }
 }
 
 fn optional_on_off<'a>(name: &'static str, v: Option<&'a str>) -> PyResult<Option<&'a str>> {

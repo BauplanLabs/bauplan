@@ -111,12 +111,12 @@ bauplan_user = client.info().user.username
 branch_name = f"{bauplan_user}.fivetran_integration"
 client.create_branch(branch=branch_name, from_ref="main", if_not_exists=True)
 
-client.create_external_table_from_metadata(
+client.create_namespace('fivetran', branch_name, if_not_exists=True)
+client.delete_table(BAUPLAN_TABLE_NAME, branch_name, if_exists=True)
+client.create_table(
     table=BAUPLAN_TABLE_NAME,
-    metadata_json_uri=metadata_location_string,
+    kind=bauplan.CreateTableKind.IcebergExternal(metadata_location_string),
     branch=branch_name,
-    namespace='fivetran',
-    overwrite=True,
 )
 
 print(f"External table registered: {BAUPLAN_TABLE_NAME} on branch {branch_name}")
@@ -128,7 +128,7 @@ print(f"External table registered: {BAUPLAN_TABLE_NAME} on branch {branch_name}"
 Fivetran continuously writes new snapshots. The `metadata_location` you register pins a specific snapshot. To advance:
 
 1. Call `get_metadata_location(...)` again to fetch the latest `metadata.json`.
-2. Call `create_external_table_from_metadata(..., overwrite=True)` on your feature branch.
+2. Call `delete_table(..., if_exists=True)` and then `create_table` with `CreateTableKind.IcebergExternal` on your feature branch.
 3. Run expectations or smoke tests.
 4. `commit` and `merge` into `main` when validation passes.
 

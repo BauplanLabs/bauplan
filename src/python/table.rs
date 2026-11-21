@@ -1,47 +1,390 @@
 //! Table operations.
 
-use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use commanderpb::runner_event::Event as RunnerEvent;
-use pyo3::{exceptions::PyTypeError, prelude::*};
-
-use crate::{
-    ApiErrorKind, ApiRequest, CatalogRef,
-    api::table::Table,
-    commit::CommitOptions,
-    grpc::generated as commanderpb,
-    iceberg::RegisterTable,
-    python::{
-        job_err,
-        namespace::NamespaceArg,
-        paginate::PyPaginator,
-        refs::{BranchArg, RefArg},
-    },
-    table::{DeleteTable, GetTable, GetTables, RevertTable},
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::{CommitOptions, WithCommit};
+use bauplan_api::pagination::ListQuery;
+use bauplan_api::table::{
+    self, CloneTableBody, CreateTableBody, CreateTableKind, DeleteTableBody, DeleteTableError,
+    GetTableError, PartitionTransform, RenameTableBody, TableFilters, TableKind,
 };
+use chrono::{DateTime, Utc};
+use commanderpb::runner_event::Event as RunnerEvent;
+use pyo3::exceptions::{PyTypeError, PyValueError};
+use pyo3::prelude::*;
 
-use super::Client;
-use super::exceptions::{TableCreatePlanApplyStatusError, TableCreatePlanStatusError};
+use crate::{grpc::generated as commanderpb, python::job_err};
+
+use super::arrow_schema::{from_arrow_schema, to_arrow_schema};
+use super::exceptions::{
+    BauplanError, TableCreatePlanApplyStatusError, TableCreatePlanStatusError, api_error,
+};
+use super::paginate::PyIteratorAtCommit;
 use super::run::job_status_strings;
+use super::{Client, commit::PyCommit};
 use crate::python::run::state::{
     ExternalTableCreateContext, ExternalTableCreateState, TableCreatePlanApplyState,
     TableCreatePlanContext, TableCreatePlanState, TableDataImportContext, TableDataImportState,
 };
 
-/// Accepts a table name or Table object (converted to `namespace.name`).
-pub(crate) struct TableArg(pub String);
+/// A table in a list.
+#[pyclass(name = "TableIdentifier", module = "bauplan.schema", frozen, get_all)]
+pub(crate) struct PyTableIdentifier {
+    /// The full name of the table, `namespace.table`.
+    name: String,
+}
 
-impl<'a, 'py> FromPyObject<'a, 'py> for TableArg {
+#[pymethods]
+impl PyTableIdentifier {
+    fn __repr__(&self) -> String {
+        format!("TableIdentifier(name={:?})", self.name)
+    }
+}
+
+impl From<table::TableIdentifier> for PyTableIdentifier {
+    fn from(table: table::TableIdentifier) -> Self {
+        Self { name: table.name }
+    }
+}
+
+/// A table in the lake.
+#[pyclass(name = "Table", module = "bauplan.schema", frozen, get_all)]
+pub(crate) struct PyTable {
+    /// The full name of the table, `namespace.table`.
+    name: String,
+    /// The kind of table and, when known, the location of its metadata file.
+    kind: PyTableKind,
+    /// The documentation of the table.
+    doc: Option<String>,
+    /// The number of records, if the current snapshot has the totals.
+    records: Option<u64>,
+    /// The size of the data files in bytes, if the current snapshot has the
+    /// totals.
+    size: Option<u64>,
+    /// The schema of the table, a `pyarrow.Schema`.
+    schema: Py<PyAny>,
+    /// The partition fields.
+    partitions: Vec<PyPartitionField>,
+    /// When the table was created, only for the tables that record it.
+    created_at: Option<DateTime<Utc>>,
+    /// When the table was last written.
+    updated_at: DateTime<Utc>,
+    /// The commit the table was read or written at.
+    commit: Py<PyCommit>,
+}
+
+#[pymethods]
+impl PyTable {
+    fn __repr__(&self) -> String {
+        format!("Table(name={:?})", self.name)
+    }
+}
+
+impl PyTable {
+    fn new(py: Python<'_>, table: WithCommit<table::Table>) -> PyResult<Self> {
+        let WithCommit { inner, commit } = table;
+        let schema = to_arrow_schema(inner.columns)
+            .map_err(|err| BauplanError::new_err(format!("invalid table schema: {err}")))?;
+        let schema = pyo3_arrow::PySchema::new(Arc::new(schema)).into_pyarrow(py)?;
+        Ok(Self {
+            name: inner.name,
+            kind: inner.kind.into(),
+            doc: inner.doc,
+            records: inner.records,
+            size: inner.size,
+            schema: schema.unbind(),
+            partitions: inner.partitions.into_iter().map(Into::into).collect(),
+            created_at: inner.created_at,
+            updated_at: inner.updated_at,
+            commit: Py::new(py, PyCommit::from(commit))?,
+        })
+    }
+}
+
+/// The kind of a table. It is one of `TableKind.IcebergManaged`,
+/// `TableKind.IcebergExternal`, `TableKind.IcebergExternalParquet` or
+/// `TableKind.Unknown`. All of them except `TableKind.Unknown` have the
+/// `metadata_location` of the table.
+#[derive(Clone)]
+#[pyclass(name = "TableKind", module = "bauplan.schema", frozen)]
+pub(crate) enum PyTableKind {
+    /// An iceberg table whose files bauplan writes and owns.
+    IcebergManaged {
+        /// The location of the current metadata file.
+        metadata_location: String,
+    },
+    /// A read-only iceberg table whose metadata and data files live outside
+    /// bauplan.
+    IcebergExternal {
+        /// The location of the current metadata file.
+        metadata_location: String,
+    },
+    /// A read-only iceberg table whose metadata bauplan writes, over parquet
+    /// files that live outside bauplan.
+    IcebergExternalParquet {
+        /// The location of the current metadata file.
+        metadata_location: String,
+    },
+    /// A kind this client does not know yet.
+    Unknown {},
+}
+
+#[pymethods]
+impl PyTableKind {
+    fn __repr__(&self) -> String {
+        match self {
+            Self::IcebergManaged { metadata_location } => {
+                format!("TableKind.IcebergManaged(metadata_location={metadata_location:?})")
+            }
+            Self::IcebergExternal { metadata_location } => {
+                format!("TableKind.IcebergExternal(metadata_location={metadata_location:?})")
+            }
+            Self::IcebergExternalParquet { metadata_location } => {
+                format!("TableKind.IcebergExternalParquet(metadata_location={metadata_location:?})")
+            }
+            Self::Unknown {} => "TableKind.Unknown()".to_owned(),
+        }
+    }
+}
+
+impl From<TableKind> for PyTableKind {
+    fn from(kind: TableKind) -> Self {
+        match kind {
+            TableKind::IcebergManaged { metadata_location } => {
+                Self::IcebergManaged { metadata_location }
+            }
+            TableKind::IcebergExternal { metadata_location } => {
+                Self::IcebergExternal { metadata_location }
+            }
+            TableKind::IcebergExternalParquet { metadata_location } => {
+                Self::IcebergExternalParquet { metadata_location }
+            }
+            TableKind::Unknown(_) => Self::Unknown {},
+        }
+    }
+}
+
+/// A partition field of a table.
+#[derive(Clone)]
+#[pyclass(
+    name = "PartitionField",
+    module = "bauplan.schema",
+    frozen,
+    get_all,
+    from_py_object
+)]
+pub(crate) struct PyPartitionField {
+    /// The field the table is partitioned by.
+    name: String,
+    /// The partition transform.
+    transform: PyPartitionTransform,
+}
+
+#[pymethods]
+impl PyPartitionField {
+    #[new]
+    #[pyo3(signature = (name: "str", transform: "PartitionTransform"))]
+    fn new(name: String, transform: PyPartitionTransform) -> Self {
+        Self { name, transform }
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "PartitionField(name={:?}, transform={})",
+            self.name,
+            self.transform.__repr__()
+        )
+    }
+}
+
+impl TryFrom<PyPartitionField> for table::PartitionField {
     type Error = PyErr;
 
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(TableArg(s))
-        } else if let Ok(table) = ob.extract::<Table>() {
-            Ok(TableArg(table.fqn()))
-        } else {
-            Err(PyTypeError::new_err("expected str or Table"))
+    fn try_from(field: PyPartitionField) -> PyResult<Self> {
+        let transform = match field.transform {
+            PyPartitionTransform::Identity {} => PartitionTransform::Identity,
+            PyPartitionTransform::Year {} => PartitionTransform::Year,
+            PyPartitionTransform::Month {} => PartitionTransform::Month,
+            PyPartitionTransform::Day {} => PartitionTransform::Day,
+            PyPartitionTransform::Hour {} => PartitionTransform::Hour,
+            PyPartitionTransform::Bucket { num_buckets } => PartitionTransform::Bucket(num_buckets),
+            PyPartitionTransform::Truncate { width } => PartitionTransform::Truncate(width),
+            PyPartitionTransform::Void {} => PartitionTransform::Void,
+            PyPartitionTransform::Unknown {} => {
+                return Err(PyValueError::new_err(format!(
+                    "unknown partition transform of {:?}",
+                    field.name
+                )));
+            }
+        };
+        Ok(Self {
+            name: field.name,
+            transform,
+        })
+    }
+}
+
+impl From<table::PartitionField> for PyPartitionField {
+    fn from(field: table::PartitionField) -> Self {
+        Self {
+            name: field.name,
+            transform: field.transform.into(),
         }
+    }
+}
+
+/// How a partition field derives its value from the column. It is one of
+/// `PartitionTransform.Identity`, `PartitionTransform.Year`,
+/// `PartitionTransform.Month`, `PartitionTransform.Day`,
+/// `PartitionTransform.Hour`, `PartitionTransform.Bucket`,
+/// `PartitionTransform.Truncate`, `PartitionTransform.Void` or
+/// `PartitionTransform.Unknown`.
+#[derive(Clone)]
+#[pyclass(
+    name = "PartitionTransform",
+    module = "bauplan.schema",
+    frozen,
+    from_py_object
+)]
+pub(crate) enum PyPartitionTransform {
+    /// The value of the column.
+    Identity {},
+    /// The year of a date or a timestamp.
+    Year {},
+    /// The month of a date or a timestamp.
+    Month {},
+    /// The day of a date or a timestamp.
+    Day {},
+    /// The hour of a timestamp.
+    Hour {},
+    /// A hash of the value, in `num_buckets` buckets.
+    Bucket {
+        /// The number of buckets.
+        num_buckets: u32,
+    },
+    /// The value truncated to `width`.
+    Truncate {
+        /// The width to truncate to.
+        width: u32,
+    },
+    /// Always null, for a partition field that is no longer used.
+    Void {},
+    /// A transform this client does not know yet.
+    Unknown {},
+}
+
+#[pymethods]
+impl PyPartitionTransform {
+    fn __repr__(&self) -> String {
+        match self {
+            Self::Identity {} => "PartitionTransform.Identity()".to_owned(),
+            Self::Year {} => "PartitionTransform.Year()".to_owned(),
+            Self::Month {} => "PartitionTransform.Month()".to_owned(),
+            Self::Day {} => "PartitionTransform.Day()".to_owned(),
+            Self::Hour {} => "PartitionTransform.Hour()".to_owned(),
+            Self::Bucket { num_buckets } => {
+                format!("PartitionTransform.Bucket(num_buckets={num_buckets})")
+            }
+            Self::Truncate { width } => format!("PartitionTransform.Truncate(width={width})"),
+            Self::Void {} => "PartitionTransform.Void()".to_owned(),
+            Self::Unknown {} => "PartitionTransform.Unknown()".to_owned(),
+        }
+    }
+}
+
+impl From<PartitionTransform> for PyPartitionTransform {
+    fn from(transform: PartitionTransform) -> Self {
+        match transform {
+            PartitionTransform::Identity => Self::Identity {},
+            PartitionTransform::Year => Self::Year {},
+            PartitionTransform::Month => Self::Month {},
+            PartitionTransform::Day => Self::Day {},
+            PartitionTransform::Hour => Self::Hour {},
+            PartitionTransform::Bucket(num_buckets) => Self::Bucket { num_buckets },
+            PartitionTransform::Truncate(width) => Self::Truncate { width },
+            PartitionTransform::Void => Self::Void {},
+            PartitionTransform::Unknown(_) => Self::Unknown {},
+        }
+    }
+}
+
+/// The kind of a new table. It is one of `CreateTableKind.IcebergManaged` or
+/// `CreateTableKind.IcebergExternal`.
+#[pyclass(name = "CreateTableKind", module = "bauplan.schema", frozen)]
+pub(crate) enum PyCreateTableKind {
+    /// An empty iceberg table that bauplan manages.
+    #[pyo3(constructor = (schema, partitions = Vec::new(), doc = None))]
+    IcebergManaged {
+        /// The columns of the table, a `pyarrow.Schema`.
+        schema: Py<PyAny>,
+        /// The partition fields.
+        partitions: Vec<PyPartitionField>,
+        /// The documentation of the table.
+        doc: Option<String>,
+    },
+    /// A read-only iceberg table whose metadata and data files live outside
+    /// bauplan.
+    IcebergExternal {
+        /// The location of the metadata file, in object storage and outside
+        /// the warehouse.
+        metadata_location: String,
+    },
+}
+
+#[pymethods]
+impl PyCreateTableKind {
+    fn __repr__(&self, py: Python<'_>) -> PyResult<String> {
+        Ok(match self {
+            Self::IcebergManaged {
+                schema,
+                partitions,
+                doc,
+            } => {
+                let names: Vec<String> = schema.bind(py).getattr("names")?.extract()?;
+                let partitions: Vec<String> =
+                    partitions.iter().map(PyPartitionField::__repr__).collect();
+                let doc = match doc {
+                    Some(doc) => format!(", doc={doc:?}"),
+                    None => String::new(),
+                };
+                format!(
+                    "CreateTableKind.IcebergManaged(schema={names:?}, partitions=[{}]{doc})",
+                    partitions.join(", ")
+                )
+            }
+            Self::IcebergExternal { metadata_location } => {
+                format!("CreateTableKind.IcebergExternal(metadata_location={metadata_location:?})")
+            }
+        })
+    }
+}
+
+impl PyCreateTableKind {
+    fn to_api(&self, py: Python<'_>) -> PyResult<CreateTableKind> {
+        Ok(match self {
+            Self::IcebergManaged {
+                schema,
+                partitions,
+                doc,
+            } => CreateTableKind::IcebergManaged {
+                doc: doc.clone(),
+                columns: from_arrow_schema(
+                    &schema
+                        .extract::<pyo3_arrow::PySchema>(py)
+                        .map_err(|_| PyValueError::new_err("schema: not an arrow schema"))?
+                        .into_inner(),
+                ),
+                partitions: partitions
+                    .iter()
+                    .cloned()
+                    .map(TryInto::try_into)
+                    .collect::<PyResult<_>>()?,
+            },
+            Self::IcebergExternal { metadata_location } => CreateTableKind::IcebergExternal {
+                metadata_location: metadata_location.clone(),
+            },
+        })
     }
 }
 
@@ -57,14 +400,14 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// table = client.create_table(
+    /// table = client.create_table_from_search_uri(
     ///     table='my_table_name',
     ///     search_uri='s3://path/to/my/files/*.parquet',
     ///     branch='my_branch_name',
     /// )
     /// ```
     ///
-    /// To specify partitioning, use the `create_table` method with the `partitioned_by` parameter:
+    /// To specify partitioning, use the `partitioned_by` parameter:
     ///
     /// ```python
     /// import bauplan
@@ -72,7 +415,7 @@ impl Client {
     /// client = bauplan.Client()
     ///
     /// # Create a partitioned table
-    /// table = client.create_table(
+    /// table = client.create_table_from_search_uri(
     ///     table='my_partitioned_table',
     ///     search_uri='s3://your-bucket/data/*.parquet',
     ///     partitioned_by="hour(tpep_pickup_datetime), PULocationID",
@@ -97,11 +440,11 @@ impl Client {
     ///     `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
     ///     `bauplan.exceptions.TableCreatePlanApplyStatusError`: if the table creation plan apply fails.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_uri: "str",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         partitioned_by: "str | None" = None,
         replace: "bool | None" = None,
         args: "dict[str, str] | None" = None,
@@ -109,7 +452,7 @@ impl Client {
         client_timeout: "int | None" = None,
     ) -> "Table")]
     #[allow(clippy::too_many_arguments)]
-    fn create_table(
+    fn create_table_from_search_uri(
         &self,
         py: Python<'_>,
         table: &str,
@@ -121,7 +464,7 @@ impl Client {
         args: Option<std::collections::HashMap<String, String>>,
         priority: Option<i64>,
         client_timeout: Option<i64>,
-    ) -> PyResult<Table> {
+    ) -> PyResult<PyTable> {
         // Create the plan.
         let plan_state = self.plan_table_creation(
             py,
@@ -199,13 +542,9 @@ impl Client {
         })?;
 
         // Fetch the created table from the catalog.
-        let req = GetTable {
-            name: &plan_state.ctx.table_name,
-            at_ref: &plan_state.ctx.branch_name,
-            namespace: Some(&plan_state.ctx.namespace),
-        };
-
-        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
+        let ctx = &plan_state.ctx;
+        let table = format!("{}.{}", ctx.namespace, ctx.table_name);
+        self.get_table(py, table, ctx.branch_name.clone())
     }
 
     /// Create a table import plan from an object storage location.
@@ -274,11 +613,11 @@ impl Client {
     /// Raises:
     ///     `bauplan.exceptions.TableCreatePlanStatusError`: if the table creation plan fails.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_uri: "str",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         partitioned_by: "str | None" = None,
         replace: "bool | None" = None,
         args: "dict[str, str] | None" = None,
@@ -524,11 +863,11 @@ impl Client {
     /// Returns:
     ///     A `bauplan.state.TableDataImportState` object.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_uri: "str",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         continue_on_error: "bool" = false,
         import_duplicate_files: "bool" = false,
         best_effort: "bool" = false,
@@ -652,11 +991,11 @@ impl Client {
     /// Returns:
     ///     A `bauplan.state.ExternalTableCreateState` object.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         search_patterns: "list[str]",
         *,
-        branch: "str | Branch | None" = None,
-        namespace: "str | Namespace | None" = None,
+        branch: "str | None" = None,
+        namespace: "str | None" = None,
         overwrite: "bool" = false,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
@@ -737,436 +1076,384 @@ impl Client {
         })
     }
 
-    /// Get the tables and views in the target branch.
-    ///
-    /// On failure, raises `bauplan.exceptions.BauplanError`.
+    /// List the tables at a ref.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// for table in client.get_tables('my_branch_name'):
+    /// for table in client.list_tables('main', namespace='bauplan'):
     ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     ref: The ref or branch to get the tables from.
-    ///     filter_by_name: Optional, the table name to filter by.
-    ///     filter_by_namespace: Optional, the namespace to get filtered tables from.
+    ///     ref: The ref, a branch, a tag or a commit hash.
+    ///     name: Optional, filter the tables by their full name, `namespace.table`. Use `^` and `$` to anchor it to the start or the end.
+    ///     namespace: Optional, filter the tables by namespace, together with `name`. Use `^` and `$` to anchor it to the start or the end.
     ///     limit: Optional, max number of tables to get.
     /// Returns:
-    ///     An iterator over `bauplan.schema.Table` objects.
+    ///     A `bauplan.schema.IteratorAtCommit` over `bauplan.schema.TableIdentifier` objects. Its `commit_hash` is the hash of the commit `ref` points to, and all the pages are read at that commit.
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-    ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.BadRequestError`: if a filter is not valid.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
-        r#ref: "str | Ref",
+        r#ref: "str",
         *,
-        filter_by_name: "str | None" = None,
-        filter_by_namespace: "str | Namespace | None" = None,
+        name: "str | None" = None,
+        namespace: "str | None" = None,
         limit: "int | None" = None,
-    ) -> "typing.Iterator[Table]")]
-    fn get_tables(
+    ) -> "IteratorAtCommit[TableIdentifier]")]
+    fn list_tables(
         &self,
         py: Python<'_>,
-        r#ref: RefArg,
-        filter_by_name: Option<String>,
-        filter_by_namespace: Option<NamespaceArg>,
+        r#ref: String,
+        name: Option<String>,
+        namespace: Option<String>,
         limit: Option<usize>,
-    ) -> PyResult<PyPaginator> {
-        let r#ref = r#ref.0;
-        let filter_by_namespace = filter_by_namespace.map(|a| a.0);
-        let profile = self.profile.clone();
-        let agent = self.agent.clone();
-        PyPaginator::new(py, limit, move |py, token, limit| {
-            let req = GetTables {
-                at_ref: &r#ref,
-                filter_by_name: filter_by_name.as_deref(),
-                filter_by_namespace: filter_by_namespace.as_deref(),
-            }
-            .paginate(token, limit);
-
-            Ok(super::roundtrip(py, req, &profile, &agent)?)
-        })
+    ) -> PyResult<PyIteratorAtCommit> {
+        let client = self.tables();
+        let catalog = self.profile.catalog.clone();
+        let filters = TableFilters { name, namespace };
+        PyIteratorAtCommit::new::<_, PyTableIdentifier, _>(
+            py,
+            &r#ref,
+            limit,
+            move |py, at, pagination_token, limit| {
+                let query = ListQuery {
+                    pagination_token: pagination_token.map(str::to_owned),
+                    limit: limit.and_then(|limit| u32::try_from(limit).ok()),
+                    filters: filters.clone(),
+                };
+                let path = (catalog.clone(), at.to_owned());
+                py.detach(|| client.list_tables(path, query))
+                    .map_err(api_error)
+            },
+        )
     }
 
-    /// Get the table data and metadata for a table in the target branch.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Get a table at a ref.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// # get the fields and metadata for a table
-    /// table = client.get_table(
-    ///     table='titanic',
-    ///     ref='my_ref_or_branch_name',
-    ///     namespace='bauplan',
-    /// )
-    ///
-    /// # You can get the total number of rows this way.
-    /// num_records = table.records
-    ///
-    /// # The table documentation, if the table has any.
-    /// print(table.comment)
-    ///
-    /// # Or access the schema.
-    /// for c in table.fields:
-    ///     print(c.name, c.type, c.doc)
+    /// table = client.get_table('bauplan.titanic', 'main')
+    /// print(table.records, table.schema.names)
     /// ```
     ///
     /// Parameters:
-    ///     ref: The ref, branch name or tag name to get the table from.
-    ///     table: The table to retrieve.
-    ///     namespace: The namespace of the table to retrieve.
+    ///     table: The full name of the table, `namespace.table`.
+    ///     ref: The ref, a branch, a tag or a commit hash.
     /// Returns:
-    ///     a `bauplan.schema.Table` object
+    ///     A `bauplan.schema.Table` object.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
     ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        table: "str | Table",
-        r#ref: "str | Ref",
-        *,
-        namespace: "str | Namespace | None" = None,
-    ) -> "Table")]
-    fn get_table(
-        &self,
-        py: Python<'_>,
-        table: TableArg,
-        r#ref: RefArg,
-        namespace: Option<NamespaceArg>,
-    ) -> PyResult<Table> {
-        let namespace = namespace.map(|a| a.0);
-        let req = GetTable {
-            name: &table.0,
-            at_ref: &r#ref.0,
-            namespace: namespace.as_deref(),
-        };
-
-        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    #[pyo3(signature = (table: "str", r#ref: "str") -> "Table")]
+    fn get_table(&self, py: Python<'_>, table: String, r#ref: String) -> PyResult<PyTable> {
+        let client = self.tables();
+        let path = (self.profile.catalog.clone(), r#ref, table);
+        let table = py.detach(|| client.get_table(path));
+        PyTable::new(py, table.map_err(api_error)?)
     }
 
-    /// Check if a table exists.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Check if a table exists at a ref.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.has_table(
-    ///     table='titanic',
-    ///     ref='my_ref_or_branch_name',
-    ///     namespace='bauplan',
-    /// )
+    /// if client.has_table('bauplan.titanic', 'main'):
+    ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     ref: The ref, branch name or tag name to get the table from.
-    ///     table: The table to retrieve.
-    ///     namespace: The namespace of the table to check.
+    ///     table: The full name of the table, `namespace.table`.
+    ///     ref: The ref, a branch, a tag or a commit hash.
     /// Returns:
     ///     A boolean for if the table exists.
     ///
     /// Raises:
     ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        table: "str | Table",
-        r#ref: "str | Ref",
-        *,
-        namespace: "str | Namespace | None" = None,
-    ) -> "bool")]
-    fn has_table(
-        &self,
-        py: Python<'_>,
-        table: TableArg,
-        r#ref: RefArg,
-        namespace: Option<NamespaceArg>,
-    ) -> PyResult<bool> {
-        let namespace = namespace.map(|a| a.0);
-        let req = GetTable {
-            name: &table.0,
-            at_ref: &r#ref.0,
-            namespace: namespace.as_deref(),
-        };
-
-        if let Err(e) = super::roundtrip(py, req, &self.profile, &self.agent) {
-            if matches!(e.kind(), Some(ApiErrorKind::TableNotFound { .. })) {
-                return Ok(false);
-            } else {
-                return Err(e.into());
-            }
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    #[pyo3(signature = (table: "str", r#ref: "str") -> "bool")]
+    fn has_table(&self, py: Python<'_>, table: String, r#ref: String) -> PyResult<bool> {
+        let client = self.tables();
+        let path = (self.profile.catalog.clone(), r#ref, table);
+        match py.detach(|| client.get_table(path)) {
+            Ok(_) => Ok(true),
+            Err(ClientError::Api(GetTableError::TableNotFound { .. })) => Ok(false),
+            Err(err) => Err(api_error(err)),
         }
-
-        Ok(true)
     }
 
-    /// Drop a table.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Rename a table on a branch, or move it to another namespace.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.delete_table(
-    ///     table='my_table_name',
-    ///     branch='my_branch_name',
-    ///     namespace='my_namespace',
-    /// )
+    /// table = client.rename_table('raw_data.orders', 'raw_data.orders_v1', 'username.feature')
     /// ```
     ///
     /// Parameters:
-    ///     table: The table to delete.
-    ///     branch: The branch on which the table is stored.
-    ///     namespace: The namespace of the table to delete.
-    ///     commit_body: Optional, the commit body message to attach to the commit.
-    ///     commit_properties: Optional, a list of properties to attach to the commit.
-    ///     if_exists: If set to `True`, the table will not raise an error if it does not exist.
+    ///     table: The full name of the table, `namespace.table`.
+    ///     new_table: The new full name of the table, `namespace.table`. The namespace must exist.
+    ///     branch: The branch to rename the table on.
+    ///     commit_message: Optional, the commit message. Without it, the server writes one for the operation.
+    ///     expected_head: Optional, rename only if the branch points to this commit hash.
     /// Returns:
-    ///     A `bauplan.schema.Branch` object pointing to the new head.
+    ///     The renamed `bauplan.schema.Table`. Its `commit` is the commit that renames it, or the head of the branch when the name does not change.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.DeleteTableForbiddenError`: if the user does not have access to delete the table.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-    ///     `bauplan.exceptions.MergeConflictError`: if the delete operation results in a conflict.
     ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
-    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
-    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if conflicting namespaces names are specified.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.NameConflictError`: if a namespace or a table with the new name exists.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace of the new name does not exist.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchError`: if the ref is not a branch.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `expected_head`.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't rename the table.
+    ///     `bauplan.exceptions.BadRequestError`: if the new name is not valid.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
-        table: "str | Table",
-        branch: "str | Branch",
+        table: "str",
+        new_table: "str",
+        branch: "str",
         *,
-        namespace: "str | Namespace | None" = None,
+        commit_message: "str | None" = None,
+        expected_head: "str | None" = None,
+    ) -> "Table")]
+    fn rename_table(
+        &self,
+        py: Python<'_>,
+        table: String,
+        new_table: String,
+        branch: String,
+        commit_message: Option<String>,
+        expected_head: Option<String>,
+    ) -> PyResult<PyTable> {
+        let client = self.tables();
+        let body = RenameTableBody {
+            name: new_table,
+            commit: CommitOptions {
+                message: commit_message,
+                expected_head,
+            },
+        };
+        let path = (self.profile.catalog.clone(), branch, table);
+        let renamed = py.detach(|| client.rename_table(path, body));
+        PyTable::new(py, renamed.map_err(api_error)?)
+    }
+
+    /// Delete a table from a branch. The data files stay in the storage.
+    ///
+    /// ```python
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// commit = client.delete_table('raw_data.orders', 'username.feature', if_exists=True)
+    /// ```
+    ///
+    /// Parameters:
+    ///     table: The full name of the table, `namespace.table`.
+    ///     branch: The branch to delete the table from.
+    ///     commit_message: Optional, the commit message. Without it, the server writes one for the operation.
+    ///     expected_head: Optional, delete only if the branch points to this commit hash.
+    ///     if_exists: If set to `True`, a missing table is not an error.
+    /// Returns:
+    ///     The `bauplan.schema.Commit` that deletes the table, or `None` when it does not exist and `if_exists` is set.
+    ///
+    /// Raises:
+    ///     `bauplan.exceptions.TableNotFoundError`: if the table does not exist.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchError`: if the ref is not a branch.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `expected_head`.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't delete the table.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    #[pyo3(signature = (
+        table: "str",
+        branch: "str",
+        *,
+        commit_message: "str | None" = None,
+        expected_head: "str | None" = None,
         if_exists: "bool" = false,
-        commit_body: "str | None" = None,
-        commit_properties: "dict[str, str] | None" = None,
-    ) -> "Branch")]
-    #[allow(clippy::too_many_arguments)]
+    ) -> "Commit | None")]
     fn delete_table(
         &self,
         py: Python<'_>,
-        table: TableArg,
-        branch: BranchArg,
-        namespace: Option<NamespaceArg>,
+        table: String,
+        branch: String,
+        commit_message: Option<String>,
+        expected_head: Option<String>,
         if_exists: bool,
-        commit_body: Option<&str>,
-        commit_properties: Option<BTreeMap<String, String>>,
-    ) -> PyResult<CatalogRef> {
-        let namespace = namespace.map(|a| a.0);
-        let commit_properties = commit_properties.unwrap_or_default();
-        let properties = commit_properties
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-
-        let req = DeleteTable {
-            name: &table.0,
-            branch: &branch.0,
-            namespace: namespace.as_deref(),
+    ) -> PyResult<Option<PyCommit>> {
+        let client = self.tables();
+        let body = DeleteTableBody {
             commit: CommitOptions {
-                body: commit_body,
-                properties,
+                message: commit_message,
+                expected_head,
             },
         };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(r) => Ok(r),
-            Err(e) => {
-                if if_exists && let Some(ApiErrorKind::TableNotFound { catalog_ref, .. }) = e.kind()
-                {
-                    Ok(catalog_ref.clone())
-                } else {
-                    Err(e.into())
-                }
-            }
+        let path = (self.profile.catalog.clone(), branch, table);
+        match py.detach(|| client.delete_table(path, Some(body))) {
+            Ok(commit) => Ok(Some(commit.into())),
+            Err(ClientError::Api(DeleteTableError::TableNotFound { .. })) if if_exists => Ok(None),
+            Err(err) => Err(api_error(err)),
         }
     }
 
-    /// Create an external table from an Iceberg metadata.json file.
-    ///
-    /// This operation creates an external table by pointing to an existing Iceberg table's
-    /// metadata.json file. This is useful for importing external Iceberg tables into Bauplan
-    /// without copying the data.
+    /// Create a table.
     ///
     /// ```python
     /// import bauplan
+    /// import pyarrow as pa
     /// client = bauplan.Client()
     ///
-    /// # Create an external table from metadata
-    /// result = client.create_external_table_from_metadata(
-    ///     table='my_external_table',
-    ///     metadata_json_uri='s3://my-bucket/path/to/metadata/00001-abc123.metadata.json',
-    ///     namespace='my_namespace',
-    ///     branch='my_branch_name',
+    /// table = client.create_table(
+    ///     'raw_data.orders',
+    ///     bauplan.CreateTableKind.IcebergManaged(
+    ///         pa.schema([('id', pa.int64()), ('created_at', pa.timestamp('us'))]),
+    ///         partitions=[bauplan.PartitionField('created_at', bauplan.PartitionTransform.Day())],
+    ///     ),
+    ///     'username.feature',
+    /// )
+    ///
+    /// table = client.create_table(
+    ///     'raw_data.events',
+    ///     bauplan.CreateTableKind.IcebergExternal('s3://my-bucket/events/metadata/00001-abc123.metadata.json'),
+    ///     'username.feature',
     /// )
     /// ```
     ///
     /// Parameters:
-    ///     table: The name of the table to create.
-    ///     metadata_json_uri: The URI pointing to the Iceberg table's metadata.json file.
-    ///     namespace: The namespace for the table (required).
-    ///     branch: The branch name in which to create the table. Defaults to the active branch, or 'main'.
-    ///     overwrite: Whether to overwrite an existing table with the same name (default: False).
-    ///
+    ///     table: The full name of the table, `namespace.table`. The namespace must exist.
+    ///     kind: The kind of the table to create, a `bauplan.schema.CreateTableKind`.
+    ///     branch: The branch to create the table on.
+    ///     expected_head: Optional, create only if the branch points to this commit hash.
     /// Returns:
-    ///     A `bauplan.schema.Table` object.
+    ///     The new `bauplan.schema.Table`. Its `commit` is the commit that creates it.
     ///
     /// Raises:
-    ///     `ValueError`: if metadata_json_uri is empty or invalid, or if table parameter is invalid.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NameConflictError`: if a namespace or a table with the same name exists.
     ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace does not exist.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchError`: if the ref is not a branch.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `expected_head`.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't write on the branch.
+    ///     `bauplan.exceptions.BadRequestError`: if the name or the kind are not valid.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `bauplan.exceptions.InvalidDataError`: if the metadata location is within the warehouse directory.
-    ///     `bauplan.exceptions.UpdateConflictError`: if a table with the same name already exists and overwrite=False.
-    ///     `bauplan.exceptions.BauplanError`: for other API errors during registration or retrieval.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    ///     `ValueError`: if the schema is not an arrow schema, or a partition transform is `PartitionTransform.Unknown`.
     #[pyo3(signature = (
-        table: "str | Table",
-        metadata_json_uri: "str",
+        table: "str",
+        kind: "CreateTableKind",
+        branch: "str",
         *,
-        namespace: "str | Namespace",
-        branch: "str | Branch | None" = None,
-        overwrite: "bool" = false,
+        expected_head: "str | None" = None,
     ) -> "Table")]
-    fn create_external_table_from_metadata(
+    fn create_table(
         &self,
         py: Python<'_>,
-        table: &str,
-        metadata_json_uri: &str,
-        namespace: &str,
-        branch: Option<&str>,
-        overwrite: bool,
-    ) -> PyResult<Table> {
-        let branch = branch
-            .or(self.profile.active_branch.as_deref())
-            .unwrap_or("-");
-
-        let req = RegisterTable {
+        table: String,
+        kind: Bound<'_, PyCreateTableKind>,
+        branch: String,
+        expected_head: Option<String>,
+    ) -> PyResult<PyTable> {
+        let client = self.tables();
+        let body = CreateTableBody {
             name: table,
-            metadata_location: metadata_json_uri,
-            overwrite,
-            branch,
-            namespace,
+            kind: kind.get().to_api(py)?,
+            commit: CommitOptions {
+                message: None,
+                expected_head,
+            },
         };
-
-        super::roundtrip(py, req, &self.profile, &self.agent)?;
-
-        let req = GetTable {
-            name: table,
-            at_ref: branch,
-            namespace: Some(namespace),
-        };
-
-        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
+        let path = (self.profile.catalog.clone(), branch);
+        let created = py.detach(|| client.create_table(path, body));
+        PyTable::new(py, created.map_err(api_error)?)
     }
 
-    /// Revert a table to a previous state.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Copy the state of a table from a ref to a branch.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.revert_table(
-    ///     table='my_table_name',
-    ///     namespace='my_namespace',
-    ///     source_ref='my_ref_or_branch_name',
-    ///     into_branch='main',
-    /// )
+    /// table = client.revert_table('raw_data.orders', 'main', 'username.feature', replace=True)
     /// ```
     ///
     /// Parameters:
-    ///     table: The table to revert.
-    ///     namespace: The namespace of the table to revert.
-    ///     source_ref: The name of the source ref; either a branch like "main" or ref like "main@[sha]".
-    ///     into_branch: The name of the target branch where the table will be reverted.
-    ///     replace: Optional, whether to replace the table if it already exists.
-    ///     commit_body: Optional, the commit body message to attach to the operation.
-    ///     commit_properties: Optional, a list of properties to attach to the operation.
+    ///     table: The full name of the table, `namespace.table`.
+    ///     from_ref: The ref to take the table from, a branch, a tag or a commit hash.
+    ///     into_branch: The branch to put the table on.
+    ///     replace: If set to `True`, the table replaces the one with the same name on the branch.
+    ///     commit_message: Optional, the commit message. Without it, the server writes one for the operation.
+    ///     expected_head: Optional, revert only if the branch points to this commit hash.
     /// Returns:
-    ///     The `bauplan.schema.Branch` where the revert was made.
+    ///     The reverted `bauplan.schema.Table`. Its `commit` is the commit that reverts it, or the head of the branch when the table is already as it is at `from_ref`.
     ///
     /// Raises:
-    ///     `ValueError`: if the table identifier is invalid, source_ref or branch_name is blank, the source entry is not Iceberg, a snapshot_id is missing, or a path validation error occurs.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format from Nessie is invalid.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination ref is not a branch.
-    ///     `bauplan.exceptions.SameRefError`: if the source and destination have the same hash.
-    ///     `bauplan.exceptions.UnauthorizedError`: if the JWT is invalid or the auth session is missing.
-    ///     `bauplan.exceptions.ForbiddenError`: if the user lacks writer role.
-    ///     `bauplan.exceptions.RevertTableForbiddenError`: if there is a zone/workspace restriction on the destination branch.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the source ref doesn't exist.
-    ///     `bauplan.exceptions.TableNotFoundError`: if the source table is not found on the source ref.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch doesn't exist.
-    ///     `bauplan.exceptions.NamespaceUnresolvedError`: if the namespace cannot be resolved.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if a concurrent modification changed the branch head.
-    ///     `bauplan.exceptions.RevertDestinationTableExistsError`: if the destination table exists and the replace flag is not set.
-    ///     `bauplan.exceptions.RevertIdenticalTableError`: if the source and destination have the same snapshot.
-    ///     `bauplan.exceptions.MergeConflictError`: if there is a merge conflict during the transactional revert.
+    ///     `bauplan.exceptions.FromTableNotFoundError`: if the table does not exist at `from_ref`.
+    ///     `bauplan.exceptions.FromRefNotFoundError`: if `from_ref` does not exist.
+    ///     `bauplan.exceptions.NameConflictError`: if the table exists on the branch and `replace` is not set.
+    ///     `bauplan.exceptions.NamespaceNotFoundError`: if the namespace of the table does not exist on the branch.
+    ///     `bauplan.exceptions.RefNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.NotABranchError`: if the ref is not a branch.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `expected_head`.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't write on the branch.
+    ///     `bauplan.exceptions.BadRequestError`: if the table name is not valid.
+    ///     `bauplan.exceptions.UnsupportedTableKindError`: if the table is not an Iceberg table.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
+        from_ref: "str",
+        into_branch: "str",
         *,
-        namespace: "str | Namespace | None" = None,
-        source_ref: "str | Ref",
-        into_branch: "str | Branch",
-        replace: "bool | None" = None,
-        commit_body: "str | None" = None,
-        commit_properties: "dict[str, str] | None" = None,
-    ) -> "Branch")]
+        replace: "bool" = false,
+        commit_message: "str | None" = None,
+        expected_head: "str | None" = None,
+    ) -> "Table")]
     #[allow(clippy::too_many_arguments)]
     fn revert_table(
         &self,
         py: Python<'_>,
-        table: TableArg,
-        namespace: Option<NamespaceArg>,
-        source_ref: RefArg,
-        into_branch: BranchArg,
-        replace: Option<bool>,
-        commit_body: Option<&str>,
-        commit_properties: Option<BTreeMap<String, String>>,
-    ) -> PyResult<CatalogRef> {
-        let namespace = namespace.map(|a| a.0);
-        let commit_properties = commit_properties.unwrap_or_default();
-        let properties = commit_properties
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-
-        let req = RevertTable {
-            name: &table.0,
-            source_ref: &source_ref.0,
-            into_branch: &into_branch.0,
-            namespace: namespace.as_deref(),
-            replace: replace.unwrap_or_default(),
+        table: String,
+        from_ref: String,
+        into_branch: String,
+        replace: bool,
+        commit_message: Option<String>,
+        expected_head: Option<String>,
+    ) -> PyResult<PyTable> {
+        let client = self.tables();
+        let body = CloneTableBody {
+            name: table.clone(),
+            from_ref,
+            from_table: table,
+            replace,
             commit: CommitOptions {
-                body: commit_body,
-                properties,
+                message: commit_message,
+                expected_head,
             },
         };
-
-        let resp = super::roundtrip(py, req, &self.profile, &self.agent)?;
-        Ok(resp)
+        let path = (self.profile.catalog.clone(), into_branch);
+        let reverted = py.detach(|| client.clone_table(path, body));
+        PyTable::new(py, reverted.map_err(api_error)?)
     }
 }

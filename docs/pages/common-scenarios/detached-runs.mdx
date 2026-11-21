@@ -139,18 +139,18 @@ job = client.get_job(job_id)
 print(f'Status: {job.status}')
 ```
 
-Use [`get_jobs`](/reference/bauplan#bauplan-client-get_jobs) to list recent jobs with optional filters:
+Use [`list_jobs`](/reference/bauplan#bauplan-client-list_jobs) to list recent jobs with optional filters:
 
 ```python
 #! import bauplan
 #! client = bauplan.Client()
 from datetime import datetime, timezone
 
-for job in client.get_jobs(limit=10):
+for job in client.list_jobs(limit=10):
     print(f'{job.id}  {job.status}')
 
 # Filter by date range
-for job in client.get_jobs(
+for job in client.list_jobs(
     filter_by_created_after=datetime(2025, 1, 1, tzinfo=timezone.utc),
     limit=5,
 ):

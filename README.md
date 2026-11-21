@@ -20,13 +20,12 @@ Running `BAUPLAN_PROFILE=... just test` will run the tests.
 > [!IMPORTANT]
 > Running the tests requires a valid API key, and will create (and hopefully also clean up) a bunch of garbage, so you shouldn't run it against production!
 
-The tests cover both the code in this repo and the behavior of the platform altogether. There are three types of tests:
+The tests cover both the code in this repo and the behavior of the platform altogether. There are two types of tests:
 
- - Rust integration tests. These are gated behind a `_integration-tests` cargo feature.
  - CLI end-to-end tests. These live in `tests` and run the CLI and check the output.
  - Pytests for testing the python-side SDK surface. These can be found in `python/tests`.
  
-The command `cargo test --features _integration-tests` will run the first two. `uv run pytest` will run the python tests, and `uv run ty check` will validate the python stubs.
+The command `cargo test` will run the first. `uv run pytest` will run the python tests, and `uv run ty check` will validate the python stubs.
 
 ### Maintaining the python stubs
 

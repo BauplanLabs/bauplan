@@ -22,9 +22,7 @@ use crate::{
     python::{
         detach,
         exceptions::{BauplanError, BauplanQueryError},
-        namespace::NamespaceArg,
         optional_on_off,
-        refs::RefArg,
     },
 };
 
@@ -42,7 +40,7 @@ impl Client {
     async fn run_query(
         &self,
         query: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -56,7 +54,7 @@ impl Client {
 
         let req = commanderpb::QueryRunRequest {
             job_request_common: Some(common),
-            r#ref: r#ref.map(|r| r.0),
+            r#ref,
             sql_query: query.to_owned(),
             cache: cache.unwrap_or_default().to_owned(),
             namespace: namespace.map(str::to_owned),
@@ -180,7 +178,7 @@ impl Client {
     async fn query_to_file<T: RecordBatchWriter>(
         &self,
         query: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
         namespace: Option<&str>,
@@ -272,10 +270,10 @@ impl Client {
     #[pyo3(signature = (
         query: "str",
         *,
-        r#ref: "str | Ref | None" = None,
+        r#ref: "str | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -285,15 +283,14 @@ impl Client {
         &self,
         py: Python<'_>,
         query: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<NamespaceArg>,
+        namespace: Option<String>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> Result<Py<PyAny>, PyErr> {
-        let namespace = namespace.map(|a| a.0);
         let table = detach(py, async {
             let (schema, stream) = self
                 .run_query(
@@ -347,10 +344,10 @@ impl Client {
     #[pyo3(signature = (
         query: "str",
         *,
-        r#ref: "str | Ref | None" = None,
+        r#ref: "str | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -360,15 +357,14 @@ impl Client {
         &self,
         py: Python<'_>,
         query: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<NamespaceArg>,
+        namespace: Option<String>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
-        let namespace = namespace.map(|a| a.0);
         let (_schema, batches) = detach(
             py,
             self.run_query(
@@ -415,10 +411,10 @@ impl Client {
         path: "str | pathlib.Path",
         query: "str",
         *,
-        r#ref: "str | Ref | None" = None,
+        r#ref: "str | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -429,17 +425,15 @@ impl Client {
         py: Python<'_>,
         path: PathBuf,
         query: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<NamespaceArg>,
+        namespace: Option<String>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<PathBuf> {
         use parquet::arrow::ArrowWriter;
-
-        let namespace = namespace.map(|a| a.0);
         detach(
             py,
             self.query_to_file(
@@ -490,10 +484,10 @@ impl Client {
         path: "str | pathlib.Path",
         query: "str",
         *,
-        r#ref: "str | Ref | None" = None,
+        r#ref: "str | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -504,17 +498,15 @@ impl Client {
         py: Python<'_>,
         path: PathBuf,
         query: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<NamespaceArg>,
+        namespace: Option<String>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<PathBuf> {
         use arrow_csv::WriterBuilder;
-
-        let namespace = namespace.map(|a| a.0);
         detach(
             py,
             self.query_to_file(
@@ -567,10 +559,10 @@ impl Client {
         query: "str",
         *,
         file_format: "Literal['json', 'jsonl']" = "json",
-        r#ref: "str | Ref | None" = None,
+        r#ref: "str | None" = None,
         max_rows: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -582,17 +574,15 @@ impl Client {
         path: PathBuf,
         query: &str,
         file_format: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         max_rows: Option<u64>,
         cache: Option<&str>,
-        namespace: Option<NamespaceArg>,
+        namespace: Option<String>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<PathBuf> {
         use arrow::json::{ArrayWriter, LineDelimitedWriter};
-
-        let namespace = namespace.map(|a| a.0);
         let jsonl = match file_format {
             "json" => false,
             "jsonl" => true,
@@ -672,14 +662,14 @@ impl Client {
     /// Returns:
     ///     The scan results as a `pyarrow.Table`.
     #[pyo3(signature = (
-        table: "str | Table",
+        table: "str",
         *,
-        r#ref: "str | Ref | None" = None,
+        r#ref: "str | None" = None,
         columns: "list[str] | None" = None,
         filters: "str | None" = None,
         limit: "int | None" = None,
         cache: "Literal['on', 'off'] | None" = None,
-        namespace: "str | Namespace | None" = None,
+        namespace: "str | None" = None,
         args: "dict[str, str] | None" = None,
         priority: "int | None" = None,
         client_timeout: "int | None" = None,
@@ -689,17 +679,16 @@ impl Client {
         &self,
         py: Python<'_>,
         table: &str,
-        r#ref: Option<RefArg>,
+        r#ref: Option<String>,
         columns: Option<Vec<String>>,
         filters: Option<&str>,
         limit: Option<usize>,
         cache: Option<&str>,
-        namespace: Option<NamespaceArg>,
+        namespace: Option<String>,
         args: Option<HashMap<String, String>>,
         priority: Option<u32>,
         client_timeout: Option<u64>,
     ) -> PyResult<Py<PyAny>> {
-        let namespace = namespace.map(|a| a.0);
         let table_expr = match namespace.as_deref() {
             Some(ns) => TableRef::new_with_schema(table, ns),
             None => TableRef::new(table),
