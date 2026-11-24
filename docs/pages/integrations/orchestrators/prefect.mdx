@@ -1,215 +1,386 @@
 ---
 title: "Prefect"
-description: "Run Bauplan pipelines from a Prefect flow using the Python SDK - authenticate, create branches, pass parameters, and run a job from a Prefect flow."
+description: "Run Bauplan from Prefect with one task per step, each publishing on a branch of its own, composed into a flow that remembers how far it got and reacts to its failures."
 ---
 
-[Prefect](https://www.prefect.io/) is a modern workflow orchestrator built entirely in Python. Instead of managing YAML or DSLs, you define flows and tasks as plain Python functions, and Prefect takes care of scheduling, retries, logging, and observability. This makes it easy to embed external libraries and SDKs directly into your workflows.
+[Prefect](https://www.prefect.io/) turns plain Python functions into tasks and flows, and adds schedules, retries and a run history around them. To orchestrate Bauplan with it you:
+1. write each step of a pipeline as a function that publishes its result on Bauplan;
+2. wrap the function into a task with the retries that step needs;
+3. compose the tasks into a flow.
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Integrating the two is straightforward: you import the Bauplan SDK inside your Prefect tasks and call Bauplan methods as you would in a standalone script. Prefect handles orchestration, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; Prefect runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
+Prefect decides when a step runs and whether it runs again, while all the heavy-lifting is run on Bauplan.
 
-## Quickstart: Run a Bauplan pipeline from a Prefect flow
+| Bauplan | Prefect |
+| :--- | :--- |
+| A step that writes on a new branch and merges it, such as an import or a pipeline run | A task |
+| An error that another attempt would not fix, such as a failed job | A retry condition of the task |
+| A pipeline made of several steps | A flow |
+| How far each step has published | A Variable |
+| A pipeline that runs on a schedule, one run at a time | A served deployment with a concurrency limit |
 
-**Goal:** call a [Bauplan project](/concepts/projects) from a Prefect flow in the smallest possible way: authenticate, run, check status, and fail the flow if the Bauplan job fails.
+```mermaid
+flowchart LR
+    subgraph flow["Flow run"]
+      bronze[bronze task]:::highlight --> progress[Save progress] --> silver[silver task]:::highlight
+    end
+    schedule[Schedule] --> flow
+    flow -->|failed| triage[Triage deployment]
+```
 
-## Prerequisites
+The example below has two steps. The first imports the files that an orders service delivers every day into a bronze table, and the second runs a Bauplan project that rebuilds the same days of a silver table. The bronze table and both namespaces already exist.
 
-- Python 3.11+ installed.
-- A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
-- A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
-- Prefect 3 installed.
+```tree
+pipelines/
+  publish.py              # publishes a computation on a branch, and waits for jobs
+  steps.py                # one function per step, no Prefect code
+  flows.py                # the tasks, the flow and its deployment
+  orders/                 # the Bauplan project of the silver step
+    bauplan_project.yaml
+    models.py
+```
 
-<Note>
-  If your pipeline writes data, run it on a branch (not on `main`). Branch names
-  must be prefixed with your Bauplan username, for example `alice.prefect_docs`.
-  Our example code creates one for you. [Learn more about
-  branches](/concepts/catalog-and-branches#data-branches).
-</Note>
+## Write each step as a function that publishes its own branch
 
-## Minimal flow
+Every step follows the same pattern. It creates a branch from the base branch, computes on it, merges it and deletes it. A merge that conflicts means the base branch has moved while the step was computing, and the step then computes again on a new branch. Write the pattern once, in a function that takes the computation as an argument:
 
-Define a Prefect flow that runs your Bauplan project and fails the flow if the Bauplan job fails.
+```python title="pipelines/publish.py"
+import time
+from collections.abc import Callable
+from datetime import UTC, datetime
 
-```python title="bauplan_prefect_flow.py"
-from prefect import flow, task, get_run_logger
 import bauplan
+from bauplan.exceptions import MergeConflictError
+from bauplan.schema import JobState
 
-@task(name="run-bauplan-pipeline")
-def run_pipeline(
-        project_dir: str,
-        bauplan_branch_suffix: str,
-) -> dict:
-    """
-    Execute a Bauplan project and return a minimal, serializable summary.
-
-    Returns:
-        dict with 'job_id' and 'job_status'.
-    Raises:
-        RuntimeError if the job did not finish with status 'success'.
-    """
-    client = bauplan.Client() # build client inside the task
-
-    username = client.info().user.username # get username
-    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
-
-    client.create_branch(branch, from_ref="main", if_not_exists=True)
-
-    state = client.run(project_dir=project_dir, ref=branch)
+POLL_INTERVAL_SECONDS = 10
+JOB_TIMEOUT_SECONDS = 3600
+MAX_MERGE_ATTEMPTS = 5
 
 
-    #! assert state.job_status is not None
-    if state.job_status.lower() != "success":
-        raise RuntimeError(f"Bauplan job {state.job_id} ended with status='{state.job_status}'")
-
-    # return only simple types so Prefect can store results safely
-    return {"job_id": state.job_id, "job_status": state.job_status}
+class JobFailedError(Exception):
+    """A Bauplan job ended failed or aborted"""
 
 
-@flow(name="bauplan-pipeline-run")
-def main(
-        pipeline_dir: str,
-        bauplan_branch_suffix: str,
-) -> dict:
-    """
-    Minimal Prefect → Bauplan integration: run a project and fail fast on error.
-    """
+class MergeRetriesExhaustedError(Exception):
+    """Every attempt to publish a branch ended in a merge conflict"""
 
-    logger = get_run_logger()
 
-    result = run_pipeline(project_dir=pipeline_dir, bauplan_branch_suffix=bauplan_branch_suffix)
+def wait_for_job(client: bauplan.Client, job_id: str | None) -> None:
+    """Wait for a detached job to complete, and cancel it past the timeout"""
+    if job_id is None:
+        raise RuntimeError("the job was submitted without a job id")
 
-    get_run_logger().info(
-        f"Bauplan run succeeded (job_id={result['job_id']}, status={result['job_status']})"
+    deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+
+    while True:
+        job = client.get_job(job_id)
+
+        # Only a failed or aborted job is an error, any other state means keep waiting
+        if job.status == JobState.COMPLETE:
+            return
+        if job.status in (JobState.FAIL, JobState.ABORT):
+            raise JobFailedError(
+                f"job {job_id} {job.human_readable_status}: {job.error_message}"
+            )
+
+        # Stop the job rather than leave it running after the task gives up on it
+        if time.monotonic() > deadline:
+            client.cancel_job(job_id)
+            raise TimeoutError(f"job {job_id} still {job.human_readable_status}")
+
+        time.sleep(POLL_INTERVAL_SECONDS)
+
+
+def publish_on_branch(
+    base_branch: str,
+    slug: str,
+    env: str,
+    compute: Callable[[bauplan.Client, str], None],
+) -> None:
+    """Compute on a new branch and merge it, computing again on another one on conflict"""
+    client = bauplan.Client()
+    username = client.info().user.username
+
+    for _ in range(MAX_MERGE_ATTEMPTS):
+        # A new branch per attempt, forked from the current head of the base branch
+        stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")
+        branch = f"{username}.{slug}-{env}-{stamp}"
+        client.create_branch(branch, from_ref=base_branch)
+
+        try:
+            compute(client, branch)
+            client.merge_branch(source_ref=branch, into_branch=base_branch)
+            return
+
+        # The base branch moved under the computation: compute again from its new head
+        except MergeConflictError:
+            continue
+
+        # Published or not, the branch of this attempt is not needed anymore
+        finally:
+            client.delete_branch(branch, if_exists=True)
+
+    raise MergeRetriesExhaustedError(
+        f"{slug} still conflicts with {base_branch} after {MAX_MERGE_ATTEMPTS} attempts"
     )
-    return result
-
-if __name__ == "__main__":
-    pipeline_path = 'your_bauplan_project' # change this with the path to your bauplan project
-    branch_suffix = 'prefect_docs' # change this with your branch name
-    main(pipeline_path, branch_suffix)
 ```
 
-## How to run it
+A step is then only its computation. Because these functions do not import Prefect, you can also call them from a script or a CLI, for instance to run one step again by hand:
 
-By default, this code runs fully local with Prefect. You do not need to run a Prefect API or server for this example. If you prefer to use Prefect Server or Cloud for observability and scheduling, you can do that later without changing the Bauplan code.
-Run the following commands in your terminal; your browser will then prompt you to create or log in to your free Prefect Cloud account. These commands use uv, a Python package manager. To install uv see the [uv Installation Guide](https://docs.astral.sh/uv/getting-started/installation/). To see the updated documentation on how to run Prefect locally see [here](https://docs.prefect.io/v3/get-started/quickstart).
+```python type:ignore title="pipelines/steps.py"
+from datetime import date, timedelta
+from pathlib import Path
 
-```sh
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv
-source .venv/bin/activate
-uv pip install prefect bauplan
-prefect cloud login
-```
-
-Then create a Python file named `bauplan_prefect_flow.py`, paste the code above in it and run it in another window of your terminal:
-
-```sh
-python bauplan_prefect_flow.py
-```
-
-## Bauplan authentication
-
-Bauplan looks for credentials in a clear precedence order:
-
-1. **Environment variable** - `BAUPLAN_API_KEY`
-2. **Profile name** - `BAUPLAN_PROFILE` (points to a saved profile)
-3. **Config file** - `~/.bauplan/config.yml`
-
-This means you can either set a key directly in your code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
-
-```python
 import bauplan
-client = bauplan.Client(api_key="YOUR_KEY")  # overrides environment/profile
+
+from pipelines.publish import publish_on_branch, wait_for_job
+
+SOURCE_URI = "s3://my-bucket/raw/orders"
+SILVER_PROJECT = Path(__file__).parent / "orders"
+
+
+def bronze_orders(base_branch: str, env: str, start: date, end: date) -> None:
+    """Append the files of the days from start to end, excluded, to the bronze table"""
+
+    def compute(client: bauplan.Client, branch: str) -> None:
+        # One import per day, which keeps each one to a single prefix
+        for offset in range((end - start).days):
+            day = start + timedelta(days=offset)
+            state = client.import_data(
+                table="orders",
+                search_uri=f"{SOURCE_URI}/dt={day:%Y-%m-%d}/*.parquet",
+                branch=branch,
+                namespace="bronze",
+                detach=True,
+            )
+            wait_for_job(client, state.job_id)
+
+    publish_on_branch(base_branch, "bronze-orders", env, compute)
+
+
+def silver_orders(base_branch: str, env: str, start: date, end: date) -> None:
+    """Rebuild the days from start to end, excluded, of the silver table"""
+
+    def compute(client: bauplan.Client, branch: str) -> None:
+        # Running the project again replaces the same rows, because it overwrites the window
+        state = client.run(
+            project_dir=str(SILVER_PROJECT),
+            ref=branch,
+            namespace="silver",
+            parameters={"start_date": str(start), "end_date": str(end)},
+            detach=True,
+        )
+        wait_for_job(client, state.job_id)
+
+    publish_on_branch(base_branch, "silver-orders", env, compute)
 ```
 
-## Optional: Passing parameters
+The project that the silver step runs has a single model. It reads the days between the two run parameters, which are declared in `bauplan_project.yaml`, and replaces the same days of its table with the `OVERWRITE_PARTITIONS` strategy:
 
-When running Bauplan with an orchestrator, parameters are the key to making your flows reusable and dynamic.
-
-Instead of hardcoding values, parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters and row limits. This is especially important in scheduled environments, where orchestrators trigger the same job many times, so the same flow can run daily with different inputs. To learn how to set up parameters in Bauplan, see [this page](/reference/cli#bauplan-parameter-set).
-
-Suppose you have a [Bauplan model](/concepts/models) that filters rows by a parameter `start_time`:
-
-```yaml
-# bauplan_project.yml
-project:
-  id: 2b74eb5c-548f-4192-bf18-fcfa33a0746f
-  name: test-pipeline
-parameters:
-  start_time:
-    type: str
-    default: "2022-12-15T00:00:00-05:00"
-```
-
-```python title="models.py"
+```python title="pipelines/orders/models.py"
 from typing import Annotated
 
-import pyarrow
-
 import bauplan
+import pyarrow as pa
 
-class PickupTimes(bauplan.TableSchema):
-    """Pickup timestamps for the filtered rides."""
 
-    pickup_datetime: bauplan.TimestampMicroUTC
+class BronzeOrders(bauplan.TableSchema):
+    """The columns of bronze.orders the model reads"""
 
-@bauplan.model(materialization_strategy='REPLACE')
-@bauplan.python('3.11', pip={'pandas': '3.0.6'})
-def filtered_taxi_rides_parameters(
-        taxi_table: Annotated[
-            pyarrow.Table,
-            bauplan.Model(
-                "taxi_fhvhv",
-                projection_schema=PickupTimes,
-                filter="pickup_datetime >= $start_time"
-            ),
-        ],
-) -> Annotated[pyarrow.Table, PickupTimes]:
-    taxi_df = taxi_table.to_pandas()
+    order_id: bauplan.String | None
+    amount: bauplan.Float64 | None
+    order_date: bauplan.Date32 | None
 
-    print(f"\nEarliest pickup in result:, {taxi_df['pickup_datetime'].min()}")
-    print(f"\nRows returned:, {len(taxi_df)}\n")
 
-    return pyarrow.Table.from_pandas(taxi_df)
+class OrdersClean(bauplan.TableSchema):
+    """One row per order"""
+
+    order_id: bauplan.String
+    amount: bauplan.Float64
+    order_date: bauplan.Date32
+
+
+@bauplan.model(
+    materialization_strategy="OVERWRITE_PARTITIONS",
+    partitioned_by=["order_date"],
+    overwrite_filter="order_date >= $start_date AND order_date < $end_date",
+)
+@bauplan.python("3.13", pip={"polars": "2.1.0"})
+def orders_clean(
+    bronze_orders: Annotated[
+        pa.Table,
+        bauplan.Model(
+            "bronze.orders",
+            projection_schema=BronzeOrders,
+            filter="order_date >= $start_date AND order_date < $end_date",
+        ),
+    ],
+) -> Annotated[pa.Table, OrdersClean]:
+    """The complete orders of the window, each one once"""
+    import polars as pl
+
+    return pl.DataFrame(bronze_orders).drop_nulls().unique("order_id").to_arrow()
 ```
 
-You can set the `start_time` when running the pipeline through Prefect:
+Both steps can run twice on the same days without changing the result, which is what makes them safe to retry. The import skips the files it has already imported, and the model replaces the days it computes instead of appending to them.
 
-```python title="bauplan_prefect_with_params.py"
+Since each step merges on its own, an error in the silver step does not undo the import, and only that step runs again. The other side of this choice is that a reader of the base branch can see the new days in bronze before they are in silver. When the tables must change together, compute all of them in a single step and publish them with one merge.
+
+## Give each task the retries its step needs
+
+Wrap each function into a task with `task(...)`, and choose its retries by what another attempt costs:
+
+```python type:ignore title="pipelines/flows.py"
+from prefect import Task, task
+from prefect.client.schemas.objects import State, TaskRun
+from prefect.tasks import exponential_backoff
+
+from pipelines import steps
+from pipelines.publish import JobFailedError, MergeRetriesExhaustedError
+
+# Errors that a retry of the same step would meet again
+NOT_RETRYABLE = (JobFailedError, MergeRetriesExhaustedError, TimeoutError)
+
+
+def is_retryable(failed_task: Task, task_run: TaskRun, state: State) -> bool:
+    """Tell whether a failed step can succeed if it runs again"""
+    error = state.result(raise_on_failure=False)
+    return not isinstance(error, NOT_RETRYABLE)
+
+
+# An import retries patiently, because it is cheap and skips the files already imported
+bronze_orders = task(
+    name="bronze-orders",
+    retries=4,
+    retry_delay_seconds=exponential_backoff(backoff_factor=30),
+    retry_condition_fn=is_retryable,
+)(steps.bronze_orders)
+
+# A pipeline run gets a single retry, because it can take long
+silver_orders = task(
+    name="silver-orders",
+    retries=1,
+    retry_delay_seconds=60,
+    retry_condition_fn=is_retryable,
+)(steps.silver_orders)
+```
+
+By default, Prefect retries a task on any exception. `retry_condition_fn` restricts this to the errors that another attempt can fix, such as a service that is briefly unreachable. A failed job, a job that ran out of time and a merge that kept conflicting would end in the same way. For these errors the task fails at once and the flow reports it without waiting for the retries. [How to retry on failure](/how-to/deploy/how-to-retry-on-failure) explains which Bauplan errors are worth retrying.
+
+## Compose the tasks into a flow
+
+The flow calls the tasks in the order of their dependencies, and saves how far each step got in a Prefect Variable as soon as that step has published:
+
+```python type:ignore title="pipelines/flows.py"
+from datetime import UTC, date, datetime, timedelta
+
 from prefect import flow
-import bauplan
+from prefect.variables import Variable
 
-@flow
-def run_with_parameters(
-        project_dir: str,
-        bauplan_branch_suffix: str, # your own branch
-        parameters: dict # your arbitrary parameters
-    ):
+# Where every step starts on the first run of an environment
+FIRST_DAY = date(2026, 11, 1)
 
-    client = bauplan.Client() # build client inside the task
+# A flow that fell behind catches up in bounded steps
+MAX_DAYS_PER_RUN = 7
 
-    username = client.info().user.username # get username
-    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
 
-    client.create_branch(branch, from_ref="main", if_not_exists=True)
+def next_day(variable: str) -> date:
+    """The first day a step has not processed yet"""
+    saved = Variable.get(variable)
+    return date.fromisoformat(saved) if isinstance(saved, str) else FIRST_DAY
 
-    state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
 
-    if state.job_status != "SUCCESS":
-        raise RuntimeError(f"Bauplan job {state.job_id} ended with status='{state.job_status}'")
+@flow(name="orders")
+def orders(base_branch: str, env: str) -> None:
+    """Bring the days closed since the last run through bronze and silver"""
+    today = datetime.now(UTC).date()
 
-    # return only simple types so Prefect can store results safely
-    return {"job_id": state.job_id, "job_status": state.job_status}
+    # One pair of Variables per environment keeps a dev run from moving the progress of prod
+    bronze_variable = f"orders_{env}_bronze_next_day"
+    silver_variable = f"orders_{env}_silver_next_day"
+
+    # Bronze: the days that are over, in bounded steps
+    start = next_day(bronze_variable)
+    end = min(today, start + timedelta(days=MAX_DAYS_PER_RUN))
+    if start < end:
+        bronze_orders(base_branch, env, start, end)
+        Variable.set(bronze_variable, str(end), overwrite=True)
+
+    # Silver: every day that is in bronze and not in silver, also after a failed run
+    start, end = next_day(silver_variable), next_day(bronze_variable)
+    if start < end:
+        silver_orders(base_branch, env, start, end)
+        Variable.set(silver_variable, str(end), overwrite=True)
+```
+
+## Serve the flow on a schedule
+
+At the end of `flows.py`, `serve` creates a deployment and runs the flow on a schedule:
+
+```python type:ignore title="pipelines/flows.py"
+from prefect.client.schemas.objects import (
+    ConcurrencyLimitConfig,
+    ConcurrencyLimitStrategy,
+)
 
 if __name__ == "__main__":
-    pipeline_path = 'your_bauplan_project' # change this with the path to your bauplan project
-    branch_suffix = 'prefect_docs' # change this with the name of your branch
-    run_with_parameters(
-        project_dir=pipeline_path,
-        bauplan_branch_suffix=branch_suffix,
-        parameters={"start_time": "2023-01-01T00:00:00-05:00"}
+    orders.serve(
+        name="orders-prod",
+        cron="0 * * * *",
+        parameters={"base_branch": "main", "env": "prod"},
+        global_limit=ConcurrencyLimitConfig(
+            limit=1, collision_strategy=ConcurrencyLimitStrategy.CANCEL_NEW
+        ),
     )
-
 ```
 
-This runs a Bauplan project on a given branch, applying `start_time="2023-01-01T00:00:00-05:00"` inside the model, so the pipeline processes only rides after 2023-01-01.
+`serve` stays running and starts every flow run in a subprocess on the same machine. For this reason the process needs the Bauplan project directories on disk and the API key of the Bauplan user that runs scheduled jobs, in `BAUPLAN_API_KEY`. Run it as a long-lived service, for instance in a container. If the runs need their own infrastructure, deploy the same flow to a Prefect work pool instead.
+
+The concurrency limit keeps two runs from computing the same days and merging into the same branch at the same time. With `CANCEL_NEW`, a run that is due while another one is still going is cancelled, and since every run starts from the saved progress, the days it would have processed go to the next one.
+
+## React to a failed run
+
+Prefect runs state hooks when a flow run ends, after all its retries. Use them to start whatever should happen on a failure, such as an alert or a deployment that investigates the run:
+
+```python type:ignore title="pipelines/flows.py"
+from prefect import Flow
+from prefect.client.schemas.objects import FlowRun, State
+from prefect.deployments import run_deployment
+
+TRIAGE_DEPLOYMENT = "triage/triage"
+
+
+@orders.on_failure
+def start_triage(failed_flow: Flow, flow_run: FlowRun, state: State) -> None:
+    """Start the triage deployment on the first failure of a series of scheduled runs"""
+    # Whether the last run of this environment failed
+    failing_variable = f"orders_{flow_run.parameters['env']}_failing"
+
+    if not flow_run.auto_scheduled or Variable.get(failing_variable) is True:
+        return
+    Variable.set(failing_variable, True, overwrite=True)
+
+    # Returns once the run is created, as a run of its own and not a subflow of the failed one
+    run_deployment(
+        TRIAGE_DEPLOYMENT,
+        parameters={"flow_run_id": str(flow_run.id), "error": str(state.message)},
+        timeout=0,
+        as_subflow=False,
+    )
+
+
+@orders.on_completion
+def clear_failing(completed_flow: Flow, flow_run: FlowRun, state: State) -> None:
+    """Let the next failure after a successful run start the triage again"""
+    failing_variable = f"orders_{flow_run.parameters['env']}_failing"
+    Variable.set(failing_variable, False, overwrite=True)
+```
+
+Since hooks run in the process of the flow, Prefect cannot guarantee them if that process is killed. If you need to be told about crashed runs as well, add a Prefect Automation, which runs on the server. [How to debug a failed pipeline](/how-to/operate/how-to-debug-a-failed-pipeline) shows how to read the logs of a failed Bauplan job from its id, which is in the error of the task.
+
+## Related
+
+- [Deployment](/how-to/deploy/how-to-deploy-a-pipeline)
+- [How to retry on failure](/how-to/deploy/how-to-retry-on-failure)
+- [How to Write-Audit-Publish](/how-to/publish/how-to-write-audit-publish)
+- [Dagster](/integrations/orchestrators/dagster)
