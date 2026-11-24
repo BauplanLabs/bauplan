@@ -58,16 +58,14 @@ def main(file_path: str):
     print(f"  branch: {my_branch_name}")
 
     # clean slate
-    if client.has_branch(my_branch_name):
-        client.delete_branch(my_branch_name)
+    client.delete_branch(my_branch_name, if_exists=True)
 
     # ── branching & first run ────────────────────────────────────────
 
     _step(1, TOTAL, "Creating branch and running first pipeline...")
     # clean up any leftover tables on main from previous runs
     for tbl in [my_test_table_name, txn_table_name]:
-        if client.has_table(tbl, ref=source_branch_name):
-            client.delete_table(tbl, branch=source_branch_name)
+        client.delete_table(tbl, branch=source_branch_name, if_exists=True)
 
     client.create_branch(my_branch_name, from_ref=source_branch_name)
 
@@ -193,8 +191,7 @@ def main(file_path: str):
     print(f"  branch: {txn_branch_name}")
     print(f"  source: {file_path}")
 
-    if client.has_branch(txn_branch_name):
-        client.delete_branch(txn_branch_name)
+    client.delete_branch(txn_branch_name, if_exists=True)
 
     _step(9, TOTAL, "Creating transaction branch...")
     client.create_branch(txn_branch_name, from_ref="main")

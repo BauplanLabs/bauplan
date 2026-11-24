@@ -43,13 +43,9 @@ def source_to_iceberg_table(
     assert bauplan_client.has_branch(bauplan_ingestion_branch), "Branch not found"
 
     # Ensure the namespace exists on the branch, create it if not.
-    if not bauplan_client.has_namespace(
-        namespace=namespace, ref=bauplan_ingestion_branch
-    ):
-        print(f"Namespace '{namespace}' not found, creating it...")
-        bauplan_client.create_namespace(
-            namespace=namespace, branch=bauplan_ingestion_branch
-        )
+    bauplan_client.create_namespace(
+        namespace=namespace, branch=bauplan_ingestion_branch, if_not_exists=True
+    )
 
     # Now we create the table in the branch.
     bauplan_client.create_table(
@@ -132,9 +128,9 @@ def delete_branch_if_exists(transaction: Transaction) -> None:
     """If the task fails or the merge succeeded, we delete the branch to avoid clutter!"""
     _client = bauplan.Client()
     ingestion_branch = transaction.get("bauplan_ingestion_branch")
-    if _client.has_branch(ingestion_branch):
-        print(f"Deleting the branch {ingestion_branch}")
-        _client.delete_branch(ingestion_branch)
+    deleted = _client.delete_branch(ingestion_branch, if_exists=True)
+    if deleted:
+        print(f"Deleted the branch {ingestion_branch}")
     else:
         print(f"Branch {ingestion_branch} does not exist, nothing to delete.")
 
