@@ -17,6 +17,7 @@ Claude Code
 CLI
 DAG
 Dagster
+dataclass(es)?
 dataframe
 DBOS
 dbt
@@ -35,6 +36,7 @@ GCP
 GCS
 GPT
 hardcoding
+heartbeat(s|ing)?
 HMAC
 hoc
 Hudi
