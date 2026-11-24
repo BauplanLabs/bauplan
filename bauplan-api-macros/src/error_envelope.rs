@@ -304,7 +304,7 @@ fn expand_struct(input: &DeriveInput) -> TokenStream {
 fn keep_attribute(attr: &Attribute) -> bool {
     // These are explicitly passed through the macro, but we don't want them
     // on the mirror.
-    for ident in ["error", "api_error", "from", "source"] {
+    for ident in ["error", "api_error", "displaydoc", "from", "source"] {
         if attr.path().is_ident(ident) {
             return false;
         }

@@ -8,7 +8,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ErrorEnvelope, GenericError};
-use crate::model::{Commit, ExpectedHead};
+use crate::model::{Commit, Entity, ExpectedHead};
 use crate::pagination::{ListQuery, Page};
 
 /// A branch.
@@ -25,7 +25,23 @@ pub struct Branch {
     /// - The creation time of the branch itself
     pub updated_at: DateTime<Utc>,
     /// How long the branch lives, in seconds.
-    pub ttl_seconds: Option<u64>,
+    pub ttl_seconds: Option<u32>,
+}
+
+/// Filters for the list of branches.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct BranchFilters {
+    /// Only the branches owned by the current user.
+    #[serde(
+        default,
+        skip_serializing_if = "std::ops::Not::not",
+        deserialize_with = "crate::pagination::query_bool"
+    )]
+    pub owned: bool,
+    /// Only the branches whose name contains this text. A leading `^` or a
+    /// trailing `$` anchors it to the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// Request body for creating a branch.
@@ -40,7 +56,7 @@ pub struct CreateBranchBody {
     /// If set, the branch should be automatically deleted after the given duration.
     #[serde(default)]
     #[garde(range(min = 1))]
-    pub ttl_seconds: Option<u64>,
+    pub ttl_seconds: Option<u32>,
 }
 
 /// Request body for renaming a branch.
@@ -56,7 +72,7 @@ pub struct RenameBranchBody {
 pub struct SetBranchTtlBody {
     /// How long the branch lives, in seconds.
     #[garde(range(min = 1))]
-    pub ttl_seconds: u64,
+    pub ttl_seconds: u32,
 }
 
 /// Request body for merging into a branch.
@@ -67,8 +83,10 @@ pub struct MergeBranchBody {
     /// The merge strategy, a squash by default.
     #[serde(default)]
     pub strategy: MergeStrategy,
-    #[serde(flatten)]
-    pub expected_head: ExpectedHead,
+    /// Fail with `BRANCH_HEAD_CHANGED` unless the branch head is exactly this
+    /// hash.
+    #[serde(default)]
+    pub expected_head: Option<String>,
 }
 
 /// The merge strategy.
@@ -92,16 +110,6 @@ impl Default for MergeStrategy {
     fn default() -> Self {
         Self::Squash { message: None }
     }
-}
-
-/// An entity the merge stops on.
-#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Conflict {
-    /// A table, `namespace.table`.
-    Table(String),
-    /// A namespace.
-    Namespace(String),
 }
 
 /// API error returned by `list_branches`.
@@ -190,6 +198,9 @@ pub enum SetBranchTtlError {
     /// Branch 'main' cannot have a TTL.
     #[api_error(403)]
     MainBranch,
+    /// Branch '{branch_name}' not found.
+    #[api_error(404)]
+    BranchNotFound { branch_name: String },
     /// Not implemented.
     #[api_error(501)]
     NotImplemented,
@@ -207,6 +218,9 @@ pub enum RemoveBranchTtlError {
     /// Branch 'main' cannot have a TTL.
     #[api_error(403)]
     MainBranch,
+    /// Branch '{branch_name}' not found.
+    #[api_error(404)]
+    BranchNotFound { branch_name: String },
     /// Not implemented.
     #[api_error(501)]
     NotImplemented,
@@ -260,7 +274,7 @@ pub enum MergeBranchError {
     #[api_error(409)]
     MergeConflict {
         commit_hash: String,
-        conflicts: Vec<Conflict>,
+        conflicts: Vec<Entity>,
     },
     /// Not implemented.
     #[api_error(501)]
@@ -271,14 +285,14 @@ pub enum MergeBranchError {
 }
 
 /// Branch operations.
-#[gropius::api(tags = ["branches"], client(cfg(feature = "client")))]
+#[gropius::api(tags = ["branches"], client(cfg(any(feature = "client-reqwest", feature = "client-ureq"))))]
 pub trait BranchApi {
     /// List branches.
     #[endpoint(GET, "/v1/catalogs/{catalog}/branches")]
     async fn list_branches(
         &self,
         path: Path<String>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<BranchFilters>>,
         req: Request,
     ) -> Result<Page<Branch>, ListBranchesError>;
 
@@ -330,7 +344,7 @@ pub trait BranchApi {
     /// ## Commit
     ///
     /// A squash produces a commit on the branch, or returns `null` when there is
-    /// nothing to merge; `expected_commit_hash` enforces optimistic locking.
+    /// nothing to merge; `expected_head` enforces optimistic locking.
     #[endpoint(POST, "/v1/catalogs/{catalog}/branches/{branch}/merge")]
     async fn merge_branch(
         &self,

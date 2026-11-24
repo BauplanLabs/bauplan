@@ -6,16 +6,6 @@
 
 pub use bauplan_api_macros::ErrorEnvelope;
 
-/// {message}
-#[derive(Debug, displaydoc::Display, gropius::ApiError, ErrorEnvelope)]
-#[api_error(400)]
-pub struct BadRequest {
-    /// Why the request was rejected.
-    #[serde(skip_serializing)]
-    #[schemars(skip)]
-    pub message: String,
-}
-
 /// All endpoints can produce these errors.
 #[derive(Debug, displaydoc::Display, thiserror::Error, gropius::ApiError, ErrorEnvelope)]
 pub enum GenericError {
@@ -32,12 +22,20 @@ pub enum GenericError {
     #[api_error(503)]
     ServiceUnavailable,
     /// The request was invalid.
-    #[api_error(transparent)]
-    BadRequest(BadRequest),
+    #[displaydoc("{message}")]
+    #[api_error(400)]
+    BadRequest {
+        /// Why the request was rejected.
+        #[serde(skip_serializing)]
+        #[schemars(skip)]
+        message: String,
+    },
 }
 
 #[cfg(test)]
 mod test {
+    use std::error::Error as _;
+
     use super::*;
     use crate::branch::ListBranchesError;
 
@@ -51,13 +49,19 @@ mod test {
         assert_eq!(v["type"], "INTERNAL");
         assert_eq!(v["message"], "Internal error.");
 
-        let v = serde_json::to_value(ListBranchesError::Generic(GenericError::BadRequest(
-            BadRequest {
-                message: "name: nope".into(),
-            },
-        )))?;
+        let err = ListBranchesError::Generic(GenericError::BadRequest {
+            message: "name: nope".into(),
+        });
+        let source = err.source().map(ToString::to_string);
+        assert_eq!(source.as_deref(), Some("name: nope"));
+        let v = serde_json::to_value(err)?;
         assert_eq!(v["type"], "BAD_REQUEST");
         assert_eq!(v["message"], "name: nope");
+
+        // A client reads the message back from the envelope.
+        let err: ListBranchesError = serde_json::from_value(v)?;
+        let source = err.source().map(ToString::to_string);
+        assert_eq!(source.as_deref(), Some("name: nope"));
 
         Ok(())
     }

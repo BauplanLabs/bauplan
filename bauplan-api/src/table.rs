@@ -40,6 +40,20 @@ pub struct TableIdentifier {
     pub name: String,
 }
 
+/// Filters for the list of tables.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct TableFilters {
+    /// Only the tables whose full name, `namespace.table`, contains this text.
+    /// A leading `^` or a trailing `$` anchors it to the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// Only the tables whose namespace contains this text. With `name`, both
+    /// apply. A leading `^` or a trailing `$` anchors it to the start or the
+    /// end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub namespace: Option<String>,
+}
+
 /// A table.
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct Table {
@@ -90,7 +104,7 @@ pub enum TableKind {
         metadata_location: String,
     },
     /// A kind this client does not know yet.
-    #[serde(untagged, skip_serializing)]
+    #[serde(untagged)]
     #[schemars(skip)]
     Unknown(serde_json::Value),
 }
@@ -106,7 +120,7 @@ pub struct PartitionField {
 
 /// A partition transform: a string for the ones with no parameter, an
 /// object with one key for the others.
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PartitionTransform {
     Identity,
@@ -116,6 +130,11 @@ pub enum PartitionTransform {
     Hour,
     Bucket(u32),
     Truncate(u32),
+    Void,
+    /// A transform this client does not know yet.
+    #[serde(untagged)]
+    #[schemars(skip)]
+    Unknown(serde_json::Value),
 }
 
 /// Request body for creating a table.
@@ -124,21 +143,43 @@ pub struct CreateTableBody {
     /// The table name, `namespace.table`. The namespace must exist.
     #[garde(custom(table_name))]
     pub name: String,
-    /// The documentation of the table.
-    #[serde(default)]
-    #[garde(skip)]
-    pub doc: Option<String>,
-    /// The columns of the table, in arrow terms.
-    #[garde(length(min = 1))]
-    pub columns: Vec<ArrowField>,
-    /// The partition fields.
-    #[serde(default)]
-    #[garde(skip)]
-    pub partitions: Vec<PartitionField>,
+    /// Which kind of table to create (for example, external).
+    #[garde(dive)]
+    pub kind: CreateTableKind,
     /// Commit options for the commit this creates.
     #[serde(default)]
     #[garde(dive)]
     pub commit: CommitOptions,
+}
+
+/// The kind of a new table.
+#[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
+#[serde(rename_all = "snake_case")]
+pub enum CreateTableKind {
+    /// An empty iceberg table that bauplan manages.
+    IcebergManaged {
+        /// The documentation of the table.
+        #[serde(default)]
+        #[garde(skip)]
+        doc: Option<String>,
+        /// The columns of the table, in arrow terms. Fail with `BAD_REQUEST`
+        /// for a type that we do not know or do not support.
+        #[garde(length(min = 1))]
+        columns: Vec<ArrowField>,
+        /// The partition fields. Fail with `BAD_REQUEST` for `void` and for a
+        /// transform that we do not know.
+        #[serde(default)]
+        #[garde(skip)]
+        partitions: Vec<PartitionField>,
+    },
+    /// A read-only iceberg table whose metadata and data files live outside
+    /// bauplan.
+    IcebergExternal {
+        /// The location of the metadata file. Fail with `BAD_REQUEST` when we
+        /// cannot read a table from it.
+        #[garde(length(min = 1))]
+        metadata_location: String,
+    },
 }
 
 /// Request body for cloning a table.
@@ -346,25 +387,25 @@ pub enum DeleteTableError {
 }
 
 /// Table operations.
-#[gropius::api(tags = ["tables"], client(cfg(feature = "client")))]
+#[gropius::api(tags = ["tables"], client(cfg(any(feature = "client-reqwest", feature = "client-ureq"))))]
 pub trait TableApi {
     /// List tables at a ref.
     #[endpoint(GET, "/v1/catalogs/{catalog}/refs/{ref}/tables")]
     async fn list_tables(
         &self,
         path: Path<(String, String)>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<TableFilters>>,
         req: Request,
     ) -> Result<AtCommit<Page<TableIdentifier>>, ListTablesError>;
 
-    /// Create an empty table.
+    /// Create a table.
     ///
     /// The name is namespace-qualified (`namespace.table`), and the
     /// namespace must exist.
     ///
     /// ## Commit
     ///
-    /// Produces a commit on the target branch; `commit.expected_commit_hash`
+    /// Produces a commit on the target branch; `commit.expected_head`
     /// enforces optimistic locking.
     #[endpoint(POST, "/v1/catalogs/{catalog}/refs/{ref}/tables")]
     async fn create_table(
@@ -381,7 +422,7 @@ pub trait TableApi {
     ///
     /// ## Commit
     ///
-    /// Produces a commit on the target branch; `commit.expected_commit_hash`
+    /// Produces a commit on the target branch; `commit.expected_head`
     /// enforces optimistic locking.
     #[endpoint(POST, "/v1/catalogs/{catalog}/refs/{ref}/tables/clone")]
     async fn clone_table(
@@ -409,7 +450,7 @@ pub trait TableApi {
     /// ## Commit
     ///
     /// Produces a commit on the target branch, except for a no-op;
-    /// `commit.expected_commit_hash` enforces optimistic locking.
+    /// `commit.expected_head` enforces optimistic locking, also for a no-op.
     #[endpoint(POST, "/v1/catalogs/{catalog}/refs/{ref}/tables/{table}/rename")]
     async fn rename_table(
         &self,
@@ -424,7 +465,7 @@ pub trait TableApi {
     ///
     /// ## Commit
     ///
-    /// Produces a commit on the target branch; `commit.expected_commit_hash`
+    /// Produces a commit on the target branch; `commit.expected_head`
     /// enforces optimistic locking.
     #[endpoint(DELETE, "/v1/catalogs/{catalog}/refs/{ref}/tables/{table}")]
     async fn delete_table(

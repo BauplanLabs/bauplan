@@ -23,6 +23,15 @@ pub struct Tag {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Filters for the list of tags.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct TagFilters {
+    /// Only the tags whose name contains this text. A leading `^` or a
+    /// trailing `$` anchors it to the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// Request body for creating a tag.
 #[derive(Debug, Serialize, Deserialize, JsonSchema, garde::Validate)]
 pub struct CreateTagBody {
@@ -128,14 +137,14 @@ pub enum DeleteTagError {
 }
 
 /// Tag operations.
-#[gropius::api(tags = ["tags"], client(cfg(feature = "client")))]
+#[gropius::api(tags = ["tags"], client(cfg(any(feature = "client-reqwest", feature = "client-ureq"))))]
 pub trait TagApi {
     /// List tags.
     #[endpoint(GET, "/v1/catalogs/{catalog}/tags")]
     async fn list_tags(
         &self,
         path: Path<String>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<TagFilters>>,
         req: Request,
     ) -> Result<Page<Tag>, ListTagsError>;
 
