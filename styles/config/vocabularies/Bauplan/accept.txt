@@ -29,11 +29,13 @@ ELT
 EMR
 EMR Serverless
 env
+Estuary
 exactly-once
 FHV
 Fivetran
 GCP
 GCS
+Google Cloud
 GPT
 hardcoding
 heartbeat(s|ing)?

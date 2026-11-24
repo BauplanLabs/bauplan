@@ -17,9 +17,7 @@ Stream data from any Estuary source into Bauplan Iceberg tables using the [Baupl
 - An AWS account where you can create EMR Serverless applications, IAM users and roles, and SSM parameters.
 - An Estuary account.
 
-{/* vale Google.Headings = NO */}
 ## Step 1. Configure the Estuary source capture
-{/* vale Google.Headings = YES */}
 
 In the [Estuary capture dashboard](https://dashboard.estuary.dev/captures), create a new capture of your data source. Estuary provides connectors out of the box for the main relational databases, SaaS applications (for example, Stripe, and Google Sheets), cloud storage, and generic HTTP APIs.
 
@@ -31,13 +29,13 @@ The [Bauplan connector](https://docs.estuary.dev/reference/Connectors/materializ
 
 Once enabled, navigate to your Bauplan account [OAuth apps page](https://app.bauplanlabs.com/oauth-apps) and create a new OAuth application. Specify a name, description, and token lifetime. The system will generate a **Client ID** and a **Client Secret:** keep these; you will need them when configuring the Estuary destination.
 
-<Tip>
-    While technically not mandatory, we recommend having one OAuth application _per_ data source. 
-</Tip>
+:::tip
 
-{/* vale Google.Headings = NO */}
+While technically not mandatory, we recommend having one OAuth application _per_ data source.
+
+:::
+
 ## Step 3. Configure AWS for EMR Serverless
-{/* vale Google.Headings = YES */}
 
 Estuary uses AWS EMR Serverless to run the Spark jobs that merge data into your Iceberg tables. You need four AWS resources.
 
@@ -183,15 +181,11 @@ Attach the following policy:
 }
 ```
 
-{/* vale Google.Parens = NO */}
 Generate an **Access Key ID** (`<AWS_ACCESS_KEY_ID>`) and a **Secret Access Key** (`<AWS_SECRET_ACCESS_KEY>`) for this user.
-{/* vale Google.Parens = YES */}
 
-{/* vale Google.Headings = NO */}
-## Step 4. Configure Bauplan
-{/* vale Google.Headings = YES */}
+## Step 4. Set up Bauplan
 
-We recommend having Estuary write data not on the `main` branch, but on a separate _ingestion_ branch. In this way, only the data passing quality checks (in the form, for instance, of [expectations](https://docs.bauplanlabs.com/concepts/expectations)) will be eventually merged to `main`. We suggest having one such branch _per_ data source.
+We recommend having Estuary write data not on the `main` branch, but on a separate _ingestion_ branch. In this way, only the data passing quality checks (in the form, for instance, of [expectations](/concepts/pipelines#expectations)) will be eventually merged to `main`. We suggest having one such branch _per_ data source.
 
 Create a source-specific branch from `main` with
 ```sh
@@ -204,9 +198,7 @@ Additionally, consider creating a dedicated namespace for the data source so tha
 bauplan namespace create <SOURCE_NAME> --branch <USERNAME>.ingestion-<SOURCE_NAME>
 ```
 
-{/* vale Google.Headings = NO */}
 ## Step 5. Configure the Estuary materialization
-{/* vale Google.Headings = YES */}
 
 In the [Estuary materialization dashboard](https://dashboard.estuary.dev/materializations), create a new **Bauplan** materialization and configure it as follows.
 
@@ -226,9 +218,11 @@ In the [Estuary materialization dashboard](https://dashboard.estuary.dev/materia
 | **Namespace**              | `<SOURCE_NAME>`                                                                                                                                |
 | **Base Location**          | `s3://<BUCKET>/iceberg`                                                                                                                           |
 
-<Warning>
-    Setting the namespace here is _not_ sufficient to ensure that tables are written under such namespace in Bauplan. You will need to also specify it for every table (see below).
-</Warning>
+:::warning
+
+Setting the namespace here is _not_ sufficient to ensure that tables are written under such namespace in Bauplan. You will need to also specify it for every table (see below).
+
+:::
 
 ### Catalog authentication
 
