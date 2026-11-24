@@ -225,9 +225,8 @@ class Client:
         client_timeout: int | None = None,
     ) -> TableCreatePlanApplyState:
         """
-        Apply a plan for creating a table. It is done automatically during the
-        table plan creation if no schema conflicts exist. Otherwise, if schema
-        conflicts exist, then this function is used to apply them after the
+        Apply a plan for creating a table. If schema
+        conflicts exist, this function is used to apply them after the
         schema conflicts are resolved. The most common schema conflict is two
         parquet files with the same column name but different datatypes.
 
@@ -242,23 +241,16 @@ class Client:
             namespace='my_namespace',
         )
         if plan_state.error:
-            raise RuntimeError(f"Planning failed: {plan_state.error}")
+            raise RuntimeError(f"Plan cannot be applied: {plan_state.error}")
 
-        if plan_state.can_auto_apply:
-            # No schema conflicts - the table was already created automatically.
-            print("Table created automatically (no conflicts)")
-        else:
-            # Schema conflicts detected (e.g. same column name, different types across files).
-            # Inspect and resolve the plan YAML, then apply manually.
-            print(plan_state.plan)  # review/edit the schema plan
-            apply_state = client.apply_table_creation_plan(
-                plan=plan_state,
-                priority=5,
-                client_timeout=30,
-            )
-            if apply_state.error:
-                raise RuntimeError(f"Apply failed: {apply_state.error}")
-            print(f"Table created after conflict resolution: {apply_state.job_status}")
+        apply_state = client.apply_table_creation_plan(
+            plan=plan_state,
+            priority=5,
+            client_timeout=30,
+        )
+        if apply_state.error:
+            raise RuntimeError(f"Apply failed: {apply_state.error}")
+        print(f"Table created: {apply_state.job_status}")
         ```
 
         Parameters:
@@ -1429,8 +1421,7 @@ class Client:
 
         This operation will attempt to create a table based on schemas of N
         parquet files found by a given search uri. A YAML file containing the
-        schema and plan is returned and if there are no conflicts, it is
-        automatically applied.
+        schema and plan is returned.
 
         ```python
         import bauplan
