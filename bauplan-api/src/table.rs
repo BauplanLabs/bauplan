@@ -194,6 +194,11 @@ pub struct CloneTableBody {
     /// The table to clone, `namespace.table`, as it is at `from_ref`.
     #[garde(skip)]
     pub from_table: String,
+    /// Replace the table already at `name`, if any. Without it, fail with
+    /// `NAME_CONFLICT` when `name` is taken.
+    #[serde(default)]
+    #[garde(skip)]
+    pub replace: bool,
     /// Commit options for the commit this creates.
     #[serde(default)]
     #[garde(dive)]
@@ -417,13 +422,16 @@ pub trait TableApi {
 
     /// Clone a table.
     ///
-    /// Creates `name` with the content `from_table` has at `from_ref`, without
-    /// copying any data. From then on the two tables are independent.
+    /// Creates `name` with the content of `from_table` at `from_ref`, without
+    /// copying data. After that the two tables are independent. With
+    /// `replace`, the clone replaces the table at `name`, so with `name` equal
+    /// to `from_table` it restores the table as it was at `from_ref`.
     ///
     /// ## Commit
     ///
-    /// Produces a commit on the target branch; `commit.expected_head`
-    /// enforces optimistic locking.
+    /// Produces a commit on the target branch, unless `replace` is set and
+    /// `name` already has the same content. `commit.expected_head` enforces
+    /// optimistic locking, also when there is no commit.
     #[endpoint(POST, "/v1/catalogs/{catalog}/refs/{ref}/tables/clone")]
     async fn clone_table(
         &self,
