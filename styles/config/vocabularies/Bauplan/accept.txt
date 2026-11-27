@@ -11,6 +11,7 @@ Bauplan
 booleans
 BYOC
 CDC
+checkpoint(s|ed|ing)?
 ciphertext
 Citi
 Claude Code
