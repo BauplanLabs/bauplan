@@ -92,6 +92,7 @@ export default {
           },
           items: [
             "integrations/orchestrators/airflow",
+            "integrations/orchestrators/step-functions",
             "integrations/orchestrators/dagster",
             "integrations/orchestrators/dbos",
             "integrations/orchestrators/kestra",
