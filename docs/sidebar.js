@@ -23,6 +23,23 @@ export default {
     },
     {
       type: "category",
+      label: "How-to guides",
+      collapsed: true,
+      items: [
+        {
+          type: "category",
+          label: "Operate",
+          items: [
+            "how-to/operate/how-to-debug-a-failed-pipeline",
+            "how-to/operate/how-to-roll-back-a-table",
+            "how-to/operate/how-to-backfill-a-table",
+            "how-to/operate/how-to-migrate-tables",
+          ],
+        },
+      ],
+    },
+    {
+      type: "category",
       label: "Platform Overview",
       collapsed: true,
       link: {

@@ -15,6 +15,7 @@ ciphertext
 Citi
 Claude Code
 CLI
+copy_back
 DAG
 Dagster
 dataframe
@@ -92,6 +93,7 @@ TableSchema
 Tagliabue
 Temporal
 TLC
+traceback
 transactionality
 Trino
 TSO
