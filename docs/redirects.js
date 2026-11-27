@@ -14,7 +14,7 @@ const redirects = [
     to: "/concepts/semantics",
   },
   { from: "/guides/detached_runs", to: "/common-scenarios/detached-runs" },
-  { from: "/guides/import_data", to: "/tutorial/import" },
+  { from: "/guides/import_data", to: "/learn/ingest-new-data-every-day" },
   { from: "/guides/parameters", to: "/common-scenarios/parameterized-runs" },
   { from: "/guides/partitioning", to: "/concepts/tables#file-layout-and-partitioning" },
   {
@@ -24,33 +24,33 @@ const redirects = [
 
   // The parallel /agents tree and its older /llms URLs both collapse into the
   // single setup page. Each entry also produces the .md stub agents follow.
-  { from: "/llms", to: "/tutorial/connect-your-agent" },
-  { from: "/llms/quick_start", to: "/tutorial/connect-your-agent" },
+  { from: "/llms", to: "/learn/set-up-your-agent" },
+  { from: "/llms/quick_start", to: "/learn/set-up-your-agent" },
   {
     from: "/llms/explore_data",
-    to: "/tutorial/connect-your-agent#available-skills",
+    to: "/learn/set-up-your-agent#available-skills",
   },
   {
     from: "/llms/mcp_server",
-    to: "/tutorial/connect-your-agent#mcp-server",
+    to: "/learn/set-up-your-agent#mcp-server",
   },
-  { from: "/agents", to: "/tutorial/connect-your-agent" },
-  { from: "/llms/tutorial", to: "/tutorial/connect-your-agent#skills" },
+  { from: "/agents", to: "/learn/set-up-your-agent" },
+  { from: "/llms/tutorial", to: "/learn/set-up-your-agent#skills" },
   {
     from: "/llms/tutorial/create",
-    to: "/tutorial/connect-your-agent#skills",
+    to: "/learn/set-up-your-agent#skills",
   },
   {
     from: "/llms/tutorial/publish",
-    to: "/tutorial/connect-your-agent#skills",
+    to: "/learn/set-up-your-agent#skills",
   },
-  { from: "/llms/tutorial/test", to: "/tutorial/connect-your-agent#skills" },
-  { from: "/agents/overview", to: "/tutorial/connect-your-agent" },
-  { from: "/agents/skills", to: "/tutorial/connect-your-agent#skills" },
-  { from: "/agents/mcp", to: "/tutorial/connect-your-agent#mcp-server" },
+  { from: "/llms/tutorial/test", to: "/learn/set-up-your-agent#skills" },
+  { from: "/agents/overview", to: "/learn/set-up-your-agent" },
+  { from: "/agents/skills", to: "/learn/set-up-your-agent#skills" },
+  { from: "/agents/mcp", to: "/learn/set-up-your-agent#mcp-server" },
   {
     from: "/agents/context",
-    to: "/tutorial/connect-your-agent#docs-and-repository-context",
+    to: "/learn/set-up-your-agent#docs-and-repository-context",
   },
 
   // Legacy nested warehouse paths
@@ -79,9 +79,17 @@ const redirects = [
     to: "/integrations/warehouses-lakehouses/big-query-inbound",
   },
 
+  // Tutorial pages moved to the Learn section
+  { from: "/tutorial/installation", to: "/learn/install-bauplan" },
+  { from: "/tutorial/connect-your-agent", to: "/learn/set-up-your-agent" },
+  { from: "/tutorial/quick-start", to: "/learn/your-first-workflow" },
+  { from: "/tutorial/data-branches", to: "/learn/branch-merge-and-go-back-in-time" },
+  { from: "/tutorial/import", to: "/learn/ingest-new-data-every-day" },
+  { from: "/tutorial/s3-permissions", to: "/learn/ingest-new-data-every-day" },
+
   // Legacy tutorial paths
   { from: "/tutorial/03_pipelines", to: "/concepts/pipelines" },
-  { from: "/tutorial/04_import", to: "/tutorial/import" },
+  { from: "/tutorial/04_import", to: "/learn/ingest-new-data-every-day" },
   { from: "/tutorial/pipelines", to: "/concepts/pipelines" },
 
   // Legacy git_for_data paths
@@ -112,9 +120,9 @@ const redirects = [
   { from: "/concepts/semantic-annotations", to: "/concepts/semantics" },
 
   // Underscore-to-dash redirects (old URLs -> new URLs)
-  { from: "/tutorial/quick_start", to: "/tutorial/quick-start" },
-  { from: "/tutorial/data_branches", to: "/tutorial/data-branches" },
-  { from: "/tutorial/s3_permissions", to: "/tutorial/s3-permissions" },
+  { from: "/tutorial/quick_start", to: "/learn/your-first-workflow" },
+  { from: "/tutorial/data_branches", to: "/learn/branch-merge-and-go-back-in-time" },
+  { from: "/tutorial/s3_permissions", to: "/learn/ingest-new-data-every-day" },
   { from: "/overview/execution_model", to: "/overview/execution-model" },
   {
     from: "/concepts/schema_conflicts",

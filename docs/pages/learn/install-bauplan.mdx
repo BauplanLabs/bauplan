@@ -1,0 +1,95 @@
+---
+title: "Install Bauplan"
+description: "Install the CLI and SDK with uv, set up your API key and check that it works."
+---
+
+The `bauplan` Python package contains both the Python SDK and the CLI. It requires Python 3.11 or later. The commands below use [uv](https://docs.astral.sh/uv/getting-started/installation/), but any other Python package manager will do.
+
+To follow this page as a screencast, watch [Getting started with the Bauplan CLI and SDK](https://youtu.be/Nd5glmOz9QA). The written steps are below.
+
+<YouTube
+  id="Nd5glmOz9QA"
+  title="Getting started with the Bauplan CLI and SDK"
+/>
+
+## Install the CLI and SDK
+
+Install Bauplan as a uv tool, so the `bauplan` command is readily available in every directory:
+
+```sh
+uv tool install bauplan
+
+# Validate the installation
+bauplan version 
+```
+
+To use the Bauplan SDK from a Python project, also add it to that project:
+
+```sh
+uv add bauplan
+
+# Validate the installation
+uv run bauplan version 
+```
+
+:::tip
+`uv add` installs into the project's virtual environment only; you will need to prepend `uv run` to any Bauplan command going forward.
+If you are running on an older version of Bauplan, upgrade to the latest one with
+
+```sh
+# If you installed Bauplan as a uv tool
+uv tool upgrade bauplan
+
+# If you installed Bauplan in a Python project
+uv lock --upgrade-package bauplan && uv sync
+```
+The release notes are on [GitHub](https://github.com/BauplanLabs/bauplan/releases).
+:::
+
+## Get an API key
+
+If you just want to try Bauplan out, sign up for free to our *public* sandbox at [app.bauplanlabs.com](https://app.bauplanlabs.com/). 
+If your company is on a paid plan, look out for an invitation e-mail from either the Bauplan team or your organization admin. Follow the steps in there to register your user to Bauplan and get started!
+
+Either way, once you are registered, from the Bauplan web app at [app.bauplanlabs.com](https://app.bauplanlabs.com/), click **API Keys** from the menu on the left, and generate a new key. The key is shown only once: copy it before closing the dialog.
+
+<Danger>
+  Never share your API key publicly. Store it securely using environment
+  variables or secrets management tools in your deployment workflows.
+</Danger>
+
+You can configure and verify the API key for Bauplan using the instructions in this [video](https://youtu.be/Nd5glmOz9QA?t=50).
+
+If this is your first time using Bauplan, run 
+
+```sh
+bauplan config set api_key <your_api_key>
+```
+
+This will save the key you just created in the `default` profile in the configuration file you can find at `~/.bauplan/config.yaml`. If you work with several organization or API keys, you can add named profiles to the same file
+
+```yaml
+profiles:
+  default:
+    api_key: <your_api_key>
+  other-org:
+    api_key: <another_api_key>
+```
+
+and switch among them with `--profile <name>` on any CLI command, or specify a profile when building the Bauplan client in the SDK
+
+```python
+import bauplan
+
+client = bauplan.Client(profile="<name>")
+```
+
+To check that your credentials are wired up correctly, try and list the branches you can see; the output should contain at least `main`.
+
+```sh
+bauplan branch ls
+```
+
+## Next steps
+
+[Set up your coding agent](/learn/set-up-your-agent) to work with Bauplan.
