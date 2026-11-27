@@ -404,6 +404,6 @@ table td:first-child {
 }
 
 /* The docs home page gets more room above its title than other pages. */
-html.docs-doc-id-tutorial\/index article header {
+html.docs-doc-id-index article header {
   margin-top: 3rem;
 }

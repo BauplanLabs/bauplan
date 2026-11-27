@@ -5,21 +5,9 @@ export default {
     "what-bauplan-is-not",
     {
       type: "category",
-      label: "Getting Started",
+      label: "Learn Bauplan",
       collapsed: true,
-      items: [
-        "tutorial/installation",
-        "tutorial/connect-your-agent",
-        {
-          type: "category",
-          label: "Quick Start",
-          link: {
-            type: "doc",
-            id: "tutorial/quick-start",
-          },
-          items: ["tutorial/data-branches", "tutorial/import"],
-        },
-      ],
+      items: ["learn/install-bauplan", "learn/set-up-your-agent"],
     },
     {
       type: "category",

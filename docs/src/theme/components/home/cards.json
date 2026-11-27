@@ -3,8 +3,8 @@
     {
       "title": "Get Started",
       "cards": [
-        { "icon": "Package", "href": "/tutorial/installation", "title": "Install Bauplan", "description": "Set up the CLI and Python SDK and connect your API key." },
-        { "icon": "Zap", "href": "/tutorial/quick-start", "title": "Quick start", "description": "Create a data branch, run a pipeline, and merge it to main." },
+        { "icon": "Package", "href": "/learn/install-bauplan", "title": "Install Bauplan", "description": "Set up the CLI and Python SDK and connect your API key." },
+        { "icon": "Zap", "href": "/learn/your-first-workflow", "title": "Your first workflow", "description": "Import data, run a pipeline and query the result, end to end." },
         { "icon": "Layers", "href": "https://github.com/BauplanLabs/bauplan/tree/main/examples", "title": "Examples", "description": "End-to-end projects you can clone and run." },
         { "icon": "Terminal", "href": "/reference/bauplan", "title": "Reference", "description": "Every CLI command and Python SDK method." }
       ]
@@ -20,7 +20,7 @@
     }
   ],
   "agentsCard": {
-    "href": "/tutorial/connect-your-agent",
+    "href": "/learn/set-up-your-agent",
     "image": "/img/icons/rocket.png",
     "title": "AI Agents",
     "description": "Use AI Agents to build pipelines, explore data, and manage your data with MCP Server and Skills.",
