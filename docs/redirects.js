@@ -56,28 +56,36 @@ const redirects = [
   // Legacy nested warehouse paths
   {
     from: "/integrations/warehouses_lakehouses/snowflake/snowflake_inbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-inbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/snowflake/snowflake_outbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-outbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/big_query/big_query_inbound",
-    to: "/integrations/warehouses-lakehouses/big-query-inbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
     from: "/integrations/warehouses_lakehouses/big_query/big_query_outbound",
-    to: "/integrations/warehouses-lakehouses/big-query-outbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
     from: "/integrations/warehouses_lakehouses/snowflake",
-    to: "/integrations/warehouses-lakehouses/snowflake-inbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/big_query",
-    to: "/integrations/warehouses-lakehouses/big-query-inbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
+
+  // Warehouses and Lakehouses became Storage and query engines
+  { from: "/integrations/warehouses-lakehouses", to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake" },
+  { from: "/integrations/warehouses-lakehouses/snowflake-inbound", to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake" },
+  { from: "/integrations/warehouses-lakehouses/snowflake-outbound", to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake" },
+  { from: "/integrations/warehouses-lakehouses/big-query-inbound", to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery" },
+  { from: "/integrations/warehouses-lakehouses/big-query-outbound", to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery" },
+  { from: "/integrations/warehouses-lakehouses/r2-cloudflare-object-storage", to: "/integrations/storage-and-query-engines/import-data-from-cloudflare-r2" },
 
   // Legacy tutorial paths
   { from: "/tutorial/03_pipelines", to: "/concepts/pipelines" },
@@ -139,31 +147,31 @@ const redirects = [
   },
   {
     from: "/integrations/warehouses_lakehouses",
-    to: "/integrations/warehouses-lakehouses",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/snowflake_inbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-inbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/snowflake_outbound",
-    to: "/integrations/warehouses-lakehouses/snowflake-outbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
   },
   {
     from: "/integrations/warehouses_lakehouses/big_query_inbound",
-    to: "/integrations/warehouses-lakehouses/big-query-inbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
     from: "/integrations/warehouses_lakehouses/big_query_outbound",
-    to: "/integrations/warehouses-lakehouses/big-query-outbound",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
     from: "/integrations/warehouses_lakehouses/gcs",
-    to: "/integrations/warehouses-lakehouses",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
     from: "/integrations/warehouses-lakehouses/gcs",
-    to: "/integrations/warehouses-lakehouses",
+    to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
     from: "/integrations/notebooks_data_apps",

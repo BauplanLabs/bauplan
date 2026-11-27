@@ -1,0 +1,54 @@
+---
+title: "Import data from Cloudflare R2"
+description: "Register Parquet files in a Cloudflare R2 bucket as external tables in Bauplan, query them and run pipelines on them, without copying the data."
+---
+
+:::caution[Preview feature]
+
+Access to Cloudflare R2 is a preview feature. Contact Bauplan to enable it for your organization.
+
+:::
+
+Bauplan can read Parquet files from a Cloudflare R2 bucket and register them as external tables in its catalog. The files stay in R2, while Bauplan writes only the Iceberg metadata that describes them. Since Cloudflare does not charge for egress from R2, reading the files from Bauplan adds no transfer fees.
+
+## Register the files as an external table
+
+Once R2 access is enabled for your organization, create the table on a branch of your own. `--search-pattern` selects the Parquet files that make up the table, and it can be repeated to collect files from several prefixes:
+
+```sh
+bauplan checkout -b <username>.r2_orders
+bauplan table create-external orders --namespace sales --search-pattern "r2://my-bucket/orders/*.parquet"
+```
+
+The external table is read-only. It behaves like any other table in queries:
+
+```sh
+bauplan query "SELECT * FROM sales.orders LIMIT 5"
+```
+
+From the SDK, `create_external_table_from_parquet` registers the same table:
+
+```python
+client = bauplan.Client()
+client.create_external_table_from_parquet(
+    "orders",
+    ["r2://my-bucket/orders/*.parquet"],
+    branch="<username>.r2_orders",
+    namespace="sales",
+)
+```
+
+## Run a pipeline on the external table
+
+Models read the external table as an input, in the same way as a table that Bauplan manages. Run the pipeline on the branch that holds the table; its outputs are written as Bauplan tables:
+
+```sh
+bauplan run
+```
+
+When the outputs are correct, switch to `main` and merge the branch, which publishes the external table and the outputs together:
+
+```sh
+bauplan checkout main
+bauplan branch merge <username>.r2_orders
+```
