@@ -1,244 +1,321 @@
 ---
 title: "DBOS"
-description: "Run Bauplan pipelines from a DBOS workflow with durable, exactly-once steps - authenticate, branch, pass parameters, and recover from crashes via the SDK."
-hide_title: false
+description: "Run Bauplan from DBOS with one checkpointed step per Bauplan command and one branch per workflow run, scheduled one day at a time."
 ---
 
-DBOS is a distributed operating system for workflows: it gives you durable, exactly-once execution of Python functions, with built-in scheduling, retries, and observability. You write plain Python functions, annotate them with `@DBOS.workflow()` and `@DBOS.step()`, and DBOS takes care of orchestration, crash recovery, and state management under the hood.
+[DBOS](https://www.dbos.dev/) checkpoints every step of a workflow in a database. If a crash interrupts a workflow, it resumes after the last step that completed instead of starting over. To orchestrate Bauplan with it, wrap each Bauplan command in a step with the retries its operation needs. Each workflow run works on its own branch and publishes it with a single merge.
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. DBOS is just Python too: workflows are annotated Python functions and steps are where you perform I/O. Integrating the two is straightforward: import the Bauplan SDK inside DBOS steps and call Bauplan methods as you would in a standalone script. DBOS handles orchestration, durability, retries, and scheduling, while Bauplan executes the data work. The result is a clean split; DBOS runs the workflow, Bauplan runs the pipelines, the queries, and the lakehouse infrastructure.
+| Bauplan | DBOS |
+| :--- | :--- |
+| A command of the Python SDK, such as creating a branch, starting a job or merging | A step |
+| A kind of operation, such as a catalog change or the start of a job | The retry settings of its steps |
+| A branch that one run creates and merges once | One workflow execution |
+| A job that runs for minutes or hours | A start step, then a loop of a status step and a durable sleep |
+| A pipeline that runs every day, one day at a time | A schedule that enqueues the workflow on a queue with a concurrency of one |
 
-## Quickstart: Run a Bauplan pipeline from a DBOS DAG
+```mermaid
+flowchart LR
+    prepare[Prepare branch] --> start[Start job]
+    start --> status[Check job]
+    status -->|running| sleep[Durable sleep]
+    sleep --> status
+    status -->|complete| merge[Merge]:::highlight
+    status -->|failed| cleanup[Delete branch]
+    merge --> cleanup
+```
 
-**Goal:** call a [Bauplan project](/concepts/projects) from a DBOS workflow in the smallest possible way: authenticate, run, check status, and fail the workflow if the Bauplan job fails.
+The example runs a Bauplan project that rebuilds one day of an orders table every day:
 
-## Prerequisites
+```tree
+pipelines/
+  bauplan_steps.py        # one DBOS step per Bauplan command
+  orders_workflow.py      # composes the steps into the workflow of one pipeline
+  orders/                 # the Bauplan project the workflow runs
+    bauplan_project.yaml
+    models.py
+main.py                   # configures DBOS, registers the queue and the schedule
+```
 
-- Python 3.11-3.13.
+## Write one step per Bauplan command
 
-  Bauplan supports 3.11+, and DBOS supports Python 3.9+; 3.11-3.13 is a good overlap.
+Each step makes a single call to the SDK and returns a value DBOS can checkpoint, such as a branch name or a job id. DBOS never runs a completed step again, but it runs the step that was in progress at the time of a crash from the start. Every step must therefore tolerate a second execution:
 
-- A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
-- A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
-- DBOS installed.
+1. Preparing the branch deletes and recreates a branch whose name contains the day that the run processes. It runs before the job writes anything, which makes a second execution harmless.
+2. Catalog operations are safe to repeat and get ten attempts with backoff, except for merge conflicts, which `should_retry` excludes because they fail the same way every time.
+3. Starting a job gets three attempts only. If an attempt loses its response after Bauplan accepted the job, the next attempt submits a second one.
 
-<Note>
-  If your pipeline writes data, run it on a branch (not on `main`). Branch names
-  must be prefixed with your Bauplan username, for example `alice.dbos_docs`.
-  Our example code creates one for you. [Learn more about
-  branches.](/concepts/catalog-and-branches#data-branches)
-</Note>
-
-## Minimal DBOS app
-
-Define a DBOS **step** that runs your Bauplan project, a **workflow** that calls the step, and fail the workflow if the Bauplan job fails. DBOS requires a one-time initializer when your app starts.
-
-```python title="dbos_bauplan_flow.py"
-import os
-from typing import Optional, Dict, Any
+```python title="pipelines/bauplan_steps.py"
+from dataclasses import dataclass, field
 
 import bauplan
-from dbos import DBOS, DBOSConfig
+from bauplan.exceptions import MergeConflictError
+from bauplan.schema import JobState
+from dbos import DBOS
 
-# 1) Initialize DBOS (uses SQLite by default; see "How to run it locally")
-config: DBOSConfig = {
-    "name": "bauplan-dbos-example",
-    # For production, point to Postgres with DBOS_SYSTEM_DATABASE_URL
-    "system_database_url": os.environ.get("DBOS_SYSTEM_DATABASE_URL"),
-}
-DBOS(config=config)
-DBOS.launch()
 
-# 2) Define a DBOS step that performs I/O (calls Bauplan)
-@DBOS.step()
-def run_bauplan_step(project_dir: str, bauplan_branch_suffix: str,
-                     parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """
-    Execute a Bauplan project and return a minimal, serializable summary.
+@dataclass(frozen=True)
+class RunParams:
+    """A pipeline run to start on a branch"""
 
-    Returns:
-        dict with 'job_id' and 'job_status'.
-    Raises:
-        RuntimeError if the job did not finish with status 'success'.
-    """
-    client = bauplan.Client() # build client inside the step (I/O)
-    username = client.info().user.username # get username
-    branch = f"{username}.{bauplan_branch_suffix}" # construct branch name
+    project_dir: str
+    ref: str
+    namespace: str
+    parameters: dict[str, str] = field(default_factory=dict)
 
-    client.create_branch(branch, from_ref="main", if_not_exists=True)
 
-    state = client.run(project_dir=project_dir, ref=branch, parameters=parameters or {})
+@dataclass(frozen=True)
+class JobOutcome:
+    """The state of a Bauplan job when it was last read"""
 
-    if str(state.job_status).lower() != "success":
-        raise RuntimeError(
-            f"Bauplan job {state.job_id} ended with status='{state.job_status}'"
-        )
+    job_id: str
+    state: JobState
+    human_readable_status: str
+    error_message: str | None = None
 
-    return {"job_id": state.job_id, "job_status": state.job_status}
 
-# 3) (Optional) A tiny reporting step
-@DBOS.step()
-def report_success(result: Dict[str, Any]) -> None:
-    print(f"Bauplan run succeeded (job_id={result['job_id']}, status={result['job_status']})")
+def is_retryable(error: BaseException) -> bool:
+    """Tell DBOS whether another attempt of a catalog step can succeed"""
+    # Merge conflicts repeat on every attempt and are not worth retrying
+    return not isinstance(error, MergeConflictError)
 
-# 4) Define a DBOS workflow that calls the steps
-@DBOS.workflow()
-def bauplan_pipeline_workflow(
-    pipeline_dir: str,
-    bauplan_branch_suffix: str,
-) -> Dict[str, Any]:
-    result = run_bauplan_step(pipeline_dir, bauplan_branch_suffix)
-    report_success(result)
-    return result
 
-if __name__ == "__main__":
-    # Call the workflow directly for fast local debugging (runs in-process, durably).
-    # You can also start in the background with DBOS.start_workflow(...).  # see docs
-    bauplan_pipeline_workflow(
-        pipeline_dir="your_bauplan_project", # change it with the path to your bauplan project
-        bauplan_branch_suffix="dbos_docs", # change it with your bauplan branch
+# Catalog operations are quick and safe to repeat, with patient retries for transient errors
+catalog_step = DBOS.step(
+    retries_allowed=True,
+    max_attempts=10,
+    interval_seconds=30,
+    backoff_rate=2.0,
+    should_retry=is_retryable,
+)
+
+
+@catalog_step
+def prepare_branch(base_branch: str, prefix: str, run_label: str) -> str:
+    """Create a fresh branch for one run from the base branch and return its name"""
+    client = bauplan.Client()
+    branch = f"{client.info().user.username}.{prefix}-{run_label}"
+
+    # A previous run of the same day may have left this branch behind if it stopped before its clean-up
+    client.delete_branch(branch, if_exists=True)
+    client.create_branch(branch, from_ref=base_branch)
+    return branch
+
+
+@catalog_step
+def create_namespace(branch: str, namespace: str) -> None:
+    """Create a namespace on a branch if it does not exist yet"""
+    bauplan.Client().create_namespace(namespace, branch, if_not_exists=True)
+
+
+# Three attempts at most, because the job may already exist if an attempt lost its response
+@DBOS.step(retries_allowed=True, max_attempts=3, interval_seconds=30)
+def start_run(params: RunParams) -> str:
+    """Submit a pipeline run without waiting for it, and return its job id"""
+    state = bauplan.Client().run(
+        project_dir=params.project_dir,
+        ref=params.ref,
+        namespace=params.namespace,
+        parameters=dict(params.parameters),
+        detach=True,
     )
+    if state.job_id is None:
+        raise RuntimeError(f"run on {params.ref} returned no job id")
+    return state.job_id
+
+
+@catalog_step
+def read_job(job_id: str) -> JobOutcome:
+    """Read the current state of a job"""
+    job = bauplan.Client().get_job(job_id)
+    return JobOutcome(job_id, job.status, job.human_readable_status, job.error_message)
+
+
+@catalog_step
+def cancel_job(job_id: str) -> None:
+    """Stop a job that the workflow no longer waits for"""
+    bauplan.Client().cancel_job(job_id)
+
+
+@catalog_step
+def merge_branch(source_ref: str, into_branch: str) -> None:
+    """Publish a branch into its base branch"""
+    bauplan.Client().merge_branch(
+        source_ref=source_ref,
+        into_branch=into_branch,
+        commit_message=f"Merge {source_ref} into {into_branch}",
+    )
+
+
+@catalog_step
+def delete_branch(branch: str) -> None:
+    """Delete a branch, succeeding if it is already gone"""
+    bauplan.Client().delete_branch(branch, if_exists=True)
 ```
 
-This uses DBOS's Python API: define steps and workflows as plain Python functions with decorators, and run them in-process. If a workflow raises an exception, DBOS marks it as `ERROR`; if the process crashes, DBOS resumes from the last completed step.
+Add a step for any other command a workflow needs, such as `import_data`, instead of calling the SDK in the workflow body, where DBOS would repeat the call on every recovery.
 
-## How to run it locally
+## Wait for jobs with a durable sleep
 
-Install and initialize DBOS in your app:
+If a long job ran inside a single step, a crash would submit it again. The workflow instead starts the job with `detach=True` and alternates a status read and `DBOS.sleep` until the job ends. Both are checkpointed, which means that after a crash the workflow keeps waiting on the job it already started.
 
-```sh
-uv venv
-source .venv/bin/activate
-uv pip install dbos bauplan
-```
+The run timeout limits the number of reads. When the limit is reached, the workflow cancels the job and fails. `SetWorkflowTimeout` does not work here, because DBOS cancels a workflow only at its next step and the Bauplan job would keep running.
 
-DBOS runs in-process and needs a database to store workflow state. By default it uses SQLite and requires no configuration. For production or multi-process execution, configure Postgres by setting `DBOS_SYSTEM_DATABASE_URL`.
+## Compose the workflow from the steps
 
-Run your script in-process for fast iteration:
+The workflow deletes the branch in a `finally` block. If the job does not complete, the workflow raises `PipelineFailedError`. DBOS leaves the workflow in `ERROR` and does not recover it, because the job would fail again on the same data. The day to process comes from the scheduled time rather than the clock, which keeps late runs and backfills on their own day:
 
-```sh
-python dbos_bauplan_workflow.py
-```
+```python type:ignore title="pipelines/orders_workflow.py"
+from dataclasses import dataclass
+from datetime import datetime, timedelta
 
-This executes the DBOS workflow in a single process without any external scheduler or webserver, which is ideal for quick debugging. You can also [start workflows in the background](https://docs.dbos.dev/python/tutorials/workflow-tutorial) with `DBOS.start_workflow(...)` and query them later via the DBOS CLI or client.
+from bauplan.schema import JobState
+from dbos import DBOS
 
-## Bauplan authentication
+from pipelines.bauplan_steps import (
+    RunParams,
+    cancel_job,
+    create_namespace,
+    delete_branch,
+    merge_branch,
+    prepare_branch,
+    read_job,
+    start_run,
+)
 
-Bauplan looks for credentials in a clear precedence order:
+# Seconds between two reads of a running job
+POLL_INTERVAL_SECONDS = 30
 
-1. **Environment variable** - `BAUPLAN_API_KEY`
-2. **Profile name** - `BAUPLAN_PROFILE` (points to a saved profile)
-3. **Config file** - `~/.bauplan/config.yml`
+# Job states that mean the job has stopped running
+FINAL_JOB_STATES = (JobState.COMPLETE, JobState.FAIL, JobState.ABORT)
 
-You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
 
-```python
-import bauplan
-client = bauplan.Client(api_key="YOUR_KEY")
-```
+class PipelineFailedError(Exception):
+    """A Bauplan job of the pipeline did not complete"""
 
-## Optional: Passing parameters
 
-When running Bauplan with an orchestrator, parameters are the key to making your flows reusable and dynamic.
+@dataclass(frozen=True)
+class PipelineParams:
+    """What every run of the workflow computes and where it publishes it"""
 
-Instead of hardcoding values, parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters and row limits. This is especially important in scheduled environments, where orchestrators trigger the same job many times, so the same flow can run daily with different inputs. To learn how to set up parameters in Bauplan, see [this page](/reference/cli#bauplan-parameter-set).
+    project_dir: str
+    namespace: str
+    base_branch: str = "main"
+    branch_prefix: str = "orders-daily"
+    run_timeout_minutes: int = 60
 
-Suppose you have a Bauplan model that filters rows by a parameter `start_time`:
-
-```yaml
-# bauplan_project.yml
-project:
-  id: 2b74eb5c-548f-4192-bf18-fcfa33a0746f
-  name: test-pipeline
-parameters:
-  start_time:
-    type: str
-    default: "2022-12-15T00:00:00-05:00"
-```
-
-```python title="models.py"
-from typing import Annotated
-
-import pyarrow
-
-import bauplan
-
-class PickupTimes(bauplan.TableSchema):
-    """Pickup timestamps for the filtered rides."""
-
-    pickup_datetime: bauplan.TimestampMicroUTC
-
-# models.py
-@bauplan.model(materialization_strategy='REPLACE')
-@bauplan.python('3.11', pip={'pandas': '3.0.6'})
-def filtered_taxi_rides_parameters(
-        taxi_table: Annotated[
-            pyarrow.Table,
-            bauplan.Model(
-                "taxi_fhvhv",
-                projection_schema=PickupTimes,
-                filter="pickup_datetime >= $start_time"
-            ),
-        ],
-) -> Annotated[pyarrow.Table, PickupTimes]:
-    taxi_df = taxi_table.to_pandas()
-
-    print(f"\nEarliest pickup in result:, {taxi_df['pickup_datetime'].min()}")
-    print(f"\nRows returned:, {len(taxi_df)}\n")
-
-    return pyarrow.Table.from_pandas(taxi_df)
-```
-
-You can set `start_time` when running the pipeline through DBOS:
-
-```python title="dbos_bauplan_with_params.py"
-import os
-from typing import Dict, Any, Optional
-
-import bauplan
-from dbos import DBOS, DBOSConfig
-
-config: DBOSConfig = {
-    "name": "bauplan-dbos-params",
-    "system_database_url": os.environ.get("DBOS_SYSTEM_DATABASE_URL"),
-}
-DBOS(config=config)
-DBOS.launch()
-
-@DBOS.step()
-def run_with_parameters_step(
-    project_dir: str,
-    bauplan_branch_suffix: str,
-    parameters: Dict[str, Any],
-) -> Dict[str, Any]:
-    client = bauplan.Client() # build client inside the step
-    username = client.info().user.username
-    branch = f"{username}.{bauplan_branch_suffix}"
-
-    client.create_branch(branch, from_ref="main", if_not_exists=True)
-
-    state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
-
-    if str(state.job_status).lower() != "success":
-        raise RuntimeError(
-            f"Bauplan job {state.job_id} ended with status='{state.job_status}'"
-        )
-    return {"job_id": state.job_id, "job_status": state.job_status}
 
 @DBOS.workflow()
-def run_with_parameters_workflow(
-    project_dir: str,
-    bauplan_branch_suffix: str, # your own branch
-    parameters: Optional[Dict[str, Any]], # your arbitrary parameters
-) -> Dict[str, Any]:
-    return run_with_parameters_step(project_dir, bauplan_branch_suffix, parameters or {})
+def orders_pipeline(scheduled_time: datetime, params: PipelineParams) -> None:
+    """Rebuild the day before the scheduled time on a new branch and publish it with one merge"""
+    # The day comes from the schedule, which keeps late runs and backfills on their own period
+    start = (scheduled_time - timedelta(days=1)).date()
+    end = scheduled_time.date()
 
-if __name__ == "__main__":
-    run_with_parameters_workflow(
-        project_dir="your_bauplan_project", # change it with the path to your bauplan project
-        bauplan_branch_suffix="dbos_docs", # change it with your bauplan branch
-        parameters={"start_time": "2023-01-01T00:00:00-05:00"},
+    branch = prepare_branch(
+        params.base_branch, params.branch_prefix, start.strftime("%Y%m%d")
     )
+
+    try:
+        # The target namespace may not exist yet on the base branch
+        create_namespace(branch, params.namespace)
+
+        job_id = start_run(
+            RunParams(
+                project_dir=params.project_dir,
+                ref=branch,
+                namespace=params.namespace,
+                parameters={
+                    "start_date": start.isoformat(),
+                    "end_date": end.isoformat(),
+                },
+            )
+        )
+
+        # After a crash, the checkpointed reads and sleeps let the workflow keep waiting on the same job
+        outcome = read_job(job_id)
+        reads_left = params.run_timeout_minutes * 60 // POLL_INTERVAL_SECONDS
+        while outcome.state not in FINAL_JOB_STATES:
+            if reads_left == 0:
+                cancel_job(job_id)
+                raise PipelineFailedError(f"job {job_id} ran out of time")
+
+            DBOS.sleep(POLL_INTERVAL_SECONDS)
+            outcome = read_job(job_id)
+            reads_left -= 1
+
+        # A retry of the workflow would fail again on the same data
+        if outcome.state != JobState.COMPLETE:
+            raise PipelineFailedError(
+                f"job {job_id} ended as {outcome.human_readable_status}: {outcome.error_message}"
+            )
+
+        merge_branch(branch, params.base_branch)
+
+    # Whether the run merged or failed, its branch is not needed anymore
+    finally:
+        delete_branch(branch)
 ```
 
-This will run the Bauplan project on the given branch, applying `start_time="2023-01-01T00:00:00-05:00"` inside the model so only rides on or after 2023-01-01 are processed.
+Other pipelines reuse the same steps. An ingestion workflow imports and runs on the same branch and publishes both with one merge. When pipelines depend on each other, each one runs as a child workflow of a parent that starts it only after the pipelines it reads from have merged.
+
+## Schedule the workflow on a queue
+
+`main.py` registers the queue and the schedule after `DBOS.launch()`, as DBOS requires. Checkpoints go to a SQLite file by default; in production, point `DBOS_SYSTEM_DATABASE_URL` at Postgres. The queue has a global concurrency of one, because concurrent runs on the same base branch would make every merge after the first fail as a conflict. With `automatic_backfill=True`, DBOS also enqueues the runs that the schedule missed while the process was down:
+
+```python type:ignore title="main.py"
+import os
+import threading
+
+from dbos import DBOS, DBOSConfig
+
+from pipelines.orders_workflow import PipelineParams, orders_pipeline
+
+config: DBOSConfig = {
+    "name": "bauplan-pipelines",
+    "system_database_url": os.environ.get("DBOS_SYSTEM_DATABASE_URL"),
+}
+
+
+def main() -> None:
+    """Host the Bauplan workflows, their queue and their schedules in one process"""
+    DBOS(config=config)
+    DBOS.launch()
+
+    # Runs that publish to the same base branch merge one at a time
+    DBOS.register_queue("bauplan-pipelines", global_concurrency=1)
+
+    # Every day at 02:00 UTC, and on restart DBOS also enqueues the days that the process missed
+    DBOS.apply_schedules(
+        [
+            {
+                "schedule_name": "orders-daily",
+                "workflow_fn": orders_pipeline,
+                "schedule": "0 2 * * *",
+                "context": PipelineParams(
+                    project_dir="pipelines/orders", namespace="orders"
+                ),
+                "automatic_backfill": True,
+                "cron_timezone": None,
+                "queue_name": "bauplan-pipelines",
+            }
+        ]
+    )
+
+    # DBOS runs the workflows on its own threads, while the main thread only keeps the process alive
+    threading.Event().wait()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The process needs the Bauplan project directories and `BAUPLAN_API_KEY`. Run it as a long-lived service.
+
+DBOS builds the ID of a scheduled run from the schedule name and time, which makes each time run once. `DBOS.backfill_schedule` loads a range of past days and skips the days that have already run. When a run fails, `DBOS.fork_workflow` restarts it from the step you choose once you have fixed the cause.
+
+## Related
+
+- [Deployment](/how-to/deploy/how-to-deploy-a-pipeline)
+- [How to parametrize a pipeline](/how-to/build-pipelines/how-to-parametrize-a-pipeline)
+- [How to Write-Audit-Publish](/how-to/publish/how-to-write-audit-publish)
+- [Temporal](/integrations/orchestrators/temporal)
