@@ -1,0 +1,181 @@
+---
+title: "How to materialize pipeline outputs"
+description: "Choose what each model writes to the lakehouse after a run: nothing, the whole table, new rows, or a window of partitions set by an overwrite filter."
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Choose, for each model of a pipeline, whether its output is written to the lakehouse and how it combines with the table already there. What each strategy does on a run is explained in [Materialization strategies](/concepts/pipelines#materialization-strategies).
+
+## Pick a strategy for each model
+
+To decide which models to materialize and how to keep the writes small, see [How to choose what to materialize](/how-to/performance/how-to-choose-what-to-materialize).
+
+Pick the strategy from what the table must contain after a run:
+
+| If the model | Use | Pros | Cons |
+| :--- | :--- | :--- | :--- |
+| Is only read by other models of the pipeline | `NONE`, the default | No write, no commit | The table doesn't exist after the run |
+| Recomputes the whole table on every run | `REPLACE` | Simple, and a rerun gives the same table | Slow and expensive for large tables |
+| Brings rows on every run that are new by construction | `APPEND` | Writes only the new rows; existing rows aren't affected | Not idempotent, so it can duplicate data |
+| Recomputes a known window on every run, such as the last few days | `OVERWRITE_PARTITIONS`; see [overwrite a window of partitions](#overwrite-a-window-of-partitions) | Idempotent on a given partition, so it adds rows without risk of duplication | Needs a partitioned table and a filter on partition columns |
+
+`APPEND` and `OVERWRITE_PARTITIONS` also add to the table any columns that are new in the output.
+
+**Don't query a `NONE` model as a table.** Anything that queries it after the run finds no table. If something outside the pipeline needs it, give it a materialization strategy.
+
+**Don't use `APPEND` for a step that can run twice over the same data.** A retried or backfilled run stores the same rows again. Use `REPLACE` or `OVERWRITE_PARTITIONS`, which a rerun doesn't duplicate.
+
+**Don't use `REPLACE` for a large table that changes in one window.** If each run changes only recent data, partition the table and use `OVERWRITE_PARTITIONS`. Tables rebuilt with `REPLACE` also break refreshes in some engines that read them; see [Serve other engines](/how-to/consume/how-to-query-tables#serve-other-engines).
+
+## Set the strategy on the model
+
+Set the strategy in the decorator of a Python model or in the header of a SQL model:
+
+<Tabs groupId="model-language">
+<TabItem value="python" label="Python">
+
+```python type:ignore title="models.py"
+from typing import Annotated
+
+import bauplan
+import pyarrow as pa
+
+
+class CustomerRevenue(bauplan.TableSchema):
+    """Total revenue per customer, rebuilt from all orders on every run."""
+
+    customer_id: bauplan.Int64
+    revenue: bauplan.Float64
+
+
+@bauplan.model(materialization_strategy="REPLACE")
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
+def customer_revenue(
+    orders: Annotated[pa.Table, bauplan.Model("sales.orders")],
+) -> Annotated[pa.Table, CustomerRevenue]:
+    """Sum order amounts per customer."""
+    import polars as pl
+
+    return (
+        pl.from_arrow(orders)
+        .group_by("customer_id")
+        .agg(pl.col("amount").sum().alias("revenue"))
+        .to_arrow()
+    )
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```sql title="customer_revenue.sql"
+-- bauplan: materialization_strategy = REPLACE
+-- bauplan: output_schema = models.CustomerRevenue
+SELECT
+    customer_id,
+    SUM(amount) AS revenue
+FROM sales.orders
+GROUP BY customer_id
+```
+
+The output schema is a Python class; see [write a SQL model](/how-to/build-pipelines/how-to-write-a-pipeline#write-a-sql-model).
+
+```python title="models.py"
+import bauplan
+
+
+class CustomerRevenue(bauplan.TableSchema):
+    """Total revenue per customer, rebuilt from all orders on every run."""
+
+    customer_id: bauplan.Int64
+    revenue: bauplan.Float64
+```
+
+</TabItem>
+</Tabs>
+
+## Overwrite a window of partitions
+
+Use `OVERWRITE_PARTITIONS` when each run recomputes a known window of a table, such as the last few days.
+
+### Partition the table on the window column
+
+`OVERWRITE_PARTITIONS` needs a partitioned table. Partition it on the column that defines the window you rewrite, usually a date; see [How to partition tables in a pipeline](/how-to/build-pipelines/how-to-partition-tables-in-a-pipeline).
+
+### Set the filter, and read the same window
+
+Set `materialization_strategy="OVERWRITE_PARTITIONS"` and an `overwrite_filter` on the partition column. Read the same window from the input, with the same filter and parameters:
+
+```python type:ignore
+from typing import Annotated
+
+import bauplan
+import pyarrow as pa
+
+
+class EventColumns(bauplan.TableSchema):
+    """The event columns needed to count active users."""
+
+    event_date: bauplan.Date32
+    user_id: bauplan.String
+
+
+class DailyActiveUsers(bauplan.TableSchema):
+    """Distinct active users per day."""
+
+    event_date: bauplan.Date32
+    active_users: bauplan.Int64
+
+
+@bauplan.model(
+    materialization_strategy="OVERWRITE_PARTITIONS",
+    partitioned_by=["event_date"],
+    # Deletes the days of the window, passed as run parameters
+    overwrite_filter="event_date >= $start_date AND event_date < $end_date",
+)
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
+def daily_active_users(
+    events: Annotated[
+        pa.Table,
+        # The same window as overwrite_filter, so every deleted day is recomputed and nothing else is returned
+        bauplan.Model(
+            "raw.events",
+            projection_schema=EventColumns,
+            filter="event_date >= $start_date AND event_date < $end_date",
+        ),
+    ],
+) -> Annotated[pa.Table, DailyActiveUsers]:
+    """Count the distinct users active on each day of the window."""
+    import polars as pl
+
+    return (
+        pl.from_arrow(events)
+        .group_by("event_date")
+        .agg(pl.col("user_id").n_unique().cast(pl.Int64).alias("active_users"))
+        .to_arrow()
+    )
+```
+
+**Reference only the table's partition columns in the `overwrite_filter`.**
+
+**Return only rows inside the filter.** Bauplan appends every row the model returns without checking it against the filter. A row outside the filter is added next to the existing rows and duplicates them.
+
+**Recompute every row the filter deletes.** Don't delete a wider window than the one the model recomputes. A partition that the filter deletes but the model doesn't recompute is left empty.
+
+### Pass the window as run parameters
+
+Pass `start_date` and `end_date` from the orchestrator on each run; see [How to parametrize a pipeline](/how-to/build-pipelines/how-to-parametrize-a-pipeline).
+
+If data arrives late, make the windows overlap so that each run also rewrites the last few days; see [How to run incremental workloads](/how-to/performance/how-to-run-incremental-workloads).
+
+## Run the pipeline on a branch
+
+Run the pipeline on a development branch, check the materialized tables there, then merge the branch into `main`; see [How to Write-Audit-Publish](/how-to/publish/how-to-write-audit-publish). Every strategy writes on the branch of the run. A dry run materializes nothing, whatever the strategy.
+
+## Related
+
+- [How to partition tables in a pipeline](/how-to/build-pipelines/how-to-partition-tables-in-a-pipeline)
+- [How to run incremental workloads](/how-to/performance/how-to-run-incremental-workloads)
+- [How to choose what to materialize](/how-to/performance/how-to-choose-what-to-materialize)
+- [Materialization strategies](/concepts/pipelines#materialization-strategies)

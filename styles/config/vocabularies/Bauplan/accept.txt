@@ -6,6 +6,7 @@ Atlas
 auditability
 Avro
 AWS
+backfilled
 backfills
 Bauplan
 booleans
@@ -64,6 +65,7 @@ Nullness
 NYC
 nyc.gov
 Parameter Store
+partitioned_by
 Pinecone
 Polars
 Private Link
