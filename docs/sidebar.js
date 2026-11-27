@@ -103,20 +103,6 @@ export default {
         },
         {
           type: "category",
-          label: "Interactive notebooks and data apps",
-          collapsed: true,
-          link: {
-            type: "doc",
-            id: "integrations/notebooks-data-apps/index",
-          },
-          items: [
-            "integrations/notebooks-data-apps/jupyter-notebooks",
-            "integrations/notebooks-data-apps/marimo",
-            "integrations/notebooks-data-apps/streamlit",
-          ],
-        },
-        {
-          type: "category",
           label: "Storage and query engines",
           collapsed: true,
           items: [

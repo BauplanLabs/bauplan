@@ -174,22 +174,6 @@ const redirects = [
     to: "/integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
   },
   {
-    from: "/integrations/notebooks_data_apps",
-    to: "/integrations/notebooks-data-apps",
-  },
-  {
-    from: "/integrations/notebooks_data_apps/jupyter_notebooks",
-    to: "/integrations/notebooks-data-apps/jupyter-notebooks",
-  },
-  {
-    from: "/integrations/notebooks_data_apps/marimo",
-    to: "/integrations/notebooks-data-apps/marimo",
-  },
-  {
-    from: "/integrations/notebooks_data_apps/streamlit",
-    to: "/integrations/notebooks-data-apps/streamlit",
-  },
-  {
     from: "/integrations/bi_tools_postgres",
     to: "/integrations/bi-tools",
   },
