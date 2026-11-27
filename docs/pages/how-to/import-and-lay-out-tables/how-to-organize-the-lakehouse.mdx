@@ -1,0 +1,38 @@
+---
+title: "How to organize the lakehouse"
+description: "Layer raw, cleaned and consumer-facing tables."
+---
+
+A lakehouse is shared by many actors, including scheduled pipelines, people developing and exploring, and consumers such as dashboards and agents. Bauplan organizes it with two tools. Branches separate production data from work in progress, and namespaces group tables within a branch.
+
+The basic layout is simple. Keep production data on main and point every consumer at it, do all other work on branches, and group tables into namespaces by layer, such as raw, silver and marts.
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+# Consumers read the layer built for them, on main
+client.query("SELECT * FROM marts.daily_revenue", ref="main")
+```
+
+## Keep production on main and everything else on branches
+
+Use the `main` branch for production data, and point downstream consumers, such as dashboards and agents through MCP, at it. Only let pipelines running on a schedule merge into `main`, and do not let any actor write to `main` directly instead of starting from a branch. Bauplan does not enforce this, so make it part of how your team works, as in [how to bring data to production](/how-to/publish/how-to-bring-data-to-production).
+
+Use branches for development, for experiments, and to run pipelines before their output is merged into `main`. Work on a branch is isolated: nothing written there is visible on `main` until the branch is merged, and a merge publishes all its changes in one commit. If every write goes through a branch, consumers reading `main` never see partial or experimental results. See [how to bring data to production](/how-to/publish/how-to-bring-data-to-production).
+
+## Group tables into namespaces
+
+Use namespaces to group related tables, for example `silver` and `marts`, rather than keeping every table in the single default `bauplan` namespace:
+
+```python type:ignore
+client.create_namespace("marts", branch=branch, if_not_exists=True)
+```
+
+Namespaces keep a catalog with hundreds of tables navigable, and let two tables share a name, such as `orders` from two different sources, without colliding: their fully qualified names, `crm.orders` and `shop.orders`, differ. See [namespaces](/concepts/tables#namespaces).
+
+## Related
+
+- [How to handle merge conflicts](/how-to/publish/how-to-handle-merge-conflicts)
+- [Catalog and branches](/concepts/catalog-and-branches)

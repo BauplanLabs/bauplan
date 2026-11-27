@@ -1,0 +1,171 @@
+---
+title: "How to lay out data on object storage"
+description: "Hive-style prefixes for fast listing, partition values stored inside the files, and shards of a few hundred megabytes."
+---
+
+Source systems write files to object storage before Bauplan imports them, often in Hive-style folders. That layout determines how fast imports run and which values end up in the table.
+
+The size of the files matters as much as where they are. Some sources export a whole table as a single file of several gigabytes, which can exhaust memory at import and slows down every later read. Others write a file whenever they have new data, such as a database batch, an API response or a few minutes of stream events, and reads then spend most of their time opening files.
+
+The basic layout splits each table into Hive-style prefixes on the columns you filter by, keeps those values as columns inside the files too, and writes shards of about 512 MiB each, as in the example below.
+
+```tree
+raw/
+  events/                   # name of the table
+    year=2026/              # each of these prefixes is a partition
+      month=09/
+        day=23/
+          shard_00001.parquet
+          shard_00002.parquet
+          shard_00003.parquet
+```
+
+## Split each table into Hive-style prefixes
+
+Lay out data on object storage with Hive-style partitioning. Split each table into shards that each hold a single value of the columns you filter on. Put the columns you select on at import time early in the path, so an import can narrow its search URI to a single prefix.
+
+This matters because listing object storage is slow, and an import lists everything under the longest wildcard-free prefix of its search URI. `s3://my-bucket/raw/events/year=2026/month=09/day=23/*.parquet` lists a single day, while `s3://my-bucket/raw/events/*/*/*/*.parquet` lists the whole table. The layout therefore decides how much each import has to list before it starts.
+
+## Store partition values inside the files
+
+When importing data from a partition, Bauplan **does not** add the value of that partition as a column. If the partitions in the example above come from a column named `event_date`, make sure that column is also stored in the shard files, and do not rely on the folder path alone to carry column values.
+
+Imports deliberately ignore Hive partitioning. Values that exist only in the path are dropped, and the table cannot be filtered or overwritten on them. Keeping the values inside the files makes them regular columns of the table.
+
+## Write shards of 256 MiB to 1 GiB
+
+Aim for Parquet shards of 256 MiB to 1 GiB each on disk, with 512 MiB as a good default, which is also the target file size of Iceberg. If a partition holds less data than that, use a coarser partition (for instance a month instead of a day) rather than writing many small files. Do not write a whole table as a few monolithic files, nor as thousands of files of a few megabytes each.
+
+File size is a trade-off. Each file has a fixed cost regardless of its size, because it is listed at import, tracked as an entry in the table metadata and opened with a request at read time. With thousands of small files, reads spend most of their time on this overhead, and more compute does not help. Monolithic files cannot be pruned, since every read has to open them, and a [managed import](/how-to/import-and-lay-out-tables/how-to-choose-between-managed-and-external-tables) reads each file entirely into memory before rewriting it, so a file that exceeds the available memory fails with an out-of-memory error. Shards of a few hundred megabytes keep both costs low.
+
+For managed tables, Bauplan rewrites and optimizes the Parquet files itself. For external tables, Bauplan cannot modify the files, so later reads inherit their size and layout.
+
+### If your code writes the files, buffer the batches
+
+Decouple the batches you read from the files you write. Accumulate the batches in a buffer, and write a file only when the buffer reaches the target size.
+
+```python type:ignore
+import pyarrow as pa
+import pyarrow.parquet as pq
+
+# Arrow measures the size in memory, and Parquet compresses it roughly 4 times on disk: adjust the factor to your data
+TARGET_SIZE = 4 * 512 * 1024 * 1024
+
+target_path = "s3://my-bucket/raw/orders/event_date=2026-09-27"
+
+buffer: list[pa.RecordBatch] = []
+buffered_bytes = 0
+file_number = 0
+
+for batch in read_source_in_batches():
+    buffer.append(batch)
+    buffered_bytes += batch.nbytes
+
+    # Write a file only once the buffer holds enough data for a full-sized one
+    if buffered_bytes >= TARGET_SIZE:
+        pq.write_table(pa.Table.from_batches(buffer), f"{target_path}/{file_number:08d}.parquet")
+        buffer, buffered_bytes, file_number = [], 0, file_number + 1
+
+# The last file holds whatever is left, and is the only one below the target
+if buffer:
+    pq.write_table(pa.Table.from_batches(buffer), f"{target_path}/{file_number:08d}.parquet")
+```
+
+### If a delivery service writes the files, flush by size
+
+Configure the service to flush by size rather than per record, with a time limit as a fallback. The service then acts as the buffer described above. When data flows steadily, files reach the target size, and when it slows, the time limit caps how long data waits.
+
+### If an external system writes large files, split them
+
+If possible, avoid writing large files to your object storage in the first place, and do not import a single multi-gigabyte file as it is. If the files come from an external system you have no control over, split them with a script like this.
+
+```python type:ignore
+import polars as pl
+
+# Credentials for the bucket, for instance on AWS
+storage_options = {
+    "aws_access_key_id": aws_access_key_id,
+    "aws_secret_access_key": aws_secret_access_key,
+    "aws_region": aws_region,
+}
+
+# Polars measures the size in memory, adjust the factor to your data
+TARGET_SIZE = 4 * 512 * 1024 * 1024
+
+source_file = "s3://my-bucket/raw/orders/large_file.parquet"
+target_path = "s3://my-bucket/raw/orders/"
+
+# A date column, so each shard folder holds one day of data
+shard_key = "event_date"
+
+# Scan the large file lazily, so it is never loaded into memory as a whole
+lf = pl.scan_parquet(source_file, storage_options=storage_options)
+
+# Write partitioned files on S3
+lf.sink_parquet(
+    pl.PartitionBy(target_path, key=shard_key, approximate_bytes_per_file=TARGET_SIZE),
+    mkdir=True,
+    storage_options=storage_options,
+)
+```
+
+Polars writes one Hive-style folder per day, with one or more numbered files in each, and keeps `event_date` as a column inside the files.
+
+```tree
+raw/
+  orders/
+    large_file.parquet
+    event_date=2026-09-27/
+      00000000.parquet
+      00000001.parquet
+    event_date=2026-09-28/
+      00000000.parquet
+```
+
+Shards add up to the same total size as the original file, but Bauplan reads them in parallel, in batches that fit in memory, so the import completes and runs faster.
+
+## Import the shards into one table
+
+Create the table from the first partition, since table creation does not need every file, and then import the data one partition at a time, with a single import over the prefix of each partition.
+
+```python
+import bauplan
+
+client = bauplan.Client()
+branch = f"{client.info().user.username}.import-orders"
+
+PARTITIONS = ["2026-09-27", "2026-09-28", "2026-09-29", "2026-09-30"]
+
+client.create_branch(branch=branch, from_ref="main", if_not_exists=True)
+
+# Create the table once, partitioned on the same column as the shards
+client.create_table(
+    table="orders",
+    search_uri="s3://my-bucket/raw/orders/event_date=2026-09-27/*.parquet",
+    partitioned_by="event_date",
+    branch=branch,
+    namespace="raw",
+)
+
+for partition in PARTITIONS:
+    state = client.import_data(
+        table="orders",
+        search_uri=f"s3://my-bucket/raw/orders/event_date={partition}/*.parquet",
+        branch=branch,
+        namespace="raw",
+    )
+
+    # A failed import does not raise, it is reported in the state
+    if state.job_status != "SUCCESS":
+        raise RuntimeError(f"import of {partition} failed: {state.error}")
+```
+
+If you split a large file into shards, import every shard into the same table rather than creating one table per shard and concatenating them afterwards. The result is a single table from the start, with no intermediate copy of the data to write, read again and delete.
+
+Do not import every file as soon as it is uploaded to the bucket. A managed import merges the files it processes into fewer, larger ones, so importing everything that accumulated since the last run in one batch already solves most of the small files problem. However, it does not merge new files with those already in the table, and the table has no automatic compaction.
+
+## Related
+
+- [How to partition tables at import time](/how-to/import-and-lay-out-tables/how-to-partition-tables-at-import-time)
+- [How to choose between managed and external tables](/how-to/import-and-lay-out-tables/how-to-choose-between-managed-and-external-tables)
+- [File layout and partitioning](/concepts/tables#file-layout-and-partitioning)

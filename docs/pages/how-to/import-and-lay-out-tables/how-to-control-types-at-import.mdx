@@ -1,0 +1,66 @@
+---
+title: "How to control types at import"
+description: "Override the column types Bauplan infers by editing the table creation plan before the table is created."
+---
+
+When a table is created, Bauplan detects its schema from the source files but the result does not always match what you expect. Some source types have no Iceberg equivalent or cannot be converted without losing data, and a column whose values are all null has no type to deduce.
+
+In the basic case you need no type control. Create the table and import, and Bauplan infers the types. Edit the schema by hand only when creation fails or produces unexpected types. In that case, plan the table creation, set the destination type of the affected columns, apply the plan and import.
+
+## Plan the table creation
+
+The table creation plan is where the inferred types are exposed. Ask Bauplan for it, and load it as a dictionary:
+
+```python
+import bauplan
+import yaml
+
+client = bauplan.Client()
+branch = f"{client.info().user.username}.ingest-orders"
+search_uri = "s3://my-bucket/raw/orders/*.parquet"
+
+# Get the default import plan from Bauplan
+plan_state = client.plan_table_creation(
+    table="orders",
+    search_uri=search_uri,
+    branch=branch,
+    namespace="raw",
+)
+
+plan = yaml.safe_load(plan_state.plan)
+```
+
+## Override the destination types
+
+Set `dst_datatype` for the columns that need it, before any data is written:
+
+```python type:ignore
+# Destination types for the columns that inference gets wrong, in the format of dst_datatype
+TYPE_OVERRIDES = {
+    "coupon_code": [{"datatype": "string"}],  # all null in the source files
+}
+
+# Override the default types
+for column in plan["schema_info"]["detected_schemas"]:
+    if column["column_name"] in TYPE_OVERRIDES:
+        column["dst_datatype"] = TYPE_OVERRIDES[column["column_name"]]
+```
+
+Change only `dst_datatype`, and leave `src_datatypes` as it is, since it records what Bauplan found in the files.
+
+## Apply the plan and import
+
+Apply the edited plan to create the table, then import:
+
+```python type:ignore
+# apply_table_creation_plan expects a YAML string
+client.apply_table_creation_plan(plan=yaml.safe_dump(plan))
+client.import_data(table="orders", search_uri=search_uri, branch=branch, namespace="raw")
+```
+
+Every later import is cast to the types you set here, so you edit the plan once, when the table is created. To change a type afterwards, see [how to migrate tables](/how-to/operate/how-to-migrate-tables).
+
+## Related
+
+- [Semantics](/concepts/semantics)
+- [How to transform data at import time](/how-to/import-and-lay-out-tables/how-to-transform-data-at-import-time)

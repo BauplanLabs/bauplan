@@ -1,0 +1,57 @@
+---
+title: "How to choose between managed and external tables"
+description: "Use external tables as short-lived staging and keep what you retain as managed tables; never put lifecycle rules on files behind an external table."
+---
+
+Bauplan can import files into managed tables, or register them where they are as external tables, without copying them. The choice depends on who owns the files and how long you need the table.
+
+The basic rule is: a table you keep and keep importing into is a managed table, and an external table is for data that another system owns, or that you read once and throw away.
+
+## Use a managed table for what you keep
+
+A managed table owns its files. An import reads the source files and writes new Parquet files that Bauplan controls, sized and partitioned for fast reads. The table no longer depends on its sources, which can then expire, and it is the only kind of table you can import into repeatedly. Use a managed table in the following cases.
+
+1. The source consists of many small files, which the import compacts automatically.
+2. The table needs partitioning, set with `partitioned_by`, to perform well.
+3. The table is created once and then grows through many imports.
+4. Bauplan must be the only system that can modify the data.
+5. The source files are subject to an expiration policy.
+
+```python type:ignore
+# Managed: Bauplan copies the files and owns the copy
+client.create_table(table="orders", search_uri=search_uri, branch=branch, namespace="raw")
+client.import_data(table="orders", search_uri=search_uri, branch=branch, namespace="raw")
+```
+
+## Use an external table for data you borrow
+
+An external table borrows its files. Bauplan copies nothing and the table is effectively read-only and cannot be extended by importing new data. It costs no extra storage, but it inherits the layout, file sizes and lifetime of its source files. Use an external table in the following cases:
+
+1. Another system maintains the table and writes new Iceberg snapshots. Register the table from its metadata, and register it again whenever the other system moves forward, since that system owns the files.
+2. The table is created once and receives no new data afterwards.
+3. The table is a throw-away step, such as staging files that a pipeline reads to build a managed table, as in [how to transform data at import time](/how-to/import-and-lay-out-tables/how-to-transform-data-at-import-time).
+4. The table is rebuilt from scratch from each new source.
+
+```python type:ignore
+# External from parquet: Bauplan registers the parquet files where they are but manages the metadata layer
+client.create_external_table_from_parquet(
+    table="orders_staging",
+    search_patterns=[search_uri],
+    branch=branch,
+)
+
+# External from metadata: Bauplan registers the metadata file
+client.create_external_table_from_metadata(
+    table="users_staging",
+    metadata_json_uri=metadata_uri,
+    branch=branch,
+)
+```
+
+## Keep external tables away from files that can disappear
+
+Do not keep a long-lived external table over a landing prefix that expires files after a few days, or over files that other teams can delete or rewrite. Bauplan is not notified when a lifecycle rule, a script or a person changes those files, so the table keeps pointing at them and the next read fails. Every past state of the table depends on the same files, so time travel fails too. If the data must outlive its source files, import it into a managed table. See [managed and external tables](/concepts/tables#managed-and-external-tables).
+
+## Related
+
+- [How to lay out data on object storage](/how-to/import-and-lay-out-tables/how-to-lay-out-data-on-object-storage)
