@@ -28,7 +28,7 @@ import bauplan
 
 client = bauplan.Client()
 
-table = client.create_table(
+table = client.create_table_from_search_uri(
     table='my_partitioned_table',
     search_uri='s3://your-bucket/data/*.parquet',
     partitioned_by="hour(tpep_pickup_datetime), PULocationID",

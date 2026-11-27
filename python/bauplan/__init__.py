@@ -35,13 +35,21 @@ from bauplan._internal import (
     UserInfo,
     __version__,
 )
-from bauplan.schema import JobKind, JobState, RefType
+from bauplan.schema import (
+    CreateTableKind,
+    JobKind,
+    JobState,
+    MergeStrategy,
+    PartitionField,
+    PartitionTransform,
+)
 
 __all__ = [
     "Any",
     "Binary",
     "Bool",
     "Client",
+    "CreateTableKind",
     "Date32",
     "Date64",
     "Float64",
@@ -50,12 +58,14 @@ __all__ = [
     "Int64",
     "JobKind",
     "JobState",
+    "MergeStrategy",
     "Model",
     "ModelCacheStrategy",
     "ModelMaterializationStrategy",
     "OrganizationInfo",
     "Parameter",
-    "RefType",
+    "PartitionField",
+    "PartitionTransform",
     "RunnerNodeInfo",
     "String",
     "TableField",

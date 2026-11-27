@@ -4,7 +4,14 @@ import time
 import uuid
 
 import bauplan
+import pyarrow as pa
 import pytest
+from bauplan.schema import (
+    CreateTableKind,
+    PartitionField,
+    PartitionTransform,
+    TableKind,
+)
 
 SEARCH_URI = "s3://bpln-e2e-test-tables/test_tables/two_columns_two_dates/*"
 
@@ -28,7 +35,7 @@ def temp_branch(client: bauplan.Client, username: str):
 
 
 def test_create_table_and_import(client: bauplan.Client, temp_branch: str):
-    table = client.create_table(
+    table = client.create_table_from_search_uri(
         table="my_import_table",
         search_uri=SEARCH_URI,
         branch=temp_branch,
@@ -55,7 +62,7 @@ def test_create_table_and_import(client: bauplan.Client, temp_branch: str):
 
 
 def test_detached_import(client: bauplan.Client, temp_branch: str):
-    client.create_table(
+    client.create_table_from_search_uri(
         table="my_detached_table",
         search_uri=SEARCH_URI,
         branch=temp_branch,
@@ -110,20 +117,53 @@ def test_create_external_table_from_parquet(client: bauplan.Client, temp_branch:
     assert "Cannot import files to read-only table" in str(exc_info.value)
 
 
-def test_create_external_table_from_metadata(client: bauplan.Client, temp_branch: str):
-    metadata_uri = (
+def test_create_table(client: bauplan.Client, temp_branch: str):
+    schema = pa.schema(
+        [
+            pa.field("id", pa.int64(), nullable=False),
+            pa.field("price", pa.decimal128(10, 2)),
+            pa.field("created_at", pa.timestamp("us", tz="+00:00")),
+            pa.field("tags", pa.list_(pa.string())),
+            pa.field("point", pa.struct([("x", pa.float64()), ("y", pa.float64())])),
+        ]
+    )
+    partitions = [
+        PartitionField("created_at", PartitionTransform.Day()),
+        PartitionField("id", PartitionTransform.Bucket(num_buckets=4)),
+    ]
+
+    kind = CreateTableKind.IcebergManaged(
+        schema, partitions=partitions, doc="The orders."
+    )
+
+    table = client.create_table("bauplan.created_table", kind, temp_branch)
+
+    assert isinstance(table.kind, TableKind.IcebergManaged)
+    assert table.doc == "The orders."
+    assert [(f.name, f.type, f.nullable) for f in table.schema] == [
+        (f.name, f.type, f.nullable) for f in schema
+    ]
+    day, bucket = table.partitions
+    assert day.name == "created_at"
+    assert isinstance(day.transform, PartitionTransform.Day)
+    assert bucket.name == "id"
+    assert isinstance(bucket.transform, PartitionTransform.Bucket)
+    assert bucket.transform.num_buckets == 4
+
+    with pytest.raises(bauplan.exceptions.NameConflictError):
+        client.create_table("bauplan.created_table", kind, temp_branch)
+
+
+def test_create_external_table(client: bauplan.Client, temp_branch: str):
+    metadata_location = (
         "s3://bauplan-openlake-db87a23/iceberg/tpch_1/"
         "customer_e53c682c-36c4-4e3d-9ded-1214d0ee157f/"
         "metadata/00000-b6f502e1-5140-499e-bf83-22f943067e36.metadata.json"
     )
 
-    client.create_external_table_from_metadata(
-        table="ext_metadata_table",
-        metadata_json_uri=metadata_uri,
-        namespace="bauplan",
-        branch=temp_branch,
-        overwrite=True,
-    )
+    kind = CreateTableKind.IcebergExternal(metadata_location)
+
+    client.create_table("bauplan.ext_metadata_table", kind, temp_branch)
 
     result = client.query(
         query="SELECT * FROM ext_metadata_table LIMIT 10",
@@ -132,15 +172,9 @@ def test_create_external_table_from_metadata(client: bauplan.Client, temp_branch
 
     assert result.num_rows == 10
 
-    # Creating the same table without overwrite should raise.
-    with pytest.raises(bauplan.exceptions.ConflictError):
-        client.create_external_table_from_metadata(
-            table="ext_metadata_table",
-            metadata_json_uri=metadata_uri,
-            namespace="bauplan",
-            branch=temp_branch,
-            overwrite=False,
-        )
+    # Creating the same table again should raise.
+    with pytest.raises(bauplan.exceptions.NameConflictError):
+        client.create_table("bauplan.ext_metadata_table", kind, temp_branch)
 
 
 def test_plan_and_apply(client: bauplan.Client, temp_branch: str):

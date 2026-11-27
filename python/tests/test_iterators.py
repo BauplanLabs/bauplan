@@ -23,8 +23,8 @@ def test_query_to_generator(client: bauplan.Client):
     assert rows[-1]["PassengerId"] == len(rows)
 
 
-def test_get_tags_pagination(client: bauplan.Client):
-    tags = client.get_tags()
+def test_list_tags_pagination(client: bauplan.Client):
+    tags = client.list_tags()
 
     assert hasattr(tags, "__iter__")
     assert hasattr(tags, "__next__")
@@ -33,11 +33,11 @@ def test_get_tags_pagination(client: bauplan.Client):
     all_tags = list(tags)
     for t in all_tags:
         assert hasattr(t, "name")
-        assert hasattr(t, "hash")
+        assert hasattr(t, "commit_hash")
 
 
-def test_get_namespaces_pagination(client: bauplan.Client):
-    namespaces = client.get_namespaces(ref="main")
+def test_list_namespaces_pagination(client: bauplan.Client):
+    namespaces = client.list_namespaces(ref="main")
 
     assert hasattr(namespaces, "__iter__")
     assert hasattr(namespaces, "__next__")
@@ -49,9 +49,10 @@ def test_get_namespaces_pagination(client: bauplan.Client):
         assert hasattr(ns, "name")
 
 
-def test_get_tables_pagination(client: bauplan.Client):
-    tables = client.get_tables(ref="main", filter_by_namespace="bauplan")
+def test_list_tables_pagination(client: bauplan.Client):
+    tables = client.list_tables(ref="main", namespace="bauplan")
 
+    assert tables.commit_hash
     assert hasattr(tables, "__iter__")
     assert hasattr(tables, "__next__")
 
@@ -60,25 +61,21 @@ def test_get_tables_pagination(client: bauplan.Client):
 
     # titanic should be there
     table_names = [t.name for t in all_tables]
-    assert "titanic" in table_names
+    assert "bauplan.titanic" in table_names
 
 
-def test_get_tables_with_limit(client: bauplan.Client):
-    all_tables = list(
-        client.get_tables(ref="main", filter_by_namespace="bauplan", limit=5)
-    )
+def test_list_tables_with_limit(client: bauplan.Client):
+    all_tables = list(client.list_tables(ref="main", namespace="bauplan", limit=5))
 
     if len(all_tables) < 2:
         pytest.skip("Need at least 2 tables to test limit")
 
-    limited = list(
-        client.get_tables(ref="main", filter_by_namespace="bauplan", limit=1)
-    )
+    limited = list(client.list_tables(ref="main", namespace="bauplan", limit=1))
     assert len(limited) == 1
 
 
-def test_get_jobs_pagination(client: bauplan.Client):
-    jobs = client.get_jobs(limit=5)
+def test_list_jobs_pagination(client: bauplan.Client):
+    jobs = client.list_jobs(limit=5)
 
     assert hasattr(jobs, "__iter__")
     assert hasattr(jobs, "__next__")
@@ -94,13 +91,13 @@ def test_get_jobs_pagination(client: bauplan.Client):
         assert hasattr(job, "kind")
 
 
-def test_get_jobs_filter_by_kind_lowercase(client: bauplan.Client):
-    jobs = list(client.get_jobs(filter_by_kinds="query", limit=5))
+def test_list_jobs_filter_by_kind_lowercase(client: bauplan.Client):
+    jobs = list(client.list_jobs(filter_by_kinds="query", limit=5))
     for job in jobs:
         assert job.kind == bauplan.JobKind.QUERY
 
 
-def test_get_jobs_filter_by_status_lowercase(client: bauplan.Client):
-    jobs = list(client.get_jobs(filter_by_statuses="complete", limit=5))
+def test_list_jobs_filter_by_status_lowercase(client: bauplan.Client):
+    jobs = list(client.list_jobs(filter_by_statuses="complete", limit=5))
     for job in jobs:
         assert job.status == bauplan.JobState.COMPLETE

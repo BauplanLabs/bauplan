@@ -1,10 +1,52 @@
 mod cli;
 
+use std::process::ExitCode;
+
+use bauplan_api::error::GenericError;
 use clap::Parser;
 use tracing_indicatif::IndicatifWriter;
 use tracing_subscriber::{EnvFilter, fmt};
 
-fn main() -> anyhow::Result<()> {
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            anstream::eprintln!("Error: {}", report(&err));
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// An error with its causes, like anyhow prints them. We skip the generic
+/// variant of the api errors because it only contains a fixed message, so we
+/// show the error inside it.
+fn report(err: &anyhow::Error) -> String {
+    let mut chain = err.chain().filter(|err| {
+        !err.source()
+            .is_some_and(|source| source.is::<GenericError>())
+    });
+    let mut report = chain.next().map(ToString::to_string).unwrap_or_default();
+
+    let causes: Vec<_> = chain.collect();
+    match causes.as_slice() {
+        [] => {}
+        [cause] => report.push_str(&format!("\n\nCaused by:\n    {cause}")),
+        causes => {
+            report.push_str("\n\nCaused by:");
+            for (n, cause) in causes.iter().enumerate() {
+                report.push_str(&format!("\n    {n}: {cause}"));
+            }
+        }
+    }
+
+    let backtrace = err.backtrace();
+    if backtrace.status() == std::backtrace::BacktraceStatus::Captured {
+        report.push_str(&format!("\n\nStack backtrace:\n{backtrace}"));
+    }
+    report
+}
+
+fn run() -> anyhow::Result<()> {
     let args = cli::Args::parse();
 
     // Used by integration tests to validate argument parsing without executing.

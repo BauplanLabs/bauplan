@@ -8,37 +8,20 @@ use serde::Serialize;
 use tonic::Request;
 
 use crate::{
-    PaginatedResponse,
     grpc::{
         generated as commanderpb,
         job::{Job, JobKind, JobState},
     },
-    python::{detach, exceptions::BauplanError, paginate::PyPaginator},
+    python::{
+        detach,
+        exceptions::BauplanError,
+        paginate::{PaginatedResponse, PyPaginator},
+    },
 };
 
 use super::Client;
 
-/// Accepts a job ID or Job object.
-#[derive(Debug, Default)]
-pub(crate) struct JobArg(pub String);
-
-impl<'a, 'py> FromPyObject<'a, 'py> for JobArg {
-    type Error = PyErr;
-
-    fn extract(ob: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
-        if let Ok(s) = ob.extract::<String>() {
-            Ok(JobArg(s))
-        } else if let Ok(job) = ob.extract::<PyRef<'_, Job>>() {
-            Ok(JobArg(job.id.clone()))
-        } else {
-            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str or Job",
-            ))
-        }
-    }
-}
-
-/// Accepts a single job ID, a list of job IDs, or list of Job objects.
+/// Accepts a single string or a list of strings.
 #[derive(Debug, Default)]
 pub(crate) struct JobListArg(pub Vec<String>);
 
@@ -50,11 +33,9 @@ impl<'a, 'py> FromPyObject<'a, 'py> for JobListArg {
             Ok(Self(vec![id]))
         } else if let Ok(ids) = ob.extract::<Vec<String>>() {
             Ok(Self(ids))
-        } else if let Ok(jobs) = ob.extract::<Vec<Job>>() {
-            Ok(Self(jobs.iter().map(|j| j.id.clone()).collect()))
         } else {
             Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-                "expected str, list[str], or list[Job]",
+                "expected str or list[str]",
             ))
         }
     }
@@ -410,13 +391,13 @@ impl Client {
         Ok(jobs.into_iter().next().unwrap().into())
     }
 
-    /// Get jobs with optional filtering.
+    /// List the jobs, with optional filters.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// for job in client.get_jobs():
+    /// for job in client.list_jobs():
     ///     print(f"{job.id}: {job.status} ({job.kind})")
     /// ```
     ///
@@ -445,7 +426,7 @@ impl Client {
         limit=None,
     ) -> "typing.Iterator[Job]")]
     #[allow(clippy::too_many_arguments)]
-    fn get_jobs(
+    fn list_jobs(
         &self,
         py: Python<'_>,
         filter_by_current_user: bool,
@@ -528,13 +509,13 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     job: Union[str, Job]: A job ID or a Job instance.
+    ///     job_id: A job ID.
     /// Returns:
     ///     A list of `bauplan.schema.JobLogEvent` objects representing the log events for the job.
-    #[pyo3(signature = (job) -> "list[JobLogEvent]")]
-    fn get_job_logs(&self, py: Python<'_>, job: JobArg) -> PyResult<Vec<JobLogEvent>> {
+    #[pyo3(signature = (job_id) -> "list[JobLogEvent]")]
+    fn get_job_logs(&self, py: Python<'_>, job_id: String) -> PyResult<Vec<JobLogEvent>> {
         let mut req = Request::new(commanderpb::GetLogsRequest {
-            job_id: job.0,
+            job_id,
             ..Default::default()
         });
         req.set_timeout(self.client_timeout);
@@ -572,20 +553,19 @@ impl Client {
     /// ```
     ///
     /// Parameters:
-    ///     job: Union[str, Job]: A job ID or a Job instance.
-    ///     include_logs: bool: Whether to include logs in the response.
-    ///     include_snapshot: bool: Whether to include the code snapshot in the response.
+    ///     job_id: A job ID.
+    ///     include_logs: Whether to include logs in the response.
+    ///     include_snapshot: Whether to include the code snapshot in the response.
     /// Returns:
     ///     A `bauplan.schema.JobContext` object containing the job details, and optionally logs and snapshot.
-    #[pyo3(signature = (job, *, include_logs=false, include_snapshot=false) -> "JobContext")]
+    #[pyo3(signature = (job_id, *, include_logs=false, include_snapshot=false) -> "JobContext")]
     fn get_job_context(
         &self,
         py: Python<'_>,
-        job: JobArg,
+        job_id: String,
         include_logs: bool,
         include_snapshot: bool,
     ) -> PyResult<JobContext> {
-        let job_id = job.0;
         let mut req = Request::new(commanderpb::GetJobContextRequest {
             job_ids: vec![job_id.clone()],
             include_logs,
@@ -623,27 +603,27 @@ impl Client {
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// contexts = client.get_job_contexts([my_job], include_logs=True)
+    /// contexts = client.get_job_contexts([my_job.id], include_logs=True)
     /// for ctx in contexts:
     ///     print(f"{ctx.id}: {ctx.project_name} on {ctx.ref}")
     /// ```
     ///
     /// Parameters:
-    ///     jobs: list[Union[str, Job]]: A list of job IDs or Job instances.
-    ///     include_logs: bool: Whether to include logs in the response.
-    ///     include_snapshot: bool: Whether to include the code snapshot in the response.
+    ///     job_ids: A job ID or a list of job IDs.
+    ///     include_logs: Whether to include logs in the response.
+    ///     include_snapshot: Whether to include the code snapshot in the response.
     /// Returns:
     ///     A list of `bauplan.schema.JobContext` objects containing the job details, and optionally logs and snapshot.
-    #[pyo3(signature = (jobs, *, include_logs=false, include_snapshot=false) -> "list[JobContext]")]
+    #[pyo3(signature = (job_ids, *, include_logs=false, include_snapshot=false) -> "list[JobContext]")]
     fn get_job_contexts(
         &self,
         py: Python<'_>,
-        jobs: JobListArg,
+        job_ids: JobListArg,
         include_logs: bool,
         include_snapshot: bool,
     ) -> PyResult<Vec<JobContext>> {
         let mut req = Request::new(commanderpb::GetJobContextRequest {
-            job_ids: jobs.0,
+            job_ids: job_ids.0,
             include_logs,
             include_snapshot,
             ..Default::default()

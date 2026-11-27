@@ -1,281 +1,9 @@
-from typing import Final, Self, final
+from typing import Any, Self, final
 
 from typing_extensions import disjoint_base
 
-from bauplan.schema import Ref
+from bauplan.schema import Entity
 from bauplan.state import TableCreatePlanApplyState, TableCreatePlanState
-
-@disjoint_base
-class ApiErrorKind:
-    """
-    A typed API error kind, deserialized from the `type` and `context` fields
-    of an error response.
-    """
-    @final
-    class BadRequest(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.BadRequest: ...
-
-    @final
-    class BranchExists(ApiErrorKind):
-        __match_args__: Final = ("branch_name", "catalog_ref")
-        def __new__(
-            cls, /, branch_name: str, catalog_ref: Ref
-        ) -> ApiErrorKind.BranchExists: ...
-        @property
-        def branch_name(self, /) -> str: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-
-    @final
-    class BranchHeadChanged(ApiErrorKind):
-        __match_args__: Final = ("input_ref", "head_ref")
-        def __new__(
-            cls, /, input_ref: Ref, head_ref: Ref
-        ) -> ApiErrorKind.BranchHeadChanged: ...
-        @property
-        def head_ref(self, /) -> Ref: ...
-        @property
-        def input_ref(self, /) -> Ref: ...
-
-    @final
-    class BranchNotFound(ApiErrorKind):
-        __match_args__: Final = ("branch_name",)
-        def __new__(cls, /, branch_name: str) -> ApiErrorKind.BranchNotFound: ...
-        @property
-        def branch_name(self, /) -> str: ...
-
-    @final
-    class CreateBranchForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.CreateBranchForbidden: ...
-
-    @final
-    class CreateNamespaceForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.CreateNamespaceForbidden: ...
-
-    @final
-    class CreateTagForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.CreateTagForbidden: ...
-
-    @final
-    class DeleteBranchForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.DeleteBranchForbidden: ...
-
-    @final
-    class DeleteNamespaceForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.DeleteNamespaceForbidden: ...
-
-    @final
-    class DeleteTableForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.DeleteTableForbidden: ...
-
-    @final
-    class DeleteTagForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.DeleteTagForbidden: ...
-
-    @final
-    class Forbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.Forbidden: ...
-
-    @final
-    class InvalidRef(ApiErrorKind):
-        __match_args__: Final = ("input_ref",)
-        def __new__(cls, /, input_ref: str) -> ApiErrorKind.InvalidRef: ...
-        @property
-        def input_ref(self, /) -> str: ...
-
-    @final
-    class MergeConflict(ApiErrorKind):
-        __match_args__: Final = ("source_ref", "destination_ref")
-        def __new__(
-            cls, /, source_ref: Ref, destination_ref: Ref
-        ) -> ApiErrorKind.MergeConflict: ...
-        @property
-        def destination_ref(self, /) -> Ref: ...
-        @property
-        def source_ref(self, /) -> Ref: ...
-
-    @final
-    class MergeForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.MergeForbidden: ...
-
-    @final
-    class NamespaceExists(ApiErrorKind):
-        __match_args__: Final = ("namespace_name", "catalog_ref")
-        def __new__(
-            cls, /, namespace_name: str, catalog_ref: Ref
-        ) -> ApiErrorKind.NamespaceExists: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-        @property
-        def namespace_name(self, /) -> str: ...
-
-    @final
-    class NamespaceIsNotEmpty(ApiErrorKind):
-        __match_args__: Final = ("namespace_name", "branch_name")
-        def __new__(
-            cls, /, namespace_name: str, branch_name: str
-        ) -> ApiErrorKind.NamespaceIsNotEmpty: ...
-        @property
-        def branch_name(self, /) -> str: ...
-        @property
-        def namespace_name(self, /) -> str: ...
-
-    @final
-    class NamespaceNotFound(ApiErrorKind):
-        __match_args__: Final = ("namespace_name", "input_ref", "catalog_ref")
-        def __new__(
-            cls, /, namespace_name: str, input_ref: str, catalog_ref: Ref
-        ) -> ApiErrorKind.NamespaceNotFound: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-        @property
-        def input_ref(self, /) -> str: ...
-        @property
-        def namespace_name(self, /) -> str: ...
-
-    @final
-    class NamespaceUnresolved(ApiErrorKind):
-        __match_args__: Final = ("table_name", "namespace_name")
-        def __new__(
-            cls, /, table_name: str, namespace_name: str
-        ) -> ApiErrorKind.NamespaceUnresolved: ...
-        @property
-        def namespace_name(self, /) -> str: ...
-        @property
-        def table_name(self, /) -> str: ...
-
-    @final
-    class NotABranchRef(ApiErrorKind):
-        __match_args__: Final = ("input_ref",)
-        def __new__(cls, /, input_ref: str) -> ApiErrorKind.NotABranchRef: ...
-        @property
-        def input_ref(self, /) -> str: ...
-
-    @final
-    class NotATagRef(ApiErrorKind):
-        __match_args__: Final = ("input_ref",)
-        def __new__(cls, /, input_ref: str) -> ApiErrorKind.NotATagRef: ...
-        @property
-        def input_ref(self, /) -> str: ...
-
-    @final
-    class NotAWriteBranchRef(ApiErrorKind):
-        __match_args__: Final = ("input_ref",)
-        def __new__(cls, /, input_ref: str) -> ApiErrorKind.NotAWriteBranchRef: ...
-        @property
-        def input_ref(self, /) -> str: ...
-
-    @final
-    class RefNotFound(ApiErrorKind):
-        __match_args__: Final = ("input_ref",)
-        def __new__(cls, /, input_ref: str) -> ApiErrorKind.RefNotFound: ...
-        @property
-        def input_ref(self, /) -> str: ...
-
-    @final
-    class RenameBranchForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.RenameBranchForbidden: ...
-
-    @final
-    class RenameTagForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.RenameTagForbidden: ...
-
-    @final
-    class RevertDestinationTableExists(ApiErrorKind):
-        __match_args__: Final = ("source_table_name", "destination_table_name")
-        def __new__(
-            cls, /, source_table_name: str, destination_table_name: str
-        ) -> ApiErrorKind.RevertDestinationTableExists: ...
-        @property
-        def destination_table_name(self, /) -> str: ...
-        @property
-        def source_table_name(self, /) -> str: ...
-
-    @final
-    class RevertIdenticalTable(ApiErrorKind):
-        __match_args__: Final = ("source_table_name", "destination_table_name")
-        def __new__(
-            cls, /, source_table_name: str, destination_table_name: str
-        ) -> ApiErrorKind.RevertIdenticalTable: ...
-        @property
-        def destination_table_name(self, /) -> str: ...
-        @property
-        def source_table_name(self, /) -> str: ...
-
-    @final
-    class RevertTableForbidden(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.RevertTableForbidden: ...
-
-    @final
-    class SameRef(ApiErrorKind):
-        __match_args__: Final = ("input_ref", "catalog_ref")
-        def __new__(
-            cls, /, input_ref: Ref, catalog_ref: Ref
-        ) -> ApiErrorKind.SameRef: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-        @property
-        def input_ref(self, /) -> Ref: ...
-
-    @final
-    class TableNotFound(ApiErrorKind):
-        __match_args__: Final = ("table_name", "input_ref", "catalog_ref")
-        def __new__(
-            cls, /, table_name: str, input_ref: str, catalog_ref: Ref
-        ) -> ApiErrorKind.TableNotFound: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-        @property
-        def input_ref(self, /) -> str: ...
-        @property
-        def table_name(self, /) -> str: ...
-
-    @final
-    class TableExists(ApiErrorKind):
-        __match_args__: Final = ("table_name", "catalog_ref")
-        def __new__(
-            cls, /, table_name: str, catalog_ref: Ref
-        ) -> ApiErrorKind.TableExists: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-        @property
-        def table_name(self, /) -> str: ...
-
-    @final
-    class TagExists(ApiErrorKind):
-        __match_args__: Final = ("tag_name", "catalog_ref")
-        def __new__(
-            cls, /, tag_name: str, catalog_ref: Ref
-        ) -> ApiErrorKind.TagExists: ...
-        @property
-        def catalog_ref(self, /) -> Ref: ...
-        @property
-        def tag_name(self, /) -> str: ...
-
-    @final
-    class TagNotFound(ApiErrorKind):
-        __match_args__: Final = ("tag_name",)
-        def __new__(cls, /, tag_name: str) -> ApiErrorKind.TagNotFound: ...
-        @property
-        def tag_name(self, /) -> str: ...
-
-    @final
-    class Unauthorized(ApiErrorKind):
-        __match_args__: Final = ()
-        def __new__(cls, /) -> ApiErrorKind.Unauthorized: ...
 
 @disjoint_base
 class BauplanError(Exception):
@@ -285,19 +13,38 @@ class BauplanError(Exception):
     def __new__(cls, /, *_args) -> Self: ...
 
 @disjoint_base
-class BauplanHTTPError(BauplanError):
+class BauplanStatusError(BauplanError):
     """
-    An HTTP error from the API.
+    An HTTP error, with the status of the response.
+
+    The errors with a type we know are subclasses of `BauplanAPIError`. We raise
+    this class for the others, like a 502 from a proxy or an error added after
+    this release.
     """
-    def __new__(
-        cls, /, code: int, type: str, message: str, kind: ApiErrorKind | None = None
-    ) -> Self: ...
-    @property
-    def code(self, /) -> int: ...
-    @property
-    def kind(self, /) -> ApiErrorKind | None: ...
+    def __new__(cls, /, status: int, message: str) -> Self: ...
     @property
     def message(self, /) -> str: ...
+    @property
+    def status(self, /) -> int: ...
+
+@disjoint_base
+class BauplanAPIError(BauplanStatusError):
+    """
+    An error from the API, with a type we know.
+
+    Each type of error has its own subclass. The fields of the error are in
+    `details`, and each one is also an attribute.
+    """
+    def __new__(
+        cls,
+        /,
+        status: int,
+        type: str,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ) -> Self: ...
+    @property
+    def details(self, /) -> dict[str, Any]: ...
     @property
     def type(self, /) -> str: ...
 
@@ -333,154 +80,115 @@ class TableCreatePlanStatusError(TableCreatePlanError):
     @property
     def state(self, /) -> TableCreatePlanState: ...
 
-# 400 Bad Request
-class BadRequestError(BauplanHTTPError):
-    """Raised on an HTTP 400 response from the API."""
+# API errors
+class BadRequestError(BauplanAPIError):
+    """Raised when the request is not valid."""
 
-class InvalidDataError(BadRequestError):
-    """Raised on an HTTP 400 response from the API."""
-
-class InvalidRefError(BadRequestError):
-    """Raised when the provided string is not a valid `bauplan.schema.Ref`."""
-
-class NotABranchRefError(InvalidRefError):
-    """Raised when the provided `bauplan.schema.Ref` is not of type BRANCH."""
-
-class NotATagRefError(InvalidRefError):
-    """Raised when the provided `bauplan.schema.Ref` is not of type TAG."""
-
-class NotAWriteBranchRefError(NotABranchRefError):
-    """Raised when a write operation is attempted against a bauplan.schema.Ref that is not of type BRANCH."""
-
-class SameRefError(InvalidRefError):
-    """Raised when the source and destination `bauplan.schema.Ref` resolve to the same commit hash, making the operation a no-op."""
-
-# 401 Unauthorized
-class UnauthorizedError(BauplanHTTPError):
-    """Raised on an HTTP 401 response: missing or invalid credentials."""
-
-# 403 Forbidden
-class ForbiddenError(BauplanHTTPError):
-    """Raised on an HTTP 403 response: the caller is not permitted to perform the action."""
-
-class CreateBranchForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to create a `bauplan.schema.Branch`."""
-
-class CreateNamespaceForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to create a `bauplan.schema.Namespace`."""
-
-class CreateTagForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to create a `bauplan.schema.Tag`."""
-
-class DeleteBranchForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to delete a `bauplan.schema.Branch`."""
-
-class DeleteNamespaceForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to delete a `bauplan.schema.Namespace`."""
-
-class DeleteTableForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to delete tables."""
-
-class DeleteTagForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to delete a `bauplan.schema.Tag`."""
-
-class MergeForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to merge a `bauplan.schema.Branch`."""
-
-class RenameBranchForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to rename a `bauplan.schema.Branch`."""
-
-class RenameTagForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to rename a `bauplan.schema.Tag`."""
-
-class RevertTableForbiddenError(ForbiddenError):
-    """Raised when the caller is not permitted to revert tables."""
-
-# 404 Not Found
-class NotFoundError(BauplanHTTPError):
-    """Raised on an HTTP 404 response from the API."""
-
-class ResourceNotFoundError(NotFoundError):
-    """Raised when a requested catalog resource does not exist."""
-
-class TableNotFoundError(ResourceNotFoundError):
-    """Raised when the referenced table does not exist on the given `bauplan.schema.Ref`."""
-
-class NamespaceNotFoundError(ResourceNotFoundError):
-    """Raised when the referenced `bauplan.schema.Namespace` does not exist on the given `bauplan.schema.Ref`."""
-
-class BranchNotFoundError(ResourceNotFoundError):
-    """Raised when the referenced `bauplan.schema.Branch` does not exist."""
-
-class RefNotFoundError(ResourceNotFoundError):
-    """Raised when the referenced `bauplan.schema.Ref` does not exist."""
-
-class TagNotFoundError(ResourceNotFoundError):
-    """Raised when the referenced `bauplan.schema.Tag` does not exist."""
-
-class ApiMethodError(ResourceNotFoundError):
-    """Raised on an HTTP 404 response from the API."""
-
-# 405 Method Not Allowed
-class MethodNotAllowedError(BauplanHTTPError):
-    """Raised on an HTTP 405 response from the API."""
-
-class ApiRouteError(MethodNotAllowedError):
-    """Raised on an HTTP 405 response from the API."""
-
-# 409 Conflict
-class ConflictError(BauplanHTTPError):
-    """Raised on an HTTP 409 response from the API."""
-
-class UpdateConflictError(ConflictError):
-    """Raised when an update conflicts with the current catalog state."""
-
-class BranchExistsError(UpdateConflictError):
-    """Raised when creating a `bauplan.schema.Branch` that already exists."""
-
-class TableExistsError(UpdateConflictError):
-    """Raised when creating a table that already exists on the target `bauplan.schema.Ref`."""
-
-class TagExistsError(UpdateConflictError):
-    """Raised when creating a `bauplan.schema.Tag` that already exists."""
-
-class NamespaceExistsError(UpdateConflictError):
-    """Raised when creating a `bauplan.schema.Namespace` that already exists on the target `bauplan.schema.Ref`."""
-
-class NamespaceUnresolvedError(ConflictError):
-    """Raised when a bauplan.schema.Namespace is specified both in the table name (e.g. ns.table) and through an explicit namespace parameter, resulting in an ambiguous reference."""
-
-class BranchHeadChangedError(UpdateConflictError):
+class BranchHeadChangedError(BauplanAPIError):
     """Raised when the `bauplan.schema.Branch` head hash has changed since it was last read."""
+    @property
+    def branch_name(self, /) -> str: ...
+    @property
+    def commit_hash(self, /) -> str: ...
 
-class MergeConflictError(UpdateConflictError):
+class BranchNameConflictError(BauplanAPIError):
+    """Raised when a `bauplan.schema.Branch` with the name already exists."""
+    @property
+    def name(self, /) -> str: ...
+
+class BranchNotFoundError(BauplanAPIError):
+    """Raised when the referenced `bauplan.schema.Branch` does not exist."""
+    @property
+    def branch_name(self, /) -> str: ...
+
+class CatalogNotFoundError(BauplanAPIError):
+    """Raised when the catalog does not exist."""
+    @property
+    def catalog_name(self, /) -> str: ...
+
+class ForbiddenError(BauplanAPIError):
+    """Raised when the caller is not permitted to perform the action."""
+
+class FromRefNotFoundError(BauplanAPIError):
+    """Raised when the ref to start from does not exist."""
+    @property
+    def from_ref(self, /) -> str: ...
+
+class FromTableNotFoundError(BauplanAPIError):
+    """Raised when the table to start from does not exist at its ref."""
+    @property
+    def from_ref(self, /) -> str: ...
+    @property
+    def from_table(self, /) -> str: ...
+
+class InternalError(BauplanAPIError):
+    """Raised when the API fails on its side."""
+
+class MainBranchError(BauplanAPIError):
+    """Raised when the operation is not allowed on the main branch."""
+
+class MergeConflictError(BauplanAPIError):
     """Raised when a merge cannot be completed due to conflicting changes."""
+    @property
+    def commit_hash(self, /) -> str: ...
+    @property
+    def conflicts(self, /) -> list[Entity]: ...
 
-class NamespaceIsNotEmptyError(UpdateConflictError):
-    """Raised when attempting to delete a `bauplan.schema.Namespace` that still contains tables."""
+class NameConflictError(BauplanAPIError):
+    """Raised when a namespace or a table with the name already exists."""
+    @property
+    def name(self, /) -> str: ...
 
-class RevertDestinationTableExistsError(UpdateConflictError):
-    """Raised when the destination of a revert operation already exists."""
+class NamespaceNotEmptyError(BauplanAPIError):
+    """Raised when attempting to delete a namespace that still contains tables."""
+    @property
+    def namespace_name(self, /) -> str: ...
 
-class RevertIdenticalTableError(UpdateConflictError):
-    """Raised when the source and destination of a revert point to the same table snapshot."""
+class NamespaceNotFoundError(BauplanAPIError):
+    """Raised when the referenced namespace does not exist at the given ref."""
+    @property
+    def namespace_name(self, /) -> str: ...
 
-# 429 Too Many Requests
-class TooManyRequestsError(BauplanHTTPError):
-    """Raised on an HTTP 429 response from the API."""
+class NotABranchError(BauplanAPIError):
+    """Raised when the provided ref is not a branch."""
+    @property
+    def ref_name(self, /) -> str: ...
 
-# 5xx Server Errors
-class InternalError(BauplanHTTPError):
-    """Raised on an HTTP 500 response from the API."""
+class RefNotFoundError(BauplanAPIError):
+    """Raised when the referenced ref does not exist."""
+    @property
+    def ref_name(self, /) -> str: ...
 
-class BadGatewayError(BauplanHTTPError):
-    """Raised on an HTTP 502 response from the API."""
+class ServiceUnavailableError(BauplanAPIError):
+    """Raised when the API is temporarily unavailable."""
 
-class ServiceUnavailableError(BauplanHTTPError):
-    """Raised on an HTTP 503 response from the API."""
+class TableNotFoundError(BauplanAPIError):
+    """Raised when the referenced table does not exist at the given ref."""
+    @property
+    def table_name(self, /) -> str: ...
 
-class GatewayTimeoutError(BauplanHTTPError):
-    """Raised on an HTTP 504 response from the API."""
+class TagChangedError(BauplanAPIError):
+    """Raised when a `bauplan.schema.Tag` changed during the request."""
+    @property
+    def tag_name(self, /) -> str: ...
+
+class TagNameConflictError(BauplanAPIError):
+    """Raised when a `bauplan.schema.Tag` with the name already exists."""
+    @property
+    def name(self, /) -> str: ...
+
+class TagNotFoundError(BauplanAPIError):
+    """Raised when the referenced `bauplan.schema.Tag` does not exist."""
+    @property
+    def tag_name(self, /) -> str: ...
+
+class UnauthorizedError(BauplanAPIError):
+    """Raised when the credentials are missing or not valid."""
+
+class UnsupportedTableKindError(BauplanAPIError):
+    """Raised when the kind of the table does not support the operation."""
+    @property
+    def from_table(self, /) -> str: ...
 
 # Non-HTTP errors
 class BauplanJobError(BauplanError):
@@ -488,9 +196,3 @@ class BauplanJobError(BauplanError):
 
 class BauplanQueryError(BauplanJobError):
     """Raised when a query job fails."""
-
-class NoResultsFoundError(BauplanError):
-    """Raised when a query returns no results."""
-
-class InvalidPlanError(BauplanError):
-    """Raised when a pipeline or table-create plan is invalid."""

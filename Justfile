@@ -28,6 +28,6 @@ lint:
     zizmor . --persona pedantic
 
 test:
-    cargo test --features _integration-tests -- --test-threads=4
+    cargo test -- --test-threads=4
     cargo test -p bauplan-api -p bauplan-api-macros
     uv run pytest -v

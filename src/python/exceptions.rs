@@ -1,144 +1,78 @@
 //! Python exception types.
 
+use bauplan_api::branch::MergeBranchError;
+use bauplan_api::gropius::{self, client::ClientError};
+use pyo3::exceptions::PyAttributeError;
 use pyo3::prelude::*;
+use pyo3::types::PyDict;
 
-use crate::{
-    api::{ApiError, ApiErrorKind},
-    python::ClientError,
-};
+use crate::python::diff::PyEntity;
 
 #[pymodule(submodule)]
 pub mod exceptions {
     use super::*;
 
-    #[pymodule_export]
-    use crate::api::ApiErrorKind;
-
     // Re-export exception types into the module.
+    #[pymodule_export]
+    use super::BauplanAPIError;
     #[pymodule_export]
     use super::BauplanError;
     #[pymodule_export]
-    use super::BauplanHTTPError;
+    use super::BauplanStatusError;
 
-    // 400 Bad Request
+    // API errors
     #[pymodule_export]
     use super::BadRequestError;
     #[pymodule_export]
-    use super::InvalidDataError;
+    use super::BranchHeadChangedError;
     #[pymodule_export]
-    use super::InvalidRefError;
-    #[pymodule_export]
-    use super::NotABranchRefError;
-    #[pymodule_export]
-    use super::NotATagRefError;
-    #[pymodule_export]
-    use super::NotAWriteBranchRefError;
-    #[pymodule_export]
-    use super::SameRefError;
-
-    // 401 Unauthorized
-    #[pymodule_export]
-    use super::UnauthorizedError;
-
-    // 403 Forbidden
-    #[pymodule_export]
-    use super::CreateBranchForbiddenError;
-    #[pymodule_export]
-    use super::CreateNamespaceForbiddenError;
-    #[pymodule_export]
-    use super::CreateTagForbiddenError;
-    #[pymodule_export]
-    use super::DeleteBranchForbiddenError;
-    #[pymodule_export]
-    use super::DeleteNamespaceForbiddenError;
-    #[pymodule_export]
-    use super::DeleteTableForbiddenError;
-    #[pymodule_export]
-    use super::DeleteTagForbiddenError;
-    #[pymodule_export]
-    use super::ForbiddenError;
-    #[pymodule_export]
-    use super::MergeForbiddenError;
-    #[pymodule_export]
-    use super::RenameBranchForbiddenError;
-    #[pymodule_export]
-    use super::RenameTagForbiddenError;
-    #[pymodule_export]
-    use super::RevertTableForbiddenError;
-
-    // 404 Not Found
-    #[pymodule_export]
-    use super::ApiMethodError;
+    use super::BranchNameConflictError;
     #[pymodule_export]
     use super::BranchNotFoundError;
     #[pymodule_export]
-    use super::NamespaceNotFoundError;
+    use super::CatalogNotFoundError;
     #[pymodule_export]
-    use super::NotFoundError;
+    use super::ForbiddenError;
     #[pymodule_export]
-    use super::RefNotFoundError;
+    use super::FromRefNotFoundError;
     #[pymodule_export]
-    use super::ResourceNotFoundError;
-    #[pymodule_export]
-    use super::TableNotFoundError;
-    #[pymodule_export]
-    use super::TagNotFoundError;
-
-    // 405 Method Not Allowed
-    #[pymodule_export]
-    use super::ApiRouteError;
-    #[pymodule_export]
-    use super::MethodNotAllowedError;
-
-    // 409 Conflict
-    #[pymodule_export]
-    use super::BranchExistsError;
-    #[pymodule_export]
-    use super::BranchHeadChangedError;
-    #[pymodule_export]
-    use super::ConflictError;
-    #[pymodule_export]
-    use super::MergeConflictError;
-    #[pymodule_export]
-    use super::NamespaceExistsError;
-    #[pymodule_export]
-    use super::NamespaceIsNotEmptyError;
-    #[pymodule_export]
-    use super::NamespaceUnresolvedError;
-    #[pymodule_export]
-    use super::RevertDestinationTableExistsError;
-    #[pymodule_export]
-    use super::RevertIdenticalTableError;
-    #[pymodule_export]
-    use super::TableExistsError;
-    #[pymodule_export]
-    use super::TagExistsError;
-    #[pymodule_export]
-    use super::UpdateConflictError;
-
-    // 429 Too Many Requests
-    #[pymodule_export]
-    use super::TooManyRequestsError;
-
-    // 5xx Server Errors
-    #[pymodule_export]
-    use super::BadGatewayError;
-    #[pymodule_export]
-    use super::GatewayTimeoutError;
+    use super::FromTableNotFoundError;
     #[pymodule_export]
     use super::InternalError;
     #[pymodule_export]
+    use super::MainBranchError;
+    #[pymodule_export]
+    use super::MergeConflictError;
+    #[pymodule_export]
+    use super::NameConflictError;
+    #[pymodule_export]
+    use super::NamespaceNotEmptyError;
+    #[pymodule_export]
+    use super::NamespaceNotFoundError;
+    #[pymodule_export]
+    use super::NotABranchError;
+    #[pymodule_export]
+    use super::RefNotFoundError;
+    #[pymodule_export]
     use super::ServiceUnavailableError;
+    #[pymodule_export]
+    use super::TableNotFoundError;
+    #[pymodule_export]
+    use super::TagChangedError;
+    #[pymodule_export]
+    use super::TagNameConflictError;
+    #[pymodule_export]
+    use super::TagNotFoundError;
+    #[pymodule_export]
+    use super::UnauthorizedError;
+    #[pymodule_export]
+    use super::UnsupportedTableKindError;
 
     // Non-HTTP errors
     #[pymodule_export]
     use super::BauplanJobError;
     #[pymodule_export]
     use super::BauplanQueryError;
-    #[pymodule_export]
-    use super::InvalidPlanError;
-    #[pymodule_export]
-    use super::NoResultsFoundError;
     #[pymodule_export]
     use super::TableCreatePlanApplyStatusError;
     #[pymodule_export]
@@ -176,466 +110,336 @@ impl BauplanError {
     }
 }
 
-/// An HTTP error from the API.
+/// An HTTP error, with the status of the response.
+///
+/// The errors with a type we know are subclasses of `BauplanAPIError`. We raise
+/// this class for the others, like a 502 from a proxy or an error added after
+/// this release.
 #[pyclass(extends=BauplanError, module="bauplan.exceptions", subclass)]
-#[derive(Clone)]
-pub(crate) struct BauplanHTTPError {
+pub(crate) struct BauplanStatusError {
     #[pyo3(get)]
-    code: u16,
-    #[pyo3(get)]
-    r#type: String,
+    status: u16,
     #[pyo3(get)]
     message: String,
-    #[pyo3(get)]
-    kind: Option<ApiErrorKind>,
 }
 
 #[pymethods]
-impl BauplanHTTPError {
+impl BauplanStatusError {
     #[new]
-    #[pyo3(signature = (code, r#type, message, kind=None))]
+    fn new(status: u16, message: String) -> PyClassInitializer<Self> {
+        PyClassInitializer::from(BauplanError).add_subclass(Self { status, message })
+    }
+
+    fn __str__(&self) -> String {
+        self.message.clone()
+    }
+}
+
+/// An error from the API, with a type we know.
+///
+/// Each type of error has its own subclass. The fields of the error are in
+/// `details`, and each one is also an attribute.
+#[pyclass(extends=BauplanStatusError, module="bauplan.exceptions", subclass)]
+pub(crate) struct BauplanAPIError {
+    #[pyo3(get)]
+    r#type: String,
+    #[pyo3(get)]
+    details: Py<PyDict>,
+}
+
+#[pymethods]
+impl BauplanAPIError {
+    #[new]
+    #[pyo3(signature = (status, r#type, message, details=None))]
     fn new(
-        code: u16,
+        py: Python<'_>,
+        status: u16,
         r#type: String,
         message: String,
-        kind: Option<ApiErrorKind>,
+        details: Option<Bound<'_, PyDict>>,
     ) -> PyClassInitializer<Self> {
-        PyClassInitializer::from(BauplanError).add_subclass(Self {
-            code,
-            r#type,
-            message,
-            kind,
-        })
+        let details = details.unwrap_or_else(|| PyDict::new(py)).unbind();
+        PyClassInitializer::from(BauplanError)
+            .add_subclass(BauplanStatusError { status, message })
+            .add_subclass(Self { r#type, details })
     }
-}
 
-impl From<ClientError> for PyErr {
-    fn from(err: ClientError) -> Self {
-        match err {
-            ClientError::Api(api_error) => api_error.into_py_err(),
-            _ => BauplanError::new_err(err.to_string()),
+    fn __getattr__(&self, py: Python<'_>, name: &str) -> PyResult<Py<PyAny>> {
+        match self.details.bind(py).get_item(name)? {
+            Some(value) => Ok(value.unbind()),
+            None => Err(PyAttributeError::new_err(name.to_owned())),
         }
     }
 }
 
-impl ApiError {
-    pub(crate) fn into_py_err(self) -> PyErr {
-        let (code, kind, message) = match self {
-            ApiError::ErrorResponse {
-                status,
-                kind,
-                message,
-            } => (
-                status.as_u16(),
-                Some(kind),
-                message.unwrap_or(status.to_string()),
-            ),
-            ApiError::Other {
-                status, message, ..
-            } => (status.as_u16(), None, message.unwrap_or(status.to_string())),
-            ApiError::InvalidResponse(status) => (
-                status.as_u16(),
-                None,
-                format!("Invalid response ({status})"),
-            ),
-        };
+type ApiErrorArgs = (u16, String, String, Option<Py<PyDict>>);
 
-        let type_str = kind.as_ref().map(|k| k.to_string()).unwrap_or_default();
-        let args = (code, type_str, message, kind);
-
-        // Pick the exception subclass based on kind, falling back to
-        // the status code for errors without a recognized type.
-        if let Some(ref kind) = args.3 {
-            match kind {
-                // 400
-                ApiErrorKind::BadRequest { .. } => PyErr::new::<BadRequestError, _>(args),
-                ApiErrorKind::InvalidRef { .. } => PyErr::new::<InvalidRefError, _>(args),
-                ApiErrorKind::NotABranchRef { .. } => PyErr::new::<NotABranchRefError, _>(args),
-                ApiErrorKind::NotATagRef { .. } => PyErr::new::<NotATagRefError, _>(args),
-                ApiErrorKind::NotAWriteBranchRef { .. } => {
-                    PyErr::new::<NotAWriteBranchRefError, _>(args)
-                }
-                ApiErrorKind::SameRef { .. } => PyErr::new::<SameRefError, _>(args),
-                // 401
-                ApiErrorKind::Unauthorized { .. } => PyErr::new::<UnauthorizedError, _>(args),
-                // 403
-                ApiErrorKind::Forbidden { .. } => PyErr::new::<ForbiddenError, _>(args),
-                ApiErrorKind::CreateBranchForbidden { .. } => {
-                    PyErr::new::<CreateBranchForbiddenError, _>(args)
-                }
-                ApiErrorKind::CreateNamespaceForbidden { .. } => {
-                    PyErr::new::<CreateNamespaceForbiddenError, _>(args)
-                }
-                ApiErrorKind::CreateTagForbidden { .. } => {
-                    PyErr::new::<CreateTagForbiddenError, _>(args)
-                }
-                ApiErrorKind::DeleteBranchForbidden { .. } => {
-                    PyErr::new::<DeleteBranchForbiddenError, _>(args)
-                }
-                ApiErrorKind::DeleteNamespaceForbidden { .. } => {
-                    PyErr::new::<DeleteNamespaceForbiddenError, _>(args)
-                }
-                ApiErrorKind::DeleteTableForbidden { .. } => {
-                    PyErr::new::<DeleteTableForbiddenError, _>(args)
-                }
-                ApiErrorKind::DeleteTagForbidden { .. } => {
-                    PyErr::new::<DeleteTagForbiddenError, _>(args)
-                }
-                ApiErrorKind::MergeForbidden { .. } => PyErr::new::<MergeForbiddenError, _>(args),
-                ApiErrorKind::RenameBranchForbidden { .. } => {
-                    PyErr::new::<RenameBranchForbiddenError, _>(args)
-                }
-                ApiErrorKind::RenameTagForbidden { .. } => {
-                    PyErr::new::<RenameTagForbiddenError, _>(args)
-                }
-                ApiErrorKind::RevertTableForbidden { .. } => {
-                    PyErr::new::<RevertTableForbiddenError, _>(args)
-                }
-                // 404
-                ApiErrorKind::BranchNotFound { .. } => PyErr::new::<BranchNotFoundError, _>(args),
-                ApiErrorKind::NamespaceNotFound { .. } => {
-                    PyErr::new::<NamespaceNotFoundError, _>(args)
-                }
-                ApiErrorKind::RefNotFound { .. } => PyErr::new::<RefNotFoundError, _>(args),
-                ApiErrorKind::TableNotFound { .. } => PyErr::new::<TableNotFoundError, _>(args),
-                ApiErrorKind::TagNotFound { .. } => PyErr::new::<TagNotFoundError, _>(args),
-                // 409
-                ApiErrorKind::BranchExists { .. } => PyErr::new::<BranchExistsError, _>(args),
-                ApiErrorKind::BranchHeadChanged { .. } => {
-                    PyErr::new::<BranchHeadChangedError, _>(args)
-                }
-                ApiErrorKind::MergeConflict { .. } => PyErr::new::<MergeConflictError, _>(args),
-                ApiErrorKind::NamespaceExists { .. } => PyErr::new::<NamespaceExistsError, _>(args),
-                ApiErrorKind::NamespaceIsNotEmpty { .. } => {
-                    PyErr::new::<NamespaceIsNotEmptyError, _>(args)
-                }
-                ApiErrorKind::NamespaceUnresolved { .. } => {
-                    PyErr::new::<NamespaceUnresolvedError, _>(args)
-                }
-                ApiErrorKind::RevertDestinationTableExists { .. } => {
-                    PyErr::new::<RevertDestinationTableExistsError, _>(args)
-                }
-                ApiErrorKind::RevertIdenticalTable { .. } => {
-                    PyErr::new::<RevertIdenticalTableError, _>(args)
-                }
-                ApiErrorKind::TableExists { .. } => PyErr::new::<TableExistsError, _>(args),
-                ApiErrorKind::TagExists { .. } => PyErr::new::<TagExistsError, _>(args),
+/// Turns an error of `bauplan-api` into its Python exception, picked by its
+/// `type`. The message and the fields come from the error envelope.
+pub(crate) fn api_error<E>(err: ClientError<E>) -> PyErr
+where
+    E: gropius::ApiError + std::error::Error,
+{
+    match &err {
+        ClientError::Api(api) => typed_error(envelope_args(api)),
+        // Not an error of this endpoint. If the body has a type we know, we raise
+        // its class, and anything else raises `BauplanStatusError`.
+        ClientError::Unexpected { status, body } => match serde_json::from_slice(body) {
+            Ok(serde_json::Value::Object(envelope)) => {
+                typed_error(fields_args(status.as_u16(), envelope, err.to_string()))
             }
-        } else {
-            match code {
-                400 => PyErr::new::<BadRequestError, _>(args),
-                401 => PyErr::new::<UnauthorizedError, _>(args),
-                403 => PyErr::new::<ForbiddenError, _>(args),
-                404 => PyErr::new::<NotFoundError, _>(args),
-                405 => PyErr::new::<MethodNotAllowedError, _>(args),
-                409 => PyErr::new::<ConflictError, _>(args),
-                429 => PyErr::new::<TooManyRequestsError, _>(args),
-                500 => PyErr::new::<InternalError, _>(args),
-                502 => PyErr::new::<BadGatewayError, _>(args),
-                503 => PyErr::new::<ServiceUnavailableError, _>(args),
-                504 => PyErr::new::<GatewayTimeoutError, _>(args),
-                _ => PyErr::new::<BauplanHTTPError, _>(args),
+            _ => PyErr::new::<BauplanStatusError, _>((status.as_u16(), err.to_string())),
+        },
+        _ => {
+            let mut message = err.to_string();
+            let sources = std::iter::successors(std::error::Error::source(&err), |e| e.source());
+            for source in sources {
+                message = format!("{message}: {source}");
             }
+            BauplanError::new_err(message)
         }
     }
 }
 
-// 400 Bad Request
+/// The exception of a failed merge. We take the conflicts from the error
+/// itself, so they are the same entities a diff returns.
+pub(crate) fn merge_error(err: ClientError<MergeBranchError>) -> PyErr {
+    let api = match err {
+        ClientError::Api(api) => api,
+        err => return api_error(err),
+    };
+
+    let (status, r#type, message, details) = envelope_args(&api);
+    let MergeBranchError::MergeConflict { conflicts, .. } = api else {
+        return typed_error((status, r#type, message, details));
+    };
+
+    let conflicts: Vec<PyEntity> = conflicts.into_iter().map(PyEntity::from).collect();
+    let details = Python::attach(|py| {
+        let details = details?.into_bound(py);
+        details.set_item("conflicts", conflicts).ok()?;
+        Some(details.unbind())
+    });
+    PyErr::new::<MergeConflictError, _>((status, r#type, message, details))
+}
+
+/// The arguments of the exception, from an error of the endpoint.
+fn envelope_args<E>(api: &E) -> ApiErrorArgs
+where
+    E: gropius::ApiError + std::error::Error,
+{
+    let status = api.status_code().as_u16();
+    let serde_json::Value::Object(envelope) = serde_json::to_value(api).unwrap_or_default() else {
+        return (status, String::new(), api.to_string(), None);
+    };
+    fields_args(status, envelope, api.to_string())
+}
+
+/// The arguments of the exception, from an envelope as JSON.
+fn fields_args(
+    status: u16,
+    mut envelope: serde_json::Map<String, serde_json::Value>,
+    fallback: String,
+) -> ApiErrorArgs {
+    let r#type = take_str(&mut envelope, "type").unwrap_or_default();
+    let message = take_str(&mut envelope, "message").unwrap_or(fallback);
+    let details = Python::attach(|py| details(py, envelope)).ok();
+    (status, r#type, message, details)
+}
+
+/// Picks the class of the error type. A type we do not know becomes
+/// `BauplanStatusError`.
+fn typed_error(args: ApiErrorArgs) -> PyErr {
+    match args.1.as_str() {
+        "BAD_REQUEST" => PyErr::new::<BadRequestError, _>(args),
+        "BRANCH_HEAD_CHANGED" => PyErr::new::<BranchHeadChangedError, _>(args),
+        "BRANCH_NAME_CONFLICT" => PyErr::new::<BranchNameConflictError, _>(args),
+        "BRANCH_NOT_FOUND" => PyErr::new::<BranchNotFoundError, _>(args),
+        "CATALOG_NOT_FOUND" => PyErr::new::<CatalogNotFoundError, _>(args),
+        "FORBIDDEN" => PyErr::new::<ForbiddenError, _>(args),
+        "FROM_REF_NOT_FOUND" => PyErr::new::<FromRefNotFoundError, _>(args),
+        "FROM_TABLE_NOT_FOUND" => PyErr::new::<FromTableNotFoundError, _>(args),
+        "INTERNAL" => PyErr::new::<InternalError, _>(args),
+        "MAIN_BRANCH" => PyErr::new::<MainBranchError, _>(args),
+        "MERGE_CONFLICT" => PyErr::new::<MergeConflictError, _>(args),
+        "NAME_CONFLICT" => PyErr::new::<NameConflictError, _>(args),
+        "NAMESPACE_NOT_EMPTY" => PyErr::new::<NamespaceNotEmptyError, _>(args),
+        "NAMESPACE_NOT_FOUND" => PyErr::new::<NamespaceNotFoundError, _>(args),
+        "NOT_A_BRANCH" => PyErr::new::<NotABranchError, _>(args),
+        "REF_NOT_FOUND" => PyErr::new::<RefNotFoundError, _>(args),
+        "SERVICE_UNAVAILABLE" => PyErr::new::<ServiceUnavailableError, _>(args),
+        "TABLE_NOT_FOUND" => PyErr::new::<TableNotFoundError, _>(args),
+        "TAG_CHANGED" => PyErr::new::<TagChangedError, _>(args),
+        "TAG_NAME_CONFLICT" => PyErr::new::<TagNameConflictError, _>(args),
+        "TAG_NOT_FOUND" => PyErr::new::<TagNotFoundError, _>(args),
+        "UNAUTHORIZED" => PyErr::new::<UnauthorizedError, _>(args),
+        "UNSUPPORTED_TABLE_KIND" => PyErr::new::<UnsupportedTableKindError, _>(args),
+        _ => PyErr::new::<BauplanStatusError, _>((args.0, args.2)),
+    }
+}
+
+/// Takes a text field out of an error envelope.
+fn take_str(
+    envelope: &mut serde_json::Map<String, serde_json::Value>,
+    key: &str,
+) -> Option<String> {
+    match envelope.remove(key)? {
+        serde_json::Value::String(text) => Some(text),
+        _ => None,
+    }
+}
+
+/// The fields of an error envelope as Python values.
+fn details(
+    py: Python<'_>,
+    fields: serde_json::Map<String, serde_json::Value>,
+) -> PyResult<Py<PyDict>> {
+    let json = py.import("json")?;
+    let details = PyDict::new(py);
+    for (key, value) in fields {
+        details.set_item(key, json.call_method1("loads", (value.to_string(),))?)?;
+    }
+    Ok(details.unbind())
+}
+
+// API errors
 pyo3::create_exception!(
     bauplan.exceptions,
     BadRequestError,
-    BauplanHTTPError,
-    "Raised on an HTTP 400 response from the API."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    InvalidDataError,
-    BadRequestError,
-    "Raised on an HTTP 400 response from the API."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    InvalidRefError,
-    BadRequestError,
-    "Raised when the provided string is not a valid `bauplan.schema.Ref`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NotABranchRefError,
-    InvalidRefError,
-    "Raised when the provided `bauplan.schema.Ref` is not of type BRANCH."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NotATagRefError,
-    InvalidRefError,
-    "Raised when the provided `bauplan.schema.Ref` is not of type TAG."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NotAWriteBranchRefError,
-    NotABranchRefError,
-    "Raised when a write operation is attempted against a bauplan.schema.Ref that is not of type BRANCH."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    SameRefError,
-    InvalidRefError,
-    "Raised when the source and destination `bauplan.schema.Ref` resolve to the same commit hash, making the operation a no-op."
-);
-
-// 401 Unauthorized
-pyo3::create_exception!(
-    bauplan.exceptions,
-    UnauthorizedError,
-    BauplanHTTPError,
-    "Raised on an HTTP 401 response: missing or invalid credentials."
-);
-
-// 403 Forbidden
-pyo3::create_exception!(
-    bauplan.exceptions,
-    ForbiddenError,
-    BauplanHTTPError,
-    "Raised on an HTTP 403 response: the caller is not permitted to perform the action."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    CreateBranchForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to create a `bauplan.schema.Branch`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    CreateNamespaceForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to create a `bauplan.schema.Namespace`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    CreateTagForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to create a `bauplan.schema.Tag`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    DeleteBranchForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to delete a `bauplan.schema.Branch`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    DeleteNamespaceForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to delete a `bauplan.schema.Namespace`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    DeleteTableForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to delete tables."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    DeleteTagForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to delete a `bauplan.schema.Tag`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    MergeForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to merge a `bauplan.schema.Branch`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    RenameBranchForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to rename a `bauplan.schema.Branch`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    RenameTagForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to rename a `bauplan.schema.Tag`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    RevertTableForbiddenError,
-    ForbiddenError,
-    "Raised when the caller is not permitted to revert tables."
-);
-
-// 404 Not Found
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NotFoundError,
-    BauplanHTTPError,
-    "Raised on an HTTP 404 response from the API."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    ResourceNotFoundError,
-    NotFoundError,
-    "Raised when a requested catalog resource does not exist."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    TableNotFoundError,
-    ResourceNotFoundError,
-    "Raised when the referenced table does not exist on the given `bauplan.schema.Ref`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NamespaceNotFoundError,
-    ResourceNotFoundError,
-    "Raised when the referenced `bauplan.schema.Namespace` does not exist on the given `bauplan.schema.Ref`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    BranchNotFoundError,
-    ResourceNotFoundError,
-    "Raised when the referenced `bauplan.schema.Branch` does not exist."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    RefNotFoundError,
-    ResourceNotFoundError,
-    "Raised when the referenced `bauplan.schema.Ref` does not exist."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    TagNotFoundError,
-    ResourceNotFoundError,
-    "Raised when the referenced `bauplan.schema.Tag` does not exist."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    ApiMethodError,
-    ResourceNotFoundError,
-    "Raised on an HTTP 404 response from the API."
-);
-
-// 405 Method Not Allowed
-pyo3::create_exception!(
-    bauplan.exceptions,
-    MethodNotAllowedError,
-    BauplanHTTPError,
-    "Raised on an HTTP 405 response from the API."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    ApiRouteError,
-    MethodNotAllowedError,
-    "Raised on an HTTP 405 response from the API."
-);
-
-// 409 Conflict
-pyo3::create_exception!(
-    bauplan.exceptions,
-    ConflictError,
-    BauplanHTTPError,
-    "Raised on an HTTP 409 response from the API."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    UpdateConflictError,
-    ConflictError,
-    "Raised when an update conflicts with the current catalog state."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    BranchExistsError,
-    UpdateConflictError,
-    "Raised when creating a `bauplan.schema.Branch` that already exists."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    TableExistsError,
-    UpdateConflictError,
-    "Raised when creating a table that already exists on the target `bauplan.schema.Ref`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    TagExistsError,
-    UpdateConflictError,
-    "Raised when creating a `bauplan.schema.Tag` that already exists."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NamespaceExistsError,
-    UpdateConflictError,
-    "Raised when creating a `bauplan.schema.Namespace` that already exists on the target `bauplan.schema.Ref`."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NamespaceUnresolvedError,
-    ConflictError,
-    "Raised when a bauplan.schema.Namespace is specified both in the table name (e.g. ns.table) and through an explicit namespace parameter, resulting in an ambiguous reference."
+    BauplanAPIError,
+    "Raised when the request is not valid."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     BranchHeadChangedError,
-    UpdateConflictError,
+    BauplanAPIError,
     "Raised when the `bauplan.schema.Branch` head hash has changed since it was last read."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
+    BranchNameConflictError,
+    BauplanAPIError,
+    "Raised when a `bauplan.schema.Branch` with the name already exists."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    BranchNotFoundError,
+    BauplanAPIError,
+    "Raised when the referenced `bauplan.schema.Branch` does not exist."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    CatalogNotFoundError,
+    BauplanAPIError,
+    "Raised when the catalog does not exist."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    ForbiddenError,
+    BauplanAPIError,
+    "Raised when the caller is not permitted to perform the action."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    FromRefNotFoundError,
+    BauplanAPIError,
+    "Raised when the ref to start from does not exist."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    FromTableNotFoundError,
+    BauplanAPIError,
+    "Raised when the table to start from does not exist at its ref."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    InternalError,
+    BauplanAPIError,
+    "Raised when the API fails on its side."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    MainBranchError,
+    BauplanAPIError,
+    "Raised when the operation is not allowed on the main branch."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
     MergeConflictError,
-    UpdateConflictError,
+    BauplanAPIError,
     "Raised when a merge cannot be completed due to conflicting changes."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
-    NamespaceIsNotEmptyError,
-    UpdateConflictError,
-    "Raised when attempting to delete a `bauplan.schema.Namespace` that still contains tables."
+    NameConflictError,
+    BauplanAPIError,
+    "Raised when a namespace or a table with the name already exists."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
-    RevertDestinationTableExistsError,
-    UpdateConflictError,
-    "Raised when the destination of a revert operation already exists."
+    NamespaceNotEmptyError,
+    BauplanAPIError,
+    "Raised when attempting to delete a namespace that still contains tables."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
-    RevertIdenticalTableError,
-    UpdateConflictError,
-    "Raised when the source and destination of a revert point to the same table snapshot."
-);
-
-// 429 Too Many Requests
-pyo3::create_exception!(
-    bauplan.exceptions,
-    TooManyRequestsError,
-    BauplanHTTPError,
-    "Raised on an HTTP 429 response from the API."
-);
-
-// 5xx Server Errors
-pyo3::create_exception!(
-    bauplan.exceptions,
-    InternalError,
-    BauplanHTTPError,
-    "Raised on an HTTP 500 response from the API."
+    NamespaceNotFoundError,
+    BauplanAPIError,
+    "Raised when the referenced namespace does not exist at the given ref."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
-    BadGatewayError,
-    BauplanHTTPError,
-    "Raised on an HTTP 502 response from the API."
+    NotABranchError,
+    BauplanAPIError,
+    "Raised when the provided ref is not a branch."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    RefNotFoundError,
+    BauplanAPIError,
+    "Raised when the referenced ref does not exist."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
     ServiceUnavailableError,
-    BauplanHTTPError,
-    "Raised on an HTTP 503 response from the API."
+    BauplanAPIError,
+    "Raised when the API is temporarily unavailable."
 );
 pyo3::create_exception!(
     bauplan.exceptions,
-    GatewayTimeoutError,
-    BauplanHTTPError,
-    "Raised on an HTTP 504 response from the API."
+    TableNotFoundError,
+    BauplanAPIError,
+    "Raised when the referenced table does not exist at the given ref."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TagChangedError,
+    BauplanAPIError,
+    "Raised when a `bauplan.schema.Tag` changed during the request."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TagNameConflictError,
+    BauplanAPIError,
+    "Raised when a `bauplan.schema.Tag` with the name already exists."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    TagNotFoundError,
+    BauplanAPIError,
+    "Raised when the referenced `bauplan.schema.Tag` does not exist."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    UnauthorizedError,
+    BauplanAPIError,
+    "Raised when the credentials are missing or not valid."
+);
+pyo3::create_exception!(
+    bauplan.exceptions,
+    UnsupportedTableKindError,
+    BauplanAPIError,
+    "Raised when the kind of the table does not support the operation."
 );
 
 // Non-HTTP errors
@@ -650,18 +454,6 @@ pyo3::create_exception!(
     BauplanQueryError,
     BauplanJobError,
     "Raised when a query job fails."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    NoResultsFoundError,
-    BauplanError,
-    "Raised when a query returns no results."
-);
-pyo3::create_exception!(
-    bauplan.exceptions,
-    InvalidPlanError,
-    BauplanError,
-    "Raised when a pipeline or table-create plan is invalid."
 );
 use crate::python::run::state::{TableCreatePlanApplyState, TableCreatePlanState};
 

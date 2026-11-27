@@ -14,7 +14,7 @@ class TestSubmoduleImports:
     @pytest.mark.parametrize(
         "mod,attr",
         [
-            ("bauplan.schema", "Ref"),
+            ("bauplan.schema", "Branch"),
             ("bauplan.exceptions", "BauplanError"),
             ("bauplan.state", "RunState"),
         ],
@@ -29,15 +29,19 @@ class TestInheritance:
         [
             (
                 "bauplan.exceptions",
-                "BauplanHTTPError",
+                "BauplanStatusError",
                 "bauplan.exceptions.BauplanError",
             ),
             (
                 "bauplan.exceptions",
-                "ForbiddenError",
-                "bauplan.exceptions.BauplanHTTPError",
+                "BauplanAPIError",
+                "bauplan.exceptions.BauplanStatusError",
             ),
-            ("bauplan.schema", "Branch", "bauplan.schema.Ref"),
+            (
+                "bauplan.exceptions",
+                "ForbiddenError",
+                "bauplan.exceptions.BauplanAPIError",
+            ),
         ],
     )
     def test_base_class(self, mod: str, cls: str, base: str):
@@ -55,7 +59,7 @@ class TestCanonicalPaths:
         "mod,cls",
         [
             ("bauplan", "Client"),
-            ("bauplan.schema", "Ref"),
+            ("bauplan.schema", "Branch"),
             ("bauplan.state", "RunState"),
         ],
     )
@@ -71,7 +75,7 @@ class TestRuntimeModule:
         "mod,cls",
         [
             ("bauplan", "Client"),
-            ("bauplan.schema", "Ref"),
+            ("bauplan.schema", "Branch"),
             ("bauplan.state", "RunState"),
         ],
     )

@@ -55,13 +55,13 @@ path = "src/gen_cli_docs.rs"
 [features]
 default = []
 python = ["dep:arrow-csv", "dep:parquet", "dep:polyglot-sql", "dep:pyo3", "dep:pyo3-arrow", "dep:pyo3-log", "dep:log", "pyo3/chrono", "pyo3/uuid"]
-_integration-tests = []
 _check-parse = []
 
 [dependencies]
 anstream = "0.6"
 anstyle = "1"
 anyhow.workspace = true
+bauplan-api = { path = "bauplan-api", features = ["client-ureq"] }
 bauplan-longbow = { path = "bauplan-longbow", default-features = false, features = ["client"] }
 arrow = { version = "59", default-features = false, features = ["chrono-tz", "ipc_compression", "json"] }
 arrow-csv = { version = "59", optional = true }
@@ -82,18 +82,14 @@ parquet = { version = "59", optional = true }
 polyglot-sql = { version = "0.9", optional = true, default-features = false, features = ["dialect-datafusion", "builder"] }
 prost = "0.14"
 prost-types = "0.14"
-percent-encoding = "2"
 pyo3 = { version = "0.30", optional = true, features = ["experimental-inspect", "multiple-pymethods"] }
 pyo3-arrow = { version = "0.20", optional = true }
 pyo3-log = { version = "0.13.5", optional = true }
 rand = "0.8"
-regex = "1"
 resolve-path = "0.1"
 rsa = { version = "0.9", features = ["pem", "sha2"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_path_to_error = "0.1"
-serde_qs = "0.15"
 serde_yaml = "0.9"
 tera = { version = "1", default-features = false }
 tabwriter = "1"
@@ -125,12 +121,10 @@ tonic-prost-build = "0.14"
 
 [dev-dependencies]
 assert_cmd = "2"
-assert_matches = "1"
 bstr = "1"
 escargot = "0.5"
-http-body-util = "0.1"
 predicates = "3"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+regex = "1"
 shlex = "1"
 similar = { version = "2", features = ["bytes"] }
 tempfile = "3"

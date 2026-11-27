@@ -1,16 +1,20 @@
 from datetime import datetime
-from typing import Final, final
-from uuid import UUID
+from typing import Final, Generic, TypeVar, final
 
+import pyarrow
 from typing_extensions import disjoint_base
 
 __all__ = [
-    "Actor",
     "Branch",
     "Commit",
+    "CreateTableKind",
     "DAGEdge",
     "DAGNode",
-    "DetachedRef",
+    "DiffChange",
+    "DiffEntry",
+    "Entity",
+    "IteratorAtCommit",
+    "IteratorBetweenCommits",
     "Job",
     "JobContext",
     "JobKind",
@@ -18,105 +22,164 @@ __all__ = [
     "JobLogLevel",
     "JobLogStream",
     "JobState",
+    "MergeStrategy",
     "Namespace",
+    "NamespaceIdentifier",
     "PartitionField",
-    "Ref",
-    "RefType",
+    "PartitionTransform",
     "Table",
-    "TableField",
+    "TableIdentifier",
     "TableKind",
     "Tag",
 ]
 
+_T = TypeVar("_T")
+
 @final
-class Actor:
+class Branch:
     """
-    An actor (author or committer) in a commit.
+    A data branch, used to isolate data changes before merging into main.
     """
     @property
-    def email(self, /) -> str | None:
+    def commit_hash(self, /) -> str:
         """
-        The actor's email address.
+        The hash of the commit the branch points to.
+        """
+    @property
+    def created_at(self, /) -> datetime:
+        """
+        When the branch was created.
         """
     @property
     def name(self, /) -> str:
         """
-        The actor's name.
+        The name of the branch.
         """
-
-@final
-class Branch(Ref):
-    """
-    A data branch, used to isolate data changes before merging into main.
-    """
+    @property
+    def updated_at(self, /) -> datetime:
+        """
+        When the branch last moved.
+        """
 
 @final
 class Commit:
     """
-    A commit in the catalog.
+    A commit in the catalog history.
     """
     @property
-    def author(self, /) -> Actor | None:
-        """The first author of the commit."""
-    @property
-    def authored_date(self, /) -> datetime:
+    def author_email(self, /) -> str | None:
         """
-        The date the commit was authored.
+        The author's email, if known.
         """
     @property
-    def authors(self, /) -> list[Actor]:
+    def author_name(self, /) -> str:
         """
-        The authors of the commit.
-        """
-    @property
-    def body(self, /) -> str | None:
-        """The body of the commit message. `None` if the message has no body."""
-    @property
-    def committed_date(self, /) -> datetime:
-        """
-        The date the commit was committed.
+        The author's display name.
         """
     @property
-    def committer(self, /) -> Actor:
+    def authored_at(self, /) -> datetime:
         """
-        The committer of the commit.
-        """
-    @property
-    def message(self, /) -> str | None:
-        """
-        The commit message.
+        When the commit was authored.
         """
     @property
-    def parent_hashes(self, /) -> list[str]:
+    def committed_at(self, /) -> datetime:
         """
-        The parent commit hashes.
+        When the commit was committed.
         """
     @property
-    def parent_merge_ref(self, /) -> Branch | None:
-        """For merge commits, the branch that was merged in (second parent). `None` for regular commits."""
-    @property
-    def parent_ref(self, /) -> Ref:
+    def committer_email(self, /) -> str | None:
         """
-        The parent ref.
+        The committer's email, if known.
+        """
+    @property
+    def committer_name(self, /) -> str:
+        """
+        The committer's display name.
+        """
+    @property
+    def hash(self, /) -> str:
+        """
+        The commit hash.
+        """
+    @property
+    def merge_parent_hash(self, /) -> str | None:
+        """
+        The hash of the commit merged in, only on merge commits.
+        """
+    @property
+    def message(self, /) -> str:
+        """
+        The full commit message.
+        """
+    @property
+    def parent_hash(self, /) -> str | None:
+        """
+        The parent commit hash, `None` only on the root commit.
         """
     @property
     def properties(self, /) -> dict[str, str]:
         """
-        Custom properties on the commit.
+        The properties of the commit.
         """
     @property
-    def ref(self, /) -> Ref:
+    def title(self, /) -> str:
         """
-        The ref (branch, tag, or detached) this commit is on.
+        The commit title, the first line of the message.
         """
-    @property
-    def signed_off_by(self, /) -> list[Actor]:
+
+@disjoint_base
+class CreateTableKind:
+    """
+    The kind of a new table. It is one of `CreateTableKind.IcebergManaged` or
+    `CreateTableKind.IcebergExternal`.
+    """
+    @final
+    class IcebergExternal(CreateTableKind):
         """
-        Actors who signed off on the commit.
+        A read-only iceberg table whose metadata and data files live outside
+        bauplan.
         """
-    @property
-    def subject(self, /) -> str | None:
-        """The subject line of the commit message."""
+
+        __match_args__: Final = ("metadata_location",)
+        def __new__(
+            cls, /, metadata_location: str
+        ) -> CreateTableKind.IcebergExternal: ...
+        @property
+        def metadata_location(self, /) -> str:
+            """
+            The location of the metadata file, in object storage and outside
+            the warehouse.
+            """
+
+    @final
+    class IcebergManaged(CreateTableKind):
+        """
+        An empty iceberg table that bauplan manages.
+        """
+
+        __match_args__: Final = ("schema", "partitions", "doc")
+        def __new__(
+            cls,
+            /,
+            schema: pyarrow.Schema,
+            partitions: list[PartitionField] = ...,
+            doc: str | None = None,
+        ) -> CreateTableKind.IcebergManaged: ...
+        @property
+        def doc(self, /) -> str | None:
+            """
+            The documentation of the table.
+            """
+        @property
+        def partitions(self, /) -> list[PartitionField]:
+            """
+            The partition fields.
+            """
+        @property
+        def schema(self, /) -> pyarrow.Schema:
+            """
+            The columns of the table, a `pyarrow.Schema`.
+            """
 
 @final
 class DAGEdge:
@@ -146,11 +209,157 @@ class DAGNode:
     def name(self, /) -> str:
         """The model name."""
 
+@disjoint_base
+class DiffChange:
+    """
+    How an entity changes from `from_ref` to `to_ref`. It is one of
+    `DiffChange.Added`, `DiffChange.Removed`, `DiffChange.Changed`,
+    `DiffChange.Renamed` or `DiffChange.Unknown`.
+    """
+    def __eq__(self, value: object, /) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
+    @final
+    class Added(DiffChange):
+        """
+        Only at `to_ref`.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> DiffChange.Added: ...
+
+    @final
+    class Changed(DiffChange):
+        """
+        At both refs, but it changed.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> DiffChange.Changed: ...
+
+    @final
+    class Removed(DiffChange):
+        """
+        Only at `from_ref`.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> DiffChange.Removed: ...
+
+    @final
+    class Renamed(DiffChange):
+        """
+        At `to_ref` with a new name.
+        """
+
+        __match_args__: Final = ("from_name",)
+        def __new__(cls, /, from_name: str) -> DiffChange.Renamed: ...
+        @property
+        def from_name(self, /) -> str:
+            """
+            The name at `from_ref`.
+            """
+
+    @final
+    class Unknown(DiffChange):
+        """
+        A kind of change this client does not know yet.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> DiffChange.Unknown: ...
+
 @final
-class DetachedRef(Ref):
+class DiffEntry:
     """
-    A ref not attached to a branch or tag, pointing directly to a commit hash.
+    A table or a namespace that differs between the two refs, and how.
     """
+    @property
+    def change(self, /) -> DiffChange:
+        """
+        How it changes from `from_ref` to `to_ref`.
+        """
+    @property
+    def entity(self, /) -> Entity:
+        """
+        The table or the namespace.
+        """
+
+@disjoint_base
+class Entity:
+    """
+    An entity of the catalog, like a table or a namespace.
+    """
+    def __eq__(self, value: object, /) -> bool: ...
+    def __ne__(self, value: object, /) -> bool: ...
+    @final
+    class Namespace(Entity):
+        """
+        A namespace.
+        """
+
+        __match_args__: Final = ("name",)
+        def __new__(cls, /, name: str) -> Entity.Namespace: ...
+        @property
+        def name(self, /) -> str:
+            """
+            The name of the namespace.
+            """
+
+    @final
+    class Table(Entity):
+        """
+        A table.
+        """
+
+        __match_args__: Final = ("name",)
+        def __new__(cls, /, name: str) -> Entity.Table: ...
+        @property
+        def name(self, /) -> str:
+            """
+            The full name of the table, `namespace.table`.
+            """
+
+    @final
+    class Unknown(Entity):
+        """
+        A kind of entity this client does not know yet.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> Entity.Unknown: ...
+
+@final
+class IteratorAtCommit(Generic[_T]):
+    """
+    An iterator that reads all its pages at one commit, so the list does not
+    change if the ref moves.
+    """
+    def __iter__(self, /) -> IteratorAtCommit[_T]: ...
+    def __next__(self, /) -> _T: ...
+    @property
+    def commit_hash(self, /) -> str:
+        """
+        The hash of the commit the list is read at.
+        """
+
+@final
+class IteratorBetweenCommits(Generic[_T]):
+    """
+    An iterator that reads all its pages at the same two commits, so the
+    diff does not change if the refs move.
+    """
+    def __iter__(self, /) -> IteratorBetweenCommits[_T]: ...
+    def __next__(self, /) -> _T: ...
+    @property
+    def from_commit_hash(self, /) -> str:
+        """
+        The hash of the commit at `from_ref`.
+        """
+    @property
+    def to_commit_hash(self, /) -> str:
+        """
+        The hash of the commit at `to_ref`.
+        """
 
 @final
 class Job:
@@ -320,60 +529,172 @@ class JobState:
     def __int__(self, /) -> int: ...
     def __ne__(self, value: object, /) -> bool: ...
 
+@disjoint_base
+class MergeStrategy:
+    """
+    How a merge applies the changes of the source. `MergeStrategy.Squash` makes
+    one commit with all the changes, and it takes an optional commit `message`.
+    """
+    @final
+    class Squash(MergeStrategy):
+        """
+        One commit with all the changes of the source.
+        """
+
+        __match_args__: Final = ("message",)
+        def __new__(cls, /, message: str | None = None) -> MergeStrategy.Squash: ...
+        @property
+        def message(self, /) -> str | None:
+            """
+            Optional, the commit message. Without it, the commit message is
+            `Merge {from_ref} into {into_branch}`.
+            """
+
 @final
 class Namespace:
     """
-    A container for organizing tables.
+    A namespace, with its commit. A namespace is a container for organizing
+    tables.
+    """
+    @property
+    def commit(self, /) -> Commit:
+        """
+        The commit the namespace was read or written at.
+        """
+    @property
+    def name(self, /) -> str:
+        """
+        The name of the namespace.
+        """
+
+@final
+class NamespaceIdentifier:
+    """
+    A namespace in a list. A namespace is a container for organizing tables.
     """
     @property
     def name(self, /) -> str:
         """
-        The namespace name.
+        The name of the namespace.
         """
 
 @final
 class PartitionField:
     """
-    A partition field on a table.
+    A partition field of a table.
     """
+    def __new__(cls, /, name: str, transform: PartitionTransform) -> PartitionField: ...
     @property
     def name(self, /) -> str:
         """
-        The partition field name.
+        The field the table is partitioned by.
         """
     @property
-    def transform(self, /) -> str:
+    def transform(self, /) -> PartitionTransform:
         """
-        The partition transform (e.g. "day", "month", "identity").
+        The partition transform.
         """
 
 @disjoint_base
-class Ref:
+class PartitionTransform:
     """
-    A reference to a branch, tag, or commit, as returned by API operations.
+    How a partition field derives its value from the column. It is one of
+    `PartitionTransform.Identity`, `PartitionTransform.Year`,
+    `PartitionTransform.Month`, `PartitionTransform.Day`,
+    `PartitionTransform.Hour`, `PartitionTransform.Bucket`,
+    `PartitionTransform.Truncate`, `PartitionTransform.Void` or
+    `PartitionTransform.Unknown`.
     """
-    @property
-    def hash(self, /) -> str:
-        """The hash of the branch or tag."""
-    @property
-    def name(self, /) -> str:
-        """The name of the branch or tag."""
-    @property
-    def type(self, /) -> RefType:
-        """The type of the ref, either 'BRANCH', 'TAG', or 'DETACHED'."""
+    @final
+    class Bucket(PartitionTransform):
+        """
+        A hash of the value, in `num_buckets` buckets.
+        """
 
-@final
-class RefType:
-    """
-    The type of a ref.
-    """
+        __match_args__: Final = ("num_buckets",)
+        def __new__(cls, /, num_buckets: int) -> PartitionTransform.Bucket: ...
+        @property
+        def num_buckets(self, /) -> int:
+            """
+            The number of buckets.
+            """
 
-    BRANCH: Final[RefType]
-    DETACHED: Final[RefType]
-    TAG: Final[RefType]
-    def __eq__(self, value: object, /) -> bool: ...
-    def __int__(self, /) -> int: ...
-    def __ne__(self, value: object, /) -> bool: ...
+    @final
+    class Day(PartitionTransform):
+        """
+        The day of a date or a timestamp.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Day: ...
+
+    @final
+    class Hour(PartitionTransform):
+        """
+        The hour of a timestamp.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Hour: ...
+
+    @final
+    class Identity(PartitionTransform):
+        """
+        The value of the column.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Identity: ...
+
+    @final
+    class Month(PartitionTransform):
+        """
+        The month of a date or a timestamp.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Month: ...
+
+    @final
+    class Truncate(PartitionTransform):
+        """
+        The value truncated to `width`.
+        """
+
+        __match_args__: Final = ("width",)
+        def __new__(cls, /, width: int) -> PartitionTransform.Truncate: ...
+        @property
+        def width(self, /) -> int:
+            """
+            The width to truncate to.
+            """
+
+    @final
+    class Unknown(PartitionTransform):
+        """
+        A transform this client does not know yet.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Unknown: ...
+
+    @final
+    class Void(PartitionTransform):
+        """
+        Always null, for a partition field that is no longer used.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Void: ...
+
+    @final
+    class Year(PartitionTransform):
+        """
+        The year of a date or a timestamp.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> PartitionTransform.Year: ...
 
 @final
 class Table:
@@ -381,145 +702,155 @@ class Table:
     A table in the lake.
     """
     @property
-    def fqn(self, /) -> str:
+    def commit(self, /) -> Commit:
         """
-        The fully qualified name: `namespace.name`.
-        """
-    @property
-    def comment(self, /) -> str | None:
-        """
-        The table documentation, carried as the `comment` table property.
-        """
-    def is_managed(self, /) -> bool:
-        """
-        Whether this is a managed table.
-        """
-    def is_external(self, /) -> bool:
-        """
-        Whether this is an external table.
+        The commit the table was read or written at.
         """
     @property
-    def current_schema_id(self, /) -> int | None:
+    def created_at(self, /) -> datetime | None:
         """
-        The current Iceberg schema ID.
-        """
-    @property
-    def current_snapshot_id(self, /) -> int | None:
-        """
-        The current Iceberg snapshot ID.
+        When the table was created, only for the tables that record it.
         """
     @property
-    def fields(self, /) -> list[TableField]:
+    def doc(self, /) -> str | None:
         """
-        The fields in the table schema.
-        """
-    @property
-    def id(self, /) -> UUID:
-        """
-        The table ID.
+        The documentation of the table.
         """
     @property
     def kind(self, /) -> TableKind:
         """
-        The table type.
-        """
-    @property
-    def last_updated_at(self, /) -> datetime:
-        """
-        The timestamp when the table was last updated.
-        """
-    @property
-    def metadata_location(self, /) -> str:
-        """
-        The URI of the Iceberg metadata file.
+        The kind of table and, when known, the location of its metadata file.
         """
     @property
     def name(self, /) -> str:
         """
-        The table name.
-        """
-    @property
-    def namespace(self, /) -> str:
-        """
-        The table namespace.
+        The full name of the table, `namespace.table`.
         """
     @property
     def partitions(self, /) -> list[PartitionField]:
         """
-        The partition fields on the table.
-        """
-    @property
-    def properties(self, /) -> dict[str, str]:
-        """
-        Table properties.
+        The partition fields.
         """
     @property
     def records(self, /) -> int | None:
         """
-        The number of records in the table.
+        The number of records, if the current snapshot has the totals.
+        """
+    @property
+    def schema(self, /) -> pyarrow.Schema:
+        """
+        The schema of the table, a `pyarrow.Schema`.
         """
     @property
     def size(self, /) -> int | None:
         """
-        The size of the table.
+        The size of the data files in bytes, if the current snapshot has the
+        totals.
         """
     @property
-    def snapshots(self, /) -> int | None:
+    def updated_at(self, /) -> datetime:
         """
-        The number of snapshots.
+        When the table was last written.
         """
 
 @final
-class TableField:
+class TableIdentifier:
     """
-    A field in a table schema.
+    A table in a list.
     """
     @property
-    def doc(self, /) -> str | None:
+    def name(self, /) -> str:
         """
-        The field documentation.
+        The full name of the table, `namespace.table`.
+        """
+
+@disjoint_base
+class TableKind:
+    """
+    The kind of a table. It is one of `TableKind.IcebergManaged`,
+    `TableKind.IcebergExternal`, `TableKind.IcebergExternalParquet` or
+    `TableKind.Unknown`. All of them except `TableKind.Unknown` have the
+    `metadata_location` of the table.
+    """
+    @final
+    class IcebergExternal(TableKind):
+        """
+        A read-only iceberg table whose metadata and data files live outside
+        bauplan.
+        """
+
+        __match_args__: Final = ("metadata_location",)
+        def __new__(cls, /, metadata_location: str) -> TableKind.IcebergExternal: ...
+        @property
+        def metadata_location(self, /) -> str:
+            """
+            The location of the current metadata file.
+            """
+
+    @final
+    class IcebergExternalParquet(TableKind):
+        """
+        A read-only iceberg table whose metadata bauplan writes, over parquet
+        files that live outside bauplan.
+        """
+
+        __match_args__: Final = ("metadata_location",)
+        def __new__(
+            cls, /, metadata_location: str
+        ) -> TableKind.IcebergExternalParquet: ...
+        @property
+        def metadata_location(self, /) -> str:
+            """
+            The location of the current metadata file.
+            """
+
+    @final
+    class IcebergManaged(TableKind):
+        """
+        An iceberg table whose files bauplan writes and owns.
+        """
+
+        __match_args__: Final = ("metadata_location",)
+        def __new__(cls, /, metadata_location: str) -> TableKind.IcebergManaged: ...
+        @property
+        def metadata_location(self, /) -> str:
+            """
+            The location of the current metadata file.
+            """
+
+    @final
+    class Unknown(TableKind):
+        """
+        A kind this client does not know yet.
+        """
+
+        __match_args__: Final = ()
+        def __new__(cls, /) -> TableKind.Unknown: ...
+
+@final
+class Tag:
+    """
+    A human-readable name that points to a specific commit in the data lake.
+    Tags are often used to mark important milestones in the data lake
+    history, such as releases or experiments.
+    """
+    @property
+    def commit_hash(self, /) -> str:
+        """
+        The hash of the commit the tag points to.
         """
     @property
-    def id(self, /) -> int:
+    def created_at(self, /) -> datetime:
         """
-        The field ID.
+        When the tag was created.
         """
     @property
     def name(self, /) -> str:
         """
-        The field name.
+        The name of the tag.
         """
     @property
-    def required(self, /) -> bool:
+    def updated_at(self, /) -> datetime:
         """
-        Whether the field is required.
+        When the tag was last updated.
         """
-    @property
-    def type(self, /) -> str:
-        """
-        The field type.
-        """
-
-@final
-class TableKind:
-    """
-    The kind of table entry.
-    """
-
-    ExternalTable: Final[TableKind]
-    """
-    An external table.
-    """
-    Table: Final[TableKind]
-    """
-    A managed table.
-    """
-    def __eq__(self, value: object, /) -> bool: ...
-    def __int__(self, /) -> int: ...
-    def __ne__(self, value: object, /) -> bool: ...
-
-@final
-class Tag(Ref):
-    """
-    A human-readable name that points to a specific commit in the data lake. Tags are often used to mark important milestones in the data lake history, such as releases or experiments.
-    """

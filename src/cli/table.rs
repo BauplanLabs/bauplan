@@ -5,22 +5,27 @@ use std::{
 };
 
 use crate::cli::{
-    Cli, KeyValue, Output, Priority, api_err_kind,
+    Cli, KeyValue, Output, Priority, api_error,
     color::*,
+    datetime::format_datetime,
     format_grpc_status,
+    paginate::paginate,
     run::{job_request_common, monitor_job_progress},
     spinner::{self, ProgressExt as _},
     with_rt,
 };
 use anyhow::{anyhow, bail};
-use bauplan::{
-    ApiErrorKind,
-    commit::CommitOptions,
-    grpc::{self, generated as commanderpb},
-    table::*,
+use bauplan::grpc::{self, generated as commanderpb};
+use bauplan_api::arrow_schema::{ArrowField, ArrowTimeUnit, ArrowType};
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::{self, AtCommit};
+use bauplan_api::table::{
+    CloneTableBody, CloneTableError, CreateTableBody, CreateTableError, CreateTableKind,
+    DeleteTableBody, DeleteTableError, GetTableError, ListTablesError, PartitionField,
+    PartitionTransform, RenameTableBody, RenameTableError, Table, TableFilters, TableKind,
 };
 use commanderpb::runner_event::Event as RunnerEvent;
-use indicatif::ProgressBar;
+use indicatif::{HumanBytes, ProgressBar};
 use tabwriter::TabWriter;
 use tracing::info;
 
@@ -40,6 +45,8 @@ pub(crate) enum TableCommand {
     /// Drop a table from the data catalog (does not free up storage)
     #[clap(alias = "delete", alias = "drop")]
     Rm(TableRmArgs),
+    /// Rename a table, or move it to another namespace
+    Rename(TableRenameArgs),
     /// Create a new table
     Create(TableCreateArgs),
     /// Create a plan for a new table
@@ -59,62 +66,74 @@ pub(crate) enum TableCommand {
   # List tables on active branch
   bauplan table ls
 
-  # List tables in specific namespace
-  bauplan table ls --namespace raw_data
-
   # List tables from specific branch
   bauplan table ls --ref main
+
+  # List the tables in raw whose name ends with events
+  bauplan table ls --namespace '^raw$' --name 'events$'
 
   # Limit results
   bauplan table ls --limit 20
 "))]
 pub(crate) struct TableLsArgs {
-    /// Filter tables by name (exact match or regex)
-    #[arg(long)]
-    pub name: Option<String>,
-    /// Filter by namespace (exact match or regex)
+    /// Filter by the full name of the table, `namespace.table`. Use `^` and `$`
+    /// to anchor it to the start or the end
     #[arg(short, long)]
+    pub name: Option<String>,
+    /// Filter by namespace, together with `--name`. Use `^` and `$` to anchor
+    /// it to the start or the end
+    #[arg(long)]
     pub namespace: Option<String>,
-    /// Ref or branch name to list tables from [default: active branch]
+    /// Branch, tag or full commit hash to list the tables from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
     /// Limit the number of tables to show
+    #[arg(long, value_parser = clap::value_parser!(u32).range(1..))]
+    pub limit: Option<u32>,
+    /// Continue from the `pagination_token` of a previous `-O json` output. Pass
+    /// its `commit_hash` as `--ref` to read the same state
     #[arg(long)]
-    pub limit: Option<usize>,
+    pub pagination_token: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Get table info from active branch
-  bauplan table get customers
+  bauplan table get raw_data.customers
 
   # Get table info from specific branch
-  bauplan table get customers --ref main
+  bauplan table get raw_data.customers --ref main
 
-  # Get table info with namespace prefix
-  bauplan table get raw_data.customers
+  # Show the dates in UTC
+  bauplan table get raw_data.customers --utc
 "))]
 pub(crate) struct TableGetArgs {
-    /// Table name
+    /// Table name, `namespace.table`
     pub table_name: String,
-    /// Ref or branch name to get the table from [default: active branch]
+    /// Branch, tag or full commit hash to get the table from [default: active branch]
     #[arg(short, long)]
     pub r#ref: Option<String>,
+    /// Use UTC for date display
+    #[arg(short = 'z', long)]
+    pub utc: bool,
 }
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Delete table from active branch
-  bauplan table rm old_table
+  bauplan table rm raw_data.old_table
 
   # Delete from specific branch
-  bauplan table rm old_table --branch main
+  bauplan table rm raw_data.old_table --branch main
 
   # Conditionally delete
-  bauplan table rm maybe_table --if-exists
+  bauplan table rm raw_data.maybe_table --if-exists
+
+  # Delete only if nobody moved the branch since you read its head
+  bauplan table rm raw_data.old_table --expected-head <commit_hash>
 "))]
 pub(crate) struct TableRmArgs {
-    /// Table name
+    /// Table name, `namespace.table`
     pub table_name: String,
     /// Branch to delete the table from [default: active branch]
     #[arg(short, long)]
@@ -122,9 +141,39 @@ pub(crate) struct TableRmArgs {
     /// Do not fail if the table does not exist
     #[arg(long)]
     pub if_exists: bool,
-    /// Optional commit body to append to the commit message
+    /// Optional commit message
     #[arg(long)]
-    pub commit_body: Option<String>,
+    pub commit_message: Option<String>,
+    /// Delete only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub expected_head: Option<String>,
+}
+
+#[derive(Debug, clap::Args)]
+#[command(after_long_help = CliExamples("
+  # Rename a table on the active branch
+  bauplan table rename raw_data.events raw_data.events_v1
+
+  # Move a table to another namespace, which must exist
+  bauplan table rename raw_data.events staging.events
+
+  # Rename only if nobody moved the branch since you read its head
+  bauplan table rename raw_data.events raw_data.events_v1 --expected-head <commit_hash>
+"))]
+pub(crate) struct TableRenameArgs {
+    /// Table name, `namespace.table`
+    pub table_name: String,
+    /// New table name, `namespace.table`
+    pub new_table_name: String,
+    /// Branch to rename the table on [default: active branch]
+    #[arg(short, long)]
+    pub branch: Option<String>,
+    /// Optional commit message
+    #[arg(long)]
+    pub commit_message: Option<String>,
+    /// Rename only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub expected_head: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -221,7 +270,10 @@ pub(crate) struct TableCreatePlanApplyArgs {
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
   # Create external table from Iceberg metadata
-  bauplan table create-external events --metadata-json-uri s3://bucket/metadata.json --namespace raw_data
+  bauplan table create-external raw_data.events --metadata-location s3://bucket/metadata.json
+
+  # Create it only if nobody moved the branch since you read its head
+  bauplan table create-external raw_data.events --metadata-location s3://bucket/metadata.json --expected-head <commit_hash>
 
   # Create external table from parquet files
   bauplan table create-external events --search-pattern \"s3://bucket/data/*.parquet\" --namespace raw_data
@@ -233,21 +285,29 @@ pub(crate) struct TableCreatePlanApplyArgs {
   bauplan table create-external events --search-pattern \"s3://bucket/data/*.parquet\" --overwrite
 "))]
 pub(crate) struct TableCreateExternalArgs {
-    /// Name of the external table to create
+    /// Name of the external table to create, the full `namespace.table` with --metadata-location
     pub table_name: String,
     /// Branch to create the table in [default: active branch]
     #[arg(short, long)]
     pub branch: Option<String>,
-    /// Namespace for the table
+    /// Namespace for the table (only for parquet mode)
     #[arg(short, long)]
     pub namespace: Option<String>,
-    /// URI to Iceberg metadata.json file (e.g., s3://bucket/metadata.json)
-    #[arg(long)]
-    pub metadata_json_uri: Option<String>,
+    /// Location of the Iceberg metadata file (e.g., s3://bucket/metadata.json)
+    #[arg(long, conflicts_with_all = ["namespace", "overwrite", "detach", "arg", "priority"])]
+    pub metadata_location: Option<String>,
+    /// Create only if the branch head is still at this full commit hash (only with --metadata-location)
+    #[arg(
+        long,
+        value_name = "HASH",
+        requires = "metadata_location",
+        conflicts_with = "search_pattern"
+    )]
+    pub expected_head: Option<String>,
     /// Search pattern for parquet files (e.g., s3://bucket/2025/*.parquet). Can be specified multiple times.
-    #[arg(long, action = clap::ArgAction::Append, conflicts_with = "metadata_json_uri")]
+    #[arg(long, action = clap::ArgAction::Append, conflicts_with = "metadata_location")]
     pub search_pattern: Vec<String>,
-    /// Overwrite the table if it already exists
+    /// Overwrite the table if it already exists (only for parquet mode)
     #[arg(long)]
     pub overwrite: bool,
     /// Run the job in the background (only for parquet mode)
@@ -309,36 +369,36 @@ pub(crate) struct TableImportArgs {
 
 #[derive(Debug, clap::Args)]
 #[command(after_long_help = CliExamples("
-  # Revert table from another branch
-  bauplan table revert customers --source-ref main
+  # Put back the table as it is on main
+  bauplan table revert raw_data.customers --from-ref main --replace
 
-  # Revert table to specific branch
-  bauplan table revert customers --source-ref main --into-branch username.dev_branch
+  # Into a specific branch
+  bauplan table revert raw_data.customers --from-ref main --into-branch username.dev_branch --replace
 
-  # Revert and replace if exists
-  bauplan table revert customers --source-ref v1.0 --replace
+  # Bring back a deleted table as it was at a tag
+  bauplan table revert raw_data.customers --from-ref v1.0
 
-  # Revert with commit message
-  bauplan table revert customers --source-ref main --commit-body \"Reverted due to data issue\"
+  # With a commit message
+  bauplan table revert raw_data.customers --from-ref main --replace --commit-message \"Revert after a data issue\"
 "))]
 pub(crate) struct TableRevertArgs {
-    /// Table name
+    /// Table name, `namespace.table`
     pub table_name: String,
-    /// The ref (branch or tag) to revert the table from
-    #[arg(short, long)]
-    pub source_ref: String,
+    /// Branch, tag or full commit hash to take the table from
+    #[arg(long)]
+    pub from_ref: String,
     /// Branch to revert the table into [default: active branch]
     #[arg(short, long)]
     pub into_branch: Option<String>,
-    /// Replace the destination table if it exists
+    /// Replace the table if it exists on the branch
     #[arg(long)]
     pub replace: bool,
-    /// Optional commit body to append to the commit message
+    /// Optional commit message
     #[arg(long)]
-    pub commit_body: Option<String>,
-    /// Commit properties as key=value pairs (can be used multiple times)
-    #[arg(long, action = clap::ArgAction::Append)]
-    pub commit_property: Vec<KeyValue>,
+    pub commit_message: Option<String>,
+    /// Revert only if the branch head is still at this full commit hash
+    #[arg(long, value_name = "HASH")]
+    pub expected_head: Option<String>,
 }
 
 pub(crate) fn handle(cli: &Cli, args: TableArgs) -> anyhow::Result<()> {
@@ -346,16 +406,14 @@ pub(crate) fn handle(cli: &Cli, args: TableArgs) -> anyhow::Result<()> {
         TableCommand::Ls(args) => handle_list_tables(cli, args),
         TableCommand::Get(args) => handle_get_table(cli, args),
         TableCommand::Rm(args) => handle_delete_table(cli, args),
+        TableCommand::Rename(args) => handle_rename_table(cli, args),
         TableCommand::Create(args) => with_rt(handle_create_table(cli, args)),
         TableCommand::CreatePlan(args) => with_rt(handle_create_plan(cli, args)),
         TableCommand::CreatePlanApply(args) => with_rt(handle_apply_plan(cli, args)),
-        TableCommand::CreateExternal(args) => {
-            if args.metadata_json_uri.is_some() {
-                handle_create_external_from_metadata(cli, args)
-            } else {
-                with_rt(handle_create_external(cli, args))
-            }
-        }
+        TableCommand::CreateExternal(mut args) => match args.metadata_location.take() {
+            Some(location) => handle_create_external_from_metadata(cli, args, location),
+            None => with_rt(handle_create_external(cli, args)),
+        },
         TableCommand::Import(args) => with_rt(handle_import_data(cli, args)),
         TableCommand::Revert(args) => handle_revert_table(cli, args),
     }
@@ -368,37 +426,45 @@ fn handle_list_tables(
         namespace,
         r#ref,
         limit,
+        pagination_token,
     }: TableLsArgs,
 ) -> anyhow::Result<()> {
-    let at_ref = r#ref
-        .as_deref()
-        .or(cli.profile.active_branch.as_deref())
-        .unwrap_or("main");
+    let at_ref = r#ref.as_deref().unwrap_or(cli.active_branch());
 
-    let req = GetTables {
-        at_ref,
-        filter_by_name: name.as_deref(),
-        filter_by_namespace: namespace.as_deref(),
-    };
-
-    let tables = bauplan::paginate(req, limit, |r| cli.roundtrip(r))?;
+    let client = cli.tables();
+    let mut commit_hash = None;
+    let filters = TableFilters { name, namespace };
+    let tables = paginate(limit, pagination_token, filters, |query| {
+        // We read the next pages at the commit of the first one, so the list
+        // stays the same if the ref moves meanwhile.
+        let at = commit_hash.as_deref().unwrap_or(at_ref);
+        let path = (cli.profile.catalog.clone(), at.to_owned());
+        match client.list_tables(path, query) {
+            Ok(page) => {
+                commit_hash.get_or_insert(page.commit_hash);
+                Ok(page.inner)
+            }
+            Err(ClientError::Api(err @ ListTablesError::RefNotFound { .. })) => {
+                Err(cli.with_active_branch_tip(at_ref, err))
+            }
+            Err(err) => Err(api_error(err)),
+        }
+    })?;
 
     match cli.global.output {
         Output::Json => {
-            let all_tables = tables.collect::<anyhow::Result<Vec<_>>>()?;
-            serde_json::to_writer(stdout(), &all_tables)?;
+            let page = AtCommit {
+                inner: tables.into_page()?,
+                commit_hash: commit_hash.unwrap_or_default(),
+            };
+            serde_json::to_writer(stdout(), &page)?;
             println!();
         }
         Output::Tty => {
             let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "NAMESPACE\tNAME\tKIND")?;
+            writeln!(&mut tw, "NAME")?;
             for table in tables {
-                let table = table?;
-                writeln!(
-                    &mut tw,
-                    "{}\t{}\t{}",
-                    table.namespace, table.name, table.kind
-                )?;
+                writeln!(&mut tw, "{}", table?.name)?;
             }
 
             tw.flush()?;
@@ -446,56 +512,210 @@ fn doc_summary(doc: Option<&str>) -> (bool, String) {
 
 fn handle_get_table(
     cli: &Cli,
-    TableGetArgs { table_name, r#ref }: TableGetArgs,
+    TableGetArgs {
+        table_name,
+        r#ref,
+        utc,
+    }: TableGetArgs,
 ) -> anyhow::Result<()> {
-    let req = GetTable {
-        name: &table_name,
-        at_ref: r#ref
-            .as_deref()
-            .or(cli.profile.active_branch.as_deref())
-            .unwrap_or("main"),
-        namespace: None,
+    let at_ref = r#ref.as_deref().unwrap_or(cli.active_branch());
+
+    let path = (cli.profile.catalog.clone(), at_ref.to_owned(), table_name);
+    let table = match cli.tables().get_table(path) {
+        Ok(table) => table,
+        Err(ClientError::Api(err @ GetTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(at_ref, err));
+        }
+        Err(err) => return Err(api_error(err)),
     };
 
-    let resp = cli.roundtrip(req)?;
     match cli.global.output {
         Output::Json => {
-            serde_json::to_writer(stdout(), &resp)?;
+            serde_json::to_writer(stdout(), &table)?;
             println!();
         }
-        Output::Tty => {
-            if let Some(comment) = resp.comment() {
-                println!("Table Documentation:\n{comment}\n");
-            }
-
-            let mut tw = TabWriter::new(stdout());
-            writeln!(&mut tw, "COLUMN\tTYPE\tNULLABLE\tDOC")?;
-
-            let mut is_truncated = false;
-            for TableField {
-                name,
-                r#type,
-                required,
-                doc,
-                ..
-            } in resp.fields
-            {
-                let (is_doc_truncated, field_doc) = doc_summary(doc.as_deref());
-                is_truncated = is_truncated || is_doc_truncated;
-                writeln!(&mut tw, "{name}\t{type}\t{}\t{field_doc}", !required)?;
-            }
-
-            tw.flush()?;
-
-            if is_truncated {
-                eprintln!(
-                    "\nNote: some documentation was truncated. Use `-O json` to see it in full."
-                );
-            }
-        }
+        Output::Tty => print_table(&table.inner, &table.commit.hash, utc)?,
     }
 
     Ok(())
+}
+
+fn print_table(table: &Table, commit_hash: &str, utc: bool) -> anyhow::Result<()> {
+    let kind = match &table.kind {
+        TableKind::IcebergManaged { .. } => "iceberg",
+        TableKind::IcebergExternal { .. } => "iceberg (external)",
+        TableKind::IcebergExternalParquet { .. } => "parquet (external)",
+        TableKind::Unknown(_) => "unknown",
+    };
+
+    let dash = format!("{DIM}-{DIM:#}");
+
+    let mut tw = TabWriter::new(anstream::stdout()).ansi(true);
+    writeln!(&mut tw, "{GREEN}Name{GREEN:#}\t{}", table.name)?;
+    writeln!(&mut tw, "{GREEN}Kind{GREEN:#}\t{kind}")?;
+    writeln!(&mut tw, "{GREEN}Commit{GREEN:#}\t{commit_hash}")?;
+    match table.records {
+        Some(records) => writeln!(&mut tw, "{GREEN}Records{GREEN:#}\t{records}")?,
+        None => writeln!(&mut tw, "{GREEN}Records{GREEN:#}\t{dash}")?,
+    }
+    match table.size {
+        Some(size) => writeln!(&mut tw, "{GREEN}Size{GREEN:#}\t{}", HumanBytes(size))?,
+        None => writeln!(&mut tw, "{GREEN}Size{GREEN:#}\t{dash}")?,
+    }
+    writeln!(
+        &mut tw,
+        "{GREEN}Created at{GREEN:#}\t{}",
+        format_datetime(table.created_at, utc, true)
+    )?;
+    writeln!(
+        &mut tw,
+        "{GREEN}Updated at{GREEN:#}\t{}",
+        format_datetime(Some(table.updated_at), utc, true)
+    )?;
+    tw.flush()?;
+
+    if let Some(doc) = clean_doc(table.doc.as_deref()) {
+        println!();
+        for line in doc.lines() {
+            println!("    {line}");
+        }
+    }
+
+    println!();
+    let mut tw = TabWriter::new(stdout());
+    writeln!(&mut tw, "COLUMN\tTYPE\tNULLABLE\tDOC")?;
+    let mut is_truncated = false;
+    for column in &table.columns {
+        let (is_doc_truncated, doc) = doc_summary(column.metadata.get("doc").map(String::as_str));
+        is_truncated |= is_doc_truncated;
+        writeln!(
+            &mut tw,
+            "{}\t{}\t{}\t{doc}",
+            column.name,
+            DisplayType(&column.data_type),
+            column.nullable
+        )?;
+    }
+
+    tw.flush()?;
+
+    if !table.partitions.is_empty() {
+        println!();
+        let mut tw = TabWriter::new(stdout());
+        writeln!(&mut tw, "PARTITION\tTRANSFORM")?;
+        for PartitionField { name, transform } in &table.partitions {
+            writeln!(&mut tw, "{name}\t{}", DisplayTransform(transform))?;
+        }
+
+        tw.flush()?;
+    }
+
+    if is_truncated {
+        eprintln!("\nNote: some documentation was truncated. Use `-O json` to see it in full.");
+    }
+
+    Ok(())
+}
+
+/// A partition transform, like `day` or `bucket[16]`.
+struct DisplayTransform<'a>(&'a PartitionTransform);
+
+impl std::fmt::Display for DisplayTransform<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            PartitionTransform::Identity => write!(f, "identity"),
+            PartitionTransform::Year => write!(f, "year"),
+            PartitionTransform::Month => write!(f, "month"),
+            PartitionTransform::Day => write!(f, "day"),
+            PartitionTransform::Hour => write!(f, "hour"),
+            PartitionTransform::Bucket(n) => write!(f, "bucket[{n}]"),
+            PartitionTransform::Truncate(n) => write!(f, "truncate[{n}]"),
+            PartitionTransform::Void => write!(f, "void"),
+            PartitionTransform::Unknown(serde_json::Value::String(name)) => write!(f, "{name}"),
+            PartitionTransform::Unknown(value) => write!(f, "{value}"),
+        }
+    }
+}
+
+/// An arrow type by its wire name, with the parameters and the nested
+/// fields spelled out, like `timestamp[us, tz=UTC]` or `list<item: int64>`.
+struct DisplayType<'a>(&'a ArrowType);
+
+impl std::fmt::Display for DisplayType<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            ArrowType::Timestamp { unit, tz } => {
+                write!(f, "timestamp[{}", DisplayTimeUnit(unit))?;
+                if let Some(tz) = tz {
+                    write!(f, ", tz={tz}")?;
+                }
+
+                write!(f, "]")
+            }
+            ArrowType::Time32(unit) => write!(f, "time32[{}]", DisplayTimeUnit(unit)),
+            ArrowType::Time64(unit) => write!(f, "time64[{}]", DisplayTimeUnit(unit)),
+            ArrowType::Duration(unit) => write!(f, "duration[{}]", DisplayTimeUnit(unit)),
+            ArrowType::FixedSizeBinary(size) => write!(f, "fixed_size_binary[{size}]"),
+            ArrowType::Decimal32 { precision, scale } => {
+                write!(f, "decimal32({precision}, {scale})")
+            }
+            ArrowType::Decimal64 { precision, scale } => {
+                write!(f, "decimal64({precision}, {scale})")
+            }
+            ArrowType::Decimal128 { precision, scale } => {
+                write!(f, "decimal128({precision}, {scale})")
+            }
+            ArrowType::Decimal256 { precision, scale } => {
+                write!(f, "decimal256({precision}, {scale})")
+            }
+            ArrowType::List(field) => write!(f, "list<{}>", DisplayField(field)),
+            ArrowType::LargeList(field) => write!(f, "large_list<{}>", DisplayField(field)),
+            ArrowType::ListView(field) => write!(f, "list_view<{}>", DisplayField(field)),
+            ArrowType::LargeListView(field) => {
+                write!(f, "large_list_view<{}>", DisplayField(field))
+            }
+            ArrowType::FixedSizeList { field, size } => {
+                write!(f, "fixed_size_list<{}>[{size}]", DisplayField(field))
+            }
+            ArrowType::Map { entries, .. } => write!(f, "map<{}>", DisplayType(&entries.data_type)),
+            ArrowType::Struct(fields) => {
+                write!(f, "struct<")?;
+                for (i, field) in fields.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", DisplayField(field))?;
+                }
+                write!(f, ">")
+            }
+            other => match serde_json::to_value(other) {
+                Ok(serde_json::Value::String(name)) => write!(f, "{name}"),
+                Ok(value) => write!(f, "{value}"),
+                Err(_) => Err(std::fmt::Error),
+            },
+        }
+    }
+}
+
+struct DisplayField<'a>(&'a ArrowField);
+
+impl std::fmt::Display for DisplayField<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.0.name, DisplayType(&self.0.data_type))
+    }
+}
+
+struct DisplayTimeUnit<'a>(&'a ArrowTimeUnit);
+
+impl std::fmt::Display for DisplayTimeUnit<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            ArrowTimeUnit::Second => write!(f, "s"),
+            ArrowTimeUnit::Millisecond => write!(f, "ms"),
+            ArrowTimeUnit::Microsecond => write!(f, "us"),
+            ArrowTimeUnit::Nanosecond => write!(f, "ns"),
+        }
+    }
 }
 
 fn handle_delete_table(
@@ -504,34 +724,89 @@ fn handle_delete_table(
         table_name,
         branch,
         if_exists,
-        commit_body,
+        commit_message,
+        expected_head,
     }: TableRmArgs,
 ) -> anyhow::Result<()> {
-    let branch = branch
-        .as_deref()
-        .or(cli.profile.active_branch.as_deref())
-        .unwrap_or("main");
+    let branch = branch.as_deref().unwrap_or(cli.active_branch());
 
-    let req = DeleteTable {
-        name: &table_name,
-        branch,
-        namespace: None,
-        commit: CommitOptions {
-            body: commit_body.as_deref(),
-            properties: Default::default(),
+    let path = (
+        cli.profile.catalog.clone(),
+        branch.to_owned(),
+        table_name.clone(),
+    );
+    let body = DeleteTableBody {
+        commit: model::CommitOptions {
+            message: commit_message,
+            expected_head,
         },
     };
 
-    if let Err(e) = cli.roundtrip(req) {
-        if if_exists && matches!(api_err_kind(&e), Some(ApiErrorKind::TableNotFound { .. })) {
-            eprintln!("Table {table_name:?} does not exist");
-            return Ok(());
-        } else {
-            return Err(e);
+    let commit = match cli.tables().delete_table(path, Some(body)) {
+        Ok(commit) => commit,
+        Err(ClientError::Api(err @ DeleteTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
         }
+        Err(ClientError::Api(err @ DeleteTableError::TableNotFound { .. })) if if_exists => {
+            eprintln!("{err}");
+            return Ok(());
+        }
+        Err(err) => return Err(api_error(err)),
+    };
+
+    eprintln!("Deleted table {table_name:?} (commit {})", commit.hash);
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &commit)?;
+        println!();
     }
 
-    eprintln!("Deleted table {table_name:?}");
+    Ok(())
+}
+
+fn handle_rename_table(
+    cli: &Cli,
+    TableRenameArgs {
+        table_name,
+        new_table_name,
+        branch,
+        commit_message,
+        expected_head,
+    }: TableRenameArgs,
+) -> anyhow::Result<()> {
+    let branch = branch.as_deref().unwrap_or(cli.active_branch());
+
+    let path = (
+        cli.profile.catalog.clone(),
+        branch.to_owned(),
+        table_name.clone(),
+    );
+    let body = RenameTableBody {
+        name: new_table_name,
+        commit: model::CommitOptions {
+            message: commit_message,
+            expected_head,
+        },
+    };
+
+    let renamed = match cli.tables().rename_table(path, body) {
+        Ok(renamed) => renamed,
+        Err(ClientError::Api(err @ RenameTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
+        }
+        Err(err) => return Err(api_error(err)),
+    };
+
+    eprintln!(
+        "Renamed table {table_name:?} to {:?} (commit {})",
+        renamed.inner.name, renamed.commit.hash
+    );
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &renamed)?;
+        println!();
+    }
+
     Ok(())
 }
 
@@ -850,18 +1125,13 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
         table_name,
         branch,
         namespace,
-        metadata_json_uri,
         search_pattern,
         overwrite,
         detach,
         arg,
         priority,
+        ..
     } = args;
-
-    if metadata_json_uri.is_some() {
-        // We should be in `handle_create_external_from_metadata`.
-        unreachable!()
-    }
 
     let timeout = cli.timeout.unwrap_or(time::Duration::from_secs(1800));
     let mut client = grpc::Client::new_lazy(&cli.profile, timeout)?;
@@ -925,88 +1195,96 @@ async fn handle_create_external(cli: &Cli, args: TableCreateExternalArgs) -> any
 
 fn handle_create_external_from_metadata(
     cli: &Cli,
-    args: TableCreateExternalArgs,
-) -> anyhow::Result<()> {
-    let TableCreateExternalArgs {
+    TableCreateExternalArgs {
         table_name,
         branch,
-        namespace,
-        metadata_json_uri,
-        overwrite,
+        expected_head,
         ..
-    } = args;
+    }: TableCreateExternalArgs,
+    metadata_location: String,
+) -> anyhow::Result<()> {
+    let branch = branch.as_deref().unwrap_or(cli.active_branch());
 
-    // If this were None, we'd be in the other function.
-    let metadata_uri = metadata_json_uri.unwrap();
-    if url::Url::parse(&metadata_uri).is_err() {
-        bail!("invalid metadata URI: {metadata_uri}");
-    }
-
-    // Namespace is required for metadata mode, because it forms part of the
-    // iceberg endpoint.
-    let namespace = namespace.ok_or_else(|| {
-        anyhow!(
-            "namespace must be specified when creating from metadata-json-uri. \
-             This restriction will be lifted in future versions"
-        )
-    })?;
-
-    let branch = branch
-        .or_else(|| cli.profile.active_branch.clone())
-        .unwrap_or_else(|| "main".to_string());
-
-    let req = bauplan::iceberg::RegisterTable {
-        name: &table_name,
-        metadata_location: &metadata_uri,
-        overwrite,
-        branch: &branch,
-        namespace: &namespace,
+    let path = (cli.profile.catalog.clone(), branch.to_owned());
+    let body = CreateTableBody {
+        name: table_name,
+        kind: CreateTableKind::IcebergExternal { metadata_location },
+        commit: model::CommitOptions {
+            message: None,
+            expected_head,
+        },
     };
 
-    let resp = cli.roundtrip(req)?;
+    let created = match cli.tables().create_table(path, body) {
+        Ok(created) => created,
+        Err(ClientError::Api(err @ CreateTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(branch, err));
+        }
+        Err(err) => return Err(api_error(err)),
+    };
 
-    let table_id = resp.metadata.table_uuid.unwrap_or_default();
-    info!(
-        table_id = %table_id.as_hyphenated(),
-        namespace = namespace,
-        "registered external table"
+    eprintln!(
+        "Created external table {:?} (commit {})",
+        created.inner.name, created.commit.hash
     );
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &created)?;
+        println!();
+    }
 
     Ok(())
 }
 
-fn handle_revert_table(cli: &Cli, args: TableRevertArgs) -> anyhow::Result<()> {
-    let TableRevertArgs {
+fn handle_revert_table(
+    cli: &Cli,
+    TableRevertArgs {
         table_name,
-        source_ref,
+        from_ref,
         into_branch,
         replace,
-        commit_body,
-        commit_property,
-    } = args;
+        commit_message,
+        expected_head,
+    }: TableRevertArgs,
+) -> anyhow::Result<()> {
+    let into_branch = into_branch.as_deref().unwrap_or(cli.active_branch());
 
-    let into_branch = into_branch
-        .as_deref()
-        .or(cli.profile.active_branch.as_deref())
-        .unwrap_or("main");
-
-    let req = RevertTable {
-        name: &table_name,
-        source_ref: &source_ref,
-        into_branch,
-        namespace: None,
+    let path = (cli.profile.catalog.clone(), into_branch.to_owned());
+    let body = CloneTableBody {
+        name: table_name.clone(),
+        from_ref: from_ref.clone(),
+        from_table: table_name,
         replace,
-        commit: CommitOptions {
-            body: commit_body.as_deref(),
-            properties: commit_property.iter().map(KeyValue::as_strs).collect(),
+        commit: model::CommitOptions {
+            message: commit_message,
+            expected_head,
         },
     };
 
-    let r#ref = cli.roundtrip(req)?;
-    tracing::debug!(?r#ref, "Created ref");
-    eprintln!("Reverted table {table_name:?} to {source_ref:?} in {into_branch:?}");
+    let reverted = match cli.tables().clone_table(path, body) {
+        Ok(reverted) => reverted,
+        Err(ClientError::Api(err @ CloneTableError::RefNotFound { .. })) => {
+            return Err(cli.with_active_branch_tip(into_branch, err));
+        }
+        Err(err) => return Err(api_error(err)),
+    };
+
+    eprintln!(
+        "Reverted table {:?} to {from_ref:?} in {into_branch:?} (commit {})",
+        reverted.inner.name, reverted.commit.hash
+    );
+
+    if cli.global.output == Output::Json {
+        serde_json::to_writer(stdout(), &reverted)?;
+        println!();
+    }
 
     Ok(())
+}
+
+/// Trims `doc_str` and downgrades to `None` if whitespace-only
+fn clean_doc(doc_str: Option<&str>) -> Option<&str> {
+    doc_str.map(str::trim).filter(|doc| !doc.is_empty())
 }
 
 #[cfg(test)]

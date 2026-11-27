@@ -1,370 +1,409 @@
 //! Branch operations.
 
-use pyo3::prelude::*;
-use std::collections::BTreeMap;
-
-use crate::{
-    ApiErrorKind, ApiRequest, CatalogRef,
-    branch::{
-        Branch, CreateBranch, DeleteBranch, GetBranch, GetBranches, MergeBranch,
-        MergeCommitOptions, RenameBranch,
-    },
-    python::{
-        paginate::PyPaginator,
-        refs::{BranchArg, RefArg},
-    },
+use bauplan_api::branch::{
+    self, BranchFilters, CreateBranchBody, CreateBranchError, DeleteBranchError, MergeBranchBody,
+    MergeStrategy, RenameBranchBody, ResolveBranchError,
 };
+use bauplan_api::gropius::client::ClientError;
+use bauplan_api::model::ExpectedHead;
+use bauplan_api::pagination::ListQuery;
+use chrono::{DateTime, Utc};
+use pyo3::prelude::*;
 
-use super::Client;
+use super::exceptions::{api_error, merge_error};
+use super::paginate::{PyPaginator, from_api_page};
+use super::{Client, commit::PyCommit};
+
+/// How a merge applies the changes of the source. `MergeStrategy.Squash` makes
+/// one commit with all the changes, and it takes an optional commit `message`.
+#[derive(Clone)]
+#[pyclass(
+    name = "MergeStrategy",
+    module = "bauplan.schema",
+    frozen,
+    from_py_object
+)]
+pub(crate) enum PyMergeStrategy {
+    /// One commit with all the changes of the source.
+    #[pyo3(constructor = (message = None))]
+    Squash {
+        /// Optional, the commit message. Without it, the commit message is
+        /// `Merge {from_ref} into {into_branch}`.
+        message: Option<String>,
+    },
+}
+
+#[pymethods]
+impl PyMergeStrategy {
+    fn __repr__(&self) -> String {
+        match self {
+            Self::Squash {
+                message: Some(message),
+            } => format!("MergeStrategy.Squash(message={message:?})"),
+            Self::Squash { message: None } => "MergeStrategy.Squash()".to_owned(),
+        }
+    }
+}
+
+impl From<PyMergeStrategy> for MergeStrategy {
+    fn from(strategy: PyMergeStrategy) -> Self {
+        match strategy {
+            PyMergeStrategy::Squash { message } => Self::Squash { message },
+        }
+    }
+}
+
+/// A data branch, used to isolate data changes before merging into main.
+#[pyclass(name = "Branch", module = "bauplan.schema", frozen, get_all)]
+pub(crate) struct PyBranch {
+    /// The name of the branch.
+    name: String,
+    /// The hash of the commit the branch points to.
+    commit_hash: String,
+    /// When the branch was created.
+    created_at: DateTime<Utc>,
+    /// When the branch last moved.
+    updated_at: DateTime<Utc>,
+}
+
+#[pymethods]
+impl PyBranch {
+    fn __repr__(&self) -> String {
+        format!(
+            "Branch(name={:?}, commit_hash={:?})",
+            self.name, self.commit_hash
+        )
+    }
+}
+
+impl From<branch::Branch> for PyBranch {
+    fn from(branch: branch::Branch) -> Self {
+        Self {
+            name: branch.name,
+            commit_hash: branch.commit_hash,
+            created_at: branch.created_at,
+            updated_at: branch.updated_at,
+        }
+    }
+}
 
 #[pymethods]
 impl Client {
-    /// Get the available data branches in the Bauplan catalog.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// List the branches in the Bauplan catalog.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// for branch in client.get_branches():
+    /// for branch in client.list_branches(name='^username.', owned=True):
     ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     name: Filter the branches by name.
-    ///     user: Filter the branches by user.
+    ///     name: Optional, filter the branches by name. Use `^` and `$` to anchor it to the start or the end.
+    ///     owned: If set to `True`, only the branches of the caller.
     ///     limit: Optional, max number of branches to get.
     /// Returns:
     ///     An iterator over `bauplan.schema.Branch` objects.
+    ///
+    /// Raises:
+    ///     `bauplan.exceptions.BadRequestError`: if the name filter is not valid.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
+    ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
         *,
         name: "str | None" = None,
-        user: "str | None" = None,
+        owned: "bool" = false,
         limit: "int | None" = None,
     ) -> "typing.Iterator[Branch]")]
-    fn get_branches(
+    fn list_branches(
         &self,
         py: Python<'_>,
         name: Option<String>,
-        user: Option<String>,
+        owned: bool,
         limit: Option<usize>,
     ) -> PyResult<PyPaginator> {
-        let profile = self.profile.clone();
-        let agent = self.agent.clone();
-        PyPaginator::new(py, limit, move |py, token, limit| {
-            let req = GetBranches {
-                filter_by_name: name.as_deref(),
-                filter_by_user: user.as_deref(),
-            }
-            .paginate(token, limit);
-
-            Ok(super::roundtrip(py, req, &profile, &agent)?)
+        let client = self.branches();
+        let catalog = self.profile.catalog.clone();
+        let filters = BranchFilters { owned, name };
+        PyPaginator::new(py, limit, move |py, pagination_token, limit| {
+            let query = ListQuery {
+                pagination_token: pagination_token.map(str::to_owned),
+                limit: limit.and_then(|limit| u32::try_from(limit).ok()),
+                filters: filters.clone(),
+            };
+            let page = py.detach(|| client.list_branches(catalog.clone(), query));
+            Ok(from_api_page::<_, PyBranch>(page.map_err(api_error)?))
         })
     }
 
-    /// Get the branch.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Get a branch.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// branch = client.get_branch('my_branch_name')
+    /// branch = client.get_branch('main')
     /// ```
     ///
     /// Parameters:
-    ///     branch: The name of the branch to retrieve.
+    ///     branch: The name of the branch.
     /// Returns:
     ///     A `bauplan.schema.Branch` object.
     ///
     /// Raises:
     ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
-    ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (branch: "str | Branch") -> "Branch")]
-    fn get_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<Branch> {
-        let req = GetBranch { name: &branch.0 };
-        let b = super::roundtrip(py, req, &self.profile, &self.agent)?;
-        Ok(b)
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    #[pyo3(signature = (branch: "str") -> "Branch")]
+    fn get_branch(&self, py: Python<'_>, branch: String) -> PyResult<PyBranch> {
+        let client = self.branches();
+        let path = (self.profile.catalog.clone(), branch);
+        let branch = py.detach(|| client.resolve_branch(path));
+        Ok(branch.map_err(api_error)?.into())
     }
 
     /// Check if a branch exists.
     ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
-    ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// if client.has_branch('my_branch_name'):
+    /// if client.has_branch('main'):
     ///     ...
     /// ```
     ///
     /// Parameters:
-    ///     branch: The name of the branch to check.
+    ///     branch: The name of the branch.
     /// Returns:
     ///     A boolean for if the branch exists.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.ForbiddenError`: if the user does not have access to the branch.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (branch: "str | Branch") -> "bool")]
-    fn has_branch(&self, py: Python<'_>, branch: BranchArg) -> PyResult<bool> {
-        let req = GetBranch { name: &branch.0 };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    #[pyo3(signature = (branch: "str") -> "bool")]
+    fn has_branch(&self, py: Python<'_>, branch: String) -> PyResult<bool> {
+        let client = self.branches();
+        let path = (self.profile.catalog.clone(), branch);
+        match py.detach(|| client.resolve_branch(path)) {
             Ok(_) => Ok(true),
-            Err(e)
-                if matches!(
-                    e.kind(),
-                    Some(ApiErrorKind::BranchNotFound { .. })
-                        | Some(ApiErrorKind::NotABranchRef { .. })
-                ) =>
-            {
-                Ok(false)
-            }
-            Err(e) => Err(e.into()),
+            Err(ClientError::Api(ResolveBranchError::BranchNotFound { .. })) => Ok(false),
+            Err(err) => Err(api_error(err)),
         }
     }
 
-    /// Create a new branch at a given ref.
-    /// The branch name should follow the convention of `username.branch_name`,
-    /// otherwise non-admin users won't be able to complete the operation.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Create a branch at a ref. The name of the branch should start with
+    /// the username, `username.branch_name`, otherwise non-admin users can't
+    /// create it.
     ///
     /// ```python
     /// import bauplan
-    ///
     /// client = bauplan.Client()
-    /// username = client.info().user.username
     ///
-    /// branch = client.create_branch(
-    ///     branch = username+'.feature_branch',
-    ///     from_ref = 'branch_name@abcd1234',
-    ///     if_not_exists = True,
-    /// )
+    /// branch = client.create_branch('username.feature', 'main', if_not_exists=True)
     /// ```
     ///
     /// Parameters:
     ///     branch: The name of the new branch.
-    ///     from_ref: The name of the base branch; either a branch like "main" or ref like "main@[sha]".
-    ///     if_not_exists: If set to `True`, the branch will not be created if it already exists.
+    ///     from_ref: The ref to start from, a branch, a tag or a commit hash.
+    ///     if_not_exists: If set to `True`, a branch with the same name is not an error.
     /// Returns:
-    ///     The created `bauplan.schema.Branch` object.
+    ///     The created `bauplan.schema.Branch`, or `None` when a branch with the same name exists and `if_not_exists` is set.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.CreateBranchForbiddenError`: if the user does not have access to create the branch.
-    ///     `bauplan.exceptions.BranchExistsError`: if the branch already exists.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.BranchNameConflictError`: if a branch with the same name exists.
+    ///     `bauplan.exceptions.TagNameConflictError`: if a tag with the same name exists.
+    ///     `bauplan.exceptions.FromRefNotFoundError`: if the ref to start from does not exist.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't create the branch.
+    ///     `bauplan.exceptions.BadRequestError`: if the name is not valid.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
-        branch: "str | Branch",
-        from_ref: "str | Ref",
+        branch: "str",
+        from_ref: "str",
         *,
         if_not_exists: "bool" = false,
-    ) -> "Branch")]
+    ) -> "Branch | None")]
     fn create_branch(
         &self,
         py: Python<'_>,
-        branch: BranchArg,
-        from_ref: RefArg,
+        branch: String,
+        from_ref: String,
         if_not_exists: bool,
-    ) -> PyResult<Branch> {
-        let req = CreateBranch {
-            name: &branch.0,
-            from_ref: &from_ref.0,
+    ) -> PyResult<Option<PyBranch>> {
+        let client = self.branches();
+        let body = CreateBranchBody {
+            name: branch,
+            from_ref,
+            ttl_seconds: None,
         };
-
-        match super::roundtrip(py, req, &self.profile, &self.agent) {
-            Ok(b) => Ok(b),
-            Err(e) => {
-                if let Some(ApiErrorKind::BranchExists {
-                    catalog_ref: CatalogRef::Branch { name, hash },
-                    ..
-                }) = e.kind()
-                    && if_not_exists
-                {
-                    Ok(Branch {
-                        name: name.clone(),
-                        hash: hash.clone(),
-                    })
-                } else {
-                    Err(e.into())
-                }
+        let catalog = self.profile.catalog.clone();
+        match py.detach(|| client.create_branch(catalog, body)) {
+            Ok(branch) => Ok(Some(branch.into())),
+            Err(ClientError::Api(CreateBranchError::BranchNameConflict { .. }))
+                if if_not_exists =>
+            {
+                Ok(None)
             }
+            Err(err) => Err(api_error(err)),
         }
     }
 
-    /// Rename an existing branch.
-    /// The branch name should follow the convention of "username.branch_name",
-    /// otherwise non-admin users won't be able to complete the operation.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Rename a branch. The new name should start with the username,
+    /// `username.branch_name`, otherwise non-admin users can't rename it.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.rename_branch(
-    ///     branch='username.old_name',
-    ///     new_branch='username.new_name',
-    /// )
+    /// branch = client.rename_branch('username.old_name', 'username.new_name')
     /// ```
     ///
     /// Parameters:
-    ///     branch: The name of the branch to rename.
-    ///     new_branch: The name of the new branch.
+    ///     branch: The name of the branch.
+    ///     new_branch: The new name of the branch.
     /// Returns:
-    ///     The renamed `bauplan.schema.Branch` object.
+    ///     The renamed `bauplan.schema.Branch`.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.RenameBranchForbiddenError`: if the user does not have access to rename the branch.
     ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.BranchExistsError`: if the new branch name already exists.
-    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.BranchNameConflictError`: if a branch with the new name exists.
+    ///     `bauplan.exceptions.TagNameConflictError`: if a tag with the new name exists.
+    ///     `bauplan.exceptions.MainBranchError`: if the branch is main.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch moves during the rename.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't rename the branch.
+    ///     `bauplan.exceptions.BadRequestError`: if the new name is not valid.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
-    #[pyo3(signature = (
-        branch: "str | Branch",
-        new_branch: "str | Branch",
-    ) -> "Branch")]
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
+    #[pyo3(signature = (branch: "str", new_branch: "str") -> "Branch")]
     fn rename_branch(
         &self,
         py: Python<'_>,
-        branch: BranchArg,
-        new_branch: BranchArg,
-    ) -> PyResult<Branch> {
-        let req = RenameBranch {
-            name: &branch.0,
-            new_name: &new_branch.0,
-        };
-
-        let b = super::roundtrip(py, req, &self.profile, &self.agent)?;
-        Ok(b)
+        branch: String,
+        new_branch: String,
+    ) -> PyResult<PyBranch> {
+        let client = self.branches();
+        let body = RenameBranchBody { name: new_branch };
+        let path = (self.profile.catalog.clone(), branch);
+        let branch = py.detach(|| client.rename_branch(path, body));
+        Ok(branch.map_err(api_error)?.into())
     }
 
-    /// Merge one branch into another.
-    ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
+    /// Merge a ref into a branch.
     ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// assert client.merge_branch(
-    ///     source_ref='my_ref_or_branch_name',
-    ///     into_branch='main',
+    /// commit = client.merge_branch('username.feature', 'main')
+    /// ```
+    ///
+    /// To set the message of the squash commit:
+    ///
+    /// ```python
+    /// import bauplan
+    /// client = bauplan.Client()
+    ///
+    /// commit = client.merge_branch(
+    ///     'username.feature',
+    ///     'main',
+    ///     strategy=bauplan.MergeStrategy.Squash(message='Merge the feature'),
     /// )
     /// ```
     ///
     /// Parameters:
-    ///     source_ref: The name of the merge source; either a branch like "main" or ref like "main@[sha]".
-    ///     into_branch: The name of the merge target.
-    ///     commit_message: Optional, the commit message.
-    ///     commit_body: Optional, the commit body.
-    ///     commit_properties: Optional, a list of properties to attach to the merge.
+    ///     from_ref: The ref to merge, a branch, a tag or a commit hash.
+    ///     into_branch: The branch to merge into.
+    ///     strategy: Optional, how to merge, a `bauplan.schema.MergeStrategy`. It is `MergeStrategy.Squash()` by default.
+    ///     expected_head: Optional, merge only if the branch points to this commit hash.
     /// Returns:
-    ///     The `bauplan.schema.Branch` where the merge was made.
+    ///     The `bauplan.schema.Commit` of the merge, or `None` when there is nothing to merge.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.MergeForbiddenError`: if the user does not have access to merge the branch.
-    ///     `bauplan.exceptions.BranchNotFoundError`: if the destination branch does not exist.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.NotAWriteBranchRefError`: if the destination branch is not a writable ref.
-    ///     `bauplan.exceptions.MergeConflictError`: if the merge operation results in a conflict.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the source ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
+    ///     `bauplan.exceptions.FromRefNotFoundError`: if the ref to merge does not exist.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `expected_head`.
+    ///     `bauplan.exceptions.MergeConflictError`: if the merge has conflicts.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't merge into the branch.
+    ///     `bauplan.exceptions.BadRequestError`: if `from_ref` is not a valid ref.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
-        source_ref: "str | Ref",
-        into_branch: "str | Branch",
+        from_ref: "str",
+        into_branch: "str",
         *,
-        commit_message: "str | None" = None,
-        commit_body: "str | None" = None,
-        commit_properties: "dict[str, str] | None" = None,
-    ) -> "Branch")]
+        strategy: "MergeStrategy | None" = None,
+        expected_head: "str | None" = None,
+    ) -> "Commit | None")]
     fn merge_branch(
         &self,
         py: Python<'_>,
-        source_ref: RefArg,
-        into_branch: BranchArg,
-        commit_message: Option<&str>,
-        commit_body: Option<&str>,
-        commit_properties: Option<BTreeMap<String, String>>,
-    ) -> PyResult<CatalogRef> {
-        let commit_properties = commit_properties.unwrap_or_default();
-        let properties = commit_properties
-            .iter()
-            .map(|(k, v)| (k.as_str(), v.as_str()))
-            .collect();
-
-        let req = MergeBranch {
-            source_ref: &source_ref.0,
-            into_branch: &into_branch.0,
-            commit: MergeCommitOptions {
-                commit_message,
-                commit_body,
-                commit_properties: properties,
-            },
+        from_ref: String,
+        into_branch: String,
+        strategy: Option<PyMergeStrategy>,
+        expected_head: Option<String>,
+    ) -> PyResult<Option<PyCommit>> {
+        let client = self.branches();
+        let body = MergeBranchBody {
+            from_ref,
+            strategy: strategy.map(Into::into).unwrap_or_default(),
+            expected_head,
         };
-
-        Ok(super::roundtrip(py, req, &self.profile, &self.agent)?)
+        let path = (self.profile.catalog.clone(), into_branch);
+        let commit = py.detach(|| client.merge_branch(path, body));
+        Ok(commit.map_err(merge_error)?.map(PyCommit::from))
     }
 
     /// Delete a branch.
     ///
-    /// Upon failure, raises `bauplan.exceptions.BauplanError`
-    ///
     /// ```python
     /// import bauplan
     /// client = bauplan.Client()
     ///
-    /// if client.delete_branch('my_branch_name'):
-    ///     ...
+    /// client.delete_branch('username.feature', if_exists=True)
     /// ```
     ///
     /// Parameters:
-    ///     branch: The name of the branch to delete.
-    ///     if_exists: If set to `True`, the branch will not raise an error if it does not exist.
-    /// Returns:
-    ///     A boolean for if the branch was deleted.
+    ///     branch: The name of the branch.
+    ///     expected_head: Optional, delete only if the branch points to this commit hash.
+    ///     if_exists: If set to `True`, a missing branch is not an error.
     ///
     /// Raises:
-    ///     `bauplan.exceptions.DeleteBranchForbiddenError`: if the user does not have access to delete the branch.
     ///     `bauplan.exceptions.BranchNotFoundError`: if the branch does not exist.
-    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch head hash has changed.
-    ///     `bauplan.exceptions.NotABranchRefError`: if the object is not a branch.
-    ///     `bauplan.exceptions.RefNotFoundError`: if the ref does not exist.
-    ///     `bauplan.exceptions.InvalidRefError`: if the ref format is invalid.
+    ///     `bauplan.exceptions.BranchHeadChangedError`: if the branch does not point to `expected_head`.
+    ///     `bauplan.exceptions.MainBranchError`: if the branch is main.
+    ///     `bauplan.exceptions.ForbiddenError`: if the user can't delete the branch.
+    ///     `bauplan.exceptions.CatalogNotFoundError`: if the catalog does not exist.
     ///     `bauplan.exceptions.UnauthorizedError`: if the user's credentials are invalid.
-    ///     `ValueError`: if one or more parameters are invalid.
+    ///     `bauplan.exceptions.BauplanError`: the base of every error above, also raised when the request does not reach the server.
     #[pyo3(signature = (
-        branch: "str | Branch",
+        branch: "str",
         *,
+        expected_head: "str | None" = None,
         if_exists: "bool" = false,
-    ) -> "bool")]
-    fn delete_branch(&self, py: Python<'_>, branch: BranchArg, if_exists: bool) -> PyResult<bool> {
-        let req = DeleteBranch { name: &branch.0 };
-
-        if let Err(e) = super::roundtrip(py, req, &self.profile, &self.agent) {
-            if if_exists && matches!(e.kind(), Some(ApiErrorKind::BranchNotFound { .. })) {
-                return Ok(false);
-            } else {
-                return Err(e.into());
-            }
+    ) -> "None")]
+    fn delete_branch(
+        &self,
+        py: Python<'_>,
+        branch: String,
+        expected_head: Option<String>,
+        if_exists: bool,
+    ) -> PyResult<()> {
+        let client = self.branches();
+        let expected_head = expected_head.map(|hash| ExpectedHead {
+            expected_head: Some(hash),
+        });
+        let path = (self.profile.catalog.clone(), branch);
+        match py.detach(|| client.delete_branch(path, expected_head)) {
+            Ok(_) => Ok(()),
+            Err(ClientError::Api(DeleteBranchError::BranchNotFound { .. })) if if_exists => Ok(()),
+            Err(err) => Err(api_error(err)),
         }
-
-        Ok(true)
     }
 }

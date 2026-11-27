@@ -72,7 +72,9 @@ bq_client = bigquery.Client()
 # .... create the development branch etc. ....
 run_state = bpln_client.run('my_project/', ref=branch)
 # .... check if it is a successful run, merge the branch, etc. ....
-metadata_location = bpln_client.get_table('my_table', ref='main').metadata_location
+kind = bpln_client.get_table('bauplan.my_table', ref='main').kind
+assert isinstance(kind, bauplan.schema.TableKind.IcebergManaged)
+metadata_location = kind.metadata_location
 ddl = f"""
    CREATE OR REPLACE EXTERNAL TABLE `{BQ_FULL_TABLE}`
    WITH CONNECTION `{BQ_CONNECTION}`

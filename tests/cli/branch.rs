@@ -10,7 +10,7 @@ fn ls_json_output() {
         .args(["-O", "json", "branch", "ls", "--limit", "10"])
         .assert()
         .success()
-        .stdout(starts_with("["));
+        .stdout(starts_with("{\"items\":"));
 }
 
 #[test]
@@ -37,8 +37,9 @@ fn get_main() {
 fn create_and_delete() {
     let branch = test_branch("cli_create_delete");
 
+    let only_branch = format!("^{}$", branch.name);
     bauplan()
-        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
+        .args(["branch", "ls", "--name", &only_branch])
         .assert()
         .success()
         .stdout(contains(&branch.name));
@@ -51,7 +52,7 @@ fn create_and_delete() {
         .stderr(contains(format!("Deleted branch \"{}\"", branch.name)));
 
     bauplan()
-        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
+        .args(["branch", "ls", "--name", &only_branch])
         .assert()
         .success()
         .stdout(contains(&branch.name).not());
@@ -89,7 +90,7 @@ fn delete_if_exists() {
         .args(["branch", "delete", "--if-exists", &branch])
         .assert()
         .success()
-        .stderr(contains("does not exist"));
+        .stderr(contains("not found"));
 
     // Without the flag, should fail.
     bauplan()
@@ -127,6 +128,7 @@ fn delete_checked_out() {
 #[test]
 fn rename() {
     let mut branch = test_branch("cli_rename_old");
+    let old_name = branch.name.clone();
     let new_name = format!("{}.cli_rename_new", username());
     let _ = bauplan().args(["branch", "delete", &new_name]).ok();
 
@@ -144,9 +146,13 @@ fn rename() {
 
     // Old name should be gone, new name should exist.
     bauplan()
-        .args(["branch", "ls", "--all-zones", "--name", &branch.name])
+        .args(["branch", "ls", "--name", &format!("^{new_name}$")])
         .assert()
         .success()
-        .stdout(contains(&branch.name))
-        .stdout(contains("cli_rename_old").not());
+        .stdout(contains(&new_name));
+    bauplan()
+        .args(["branch", "ls", "--name", &format!("^{old_name}$")])
+        .assert()
+        .success()
+        .stdout(contains(&old_name).not());
 }
