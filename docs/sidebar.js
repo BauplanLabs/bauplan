@@ -83,20 +83,6 @@ export default {
     },
     {
       type: "category",
-      label: "Platform Overview",
-      collapsed: true,
-      link: {
-        type: "doc",
-        id: "overview/index",
-      },
-      items: [
-        "overview/execution-model",
-        "overview/architecture",
-        "overview/deployment",
-      ],
-    },
-    {
-      type: "category",
       label: "Core Concepts",
       collapsed: true,
       items: [
@@ -104,33 +90,6 @@ export default {
         "concepts/tables",
         "concepts/semantics",
         "concepts/pipelines",
-      ],
-    },
-    {
-      type: "category",
-      label: "Building with Bauplan",
-      collapsed: true,
-      // Kept until the new pages cover what these explain
-      items: ["concepts/projects", "concepts/models", "concepts/expectations"],
-    },
-    {
-      type: "category",
-      label: "Common Scenarios",
-      collapsed: true,
-      // link: {
-      //   type: "doc",
-      //   id: "common-scenarios/index",
-      // },
-      items: [
-        "common-scenarios/multi-stage-pipelines",
-        "common-scenarios/schema-conflicts",
-        "common-scenarios/branching-workflows",
-        "common-scenarios/detached-runs",
-        "common-scenarios/parameterized-runs",
-        "common-scenarios/conflict-management",
-        "common-scenarios/sql-files",
-        "common-scenarios/sdk-or-cli",
-        "common-scenarios/partitioning",
       ],
     },
     {

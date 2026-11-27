@@ -1,25 +1,25 @@
 const redirects = [
   // Legacy guides redirects
-  { from: "/guides/casting", to: "/common-scenarios/schema-conflicts" },
+  { from: "/guides/casting", to: "/how-to/import-and-lay-out-tables/how-to-control-types-at-import" },
   {
     from: "/guides/schema_conflicts",
-    to: "/common-scenarios/schema-conflicts",
+    to: "/how-to/import-and-lay-out-tables/how-to-control-types-at-import",
   },
   {
     from: "/concepts/schema-conflicts",
-    to: "/common-scenarios/schema-conflicts",
+    to: "/how-to/import-and-lay-out-tables/how-to-control-types-at-import",
   },
   {
     from: "/concepts/semantic_annotations",
     to: "/concepts/semantics",
   },
-  { from: "/guides/detached_runs", to: "/common-scenarios/detached-runs" },
+  { from: "/guides/detached_runs", to: "/how-to/deploy/how-to-run-jobs-detached-and-poll-them" },
   { from: "/guides/import_data", to: "/tutorial/import" },
-  { from: "/guides/parameters", to: "/common-scenarios/parameterized-runs" },
+  { from: "/guides/parameters", to: "/how-to/build-pipelines/how-to-parametrize-a-pipeline" },
   { from: "/guides/partitioning", to: "/concepts/tables#file-layout-and-partitioning" },
   {
     from: "/guides/secrets",
-    to: "/common-scenarios/parameterized-runs#secrets",
+    to: "/how-to/build-pipelines/how-to-parametrize-a-pipeline",
   },
 
   // The parallel /agents tree and its older /llms URLs both collapse into the
@@ -79,6 +79,21 @@ const redirects = [
     to: "/integrations/warehouses-lakehouses/big-query-inbound",
   },
 
+  // Sections replaced by the How-to guides
+  { from: "/common-scenarios", to: "/learn/install-bauplan" },
+  { from: "/common-scenarios/sdk-or-cli", to: "/learn/install-bauplan" },
+  { from: "/common-scenarios/detached-runs", to: "/how-to/deploy/how-to-run-jobs-detached-and-poll-them" },
+  { from: "/common-scenarios/parameterized-runs", to: "/how-to/build-pipelines/how-to-parametrize-a-pipeline" },
+  { from: "/common-scenarios/conflict-management", to: "/how-to/publish/how-to-handle-merge-conflicts" },
+  { from: "/common-scenarios/branching-workflows", to: "/how-to/publish/how-to-write-audit-publish" },
+  { from: "/common-scenarios/multi-stage-pipelines", to: "/how-to/build-pipelines/how-to-structure-a-pipeline" },
+  { from: "/common-scenarios/schema-conflicts", to: "/how-to/import-and-lay-out-tables/how-to-control-types-at-import" },
+  { from: "/common-scenarios/partitioning", to: "/how-to/import-and-lay-out-tables/how-to-partition-tables-at-import-time" },
+  { from: "/common-scenarios/sql-files", to: "/how-to/organize-code/how-to-organize-sql-files" },
+  { from: "/concepts/projects", to: "/how-to/build-pipelines/how-to-set-up-a-project" },
+  { from: "/concepts/models", to: "/how-to/build-pipelines/how-to-write-a-pipeline" },
+  { from: "/concepts/expectations", to: "/how-to/build-pipelines/how-to-add-expectations-to-a-pipeline" },
+
   // Legacy tutorial paths
   { from: "/tutorial/03_pipelines", to: "/concepts/pipelines" },
   { from: "/tutorial/04_import", to: "/tutorial/import" },
@@ -115,10 +130,9 @@ const redirects = [
   { from: "/tutorial/quick_start", to: "/tutorial/quick-start" },
   { from: "/tutorial/data_branches", to: "/tutorial/data-branches" },
   { from: "/tutorial/s3_permissions", to: "/tutorial/s3-permissions" },
-  { from: "/overview/execution_model", to: "/overview/execution-model" },
   {
     from: "/concepts/schema_conflicts",
-    to: "/common-scenarios/schema-conflicts",
+    to: "/how-to/import-and-lay-out-tables/how-to-control-types-at-import",
   },
   { from: "/concepts/git_for_data", to: "/concepts/catalog-and-branches" },
   {
