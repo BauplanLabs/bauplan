@@ -1,166 +1,231 @@
 ---
 title: "Fivetran"
-description: "Register Fivetran Managed Data Lake Iceberg tables in Bauplan as external tables. Branch, validate, and query Fivetran data on S3 without copying it."
+description: "Register the Iceberg tables Fivetran writes to your bucket as external tables on a branch, audit them, and publish each sync to main with one merge."
 ---
 
-Fivetran is a managed ELT platform that moves data from hundreds of sources into your data lake with automated schemas, scheduling, and monitoring. With the Managed Data Lake destination, it writes Apache Iceberg tables directly to your S3 bucket. In this guide, you will register those Fivetran-created Iceberg tables in Bauplan as external tables so you can branch, validate, and query them without copying data.
+[Fivetran](https://www.fivetran.com/) copies data from databases, SaaS applications and files into a destination, on a schedule you set per connection. With its [Managed Data Lake Service](https://fivetran.com/docs/managed-data-lake-service), the destination is your own bucket, where Fivetran writes and maintains Apache Iceberg tables. Bauplan reads those tables where they are, either on Amazon S3 or Google Cloud Storage depending on your deployment, and registers each one as an external table.
+
+## How Fivetran and Bauplan fit together
+
+Fivetran owns the tables. It writes their data files and their Iceberg metadata to your bucket, and lists them in the Fivetran Catalog, an Iceberg REST catalog that comes with every destination. Bauplan has read-only access to them, and registers a table by pointing at its current metadata file, the `metadata.json` that describes one state of the table.
+
+A registered table is frozen at that state. When Fivetran syncs again, it commits a new state with a new metadata file, and Bauplan keeps reading the previous one until you register the table again. New data therefore never appears on `main` on its own. After each sync, your script should register the new states on a branch, audit the tables there, and publish them all with one merge.
+
+```mermaid
+sequenceDiagram
+  participant F as Fivetran
+  participant S as Script
+  participant B as Bauplan
+  F->>F: Write the tables to your bucket
+  F->>S: The sync has ended
+  S->>F: Ask the catalog for the metadata files
+  S->>B: Create a branch from main
+  S->>B: Register the tables on the branch
+  S->>B: Run the expectations (audit)
+  S->>B: Merge into main (publish)
+```
 
 ## Prerequisites
 
-- A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
-- An S3 bucket where Fivetran and Bauplan can read and write.
+1. A Managed Data Lake destination on S3 or on Google Cloud Storage, in the same cloud as your Bauplan deployment. If it uses the bucket of that deployment, its prefix path must not be under the one where Bauplan keeps its own tables, normally `iceberg/`. The examples below use the prefix `fivetran`. Choose it before the first sync, because Fivetran does not let you change it once the destination is saved.
+2. The server endpoint, the catalog name, the client ID and the client secret of the Fivetran Catalog. You find them in **Catalog Integration > Base configuration** on the page of the destination in Fivetran, and they give read-only access.
+3. Read access to that prefix for the two identities Bauplan uses in your cloud account, described in the next section.
 
-## Architecture overview
+## Give Bauplan read access to the tables
 
-- Fivetran writes Iceberg tables to your S3 bucket (recommended prefix: `/iceberg/`).
-- Table metadata is discoverable via the Iceberg REST catalog that Fivetran exposes (Polaris).
-- Bauplan registers those tables by pointing at each table's `metadata.json` and exposes them as external tables on any branch you choose.
+Two identities created when Bauplan was deployed need to read the files of Fivetran. The catalog reads the metadata file of a table when you register it, and the job executor reads the metadata and the data when a query or a pipeline uses the table. Grant both of them read access only, because only Fivetran should write to its tables.
 
-```
-[Fivetran Connectors] → [Managed Data Lake → Iceberg on S3]
-                                  ↓
-                         [Iceberg REST (Polaris)]
-                                  ↓
-                [Bauplan: register as External Table]
-                                  ↓
-              [Branch • Query • Validate • Merge in Bauplan]
-```
+### On AWS
 
-## Step 1 - Set up the Fivetran destination
-
-1. In Fivetran, create a **Managed Data Lake** destination (S3).
-
-   See Fivetran documentation for setup details.
-
-2. Use the **same S3 bucket** that your Bauplan environment can access in read and write.
-3. Set the **prefix** to `/iceberg/` so paths look like:
-
-```
-s3://<your-bucket>/iceberg/<schema>/<table>/
-```
-
-Fivetran will create one Iceberg table per connector schema and manage data and metadata under that path.
-
-## Step 2 - Fetch the Iceberg table metadata location
-
-Bauplan needs the absolute path to the table's current `metadata.json`. Retrieve it via PyIceberg against Polaris.
-
-```python title="get_polaris_metadata.py"
-from pyiceberg.catalog import rest
-
-# Configure your catalog values
-CATALOG_URI = "https://polaris.fivetran.com/api/catalog"
-OAUTH2_TOKEN_URI = "https://polaris.fivetran.com/api/catalog/v1/oauth/tokens"
-POLARIS_WAREHOUSE = "YOUR_POLARIS_WAREHOUSE"
-POLARIS_CREDENTIAL = "YOUR_CLIENT_ID:YOUR_CLIENT_SECRET"
-OAUTH_SCOPE = "PRINCIPAL_ROLE:ALL"
-
-ICEBERG_NAMESPACE = "your_iceberg_namespace"   # e.g. "ngrokpg_public"
-ICEBERG_TABLE = "your_iceberg_table"           # e.g. "playing_with_neon"
-
-def get_metadata_location(namespace: str, table_name: str) -> str:
-    """Return the fully-qualified metadata.json location for an Iceberg table in Polaris."""
-    polaris_catalog = rest.RestCatalog(
-        name="default",
-        type="rest",
-        uri=CATALOG_URI,
-        **{
-            "warehouse": POLARIS_WAREHOUSE,
-            "oauth2-server-uri": OAUTH2_TOKEN_URI,
-            "credential": POLARIS_CREDENTIAL,
-            "scope": OAUTH_SCOPE,
-        },
-    )
-    table_obj = polaris_catalog.load_table(identifier=(namespace, table_name))
-    return table_obj.metadata_location
-
-```
-
-Example output:
-
-```
-s3://<your-bucket>/iceberg/<schema>/<table>/metadata/00004-...metadata.json
-```
-
-## Step 3 - Register the table in Bauplan as an external table
-
-Use the Bauplan Python SDK to create an external table on a working branch. You can register multiple Fivetran tables on the same branch.
-
-```python title="register_fivetran_external_table.py"
-import bauplan
-from get_polaris_metadata import get_metadata_location  # ty: ignore[unresolved-import]
-
-# Keep in sync with get_polaris_metadata.py
-ICEBERG_NAMESPACE = "your_iceberg_namespace"
-ICEBERG_TABLE = "your_iceberg_table"
-
-# How the table will appear inside Bauplan
-BAUPLAN_TABLE_NAME = f"fivetran.{ICEBERG_NAMESPACE}__{ICEBERG_TABLE}"
-
-# Resolve the current metadata.json location from Polaris
-metadata_location_string = get_metadata_location(
-    namespace=ICEBERG_NAMESPACE,
-    table_name=ICEBERG_TABLE,
-)
-
-# Instantiate Bauplan client
-client = bauplan.Client()
-bauplan_user = client.info().user.username
-
-# Create a non-main branch for safe testing
-branch_name = f"{bauplan_user}.fivetran_integration"
-client.create_branch(branch=branch_name, from_ref="main", if_not_exists=True)
-
-client.create_external_table_from_metadata(
-    table=BAUPLAN_TABLE_NAME,
-    metadata_json_uri=metadata_location_string,
-    branch=branch_name,
-    namespace='fivetran',
-    overwrite=True,
-)
-
-print(f"External table registered: {BAUPLAN_TABLE_NAME} on branch {branch_name}")
-
-```
-
-### Advancing to new snapshots
-
-Fivetran continuously writes new snapshots. The `metadata_location` you register pins a specific snapshot. To advance:
-
-1. Call `get_metadata_location(...)` again to fetch the latest `metadata.json`.
-2. Call `create_external_table_from_metadata(..., overwrite=True)` on your feature branch.
-3. Run expectations or smoke tests.
-4. `commit` and `merge` into `main` when validation passes.
-
-## Authorization
-
-To register Fivetran tables as external tables, grant the Bauplan **Job Executor** role read access to the S3 bucket/prefix where Fivetran writes Iceberg data (typically, this is `<S3_BUCKET_NAME>/iceberg/…`).
-
-The Job Executor role (`<AWS_JOB_EXECUTOR_ROLE_ARN>`) is created during your one-time Bauplan deployment. You do not need to change the trust policy or external ID, just attach or update the permissions policy.
-
-### Example: minimal S3 access for Fivetran landing zone
+Attach this policy to the Job Executor role, and leave its trust policy as it is.
 
 ```json
 {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "ListBucketForFivetranIceberg",
+      "Sid": "ListFivetranPrefix",
       "Effect": "Allow",
-      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
-      "Resource": "arn:aws:s3:::<S3_BUCKET_NAME>",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::<BUCKET>",
       "Condition": {
         "StringLike": {
-          "s3:prefix": ["iceberg/*"]
+          "s3:prefix": "fivetran/*"
         }
       }
     },
     {
-      "Sid": "ReadObjectsFromFivetranIceberg",
+      "Sid": "GetFivetranBucketLocation",
       "Effect": "Allow",
-      "Action": ["s3:GetObject"],
-      "Resource": "arn:aws:s3:::<S3_BUCKET_NAME>/iceberg/*"
+      "Action": "s3:GetBucketLocation",
+      "Resource": "arn:aws:s3:::<BUCKET>"
+    },
+    {
+      "Sid": "ReadFivetranTables",
+      "Effect": "Allow",
+      "Action": "s3:GetObject*",
+      "Resource": "arn:aws:s3:::<BUCKET>/fivetran/*"
     }
   ]
 }
 ```
+
+The Data Catalog role only needs the metadata files.
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "GetFivetranBucketLocation",
+      "Effect": "Allow",
+      "Action": "s3:GetBucketLocation",
+      "Resource": "arn:aws:s3:::<BUCKET>"
+    },
+    {
+      "Sid": "ReadFivetranMetadata",
+      "Effect": "Allow",
+      "Action": "s3:GetObject*",
+      "Resource": "arn:aws:s3:::<BUCKET>/fivetran/*.metadata.json"
+    }
+  ]
+}
+```
+
+### On Google Cloud
+
+Grant the Storage Object Viewer role on the bucket to the `bauplan-job-executor` and `bauplan-catalog` service accounts.
+
+```sh
+for account in bauplan-job-executor bauplan-catalog; do
+  gcloud storage buckets add-iam-policy-binding gs://<BUCKET> \
+    --member="serviceAccount:${account}@<PROJECT>.iam.gserviceaccount.com" \
+    --role="roles/storage.objectViewer"
+done
+```
+
+The role covers every object of the bucket. If the bucket also holds data that Bauplan should not read, restrict the role to the prefix of Fivetran with an [IAM condition](https://cloud.google.com/storage/docs/access-control/iam#conditions) on the resource name.
+
+## Register and publish a sync
+
+Every Fivetran connection writes to a schema of its own, so one run of the script covers the tables of one schema. It asks the Fivetran Catalog, through [PyIceberg](https://py.iceberg.apache.org/), for the current metadata file of each table and registers it on a branch created for that run. If the audit passes, it merges the branch into `main`.
+
+```python title="publish_fivetran.py"
+import os
+from datetime import UTC, datetime
+
+import bauplan
+from pyiceberg.catalog.rest import RestCatalog
+
+
+def fivetran_catalog() -> RestCatalog:
+    """Connect to the Fivetran Catalog with the read-only credentials of the destination."""
+
+    endpoint = os.environ["FIVETRAN_CATALOG_ENDPOINT"]
+    client_id = os.environ["FIVETRAN_CLIENT_ID"]
+    client_secret = os.environ["FIVETRAN_CLIENT_SECRET"]
+
+    return RestCatalog(
+        "fivetran",
+        **{
+            "uri": endpoint,
+            "warehouse": os.environ["FIVETRAN_CATALOG_NAME"],
+            "oauth2-server-uri": f"{endpoint}/v1/oauth/tokens",
+            "credential": f"{client_id}:{client_secret}",
+            "scope": "PRINCIPAL_ROLE:ALL",
+        },
+    )
+
+
+def publish_schema(schema: str, audit_dir: str, base_branch: str = "main") -> None:
+    """Register the current state of every table of a Fivetran schema, audit it and publish it."""
+
+    client = bauplan.Client()
+    catalog = fivetran_catalog()
+
+    # A fresh branch per run, so that each run starts from the current state of the base branch
+    stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    branch = f"{client.info().user.username}.fivetran-{schema}-{stamp}"
+    client.create_branch(branch=branch, from_ref=base_branch)
+    client.create_namespace(namespace=schema, branch=branch, if_not_exists=True)
+
+    # Registering again with overwrite moves a table to the metadata file of the last sync
+    for identifier in catalog.list_tables(schema):
+        table = catalog.load_table(identifier)
+        client.create_external_table_from_metadata(
+            table=identifier[-1],
+            metadata_json_uri=table.metadata_location,
+            namespace=schema,
+            branch=branch,
+            overwrite=True,
+        )
+
+    # The audit only reads the tables, so a dry run is enough
+    audit = client.run(
+        project_dir=audit_dir, ref=branch, namespace=schema, dry_run=True
+    )
+    if audit.job_status != "SUCCESS":
+        raise RuntimeError(f"audit failed, {branch} not merged: {audit.error}")
+
+    # All the tables of the schema reach the base branch in one commit
+    client.merge_branch(source_ref=branch, into_branch=base_branch)
+    client.delete_branch(branch=branch)
+```
+
+The audit is a Bauplan project that contains [expectations](/concepts/pipelines#expectations) on the registered tables. When one fails, the script stops before the merge, so `main` keeps the state of the previous sync and the branch stays available to find out what is wrong with the new one.
+
+Registering is a catalog operation and reads no data, so most of the time goes into the audit. The namespace takes the name of the Fivetran schema, which keeps every source apart.
+
+## Run the script after every sync
+
+Call `publish_schema` once the sync of that connection has ended. A run in the middle of a sync can register some tables before Fivetran updates them and others after, and publish them together. Fivetran sends a `sync_end` event through its [webhooks](https://fivetran.com/docs/developer-resources/webhooks), which you can use to start the script from your orchestrator; see [how to deploy a pipeline](/how-to/deploy/how-to-deploy-a-pipeline).
+
+Do not let the script fall behind the syncs. Fivetran keeps the current metadata file of a table and the three before it, and deletes the older ones, along with the snapshots that have left the retention period of the destination ([table maintenance](https://fivetran.com/docs/managed-data-lake-service)). A table that has not been registered for several syncs can point at files that no longer exist, and its reads then fail. Set the **Snapshot Retention Period** of the destination to more than the longest time you expect the script to be stopped, and alert on its failures. The metadata limit counts versions rather than time, so a longer retention period does not extend it.
+
+## Build managed tables from the registered ones
+
+The same limit applies to the history of a registered table. Going back to an old commit of `main` brings back the table as it was registered then, but its files are only there as long as Fivetran keeps them. Let your pipelines read the registered tables and write managed tables, whose history does not depend on Fivetran.
+
+The first model of such a pipeline is also the place to deal with the columns Fivetran adds. By default, a row deleted at the source stays in the table with `_fivetran_deleted` set to true, so every read has to exclude it.
+
+```python title="models.py"
+from typing import Annotated
+
+import bauplan
+import pyarrow as pa
+
+
+class Accounts(bauplan.TableSchema):
+    """One row per account that still exists in the source."""
+
+    id: bauplan.String
+    name: bauplan.String | None
+    industry: bauplan.String | None
+    _fivetran_synced: bauplan.TimestampMicroUTC | None
+
+
+@bauplan.model(materialization_strategy="REPLACE")
+@bauplan.python("3.13")
+def accounts(
+    account: Annotated[
+        pa.Table,
+        # Fivetran marks deleted rows instead of removing them
+        bauplan.Model(
+            "salesforce.account",
+            projection_schema=Accounts,
+            filter="_fivetran_deleted = false",
+        ),
+    ],
+) -> Annotated[pa.Table, Accounts]:
+    """Managed copy of the accounts, without the rows deleted at the source."""
+
+    return account
+```
+
+Tables synced in [history mode](https://fivetran.com/docs/core-concepts/syncoverview/sync-modes/history-mode) have no `_fivetran_deleted` column. They keep one row per version of a record, and `_fivetran_active` is true on the current one. The other columns Fivetran may add are in its [list of system columns](https://fivetran.com/docs/core-concepts/syncoverview/system-columns-and-tables).
+
+## Related
+
+- [From existing Iceberg tables](/how-to/ingest-from-a-source/from-existing-iceberg-tables)
+- [How to choose between managed and external tables](/how-to/import-and-lay-out-tables/how-to-choose-between-managed-and-external-tables)
+- [How to Write-Audit-Publish](/how-to/publish/how-to-write-audit-publish)
