@@ -1,0 +1,48 @@
+---
+title: "How to clean up branches"
+description: "Delete run branches when a job ends, and prune failed and stale branches on a schedule."
+---
+
+As in Git, branches proliferate, and without some housekeeping the lakehouse becomes hard to navigate. Bauplan adds to the count on its own: every job that writes runs in a [transactional branch](/concepts/catalog-and-branches#transactional-branches) to guarantee atomicity. When a run, import, or table creation fails, Bauplan keeps that branch on purpose, with its partial writes, so you can inspect what went wrong. Nothing removes these branches automatically, nor the ones your own jobs create, until you delete them. It is a good practice to have a scheduled task to prune them.
+
+## Delete the branch in the job that created it
+
+First, decide what should happen to the branch when a run fails: delete it, or keep it to inspect the failure.
+
+To delete it, use a `finally` block, so the branch goes away whether the job succeeds, fails or is cancelled:
+
+```python
+from datetime import datetime, timezone
+
+import bauplan
+
+client = bauplan.Client()
+
+stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+branch = f"{client.info().user.username}.orders-transformation-prod-{stamp}"
+
+client.create_branch(branch, from_ref="main")
+try:
+    state = client.run(project_dir="pipelines/orders", ref=branch, strict=True)
+    if state.job_status != "SUCCESS":
+        raise RuntimeError(f"run failed: {state.error}")
+    client.merge_branch(source_ref=branch, into_branch="main")
+finally:
+    # Runs on success, on failure and on cancellation alike
+    client.delete_branch(branch, if_exists=True)
+```
+
+To keep the branch of a failed run, delete it only on success, and let the [scheduled pruning](#prune-transactional-branches-on-a-schedule) remove it later.
+
+## Prune transactional branches on a schedule
+
+:::warning
+  Pruning the branches of other users requires the admin role.
+:::
+
+Keep a transactional branch only as long as you need it to inspect the partial state of a failed job, as in [how to debug a failed pipeline](/how-to/operate/how-to-debug-a-failed-pipeline), then delete it. Transactional branches are named after the branch the job ran against, followed by `-bpln-tx-<job type>-<timestamp>-<job id>`, for example `-bpln-tx-run-...` for a pipeline run. The [find transactional branches](https://github.com/BauplanLabs/bauplan/blob/main/examples/utils/01_find_transactional_branches/main.py) script lists them, and the [prune transactional branches](https://github.com/BauplanLabs/bauplan/blob/main/examples/utils/02_prune_transactional_branches/main.py) script deletes them, for instance every night.
+
+## Related
+
+- [How to name branches](/how-to/publish/how-to-name-branches)
+- [Catalog and branches](/concepts/catalog-and-branches#transactional-branches)

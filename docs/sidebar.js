@@ -28,6 +28,17 @@ export default {
       items: [
         {
           type: "category",
+          label: "Publish",
+          items: [
+            "how-to/publish/how-to-write-audit-publish",
+            "how-to/publish/how-to-bring-data-to-production",
+            "how-to/publish/how-to-name-branches",
+            "how-to/publish/how-to-clean-up-branches",
+            "how-to/publish/how-to-handle-merge-conflicts",
+          ],
+        },
+        {
+          type: "category",
           label: "Operate",
           items: [
             "how-to/operate/how-to-debug-a-failed-pipeline",
