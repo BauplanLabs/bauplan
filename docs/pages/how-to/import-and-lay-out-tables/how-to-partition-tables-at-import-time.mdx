@@ -1,0 +1,39 @@
+---
+title: "How to partition tables at import time"
+description: "Set partitioning when you create a managed table, on the columns readers filter on, at a granularity that keeps partitions large."
+---
+
+A *managed* table's partitioning is set once at creation, and it speeds up any read that filters on the partition column, since non-matching files are skipped.
+
+The basic case is a table readers filter by date. Partition it by day of its timestamp column at creation, and every later import writes its files accordingly:
+
+```python type:ignore
+client.create_table(
+    table="events",
+    search_uri="s3://my-bucket/raw/events/event_date=2026-09-27/*.parquet",
+    partitioned_by="day(created_at)",
+    branch=branch,
+    namespace="raw",
+)
+```
+
+## Choose the columns readers filter on
+
+Partition on the columns your readers filter on most, typically a date. Partitioning does not depend on how the source files were originally organized in the bucket, so you can choose it freely. Leave no large managed table unpartitioned.
+
+Do not partition by a high-cardinality column, such as a user or session identifier. Each value becomes a partition of its own, leaving many partitions of a few rows each, and reads slow down opening small files.
+
+## Choose the granularity
+
+The `partitioned_by` parameter takes a comma-separated list of columns, for instance `"day(created_at), country"`, and supports predefined **transforms** that derive the partition from an existing column, including `day()`, `month()` and `hour()`.
+
+Pick the granularity carefully, since partitions that are too large or too small both hurt performance. Partitions that are too large make a filter read more data than it needs. Partitions that are too small produce many small files. Choose the coarsest transform that still lets your readers skip most of the table. [How to lay out data on object storage](/how-to/import-and-lay-out-tables/how-to-lay-out-data-on-object-storage) gives the file sizes to aim for.
+
+## Set the partitioning when you create the table
+
+Set `partitioned_by` in `create_table`, as in the snippet above. Partitioning is set when the table is created, and every later import writes its files according to it.
+
+## Related
+
+- [File layout and partitioning](/concepts/tables#file-layout-and-partitioning)
+- [How to lay out data on object storage](/how-to/import-and-lay-out-tables/how-to-lay-out-data-on-object-storage)

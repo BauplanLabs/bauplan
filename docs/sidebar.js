@@ -28,6 +28,18 @@ export default {
       items: [
         {
           type: "category",
+          label: "Import and lay out tables",
+          items: [
+            "how-to/import-and-lay-out-tables/how-to-organize-the-lakehouse",
+            "how-to/import-and-lay-out-tables/how-to-lay-out-data-on-object-storage",
+            "how-to/import-and-lay-out-tables/how-to-choose-between-managed-and-external-tables",
+            "how-to/import-and-lay-out-tables/how-to-partition-tables-at-import-time",
+            "how-to/import-and-lay-out-tables/how-to-control-types-at-import",
+            "how-to/import-and-lay-out-tables/how-to-transform-data-at-import-time",
+          ],
+        },
+        {
+          type: "category",
           label: "Publish",
           items: [
             "how-to/publish/how-to-write-audit-publish",

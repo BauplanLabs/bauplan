@@ -1,0 +1,185 @@
+---
+title: "How to transform data at import time"
+description: "Stage new files as a temporary external table, reshape them with a pipeline, write a managed table, and drop the staging table."
+---
+
+An import copies files into a table as they are. It cannot extract fields from a nested column, cast a column, derive a partition value or overwrite part of a table. When raw files need that, register the new files as a temporary [external table](/concepts/tables#managed-and-external-tables), which copies nothing. Then run a [pipeline](/concepts/pipelines) that reads it, reshapes the rows and writes a managed table with the materialization strategy you need, and drop the staging table before publishing.
+
+Use it when the raw data is nested or loosely typed, when partition values exist only in the file paths, or when loads overlap and must overwrite rather than append. When the files can be loaded as they are, a plain import is simpler. See [how to ingest data into Bauplan](/how-to/ingest-from-a-source).
+
+The examples on this page use this layout:
+
+```tree
+ingestion/
+  main.py                 # stages the files, runs the pipeline, publishes
+  events_ingestion/
+    bauplan_project.yaml
+    pyproject.toml
+    models.py             # events_staging -> events
+```
+
+## Stage the new files as an external table
+
+`main.py` starts by registering the files of one load as an external table on a fresh data branch. Pass the file list, or a pattern that matches only them:
+
+```python title="main.py"
+from datetime import datetime, timezone
+
+import bauplan
+
+client = bauplan.Client()
+stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+branch = f"{client.info().user.username}.ingest-events-{stamp}"
+client.create_branch(branch=branch, from_ref="main")
+client.create_namespace(namespace="raw", branch=branch, if_not_exists=True)
+
+# Register only the files of this load, nothing is copied
+state = client.create_external_table_from_parquet(
+    table="events_staging",
+    # The whole day, since the model rewrites the whole day partition. The * also matches the hour folders
+    search_patterns=["s3://my-bucket/landing/events/date=2026-09-27/*.parquet"],
+    branch=branch,
+    namespace="raw",
+    overwrite=True,
+)
+if state.error:
+    raise RuntimeError(state.error)
+```
+
+Importing the raw files into a managed table that you read only once would store the data twice. An external staging table copies nothing and takes no import time. Its schema is taken from the files, and every file in the load must be compatible with the others.
+
+## Reshape with a pipeline
+
+`models.py` reads the staging table and writes the managed table. Typical work at this step is to extract the nested fields you filter and join on, cast types, derive partition columns, and add columns that exist only in the path.
+
+In this example, each event carries a JSON string `payload`. The model promotes the user and the country out of it, converts the epoch milliseconds to a timestamp, and derives the `event_date` partition column. It overwrites only the partition of the day being loaded, and keeps only the rows of that day.:
+
+```python title="models.py"
+from typing import Annotated
+
+import bauplan
+import pyarrow as pa
+
+
+class Event(bauplan.TableSchema):
+    """One row per event, with the fields used for filtering promoted to columns"""
+
+    event_id: bauplan.String
+    event_time: bauplan.TimestampMicroUTC
+    event_date: bauplan.Date32
+    user_id: bauplan.String | None
+    country: bauplan.String | None
+    payload: bauplan.String | None
+
+
+@bauplan.model(
+    name="analytics.events",
+    materialization_strategy="OVERWRITE_PARTITIONS",
+    partitioned_by=["event_date"],
+    overwrite_filter="event_date = $load_date",
+)
+@bauplan.python("3.13", pip={"polars": "2.2.0"})
+def events(
+    staged: Annotated[pa.Table, bauplan.Model("raw.events_staging")],
+    load_date: Annotated[str, bauplan.Parameter("load_date")],
+) -> Annotated[pa.Table, Event]:
+    """Promote user and country out of the JSON payload, and keep the payload"""
+    from datetime import date
+
+    import polars as pl
+
+    context = pl.col("payload").str.json_decode(pl.Struct({"user_id": pl.String, "country": pl.String}))
+    return (
+        pl.DataFrame(staged)
+        .with_columns(
+            pl.from_epoch("event_ms", time_unit="ms").dt.replace_time_zone("UTC").dt.cast_time_unit("us").alias("event_time"),
+            context.struct.field("user_id").alias("user_id"),
+            context.struct.field("country").alias("country"),
+        )
+        .with_columns(pl.col("event_time").dt.date().alias("event_date"))
+        # Rows outside the overwrite filter would be appended again on every rerun
+        .filter(pl.col("event_date") == date.fromisoformat(load_date))
+        .select("event_id", "event_time", "event_date", "user_id", "country", "payload")
+        .to_arrow()
+    )
+```
+
+The filter on `event_date` drops late events from the previous day found in this day's files. They fall outside the overwrite filter, and would be appended again on every rerun. To keep them, rewrite an overlapping window of days instead, as in [how to run incremental workloads](/how-to/performance/how-to-run-incremental-workloads).
+
+Declare `load_date` under `parameters` in `bauplan_project.yaml`, as shown in [how to write a pipeline](/how-to/build-pipelines/how-to-write-a-pipeline).
+
+The staging table and the target table must have different names. Otherwise the pipeline reads its own output.
+
+## Extract only the nested fields you need
+
+A nested column, such as a struct or a JSON object, often holds many fields while only a few are needed as columns for filtering, joining, or partitioning. Promote those few, and do not unnest every field into its own column. Statistics exist only for top-level columns. A filter on a field nested in a struct or a JSON string reads every file, while the same filter on a promoted column can skip most of them.
+
+Keep the original column next to the promoted fields, as a JSON string. It preserves every field for auditing and for extracting more fields later. Stored as a string, it also absorbs fields added or renamed upstream without changing the table schema. See [how to migrate tables](/how-to/operate/how-to-migrate-tables).
+
+The example above reads a JSON string. If the source column is a struct, read the fields with `struct.field` and encode the column as JSON:
+
+```python type:ignore
+pl.DataFrame(staged).with_columns(
+    pl.col("customer").struct.field("id").alias("customer_id"),
+    pl.col("customer").struct.field("country").alias("customer_country"),
+    # As a string, the column absorbs new or renamed fields without changing the table schema
+    pl.col("customer").struct.json_encode(),
+)
+```
+
+To read a struct column from the staging table, declare it as `bauplan.Any` in the projection schema of the input, and as `bauplan.String | None` in the output schema.
+
+See [how to speed up reads](/how-to/performance/how-to-speed-up-reads) for how filters skip files.
+
+## Drop the staging table and publish
+
+`main.py` ends by running the pipeline, dropping the staging table and merging:
+
+```python type:ignore title="main.py"
+run = client.run(
+    project_dir="events_ingestion",
+    ref=branch,
+    namespace="analytics",
+    parameters={"load_date": "2026-09-27"},
+)
+if run.job_status != "SUCCESS":
+    raise RuntimeError(f"run failed, branch not merged: {run.error}")
+
+# The staging table only points at the source files, and dropping it deletes no data
+client.delete_table(table="events_staging", branch=branch, namespace="raw")
+client.merge_branch(source_ref=branch, into_branch="main")
+client.delete_branch(branch=branch)
+```
+
+Dropping the staging table before the merge keeps it off `main`. Only the managed table, with its own copy of the reshaped data, is published.
+
+The target partition is overwritten, and rerunning the same load replaces the same rows instead of duplicating them. A run that fails before the merge leaves its branch behind. See [how to clean up branches](/how-to/publish/how-to-clean-up-branches).
+
+## Variations
+
+### Append each load
+
+When loads never overlap, write the target with `APPEND` instead of `OVERWRITE_PARTITIONS`, and drop the filter and the parameter. Each run adds the rows of its own files. Running the same load twice adds its rows twice.
+
+### Full replace
+
+When each load is a complete snapshot, write the target with `REPLACE` instead of `OVERWRITE_PARTITIONS`, and drop the filter and the parameter. Each run then rebuilds the table from the staged files.
+
+### Keep the raw data
+
+If you plan to keep the raw data in the lakehouse, skip staging. Import the files into a managed table, for instance in a `raw` namespace, and run the same pipeline to write the reshaped table into another namespace, such as `bronze`.
+
+### Staging on a managed table
+
+If the source files cannot be registered as an external table, for example because their schemas vary between files or because they are CSV, create a managed staging table on the branch with `create_table(..., replace=True)` and `import_data`, and read that instead. The rest of the pattern is the same, at the cost of copying the raw data once.
+
+### Downstream aggregates
+
+Keep models that aggregate the whole target table out of the ingestion project. Run them as a separate project after the ingestion run, on the same branch, before the merge.
+
+## Related
+
+- [How to choose between managed and external tables](/how-to/import-and-lay-out-tables/how-to-choose-between-managed-and-external-tables)
+- [How to lay out data on object storage](/how-to/import-and-lay-out-tables/how-to-lay-out-data-on-object-storage)
+- [How to run incremental workloads](/how-to/performance/how-to-run-incremental-workloads)
+- [How to Write-Audit-Publish](/how-to/publish/how-to-write-audit-publish)
