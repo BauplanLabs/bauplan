@@ -50,6 +50,7 @@ JDBC
 JSONL
 JVM
 Kaggle
+Kestra
 KMS
 lakehouse
 lakehouses
@@ -102,6 +103,7 @@ transactionality
 Trino
 TSO
 [Uu]npartitioned
+Typer
 UTC
 UUID
 uv
