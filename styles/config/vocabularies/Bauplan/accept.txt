@@ -36,6 +36,7 @@ FHV
 Fivetran
 GCP
 GCS
+glibc
 Google Cloud
 GPT
 hardcoding

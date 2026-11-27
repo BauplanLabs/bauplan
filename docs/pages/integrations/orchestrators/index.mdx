@@ -1,6 +1,6 @@
 ---
 title: "Orchestrators"
-description: "Orchestrate Bauplan pipelines with Airflow, Dagster, DBOS, Kestra, Orchestra, Prefect, and Temporal while Bauplan runs the compute on your Iceberg lakehouse."
+description: "Orchestrate Bauplan pipelines with Airflow, AWS Step Functions, Dagster, DBOS, Kestra, Orchestra, Prefect, and Temporal while Bauplan runs the compute on your Iceberg lakehouse."
 ---
 
 import DocCardList from "@theme/DocCardList";
@@ -32,6 +32,12 @@ This division of responsibilities has several advantages:
       label: "Airflow",
       icon: airflowIcon,
       description: "Integrate Bauplan with Apache Airflow",
+    },
+    {
+      type: "link",
+      href: "/integrations/orchestrators/step-functions",
+      label: "AWS Step Functions",
+      description: "Integrate Bauplan with AWS Step Functions and Lambda",
     },
     {
       type: "link",
