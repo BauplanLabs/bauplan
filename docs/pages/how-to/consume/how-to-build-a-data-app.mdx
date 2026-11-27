@@ -1,0 +1,103 @@
+---
+title: "How to build a data app"
+description: "Query Bauplan from a data app's server with one shared client, cache results by commit, and run independent queries in parallel."
+---
+
+A data app, such as a dashboard or an internal tool, reads Bauplan through the Python SDK from its server code. Any framework works. The app creates a client, runs queries, and passes the results to its charts and tables.
+
+## Create one client per process
+
+Create the client once, when the app starts, and reuse it for every request. The client is thread-safe. Use the same client from every thread.
+
+```python
+import bauplan
+
+client = bauplan.Client()
+```
+
+Do not share a client across forked processes but rather create it after the fork, in each worker.
+
+Run the app with the API key of a user that has the reader role. If the key leaks, nobody can use it to change a table.
+
+## Read tables built for the app
+
+Point the app at `main` or a tag, never a personal branch. A personal branch can change or be deleted at any time, and the app would show whatever is on it.
+
+Read tables that a pipeline builds for the app, with the joins and aggregations already done. Queries over raw tables make every page load slow, and repeat the same work for every user. See [how to organize the lakehouse](/how-to/import-and-lay-out-tables/how-to-organize-the-lakehouse).
+
+## Cache results by commit
+
+Every query is a job with a fixed startup cost. An app that queries on every page load is slow. Cache the results, keyed by the commit the query reads. A key such as `"main"` keeps serving old results after a merge. The commit hash changes with every merge and makes a correct key:
+
+```python type:ignore
+from functools import lru_cache
+
+import pyarrow as pa
+
+DAILY_REVENUE = """
+    SELECT order_date, SUM(revenue) AS revenue
+    FROM analytics.customer_revenue
+    GROUP BY order_date
+"""
+
+
+@lru_cache
+def query_at_commit(sql: str, commit_hash: str) -> pa.Table:
+    """Run a query at a commit. The result at a commit never changes and never goes stale"""
+    return client.query(sql, ref=commit_hash)
+
+
+def daily_revenue() -> pa.Table:
+    # One catalog call to read the head of main, instead of a query job
+    head = client.get_branch("main").hash
+    return query_at_commit(DAILY_REVENUE, head)
+```
+
+Frameworks with their own cache decorators work the same way. Include the commit hash in the arguments of the cached function.
+
+## Run independent queries in parallel
+
+A page with several charts runs one query per chart. Run them in parallel from the shared client. The page then waits only for the slowest query, not for all of them in sequence:
+
+```python type:ignore
+from concurrent.futures import ThreadPoolExecutor
+
+head = client.get_branch("main").hash
+
+queries = {
+    "revenue": "SELECT order_date, SUM(revenue) AS revenue FROM analytics.customer_revenue GROUP BY order_date",
+    "customers": "SELECT COUNT(DISTINCT customer_id) AS customers FROM analytics.customer_revenue",
+}
+
+with ThreadPoolExecutor(max_workers=len(queries)) as pool:
+    futures = {name: pool.submit(query_at_commit, sql, head) for name, sql in queries.items()}
+    results = {name: future.result() for name, future in futures.items()}
+```
+
+Read the head commit once per page, as above. Every chart then shows the same state of the data.
+
+## Limit what user input can put in the SQL
+
+`client.query` takes a SQL string, and has no separate parameters for values. Any filter the user sets that you put into the query becomes part of that string, and the user can change what the SQL says. A "date" such as `2026-09-01' OR '1'='1` turns the filter into one that matches every row.
+
+Accept only values you can check, and build the SQL from the checked value, never from the text the user typed.
+
+- Parse a date or a number with `date.fromisoformat` or `int`, which raise an error on anything else.
+- Check that a choice, such as a country, is one of a fixed list of values.
+
+```python type:ignore
+from datetime import date
+
+# Raises ValueError for anything that is not a date
+start = date.fromisoformat(start_text)
+
+sql = f"SELECT order_date, revenue FROM analytics.customer_revenue WHERE order_date >= '{start.isoformat()}'"
+```
+
+Do not accept free text in a filter. If the app needs more than a few such filters, build the query with a SQL builder such as SQLGlot, which quotes every value it inserts.
+
+## Related
+
+- [How to query tables](/how-to/consume/how-to-query-tables)
+- [How to download data from Bauplan](/how-to/consume/how-to-download-data-from-bauplan)
+- [How to organize the lakehouse](/how-to/import-and-lay-out-tables/how-to-organize-the-lakehouse)

@@ -1,0 +1,55 @@
+---
+title: "How to download data from Bauplan"
+description: "Select columns and rows in the SQL, and write large results to a file or read them row by row instead of loading them in memory."
+---
+
+`client.query` loads the whole result of a query into the memory of your process before it returns. That is fine for aggregates and samples, but a large result can exhaust memory. For large results, the SDK has methods that handle the result in batches as it arrives. `query_to_parquet_file`, `query_to_csv_file` and `query_to_json_file` write it to a local file, and `query_to_generator` returns it one row at a time.
+
+## Select what you need in the SQL
+
+List the columns you need, filter the rows, and add a `LIMIT` when a sample is enough. This reduces the data Bauplan reads and computes, not only what it sends back. Do not download a whole table with `SELECT *`.
+
+Use `LIMIT`, not `max_rows`, to make a query cheaper. Every method accepts `max_rows`, but it only truncates what is returned to you. The query still computes its full result on Bauplan and takes just as long. A `LIMIT` in the SQL bounds the work of the query itself.
+
+## Write large results to a file
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+client.query_to_parquet_file(
+    path="orders_2026_09.parquet",
+    query="""
+        SELECT order_id, customer_id, amount, created_at
+        FROM analytics.orders
+        WHERE created_at >= '2026-09-01' AND created_at < '2026-10-01'
+    """,
+    ref="main",
+)
+```
+
+`query_to_csv_file` and `query_to_json_file` take the same arguments and write CSV and JSON. Each batch is written before the next one is read. Memory stays bounded whatever the size of the result.
+
+Do not page through a table with `LIMIT` and `OFFSET` instead. Each page is a new query that scans the table from the start. The last page costs as much as all the pages before it. Download the result once, to a file.
+
+## Process rows one at a time
+
+To process the rows without writing them to disk, iterate over `query_to_generator`:
+
+```python type:ignore
+rows = client.query_to_generator(
+    "SELECT order_id, amount FROM analytics.orders WHERE created_at >= '2026-09-01'",
+    ref="main",
+)
+
+for row in rows:
+    ...
+```
+
+Each row is a Python dictionary, which is slow for millions of rows. For large volumes, write a Parquet file and read it with an appropriate library such as Polars or PyArrow.
+
+## Related
+
+- [How to query tables](/how-to/consume/how-to-query-tables)
+- [How to speed up reads](/how-to/performance/how-to-speed-up-reads)

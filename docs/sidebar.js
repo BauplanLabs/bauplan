@@ -51,6 +51,17 @@ export default {
         },
         {
           type: "category",
+          label: "Consume",
+          items: [
+            "how-to/consume/how-to-query-tables",
+            "how-to/consume/how-to-download-data-from-bauplan",
+            "how-to/consume/how-to-read-bauplan-tables-from-other-engines",
+            "how-to/consume/how-to-build-a-data-app",
+            "how-to/consume/how-to-answer-questions-with-an-agent",
+          ],
+        },
+        {
+          type: "category",
           label: "Operate",
           items: [
             "how-to/operate/how-to-debug-a-failed-pipeline",
