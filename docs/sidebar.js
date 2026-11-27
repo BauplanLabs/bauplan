@@ -117,18 +117,12 @@ export default {
         },
         {
           type: "category",
-          label: "Warehouses and Lakehouses",
+          label: "Storage and query engines",
           collapsed: true,
-          link: {
-            type: "doc",
-            id: "integrations/warehouses-lakehouses/index",
-          },
           items: [
-            "integrations/warehouses-lakehouses/snowflake-inbound",
-            "integrations/warehouses-lakehouses/snowflake-outbound",
-            "integrations/warehouses-lakehouses/big-query-inbound",
-            "integrations/warehouses-lakehouses/big-query-outbound",
-            "integrations/warehouses-lakehouses/r2-cloudflare-object-storage",
+            "integrations/storage-and-query-engines/query-bauplan-tables-from-snowflake",
+            "integrations/storage-and-query-engines/query-bauplan-tables-from-bigquery",
+            "integrations/storage-and-query-engines/import-data-from-cloudflare-r2",
           ],
         },
         {

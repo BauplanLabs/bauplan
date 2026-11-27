@@ -1,0 +1,102 @@
+---
+title: "Query Bauplan tables from BigQuery"
+description: "Register Bauplan tables in BigQuery as Iceberg external tables over Google Cloud Storage, and move them to the new snapshot after every merge."
+---
+
+BigQuery cannot attach an external Iceberg REST catalog such as the one Bauplan exposes. It registers each Bauplan table instead as an Iceberg external table, whose definition points to the metadata file of one snapshot in your Google Cloud Storage bucket. BigQuery then reads the data files of that snapshot where they are, without copying them; it never writes to the table.
+
+Because the definition names a single metadata file, the BigQuery table does not follow the Bauplan table by itself. Every merge that publishes a new snapshot has to be followed by a new registration, which the last section of this page runs from the same script that merges.
+
+## Create a dataset and a connection
+
+BigQuery reads the bucket through a Cloud resource connection, and the connection owns a service account of its own. Create a dataset for the Bauplan tables and the connection in the same location, as BigQuery requires:
+
+```sh
+bq mk --dataset --location=us-central1 my_project:bauplan_tables
+bq mk --connection --location=us-central1 --project_id=my_project --connection_type=CLOUD_RESOURCE bauplan_bucket
+```
+
+## Give the connection read access to the bucket
+
+The `properties` column of the connection lists its `serviceAccountId`:
+
+```sh
+bq show --connection my_project.us-central1.bauplan_bucket
+```
+
+Grant that service account read access to the bucket of your Bauplan deployment. BigQuery only reads the files, which makes Storage Object Viewer enough:
+
+```sh
+gcloud storage buckets add-iam-policy-binding gs://my-bauplan-bucket \
+  --member=serviceAccount:SERVICE_ACCOUNT_ID \
+  --role=roles/storage.objectViewer
+```
+
+## Register a table
+
+The registration needs the location of the metadata file of the table on the branch you want to expose, usually `main`. `get_table` returns it, and the API key of a read-only Bauplan user is enough to call it:
+
+```python
+client = bauplan.Client()
+table = client.get_table("orders", ref="main", namespace="sales")
+print(table.metadata_location)
+```
+
+Pass that location to `CREATE EXTERNAL TABLE`, together with the connection:
+
+```sql
+CREATE OR REPLACE EXTERNAL TABLE `my_project.bauplan_tables.orders`
+WITH CONNECTION `my_project.us-central1.bauplan_bucket`
+OPTIONS (
+  format = 'ICEBERG',
+  uris = ['gs://my-bauplan-bucket/sales/orders/metadata/00012-1c5f0e52.metadata.json']
+);
+```
+
+Since BigQuery reads the schema from the metadata file, the table is queryable as soon as the statement completes. To expose a branch other than `main`, read the metadata location with that branch as `ref`.
+
+## Follow every merge with a new registration
+
+Running the same statement with the new metadata location moves the BigQuery table to the new snapshot. Until it runs, queries in BigQuery keep reading the previous one. The registration therefore belongs right after the merge, in the script or orchestrator task that runs the pipeline:
+
+```python
+from google.cloud import bigquery
+
+import bauplan
+
+
+def register_in_bigquery(
+    bauplan_client: bauplan.Client,
+    bigquery_client: bigquery.Client,
+    table: str,
+    namespace: str,
+    bigquery_table: str,
+    connection: str,
+) -> None:
+    """Point a BigQuery external table at the current snapshot of a Bauplan table on main"""
+    metadata_location = bauplan_client.get_table(
+        table, ref="main", namespace=namespace
+    ).metadata_location
+
+    # The statement replaces the definition, and with it the snapshot BigQuery reads
+    ddl = f"""
+        CREATE OR REPLACE EXTERNAL TABLE `{bigquery_table}`
+        WITH CONNECTION `{connection}`
+        OPTIONS (format = 'ICEBERG', uris = ['{metadata_location}'])
+    """
+    bigquery_client.query(ddl).result()
+
+
+bauplan_client = bauplan.Client()
+bauplan_client.merge_branch(source_ref="alice.orders-daily", into_branch="main")
+register_in_bigquery(
+    bauplan_client,
+    bigquery.Client(),
+    table="orders",
+    namespace="sales",
+    bigquery_table="my_project.bauplan_tables.orders",
+    connection="my_project.us-central1.bauplan_bucket",
+)
+```
+
+When a merge publishes several tables, register each of them after the merge. The BigQuery tables move to the new snapshots one at a time, and a query that joins them can read an old snapshot of one table and a new snapshot of the other while the registrations run.

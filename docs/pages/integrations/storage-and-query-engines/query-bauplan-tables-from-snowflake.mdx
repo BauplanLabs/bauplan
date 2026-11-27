@@ -1,0 +1,183 @@
+---
+title: "Query Bauplan tables from Snowflake"
+description: "Connect Snowflake to the Bauplan Iceberg REST catalog, read Bauplan tables from your S3 bucket without copying them, and keep them in step after every merge."
+---
+
+Snowflake reads Bauplan tables as externally managed Iceberg tables, through two account objects. A catalog integration connects Snowflake to the Iceberg REST catalog of Bauplan, where it finds the current metadata of each table, and an external volume lets Snowflake read the files of those tables from your S3 bucket. Every Snowflake table then points to one Bauplan table; Snowflake never copies the data and never writes to it, which leaves Bauplan as the only writer.
+
+The setup below creates the two account objects once, then one Snowflake table per Bauplan table. The last sections explain how the Snowflake tables follow Bauplan after a merge, which depends on how the Bauplan table changed.
+
+## Give Snowflake read access to the bucket
+
+Snowflake reaches the bucket by assuming an IAM role in your AWS account. Since it only reads, the policy of that role can leave out every write action:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+      "Resource": "arn:aws:s3:::my-bauplan-bucket/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::my-bauplan-bucket",
+      "Condition": { "StringLike": { "s3:prefix": ["*"] } }
+    }
+  ]
+}
+```
+
+Create the role with this policy, a trust relationship to your own AWS account and the "Require external ID" option. The trust relationship is a placeholder that the next step replaces. Then create the external volume, with writes disabled and an external ID of your choice. Without one, Snowflake generates an ID that changes every time the volume is replaced, which breaks the trust policy:
+
+```sql
+CREATE EXTERNAL VOLUME bauplan_volume
+  STORAGE_LOCATIONS = (
+    (
+      NAME = 'bauplan-bucket'
+      STORAGE_PROVIDER = 'S3'
+      STORAGE_BASE_URL = 's3://my-bauplan-bucket/'
+      STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::123456789012:role/snowflake-bauplan-read'
+      STORAGE_AWS_EXTERNAL_ID = 'snowflake-bauplan'
+    )
+  )
+  ALLOW_WRITES = FALSE;
+
+DESC EXTERNAL VOLUME bauplan_volume;
+```
+
+`DESC EXTERNAL VOLUME` returns `STORAGE_AWS_IAM_USER_ARN`, the IAM user that Snowflake uses for your whole account. Replace the trust policy of the role with one that lets that user assume it with your external ID:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::987654321098:user/abc1-b-self1234" },
+      "Action": "sts:AssumeRole",
+      "Condition": { "StringEquals": { "sts:ExternalId": "snowflake-bauplan" } }
+    }
+  ]
+}
+```
+
+`SELECT SYSTEM$VERIFY_EXTERNAL_VOLUME('bauplan_volume');` checks that Snowflake can now read the bucket. The volume has to cover the whole prefix where Bauplan writes, because Snowflake reads both the data and the metadata files of each table under `STORAGE_BASE_URL`.
+
+## Connect Snowflake to the Bauplan catalog
+
+The catalog integration authenticates to Bauplan with a bearer token, which is a Bauplan API key. Create a Bauplan user that can only read, and use its key here. Snowflake cannot alter a catalog integration, nor replace one while Iceberg tables reference it. Rotating the key later therefore means dropping and creating the tables again:
+
+```sql
+CREATE CATALOG INTEGRATION bauplan_catalog
+  CATALOG_SOURCE = ICEBERG_REST
+  TABLE_FORMAT = ICEBERG
+  CATALOG_NAMESPACE = 'sales'
+  REST_CONFIG = (
+    CATALOG_URI = 'https://api.use1.aprod.bauplanlabs.com/iceberg'
+  )
+  REST_AUTHENTICATION = (
+    TYPE = BEARER
+    BEARER_TOKEN = '<BAUPLAN_API_KEY>'
+  )
+  REFRESH_INTERVAL_SECONDS = 60
+  ENABLED = TRUE;
+```
+
+The URI above exposes `main`. A catalog integration sees one branch, and the branch is part of the URI: `https://api.use1.aprod.bauplanlabs.com/iceberg/alice.dev` exposes the branch `alice.dev`. `CATALOG_NAMESPACE` is the default namespace of the tables created through the integration, and each table can override it.
+
+Two system functions show what Snowflake sees through the integration:
+
+```sql
+SELECT SYSTEM$LIST_NAMESPACES_FROM_CATALOG('bauplan_catalog', '', 1);
+SELECT SYSTEM$LIST_ICEBERG_TABLES_FROM_CATALOG('bauplan_catalog', 'sales', 1);
+```
+
+## Create a Snowflake table for each Bauplan table
+
+A Snowflake Iceberg table names its Bauplan table in `CATALOG_TABLE_NAME`, without the namespace, which goes in `CATALOG_NAMESPACE`. Both keep the case they have in Bauplan. On the Snowflake side, give the schema and the table the lowercase names of the Bauplan namespace and table, in double quotes; queries then refer to them in the same way, while column names stay unquoted:
+
+```sql
+CREATE SCHEMA IF NOT EXISTS analytics."sales";
+
+CREATE ICEBERG TABLE IF NOT EXISTS analytics."sales"."orders"
+  CATALOG = 'bauplan_catalog'
+  EXTERNAL_VOLUME = 'bauplan_volume'
+  CATALOG_TABLE_NAME = 'orders'
+  CATALOG_NAMESPACE = 'sales'
+  AUTO_REFRESH = FALSE;
+
+SELECT COUNT(*) FROM analytics."sales"."orders";
+```
+
+## Keep the tables in step with Bauplan
+
+A Snowflake Iceberg table stays on the snapshot it last read until something refreshes it. What the refresh has to do depends on how the Bauplan table changed.
+
+An import, an append or a merge of new rows adds a snapshot to the same Bauplan table. `ALTER ICEBERG TABLE analytics."sales"."orders" REFRESH;` moves the Snowflake table to that snapshot. For a table that only changes in this way, `AUTO_REFRESH = TRUE` does the same in the background, polling the catalog at the interval of the integration, and the table follows Bauplan within that interval.
+
+A pipeline run that rebuilds a table produces a Bauplan table with a new UUID. Snowflake rejects the refresh of such a table with error 91391, and its automatic refresh fails in the same way. The Snowflake table has to be created again instead, with `CREATE OR REPLACE ICEBERG TABLE` and `COPY GRANTS`, which keeps the privileges that roles hold on it. Automatic refresh stays off for these tables.
+
+The safest place for both operations is right after the merge, in the same orchestrator task, which covers every table of a namespace whatever happened to it. The function below creates the missing tables, refreshes the others and creates again those whose UUID changed:
+
+```python type:ignore
+from snowflake.connector.cursor import SnowflakeCursor
+from snowflake.connector.errors import ProgrammingError
+
+import bauplan
+
+# Snowflake rejects the refresh of a table whose Bauplan table was rebuilt with a new UUID
+TABLE_UUID_CHANGED = 91391
+
+
+def sync_namespace(
+    bauplan_client: bauplan.Client,
+    cursor: SnowflakeCursor,
+    namespace: str,
+    database: str,
+    catalog_integration: str,
+    external_volume: str,
+) -> None:
+    """Make every Bauplan table of a namespace on main readable in Snowflake at its current snapshot"""
+    schema = f'{database}."{namespace.lower()}"'
+    cursor.execute(f"CREATE SCHEMA IF NOT EXISTS {schema}")
+
+    for table in bauplan_client.get_tables("main", filter_by_namespace=namespace):
+        target = f'{schema}."{table.name.lower()}"'
+        options = f"""
+            CATALOG = '{catalog_integration}'
+            EXTERNAL_VOLUME = '{external_volume}'
+            CATALOG_TABLE_NAME = '{table.name}'
+            CATALOG_NAMESPACE = '{namespace}'
+            AUTO_REFRESH = FALSE
+        """
+
+        # A table seen for the first time is created at the current snapshot
+        cursor.execute(f"CREATE ICEBERG TABLE IF NOT EXISTS {target} {options}")
+
+        # A table rebuilt by a pipeline cannot be refreshed and is created again, with its grants
+        try:
+            cursor.execute(f"ALTER ICEBERG TABLE {target} REFRESH")
+        except ProgrammingError as error:
+            if error.errno != TABLE_UUID_CHANGED:
+                raise
+            cursor.execute(f"CREATE OR REPLACE ICEBERG TABLE {target} {options} COPY GRANTS")
+```
+
+Call it after `merge_branch` returns, with a Snowflake connection whose role owns the tables, since only the owner of an Iceberg table can refresh it.
+
+## Check which snapshot Snowflake reads
+
+The refresh history of a table shows the snapshot that Snowflake currently reads:
+
+```sql
+SELECT SNAPSHOT_ID, METADATA_FILE_NAME, REFRESHED_ON
+FROM TABLE(INFORMATION_SCHEMA.ICEBERG_TABLE_SNAPSHOT_REFRESH_HISTORY(
+  TABLE_NAME => 'analytics."sales"."orders"'
+))
+WHERE IS_CURRENT_SNAPSHOT = TRUE;
+```
+
+`SNAPSHOT_ID` should match `current_snapshot_id` of the same table in Bauplan, which `client.get_table("orders", ref="main", namespace="sales")` returns. When the two differ, the table has not been refreshed since the last merge. A query that has to read one exact snapshot, for instance to reconcile it with Bauplan, can pin it with `AT (VERSION => <snapshot_id>)` after the table name.
