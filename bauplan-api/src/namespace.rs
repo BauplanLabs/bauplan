@@ -20,6 +20,22 @@ pub struct Namespace {
     pub name: String,
 }
 
+/// A namespace in a list.
+#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+pub struct NamespaceIdentifier {
+    /// The namespace name.
+    pub name: String,
+}
+
+/// Filters for the list of namespaces.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+pub struct NamespaceFilters {
+    /// Only the namespaces whose name contains this text. A leading `^` or a
+    /// trailing `$` anchors it to the start or the end.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// A valid namespace name.
 fn namespace_name(value: &str, _: &()) -> garde::Result {
     if is_identifier(value) {
@@ -59,6 +75,23 @@ pub enum ListNamespacesError {
     /// Ref '{ref_name}' not found.
     #[api_error(404)]
     RefNotFound { ref_name: String },
+    /// A generic error.
+    #[api_error(transparent)]
+    Generic(#[from] GenericError),
+}
+
+/// API error returned by `get_namespace`.
+#[derive(Debug, displaydoc::Display, thiserror::Error, gropius::ApiError, ErrorEnvelope)]
+pub enum GetNamespaceError {
+    /// Catalog '{catalog_name}' not found.
+    #[api_error(404)]
+    CatalogNotFound { catalog_name: String },
+    /// Ref '{ref_name}' not found.
+    #[api_error(404)]
+    RefNotFound { ref_name: String },
+    /// Namespace '{namespace_name}' not found.
+    #[api_error(404)]
+    NamespaceNotFound { namespace_name: String },
     /// A generic error.
     #[api_error(transparent)]
     Generic(#[from] GenericError),
@@ -120,22 +153,30 @@ pub enum DeleteNamespaceError {
 }
 
 /// Namespace operations.
-#[gropius::api(tags = ["namespaces"], client(cfg(feature = "client")))]
+#[gropius::api(tags = ["namespaces"], client(cfg(any(feature = "client-reqwest", feature = "client-ureq"))))]
 pub trait NamespaceApi {
     /// List namespaces at a ref.
     #[endpoint(GET, "/v1/catalogs/{catalog}/refs/{ref}/namespaces")]
     async fn list_namespaces(
         &self,
         path: Path<(String, String)>,
-        query: Query<ListQuery>,
+        query: Query<ListQuery<NamespaceFilters>>,
         req: Request,
-    ) -> Result<AtCommit<Page<Namespace>>, ListNamespacesError>;
+    ) -> Result<AtCommit<Page<NamespaceIdentifier>>, ListNamespacesError>;
+
+    /// Get a namespace at a ref.
+    #[endpoint(GET, "/v1/catalogs/{catalog}/refs/{ref}/namespaces/{namespace}")]
+    async fn get_namespace(
+        &self,
+        path: Path<(String, String, String)>,
+        req: Request,
+    ) -> Result<WithCommit<Namespace>, GetNamespaceError>;
 
     /// Create a namespace.
     ///
     /// ## Commit
     ///
-    /// Produces a commit on the target branch; `commit.expected_commit_hash`
+    /// Produces a commit on the target branch; `commit.expected_head`
     /// enforces optimistic locking.
     #[endpoint(POST, "/v1/catalogs/{catalog}/refs/{ref}/namespaces")]
     async fn create_namespace(
@@ -149,7 +190,7 @@ pub trait NamespaceApi {
     ///
     /// ## Commit
     ///
-    /// Produces a commit on the target branch; `commit.expected_commit_hash`
+    /// Produces a commit on the target branch; `commit.expected_head`
     /// enforces optimistic locking.
     #[endpoint(DELETE, "/v1/catalogs/{catalog}/refs/{ref}/namespaces/{namespace}")]
     async fn delete_namespace(

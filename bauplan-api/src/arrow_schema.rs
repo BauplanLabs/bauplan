@@ -158,6 +158,10 @@ pub enum ArrowType {
         run_ends: Box<ArrowField>,
         values: Box<ArrowField>,
     },
+    /// A type this client does not know yet.
+    #[serde(untagged)]
+    #[schemars(skip)]
+    Unknown(serde_json::Value),
 }
 
 fn is_false(value: &bool) -> bool {

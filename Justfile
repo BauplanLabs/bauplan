@@ -6,7 +6,8 @@ lint:
     cargo fmt --all -- --check
     cargo clippy -- -Dwarnings
     cargo clippy -p bauplan-api -p bauplan-api-macros --all-targets -- -Dwarnings
-    cargo clippy -p bauplan-api --all-targets --features client -- -Dwarnings
+    cargo clippy -p bauplan-api --all-targets --features client-reqwest -- -Dwarnings
+    cargo clippy -p bauplan-api --all-targets --features client-ureq -- -Dwarnings
 
     # Prose linting.
     # https://github.com/vale-cli/vale/issues/575

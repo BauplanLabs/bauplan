@@ -1,6 +1,7 @@
 //! The public Bauplan API, as gropius traits.
 //!
-//! The `client` feature generates the clients.
+//! The `client-reqwest` or the `client-ureq` feature generates the clients,
+//! on top of `reqwest` or `ureq`.
 
 pub mod arrow_schema;
 pub mod branch;
