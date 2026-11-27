@@ -92,11 +92,12 @@ export default {
           },
           items: [
             "integrations/orchestrators/airflow",
-            "integrations/orchestrators/temporal",
             "integrations/orchestrators/dagster",
             "integrations/orchestrators/dbos",
-            "integrations/orchestrators/prefect",
+            "integrations/orchestrators/kestra",
             "integrations/orchestrators/orchestra",
+            "integrations/orchestrators/prefect",
+            "integrations/orchestrators/temporal",
           ],
         },
         {
