@@ -1,325 +1,412 @@
 ---
 title: "Temporal"
-description: "Run Bauplan pipelines from a Temporal workflow - call the SDK inside Activities, create branches, pass parameters, and get durable retries and failure handling."
+description: "Run Bauplan from Temporal with a shared library of activities, one per Bauplan command, each with the retry policy its operation needs, composed into workflows that publish one branch per run."
 ---
 
-Bauplan exposes a Python SDK that lets you do everything with your lakehouse in code - from running pipelines to managing branches and tables. Temporal is just Python too: you write Workflows and Activities as regular Python functions using the Temporal Python SDK decorators. Integrating the two is straightforward: import the Bauplan SDK inside a Temporal **Activity** and call Bauplan methods as you would in a standalone script. Temporal handles orchestration, durability, logging, and scheduling, while Bauplan executes the data work. The result is a clean split; **Temporal runs the workflow**, **Bauplan runs the pipelines, the queries, and the lakehouse infrastructure**.
+[Temporal](https://temporal.io/) already gives you durable workflows, retries and schedules. To orchestrate Bauplan with it, you turn most Bauplan commands into activities, keep them in one shared library, and compose your workflows from them. Each activity gets a retry policy and timeouts that match the operation it wraps. Each workflow run works on a branch of its own and publishes it with a single merge.
 
-## Quickstart: Run a Bauplan pipeline from a Temporal workflow
+| Bauplan | Temporal |
+| :--- | :--- |
+| A command of the Python SDK, such as creating a branch, running a pipeline or merging | An activity in the shared library |
+| A kind of operation, such as a catalog change or a long job | A retry policy and a set of timeouts |
+| A branch created for one run and merged once | One workflow execution |
+| A job that runs for minutes or hours | A start activity, then a wait activity that heartbeats |
+| A recurring pipeline | A Schedule that starts the workflow |
 
-**Goal:** call a [Bauplan project](/concepts/projects) from a Temporal Workflow in the smallest possible way: authenticate, run, check status, and fail the Workflow if the Bauplan job fails.
-
-## Prerequisites
-
-- Python 3.11-3.12 (Bauplan supports 3.11+; the Temporal Python SDK supports modern Python 3.x and is distributed on PyPI as `temporalio`).
-- A [Bauplan project](/concepts/projects) (a folder containing your pipeline code and `bauplan_project.yml`).
-- A [Bauplan API key](/tutorial/installation) (via environment or passed to the client).
-- Temporal installed for local development:
-  - Install the Temporal CLI and start the dev server with `temporal server start-dev`. This also launches the Web UI at `http://localhost:8233`.
-
-<Note>
-  If your pipeline writes data, run it on a branch (not on `main`). Branch names
-  must be prefixed with your Bauplan username, for example
-  `alice.temporal_docs`. Our example code creates one for you. [Learn
-  more](/concepts/catalog-and-branches#data-branches).
-</Note>
-
-## Minimal workflow
-
-Define a Temporal Activity that runs your Bauplan project, a Workflow that calls it, and fail fast if the Bauplan job fails. Temporal requires a Worker polling a Task Queue for your Workflow and Activities. In the Workflow, specify an Activity timeout (Temporal requires at least `start_to_close_timeout` or `schedule_to_close_timeout`).
-
-```python type:ignore title="workflow_and_worker.py"
-import asyncio
-from datetime import timedelta
-from uuid import uuid4
-from concurrent.futures import ThreadPoolExecutor
-
-from temporalio import workflow
-from temporalio.client import Client
-from temporalio.worker import Worker
-
-# Import activities as pass-through so the workflow sandbox doesn't re-import bauplan
-with workflow.unsafe.imports_passed_through():
-    from activities import run_bauplan_activity, report_success_activity
-
-@workflow.defn
-class BauplanWorkflow:
-    @workflow.run
-    async def run(self, pipeline_dir: str, bauplan_branch_suffix: str) -> dict:
-        """
-        Minimal Temporal → Bauplan integration: run a project and fail fast on error.
-        """
-        result = await workflow.execute_activity(
-            run_bauplan_activity,
-            args=[pipeline_dir, bauplan_branch_suffix],
-            schedule_to_close_timeout=timedelta(minutes=60), # required by Temporal
-        )
-        await workflow.execute_activity(
-            report_success_activity,
-            args=[result],
-            schedule_to_close_timeout=timedelta(seconds=30),
-        )
-        return result
-
-async def main():
-    # Connect a client to the local Temporal dev server
-    client = await Client.connect("localhost:7233")
-    task_queue = "bauplan-pipeline-run"
-
-    # Start a worker that hosts the workflow and activities
-    worker = Worker(
-        client,
-        task_queue=task_queue,
-        workflows=[BauplanWorkflow],
-        activities=[run_bauplan_activity, report_success_activity],
-        # Activities are sync (they call Bauplan); run them in a thread pool
-        activity_executor=ThreadPoolExecutor(max_workers=8),
-    )
-
-    # Run the worker and start a workflow in the same process for fast local debugging
-    async with worker:
-        handle = await client.start_workflow(
-            BauplanWorkflow.run,
-            id=f"bauplan-{uuid4()}",
-            task_queue=task_queue,
-            args=[
-                "your_bauplan_project", # change this with the path to your bauplan project
-                "temporal_docs",        # change this with your branch suffix
-            ],
-        )
-        print("Workflow result:", await handle.result())
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
+```mermaid
+flowchart LR
+    create[Create branch] --> start[Start job]
+    start --> wait[Wait for job]
+    wait -->|complete| merge[Merge]:::highlight
+    wait -->|failed| cleanup[Delete branch]
+    merge --> cleanup
 ```
 
-```python title="activities.py"
-from temporalio import activity
-from pathlib import Path
+## Build a shared library of Bauplan activities
 
-@activity.defn
-def run_bauplan_activity(project_dir: str, bauplan_branch_suffix: str) -> dict:
-    # Import inside the activity so it never touches the workflow sandbox
-    import bauplan
+Write one activity for every Bauplan command your pipelines use, and put them all in one package that every workflow imports. The activities hold no pipeline logic. Each one makes a single call to the SDK and turns its outcome into something Temporal understands, such as a return value or an error. A workflow then reads as a sequence of building blocks, and a fix to how a command is called, retried, or reported is made once for every pipeline.
 
-    project_path = Path(project_dir).expanduser().resolve()
-    if not project_path.exists():
-        raise RuntimeError(f"Project path does not exist: {project_path}")
-
-    client = bauplan.Client() # credentials: BAUPLAN_API_KEY / BAUPLAN_PROFILE / ~/.bauplan/config.yml
-    username = client.info().user.username
-    branch = f"{username}.{bauplan_branch_suffix}"
-
-    client.create_branch(branch, from_ref="main", if_not_exists=True)
-
-    state = client.run(project_dir=str(project_path), ref=branch)
-    if str(state.job_status).lower() != "success":
-        raise RuntimeError(f"Bauplan job {state.job_id} ended with status='{state.job_status}'")
-
-    return {"job_id": state.job_id, "job_status": state.job_status}
-
-@activity.defn
-def report_success_activity(result: dict) -> None:
-    print(f"Bauplan run succeeded (job_id={result['job_id']}, status={result['job_status']})")
-
+```tree
+bauplan_activities/
+  activities.py           # one activity per Bauplan command
+  entities.py             # frozen dataclasses for inputs and outputs
+  policies.py             # retry policies and timeouts per kind of operation
+pipelines/
+  orders/
+    workflow.py           # composes the activities
+    projects/orders/      # the Bauplan project the workflow runs
+worker.py                 # registers the workflows and the whole library
 ```
 
-This uses Temporal's Python SDK to define Workflows and Activities as plain Python functions, runs a Worker, and starts the Workflow in-process for fast local debugging. The Activity timeout on `execute_activity` is required and ensures correct retry/failure semantics. The `imports_passed_through()` block prevents the workflow sandbox from importing `bauplan` (which would violate determinism).
+Inputs and outputs are frozen dataclasses, which Temporal serializes into the workflow history. Give every new field a default, because schedules and running workflows carry payloads written before the field existed:
 
-## How to run it locally
+```python
+from dataclasses import dataclass, field
+from typing import Literal
 
-Install and start Temporal dev server in one terminal:
 
-```sh
-brew install temporal
-temporal server start-dev
+@dataclass(frozen=True)
+class ImportParams:
+    """Files to import into an existing table on a branch"""
+
+    table: str
+    search_uri: str
+    branch: str
+    namespace: str
+
+
+@dataclass(frozen=True)
+class RunParams:
+    """A pipeline run to start on a branch"""
+
+    project_dir: str
+    ref: str
+    namespace: str
+    parameters: dict[str, str] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class JobResult:
+    """How a Bauplan job ended"""
+
+    job_id: str
+    status: Literal["complete", "failed", "aborted"]
+    error_message: str | None = None
 ```
 
-This gives you the Temporal Web UI at `http://localhost:8233` and a local gRPC endpoint at `localhost:7233`.
-
-Run the worker and workflow in another terminal:
-
-```sh
-uv run --with temporalio --with bauplan workflow_and_worker.py
-```
-
-This starts a Worker and immediately kicks off a `BauplanWorkflow` run with your arguments. Use an absolute project path. If you change code, restart this Python process and start a new workflow execution.
-
-## Small tips
-
-Retries in dev. To avoid noisy auto-retries while iterating, set a no-retry policy in the workflow call:
+The library below wraps the commands a typical pipeline needs, from creating its branch and namespace to starting and waiting for jobs, merging and deleting the branch. Because the Bauplan client is synchronous, the activities are plain `def` functions that the worker runs on a thread pool:
 
 ```python type:ignore
+import time
+from datetime import UTC, datetime
+
+import bauplan
+from bauplan.schema import JobState
+from temporalio import activity
+from temporalio.exceptions import CancelledError
+
+from bauplan_activities.entities import ImportParams, JobResult, RunParams
+
+# Seconds between two status checks of a running job, well below the heartbeat timeout
+POLL_INTERVAL_SECONDS = 10
+
+
+@activity.defn
+def create_branch(base_ref: str, prefix: str) -> str:
+    """Create a new branch for one workflow run and return its name"""
+    client = bauplan.Client()
+
+    # Building the name here and not in the workflow records it in history, and replays reuse it unchanged
+    stamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+    branch = f"{client.info().user.username}.{prefix}-{stamp}"
+
+    client.create_branch(branch, from_ref=base_ref)
+    return branch
+
+
+@activity.defn
+def create_namespace(branch: str, namespace: str) -> None:
+    """Create a namespace on a branch if it does not exist yet"""
+    bauplan.Client().create_namespace(namespace, branch, if_not_exists=True)
+
+
+@activity.defn
+def start_import(params: ImportParams) -> str:
+    """Submit an import without waiting for it, and return its job id"""
+    state = bauplan.Client().import_data(
+        table=params.table,
+        search_uri=params.search_uri,
+        branch=params.branch,
+        namespace=params.namespace,
+        detach=True,
+    )
+    if state.job_id is None:
+        raise RuntimeError(f"import into {params.table} returned no job id")
+    return state.job_id
+
+
+@activity.defn
+def start_run(params: RunParams) -> str:
+    """Submit a pipeline run without waiting for it, and return its job id"""
+    state = bauplan.Client().run(
+        project_dir=params.project_dir,
+        ref=params.ref,
+        namespace=params.namespace,
+        parameters=dict(params.parameters),
+        detach=True,
+    )
+    if state.job_id is None:
+        raise RuntimeError(f"run on {params.ref} returned no job id")
+    return state.job_id
+
+
+@activity.defn
+def wait_for_job(job_id: str) -> JobResult:
+    """Wait until a job ends, heartbeating while it runs, and return how it ended"""
+    client = bauplan.Client()
+
+    try:
+        job = client.get_job(job_id)
+        while job.status in (JobState.NOT_STARTED, JobState.RUNNING):
+            # The heartbeat tells Temporal the worker is alive and lets it deliver a cancellation
+            activity.heartbeat()
+            time.sleep(POLL_INTERVAL_SECONDS)
+            job = client.get_job(job_id)
+
+    # When the workflow stops waiting, stop the job too instead of leaving it to write on the branch
+    except CancelledError:
+        client.cancel_job(job_id)
+        raise
+
+    # Every final state is a result the workflow can act on
+    if job.status == JobState.COMPLETE:
+        return JobResult(job_id, "complete")
+    if job.status == JobState.FAIL:
+        return JobResult(job_id, "failed", job.error_message)
+    if job.status == JobState.ABORT:
+        return JobResult(job_id, "aborted", job.error_message)
+
+    # Any other state is unexpected: fail the attempt and let the retry policy wait again
+    raise RuntimeError(f"job {job_id} is in state {job.human_readable_status}")
+
+
+@activity.defn
+def merge_branch(source_ref: str, into_branch: str) -> None:
+    """Publish a branch into its base branch"""
+    bauplan.Client().merge_branch(
+        source_ref=source_ref,
+        into_branch=into_branch,
+        commit_message=f"Merge {source_ref} into {into_branch}",
+    )
+
+
+@activity.defn
+def delete_branch(branch: str) -> None:
+    """Delete a branch, succeeding if it is already gone"""
+    bauplan.Client().delete_branch(branch, if_exists=True)
+```
+
+Add an activity to the library whenever a workflow needs another command, for instance `revert_table` or `delete_table`, rather than calling the SDK from a workflow-specific activity.
+
+## Give every kind of operation its own retry strategy
+
+Temporal retries a failed activity until its policy gives up, and a retry repeats the whole call. What a retry costs, and whether it is safe at all, depends on the operation. For this reason every activity in the library is paired with a policy written for its kind of operation:
+
+1. Branch creation is never retried. If an attempt created the branch but its completion was lost, a retry would create a second branch for the same run.
+2. Catalog operations, such as creating a namespace, merging or deleting a branch, are quick and safe to repeat. They get many attempts with backoff, which lets them ride out transient errors. A merge that conflicts is the exception, because it fails the same way on every attempt.
+3. Starting a job is retried a few times only, since an attempt whose completion was lost has already started a job.
+4. Waiting for a job is the long operation. Its timeout comes from the pipeline, its heartbeat timeout detects a dead worker within a minute, and a new attempt resumes waiting on the same job.
+
+Keeping the policies next to the activities guarantees that every workflow applies the same strategy to the same operation:
+
+```python
+from datetime import timedelta
+
 from temporalio.common import RetryPolicy
 
-result = await workflow.execute_activity(
-    run_bauplan_activity,
-    args=[pipeline_dir, bauplan_branch_suffix],
-    schedule_to_close_timeout=timedelta(minutes=10),
-    retry_policy=RetryPolicy(maximum_attempts=1),
+# Never retried: an attempt whose completion was lost has already created the branch
+BRANCH_CREATION_RETRY_POLICY = RetryPolicy(maximum_attempts=1)
+
+# Catalog operations are quick and safe to repeat, and patient retries let them ride out transient errors.
+# A merge that conflicts is not retried, because it fails the same way on every attempt
+CATALOG_TIMEOUT = timedelta(minutes=3)
+CATALOG_RETRY_POLICY = RetryPolicy(
+    maximum_attempts=10,
+    initial_interval=timedelta(seconds=30),
+    maximum_interval=timedelta(minutes=5),
+    non_retryable_error_types=["MergeConflictError"],
+)
+
+# A few attempts only: an attempt whose completion was lost has already started a job
+JOB_START_TIMEOUT = timedelta(minutes=5)
+JOB_START_RETRY_POLICY = RetryPolicy(
+    maximum_attempts=3, initial_interval=timedelta(seconds=30)
+)
+
+# A new attempt resumes waiting on the same job, for instance after a worker restart, and a missed
+# heartbeat detects a dead worker within a minute instead of at the end of the run timeout
+JOB_WAIT_HEARTBEAT_TIMEOUT = timedelta(minutes=1)
+JOB_WAIT_RETRY_POLICY = RetryPolicy(
+    maximum_attempts=5, initial_interval=timedelta(seconds=10)
 )
 ```
 
-- **Sandbox rule of thumb**. Never import `bauplan` at workflow module top-level. Keep it inside activities (or in an `activities.py` imported under `imports_passed_through()`).
-- **Dev loop**. Leave the dev server running. Restart only your Python worker when code changes. Start a fresh workflow execution each run (the snippet uses a new UUID each time).
+## Wait for jobs with a heartbeating activity
 
-## Bauplan authentication
+Since Bauplan jobs run for minutes or hours, the library splits each of them in two activities. `start_run` and `start_import` submit the job with `detach=True` and return its id within seconds, and `wait_for_job` waits for it. The wait activity checks the job at a fixed interval and heartbeats in between, which tells Temporal that the worker is still alive and gives Temporal a way to deliver a cancellation. When the workflow stops waiting, because the run timed out or someone cancelled it, the activity cancels the Bauplan job before raising, which keeps the job from writing to a branch nobody will merge.
 
-Bauplan looks for credentials in a clear precedence order:
+The wait ends with a result for every final state of the job. A failed or aborted job is reported as such, and the workflow decides what it means. Only a state the activity does not expect fails the attempt, and the retry policy then waits again.
 
-1. **Environment variable** - `BAUPLAN_API_KEY`
-2. **Profile name** - `BAUPLAN_PROFILE` (points to a saved profile)
-3. **Config file** - `~/.bauplan/config.yml`
+## Compose workflows from the library
 
-You can set a key directly in code, export it as an environment variable for scripts and CI/CD, or manage multiple profiles via the config file. Passing `api_key` explicitly will always override other sources.
+A workflow imports the library inside `workflow.unsafe.imports_passed_through()`, which keeps the workflow sandbox from importing `bauplan` on every run. It then calls the activities in order, each with the policy of its kind of operation. The branch is created first and deleted in a `finally` block, which runs whether the run was merged, failed or was cancelled:
 
-```python
-import bauplan
-client = bauplan.Client(api_key="YOUR_KEY")
-```
-
-## Optional: Passing parameters
-
-Parameters let you control your pipeline logic in Bauplan without changing the code. They show up in your SQL or Python models as templated values. Typical uses: date filters, limits, or toggling options.
-
-Learn how to [set up parameters in Bauplan](/reference/cli#bauplan-parameter-set).
-
-Suppose you have a Bauplan model that filters rows by a parameter `start_time`:
-
-```yaml
-# bauplan_project.yml
-project:
-  id: 2b74eb5c-548f-4192-bf18-fcfa33a0746f
-  name: test-pipeline
-parameters:
-  start_time:
-    type: str
-    default: "2022-12-15T00:00:00-05:00"
-```
-
-```python title="models.py"
-from typing import Annotated
-
-import pyarrow
-
-import bauplan
-
-class PickupTimes(bauplan.TableSchema):
-    """Pickup timestamps for the filtered rides."""
-
-    pickup_datetime: bauplan.TimestampMicroUTC
-
-@bauplan.model(materialization_strategy='REPLACE')
-@bauplan.python('3.11', pip={'pandas': '3.0.6'})
-def filtered_taxi_rides_parameters(
-        taxi_table: Annotated[
-            pyarrow.Table,
-            bauplan.Model(
-                "taxi_fhvhv",
-                projection_schema=PickupTimes,
-                filter="pickup_datetime >= $start_time"
-            ),
-        ],
-) -> Annotated[pyarrow.Table, PickupTimes]:
-    taxi_df = taxi_table.to_pandas()
-
-    print(f"\nEarliest pickup in result:, {taxi_df['pickup_datetime'].min()}")
-    print(f"\nRows returned:, {len(taxi_df)}\n")
-
-    return pyarrow.Table.from_pandas(taxi_df)
-```
-
-You can set the `start_time` when running the pipeline through Temporal.
-
-```python title="activities_with_param.py"
-from temporalio import activity
-from typing import Dict, Any
-
-@activity.defn
-def run_with_parameters_activity(
-    project_dir: str,
-    bauplan_branch_suffix: str,
-    parameters: Dict[str, Any],
-) -> dict:
-    # Import inside the activity so it never touches the workflow sandbox
-    import bauplan
-
-    client = bauplan.Client()
-    username = client.info().user.username
-    branch = f"{username}.{bauplan_branch_suffix}"
-
-    client.create_branch(branch, from_ref="main", if_not_exists=True)
-
-    state = client.run(project_dir=project_dir, ref=branch, parameters=parameters)
-
-    if str(state.job_status).lower() != "success":
-        raise RuntimeError(
-            f"Bauplan job {state.job_id} ended with status='{state.job_status}'"
-        )
-
-    return {"job_id": state.job_id, "job_status": state.job_status}
-
-```
-
-```python type:ignore title="workflow_and_worker_with_param.py"
-import asyncio
+```python type:ignore
+from dataclasses import dataclass, field
 from datetime import timedelta
-from uuid import uuid4
-from typing import Dict, Any
 
 from temporalio import workflow
-from temporalio.client import Client
-from temporalio.worker import Worker
-from concurrent.futures import ThreadPoolExecutor
+from temporalio.exceptions import ApplicationError
 
-# Import activity via passthrough so the workflow sandbox doesn't re-import bauplan
+# The library, and bauplan through it, is imported outside the workflow sandbox
 with workflow.unsafe.imports_passed_through():
-    from activities import run_with_parameters_activity
-
-@workflow.defn
-class RunWithParametersWorkflow:
-    @workflow.run
-    async def run(
-        self,
-        project_dir: str,
-        bauplan_branch_suffix: str,
-        parameters: Dict[str, Any],
-    ) -> dict:
-        return await workflow.execute_activity(
-            run_with_parameters_activity,
-            args=[project_dir, bauplan_branch_suffix, parameters],
-            schedule_to_close_timeout=timedelta(minutes=60),
-        )
-
-async def main():
-    client = await Client.connect("localhost:7233")
-    task_queue = "bauplan-parameters"
-
-    worker = Worker(
-        client,
-        task_queue=task_queue,
-        workflows=[RunWithParametersWorkflow],
-        activities=[run_with_parameters_activity],
-        activity_executor=ThreadPoolExecutor(max_workers=8),  # needed since activity is sync
+    from bauplan_activities.activities import (
+        create_branch,
+        create_namespace,
+        delete_branch,
+        merge_branch,
+        start_run,
+        wait_for_job,
+    )
+    from bauplan_activities.entities import RunParams
+    from bauplan_activities.policies import (
+        BRANCH_CREATION_RETRY_POLICY,
+        CATALOG_RETRY_POLICY,
+        CATALOG_TIMEOUT,
+        JOB_START_RETRY_POLICY,
+        JOB_START_TIMEOUT,
+        JOB_WAIT_HEARTBEAT_TIMEOUT,
+        JOB_WAIT_RETRY_POLICY,
     )
 
-    async with worker:
-        handle = await client.start_workflow(
-            RunWithParametersWorkflow.run,
-            id=f"bauplan-params-{uuid4()}",
-            task_queue=task_queue,
-            args=[
-                "your_bauplan_project", # change this with the path to your bauplan project
-                "temporal_docs",        # change this with your branch suffix
-                {"start_time": "2023-01-01T00:00:00-05:00"},
-            ],
+
+@dataclass(frozen=True)
+class PipelineParams:
+    """What one run of the workflow computes and where it publishes it"""
+
+    project_dir: str
+    namespace: str
+    base_branch: str = "main"
+    branch_prefix: str = "orders-transformation-prod"
+    run_timeout_minutes: int = 60
+    parameters: dict[str, str] = field(default_factory=dict)
+
+
+@workflow.defn
+class PipelineWorkflow:
+    @workflow.run
+    async def run(self, params: PipelineParams) -> None:
+        """Run a pipeline on a new branch and publish it with one merge"""
+        branch = await workflow.execute_activity(
+            create_branch,
+            args=[params.base_branch, params.branch_prefix],
+            start_to_close_timeout=CATALOG_TIMEOUT,
+            retry_policy=BRANCH_CREATION_RETRY_POLICY,
         )
-        result = await handle.result()
-        print("Workflow result:", result)
+
+        try:
+            # The target namespace may not exist yet on the base branch
+            await workflow.execute_activity(
+                create_namespace,
+                args=[branch, params.namespace],
+                start_to_close_timeout=CATALOG_TIMEOUT,
+                retry_policy=CATALOG_RETRY_POLICY,
+            )
+
+            # Start the run detached, then wait for it within the run timeout of this pipeline
+            job_id = await workflow.execute_activity(
+                start_run,
+                RunParams(
+                    params.project_dir, branch, params.namespace, params.parameters
+                ),
+                start_to_close_timeout=JOB_START_TIMEOUT,
+                retry_policy=JOB_START_RETRY_POLICY,
+            )
+            result = await workflow.execute_activity(
+                wait_for_job,
+                job_id,
+                start_to_close_timeout=timedelta(minutes=params.run_timeout_minutes),
+                heartbeat_timeout=JOB_WAIT_HEARTBEAT_TIMEOUT,
+                retry_policy=JOB_WAIT_RETRY_POLICY,
+            )
+
+            # The workflow is not retried, because a job that failed fails again on the same data
+            if result.status != "complete":
+                raise ApplicationError(
+                    f"job {result.job_id} {result.status}: {result.error_message}",
+                    type="PipelineFailed",
+                    non_retryable=True,
+                )
+
+            await workflow.execute_activity(
+                merge_branch,
+                args=[branch, params.base_branch],
+                start_to_close_timeout=CATALOG_TIMEOUT,
+                retry_policy=CATALOG_RETRY_POLICY,
+            )
+
+        # Merged, failed or cancelled, the branch of this run is not needed anymore
+        finally:
+            await workflow.execute_activity(
+                delete_branch,
+                branch,
+                start_to_close_timeout=CATALOG_TIMEOUT,
+                retry_policy=CATALOG_RETRY_POLICY,
+            )
+```
+
+Other workflows are different sequences of the same blocks. An ingestion workflow, for instance, calls `start_import` and `wait_for_job` before the run, on the same branch, and a single merge then publishes the imported table together with the tables built from it. When several pipelines depend on each other, run each one as a child workflow and start a child only after the ones it reads from have merged.
+
+## Run the worker
+
+One worker can host every workflow and the whole library. Register all the activities once, and give the worker a thread pool for them:
+
+```python type:ignore
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+
+from temporalio.client import Client
+from temporalio.worker import Worker
+
+from bauplan_activities.activities import (
+    create_branch,
+    create_namespace,
+    delete_branch,
+    merge_branch,
+    start_import,
+    start_run,
+    wait_for_job,
+)
+from workflow import PipelineWorkflow
+
+
+async def main() -> None:
+    """Host the workflows and the shared Bauplan activities on one task queue"""
+    client = await Client.connect("localhost:7233")
+
+    # The activities run on a thread pool because they call the synchronous Bauplan client
+    worker = Worker(
+        client,
+        task_queue="bauplan-pipelines",
+        workflows=[PipelineWorkflow],
+        activities=[
+            create_branch,
+            create_namespace,
+            start_import,
+            start_run,
+            wait_for_job,
+            merge_branch,
+            delete_branch,
+        ],
+        activity_executor=ThreadPoolExecutor(max_workers=16),
+    )
+    await worker.run()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
 ```
 
-This will run the Bauplan project on the given branch, applying `start_time="2023-01-01T00:00:00-05:00"` inside the model so only rides on or after 2023-01-01 are processed.
+Since `client.run` submits a project from a folder, the worker also needs the Bauplan project directories on disk.
+
+## Schedule the workflow
+
+A Temporal Schedule starts the workflow on a cron. Choose the overlap policy by what a missed run means for the data. When every run processes its own period, such as one hour of events, use `ScheduleOverlapPolicy.BUFFER_ALL` with a catch-up window, which replays missed runs in order. When every run reads the same snapshot again, use `ScheduleOverlapPolicy.SKIP`, since a missed run carries no data the next one will not have.
+
+A workflow that processes a time window should derive it from the scheduled time of the run rather than from the current time. A run that starts late then still processes its own period. Temporal exposes the scheduled time as the `TemporalScheduledStartTime` search attribute, and `workflow.now()` is the deterministic fallback for runs started by hand. Pass the window to the pipeline as run parameters, as in [how to parametrize a pipeline](/how-to/build-pipelines/how-to-parametrize-a-pipeline).
+
+## Related
+
+- [Deployment](/how-to/deploy/how-to-deploy-a-pipeline)
+- [How to Write-Audit-Publish](/how-to/publish/how-to-write-audit-publish)
+- [Dagster](/integrations/orchestrators/dagster)
