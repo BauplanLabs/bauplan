@@ -40,6 +40,15 @@ export default {
         },
         {
           type: "category",
+          label: "Build pipelines",
+          items: [
+            "how-to/build-pipelines/how-to-structure-a-pipeline",
+            "how-to/build-pipelines/how-to-materialize-pipeline-outputs",
+            "how-to/build-pipelines/how-to-partition-tables-in-a-pipeline",
+          ],
+        },
+        {
+          type: "category",
           label: "Publish",
           items: [
             "how-to/publish/how-to-write-audit-publish",

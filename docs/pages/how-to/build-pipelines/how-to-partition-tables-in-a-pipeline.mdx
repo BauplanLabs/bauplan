@@ -1,0 +1,114 @@
+---
+title: "How to partition tables in a pipeline"
+description: "Partition materialized outputs on the columns consumers filter on, at a granularity that keeps partitions large."
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Partitioning a table can help with speeding up reads significantly by allowing queries to skip entire files. The main tradeoff is that you should avoid creating too many small files, corresponding with too granular partitions. See [File layout and partitioning](/concepts/tables#file-layout-and-partitioning) for more details.
+
+This guide walks you through setting a partition on a Model created in a pipeline.
+
+## Choose the partition column
+
+Partition on the column that consumers filter on, usually a date or a timestamp. For a timestamp, you can add a transform: `year`, `month`, `day` or `hour` to reduce the granularity of the partition. Other column types can be useful partition keys if they contain few values.
+
+**Don't partition on a column with many values.** Every run writes at least one file per partition value it touches, so the number of partition values multiplies the number of files. Partitioning on a user or session ID turns each run into thousands of small files. Every read of the table gets slower; see [File layout and partitioning](/concepts/tables#file-layout-and-partitioning) for why, and [How to avoid small files](/how-to/import-and-lay-out-tables/how-to-avoid-small-files).
+
+**Prefer day or month to hour.** Use `hour()` only when each hour holds a lot of data. For data that arrives a few rows at a time, hourly partitions produce many small files for the same reason.
+
+## Set partitioned_by on the model
+
+Set `partitioned_by` in the decorator of a Python model or in the header of a SQL model. It works with any materialization strategy:
+
+<Tabs groupId="model-language">
+<TabItem value="python" label="Python">
+
+```python type:ignore title="models.py"
+from typing import Annotated
+
+import bauplan
+import pyarrow as pa
+
+
+class OrderColumns(bauplan.TableSchema):
+    """The order columns needed for daily revenue."""
+
+    order_id: bauplan.String
+    order_date: bauplan.Date32
+    country: bauplan.String
+    amount: bauplan.Float64
+
+
+class DailyRevenue(bauplan.TableSchema):
+    """Revenue and orders per country and day, partitioned by month because dashboards read one month at a time."""
+
+    order_date: bauplan.Date32
+    country: bauplan.String
+    revenue: bauplan.Float64
+    orders: bauplan.Int64
+
+
+@bauplan.model(materialization_strategy="REPLACE", partitioned_by=["month(order_date)"])
+@bauplan.python("3.13", pip={"polars": "2.0.0"})
+def daily_revenue(
+    orders: Annotated[pa.Table, bauplan.Model("sales.orders", projection_schema=OrderColumns)],
+) -> Annotated[pa.Table, DailyRevenue]:
+    """Aggregate orders into revenue per country and day."""
+    import polars as pl
+
+    return (
+        pl.from_arrow(orders)
+        .group_by("order_date", "country")
+        .agg(
+            pl.col("amount").sum().alias("revenue"),
+            # n_unique returns an unsigned integer, which the schema does not allow
+            pl.col("order_id").n_unique().cast(pl.Int64).alias("orders"),
+        )
+        .to_arrow()
+    )
+```
+
+</TabItem>
+<TabItem value="sql" label="SQL">
+
+```sql title="daily_revenue.sql"
+-- bauplan: materialization_strategy = REPLACE
+-- bauplan: output_schema = models.DailyRevenue
+-- bauplan: partitioned_by = month(order_date)
+SELECT
+    order_date,
+    country,
+    SUM(amount) AS revenue,
+    COUNT(DISTINCT order_id) AS orders
+FROM sales.orders
+GROUP BY order_date, country
+```
+
+The output schema is a Python class; see [write a SQL model](/how-to/build-pipelines/how-to-write-a-pipeline#write-a-sql-model).
+
+```python title="models.py"
+import bauplan
+
+
+class DailyRevenue(bauplan.TableSchema):
+    """Revenue and orders per country and day, partitioned by month because dashboards read one month at a time."""
+
+    order_date: bauplan.Date32
+    country: bauplan.String
+    revenue: bauplan.Float64
+    orders: bauplan.Int64
+```
+
+</TabItem>
+</Tabs>
+
+With this partitioning, a dashboard that shows one month filters on `order_date` itself, such as `order_date >= '2026-08-01' AND order_date < '2026-09-01'`, and reads only the files of that month. How to write filters that skip files is in [How to speed up reads](/how-to/performance/how-to-speed-up-reads).
+
+## Related
+
+- [Overwrite a window of partitions](/how-to/build-pipelines/how-to-materialize-pipeline-outputs#overwrite-a-window-of-partitions)
+- [How to partition tables at import time](/how-to/import-and-lay-out-tables/how-to-partition-tables-at-import-time)
+- [How to speed up reads](/how-to/performance/how-to-speed-up-reads)
+- [File layout and partitioning](/concepts/tables#file-layout-and-partitioning)
