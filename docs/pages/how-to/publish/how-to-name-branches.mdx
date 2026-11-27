@@ -1,0 +1,46 @@
+---
+title: "How to name branches"
+description: "Conventions for personal, scheduled and agent branches."
+---
+
+People, schedulers, and agents all create branches in the same catalog, and after a while the list of branches is long. A naming convention lets you tell from the name alone who created a branch, what runs on it and when, and lets scripts find the branches of one pipeline or one kind with a prefix filter. The conventions on this page cover the three kinds of branches you meet in practice:
+
+| Kind | Pattern | Example |
+| :--- | :--- | :--- |
+| Personal | `<username>.<topic>` | `alice.revenue-model` |
+| Scheduled | `<service_user>.<pipeline>-<scope>-<env>-<UTC timestamp>` | `etl.orders-ingestion-prod-20260927061500` |
+| Agent | `<username>.agent-<task>-<UTC timestamp>` | `alice.agent-churn-analysis-20260927101233` |
+
+## Start every branch with your username
+
+A writer can only create and write to branches whose name starts with their username followed by a dot, so the prefix is not optional. Read it from the client instead of hardcoding it, so the same code works for every user and for the production user alike:
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+username = client.info().user.username
+client.create_branch(f"{username}.revenue-model", from_ref="main")
+```
+
+For a personal branch, the rest of the name is the topic you are working on.
+
+## Name scheduled branches after what runs on them
+
+Scheduled jobs run as a dedicated user that acts as a service account, with a descriptive name such as `etl`, so the prefix already tells you that an orchestrator created the branch and not a person or an agent. After the prefix, put the name of the pipeline, for instance `orders`, the scope of the operation, for instance `ingestion` or `transformation`, the environment, for instance `dev` or `prod`, and a UTC timestamp:
+
+```python type:ignore
+from datetime import datetime, timezone
+
+stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+branch = f"{username}.orders-ingestion-prod-{stamp}"
+```
+
+The pipeline and the scope make the branches of one job easy to find. The environment keeps branches apart when a `dev` and a `prod` scheduler start the same job at the same time, and the UTC timestamp gives every run a branch of its own, avoiding silently reusing or conflicting with existing branches.
+
+## Related
+
+- [How to bring data to production](/how-to/publish/how-to-bring-data-to-production)
+- [How to clean up branches](/how-to/publish/how-to-clean-up-branches)
+- [Catalog and branches](/concepts/catalog-and-branches#data-branches)
