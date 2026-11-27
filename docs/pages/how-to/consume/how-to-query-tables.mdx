@@ -1,0 +1,89 @@
+---
+title: "How to query tables"
+description: "Read Bauplan tables with SQL from the CLI, the Python SDK, or the web app, at any branch, tag or commit."
+---
+
+Every read of a Bauplan table is a SQL query. Bauplan runs it on its own compute, reading the table at the branch, tag or commit you pass as `ref`, and sends the result back to you. Queries are read-only and cannot create or change tables. This page covers the CLI, the Python SDK, past states and the web app. For results too large to hold in memory, see [how to download data from Bauplan](/how-to/consume/how-to-download-data-from-bauplan).
+
+## Query from the CLI
+
+```sh
+bauplan query "SELECT customer_id, revenue FROM analytics.customer_revenue ORDER BY revenue DESC LIMIT 20"
+```
+
+The CLI runs the query on your active branch and prints the first rows. Pass `--ref <branch>` to read another branch, `--all-rows` to print every row, `-O json` for machine-readable output, or `--file query.sql` to run a query from a file.
+
+## Query from Python
+
+```python
+import bauplan
+import polars as pl
+
+client = bauplan.Client()
+
+table = client.query(
+    "SELECT customer_id, revenue FROM analytics.customer_revenue WHERE order_date >= '2026-09-01'",
+    ref="main",
+)
+df = pl.DataFrame(table)
+```
+
+`client.query` returns a PyArrow table, which most DataFrame libraries can read. It raises an exception if the query fails. Table and column names are case-sensitive.
+
+<Note>
+To read the result into pandas, pass `types_mapper=pd.ArrowDtype`:
+
+```python type:ignore
+import pandas as pd
+
+df = table.to_pandas(types_mapper=pd.ArrowDtype)
+```
+
+Without it, pandas converts the columns to NumPy types. It copies the data and turns integer columns with nulls into floats. With `pd.ArrowDtype`, the columns keep their Arrow types and wrap the Arrow data without copying it.
+</Note>
+
+To read one table without writing SQL, `client.scan` takes a column list and a filter:
+
+```python type:ignore
+table = client.scan(
+    table="customer_revenue",
+    namespace="analytics",
+    ref="main",
+    columns=["customer_id", "revenue"],
+    filters="revenue > 1000",
+)
+```
+
+When many people run the same query, make it a model in a pipeline and query the materialized table.
+
+## Read a past state
+
+`ref` takes the name of a branch or a tag, or a commit hash:
+
+```python type:ignore
+client.create_tag(tag="revenue-2026-q3", from_ref="main")
+
+q3 = client.query(
+    "SELECT SUM(revenue) AS revenue FROM analytics.customer_revenue",
+    ref="revenue-2026-q3",
+)
+```
+
+`bauplan commit` and `client.get_commits` list the commit hashes of a branch.
+
+A query on `main` returns different results after every merge. A report or dashboard that must not change reads from a tag, created when the numbers are final.
+
+## Read a table without writing code
+
+People who only need to look at a table, without a Bauplan setup, can use the web app or an AI assistant. Both need only the reader role, which can read every branch by default.
+
+In the web app, open **Catalog**, pick the table in the namespace tree, and open the **Data Preview** tab to see its first rows. The **Query Data** tab runs SQL on the same table.
+
+In an AI assistant connected to the [Bauplan MCP server](/learn/set-up-your-agent#mcp-server), ask "Which tables do you see?" and then ask the question itself. The assistant writes and runs the SQL. See [how to answer questions with an agent](/how-to/consume/how-to-answer-questions-with-an-agent) for a more complete walkthrough.
+
+## Related
+
+- [How to download data from Bauplan](/how-to/consume/how-to-download-data-from-bauplan)
+- [How to speed up reads](/how-to/performance/how-to-speed-up-reads)
+- [How to read Bauplan tables from other engines](/how-to/consume/how-to-read-bauplan-tables-from-other-engines)
+- [How to build a data app](/how-to/consume/how-to-build-a-data-app)

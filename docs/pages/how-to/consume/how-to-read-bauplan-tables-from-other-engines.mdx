@@ -1,0 +1,66 @@
+---
+title: "How to read Bauplan tables from other engines"
+description: "Read Bauplan tables from other engines without copying data, through the Iceberg REST catalog or one table at a time."
+---
+
+Every Bauplan table is an Iceberg table stored in your bucket. Other engines can read it in place, without copying it. Engines that support Iceberg REST catalogs connect at the catalog level. Other engines register each table at the table level.
+
+1. **Catalog level.** The engine attaches to Bauplan's Iceberg REST catalog and sees every namespace and table, always at their latest state.
+2. **Table level.** You register each table in the engine from its Iceberg metadata file, and register it again when the table changes.
+
+In both cases, the engine reads the data files directly from your bucket.
+
+## Give the engine access to the bucket
+
+Bauplan tells the engine where the files of each table are, but does not serve the files itself. Give the engine its own read access to the bucket that holds your Bauplan tables, for instance with a read-only IAM role.
+
+Give the engine the API key of a user with the reader role. If the key leaks, nobody can use it to change a table. Bauplan must be the only writer of its [managed tables](/concepts/tables#managed-tables). Never write to them from the external engine.
+
+## Connect at the catalog level
+
+The catalog URL includes the branch to read. Without a branch, the engine reads `main`:
+
+```text
+https://api.use1.aprod.bauplanlabs.com/iceberg                        (main)
+https://api.use1.aprod.bauplanlabs.com/iceberg/<username>.<branch>    (another branch)
+```
+
+Authenticate with a Bauplan API key as a bearer token. With PyIceberg:
+
+```python
+from pyiceberg.catalog import load_catalog
+
+catalog = load_catalog(
+    "bauplan",
+    type="rest",
+    uri="https://api.use1.aprod.bauplanlabs.com/iceberg",
+    token="<api_key>",
+)
+
+revenue = catalog.load_table(("analytics", "customer_revenue")).scan().to_arrow()
+```
+
+Other engines take the same URL and token in their own catalog configuration.
+
+## Connect at the table level
+
+For an engine without Iceberg REST support, get the location of the table's current metadata file and register the table from it:
+
+```python
+import bauplan
+
+client = bauplan.Client()
+
+table = client.get_table(table="customer_revenue", ref="main", namespace="analytics")
+print(table.metadata_location)
+```
+
+Each merge into `main` writes a new metadata file, and a table registered this way stays at the snapshot it was registered from. Register it again after every merge, for instance as the last step of the job that merges.
+
+A model with the `REPLACE` materialization strategy drops the table and creates a new one on every run. An engine that refreshes a table it already registered could reject the new metadata file as belonging to a different table. Register the table again after each run instead of refreshing it, or write it with a different strategy. The strategies are compared in [how to materialize pipeline outputs](/how-to/shape-pipeline-outputs/how-to-materialize-pipeline-outputs). Engines connected at the catalog level look up the table by name, and see the new table without any extra step.
+
+## Related
+
+- [How to query tables](/how-to/consume/how-to-query-tables)
+- [How to materialize pipeline outputs](/how-to/shape-pipeline-outputs/how-to-materialize-pipeline-outputs)
+- [Tables and namespaces](/concepts/tables)
